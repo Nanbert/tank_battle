@@ -2,12 +2,11 @@
 //!
 //!
 use std::collections::HashSet;
+use std::collections::HashMap;
 use bevy::{
-    diagnostic::{FrameCount, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    math::bounding::{Aabb2d, BoundingCircle, BoundingVolume, IntersectsVolume},
     prelude::*,
     window::{
-        CursorGrabMode, CursorIcon, CursorOptions, PresentMode, SystemCursorIcon, WindowLevel,
+        PresentMode,
         WindowTheme,
     },
 };
@@ -30,6 +29,11 @@ struct ColliderEventSet{
     entities:HashSet<Entity>,
 }
 
+#[derive(Resource, Default)]
+struct TankContactMap{
+    max_depth_normals:HashMap<Entity, Vec2>,
+}
+
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
 
@@ -43,13 +47,11 @@ struct EnemyTank;
 struct Wall;
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
-const PLAYER_SPEED: f32 = 500.0;
-const HOME_BASE_POSITION: Vec3 = Vec3::new(0.0, 0.0, 1.0);
-const HOME_BASE_WIDTH: f32 = 20.0;
 const ARENA_WIDTH: f32 = 1600.0;
 const ARENA_HEIGHT: f32 = 1200.0;
 const TANK_WIDTH: f32 = 87.0;
 const TANK_HEIGHT: f32 = 103.0;
+const TANK_SPEED: f32 = 120.0;
 
 const ENEMY_BORN_PLACES: [Vec3; 3] = [
     Vec3::new(-ARENA_WIDTH / 2.0 + TANK_WIDTH / 2.0, ARENA_HEIGHT/2.0 - TANK_HEIGHT / 2.0, 0.0),
@@ -88,11 +90,12 @@ fn main() {
         ))
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .init_resource::<ColliderEventSet>()
+        .init_resource::<TankContactMap>()
         .insert_resource(Score(0))
         .insert_resource(Life(2))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_systems(Startup, setup)
-        .add_systems(Update, (animate_sprite, (display_contact_info, collect_collision, collect_contact, move_enemy_tanks).chain()))
+        .add_systems(Update, (animate_sprite, (collect_contact_info, collect_collision, move_enemy_tanks).chain()))
         .run();
 }
 
@@ -116,17 +119,12 @@ fn animate_sprite(
 }
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
 ) {
     // Camera
     commands.spawn(Camera2d);
 
-    // 玩家坦克
-    let player_tank_pos_x = -HOME_BASE_WIDTH / 2.0;
-    let player_tank_pos_y = -HOME_BASE_WIDTH / 2.0;
 
     let texture = asset_server.load("texture/tank_player.png");
     
@@ -165,10 +163,10 @@ fn setup(
             animation_indices.clone(),
             AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
             Velocity{
-                linvel: Vec2::new(0.0, -100.0),
+                linvel: Vec2::new(0.0, -TANK_SPEED),
                 angvel: 0.0,
             },
-            MoveTimer(Timer::from_seconds(4.0, TimerMode::Repeating)),
+            MoveTimer(Timer::from_seconds(6.0, TimerMode::Repeating)),
             RigidBody::KinematicVelocityBased,
             Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
             ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS,
@@ -229,7 +227,7 @@ fn setup(
     ));
 }
 fn collect_collision(
-    mut collision_events: EventReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionEvent>,
     mut collision_set: ResMut<ColliderEventSet>,
 )
 {
@@ -241,29 +239,21 @@ fn collect_collision(
         }
     }
 }
-fn collect_contact(
-    mut contact_events: EventReader<ContactForceEvent>,
-)
-{
-    for event in contact_events.read(){
-            println!("contact happen");
-        
-    }
-}
 
 fn move_enemy_tanks(
     mut query: Query<(Entity, &mut Transform, &mut Velocity, &mut MoveTimer), With<EnemyTank>>,
     time: Res<Time>,
     collision_set: ResMut<ColliderEventSet>,
+    contact_info: ResMut<TankContactMap>,
 ) {
     for (entity, mut transform, mut velocity, mut timer) in query.iter_mut() {
-        //timer.tick(time.delta());
+        timer.tick(time.delta());
         // 移动
         //transform.translation += velocity.linvel.extend(0.0) * time.delta_secs();
-        // 每次都根据速度方向更新朝向（关键！）
-        let angle = velocity.linvel.y.atan2(velocity.linvel.x); // 速度向量的角度
-        transform.rotation = Quat::from_rotation_z((angle - 270.0_f32.to_radians()));
-        if timer.just_finished() || collision_set.entities.contains(&entity){
+        if let Some(max_depth_normal) = contact_info.max_depth_normals.get(&entity){
+            velocity.linvel = max_depth_normal*TANK_SPEED;
+        }
+        else if timer.just_finished() || collision_set.entities.contains(&entity){
             let rand_num = rand::random::<f32>();
             let current_vel = velocity.linvel;
 
@@ -279,66 +269,50 @@ fn move_enemy_tanks(
                     
             };
         }
+        let angle = velocity.linvel.y.atan2(velocity.linvel.x); // 速度向量的角度
+        transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
     }
 }
 
-fn display_contact_info(
+fn collect_contact_info(
     rapier_context: ReadRapierContext, 
-    tanks: Query<(Entity), With<EnemyTank>>,
-    walls: Query<(Entity), With<Wall>>,
-    score: Res<Score>
+    tanks: Query<Entity, With<EnemyTank>>,
+    mut contact_info: ResMut<TankContactMap>,
 ){
+    contact_info.max_depth_normals.clear();
     let rapier_context = rapier_context.single().unwrap();
     for entity_tank in tanks{
-        for entity_wall in walls{
-            if let Some(contact_pair) = rapier_context.contact_pair(entity_tank, entity_wall){
-                if contact_pair.has_any_active_contact(){
-                    let mut i:u16 = 0;
-                    for manifold in contact_pair.manifolds(){
-                        println!("World-space contact normal:{}, {}", i, manifold.normal());
-                        i+=1;
-                    }
+        let mut max_depth:f32 = 0.0;
+        let mut max_depth_normal = Vec2::new(0.0, 0.0);
+        for contact_pair in rapier_context.contact_pairs_with(entity_tank){
+            if !contact_pair.has_any_active_contact(){
+                continue;
+            }
+            for manifold in contact_pair.manifolds(){
+                let dist = -manifold.find_deepest_contact().unwrap().dist();
+                if dist < max_depth{
+                    continue;
+                }
+                max_depth = dist;
+                max_depth_normal = if contact_pair.collider1() == Some(entity_tank) {
+                    -manifold.normal()
+                } else{
+                    manifold.normal()
                 }
             }
         }
+        let abs_x =max_depth_normal.x.abs();
+        let abs_y =max_depth_normal.y.abs();
+
+        max_depth_normal = if abs_x > abs_y {
+            Vec2::new(max_depth_normal.x.signum(), 0.0)
+        } else {
+            Vec2::new(0.0, max_depth_normal.y.signum())
+        };
+        if max_depth < 0.4{
+            continue;
+        }
+        contact_info.max_depth_normals.insert(entity_tank, max_depth_normal);
     }
 
-    // /* Find the contact pair, if it exists, between two colliders. */
-    // if let Some(contact_pair) = rapier_context.contact_pair(entity1, entity2) {
-    //     // The contact pair exists meaning that the broad-phase identified a potential contact.
-    //     if contact_pair.has_any_active_contact() {
-    //         // The contact pair has active contacts, meaning that it
-    //         // contains contacts for which contact forces were computed.
-    //     }
-
-    //     // We may also read the contact manifolds to access the contact geometry.
-    //     for manifold in contact_pair.manifolds() {
-    //         println!("Local-space contact normal: {}", manifold.local_n1());
-    //         println!("Local-space contact normal: {}", manifold.local_n2());
-    //         println!("World-space contact normal: {}", manifold.normal());
-
-    //         // Read the geometric contacts.
-    //         for contact_point in manifold.points() {
-    //             // Keep in mind that all the geometric contact data are expressed in the local-space of the colliders.
-    //             println!(
-    //                 "Found local contact point 1: {:?}",
-    //                 contact_point.local_p1()
-    //             );
-    //             println!("Found contact distance: {:?}", contact_point.dist()); // Negative if there is a penetration.
-    //             println!("Found contact impulse: {}", contact_point.raw.data.impulse);
-    //             println!(
-    //                 "Found friction impulse: {}",
-    //                 contact_point.raw.data.tangent_impulse
-    //             );
-    //         }
-
-    //         // Read the solver contacts.
-    //         for solver_contact in &manifold.raw.data.solver_contacts {
-    //             // Keep in mind that all the solver contact data are expressed in world-space.
-    //             println!("Found solver contact point: {:?}", solver_contact.point);
-    //             // The solver contact distance is negative if there is a penetration.
-    //             println!("Found solver contact distance: {:?}", solver_contact.dist);
-    //         }
-    //     }
-    // }
 }
