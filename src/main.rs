@@ -58,9 +58,6 @@ struct AnimationTimer(Timer);
 struct CurrentAnimationFrame(usize);
 
 #[derive(Component, Deref, DerefMut)]
-struct MoveTimer(Timer);
-
-#[derive(Component, Deref, DerefMut)]
 struct DirectionChangeTimer(Timer);
 
 #[derive(Component, Deref, DerefMut)]
@@ -184,12 +181,12 @@ fn main() {
         .add_systems(Update, (
             (collect_contact_info, collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
+            animate_tank_texture,
             shoot_bullets,
             player_shoot_bullet,
             check_bullet_bounds,
             check_bullet_destruction,
             handle_bullet_collisions,
-            animate_game_sprites,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, handle_start_screen_input.run_if(in_state(GameState::StartScreen)))
@@ -208,8 +205,8 @@ fn spawn_start_screen(
 
     // 加载所有动画帧
     for i in 1..=70 {
-        let frame_num = format!("{:04}", i);
-        let texture = asset_server.load(format!("start_scene/frame_{}.png", frame_num));
+        let frame_num = format!("{i:04}");
+        let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
         animation_frames.push(texture);
     }
 
@@ -247,7 +244,7 @@ fn spawn_start_screen(
         Text2d("PLAY".to_string()),
         TextFont {
             font_size: 80.0,
-            font: custom_font.clone(),
+            font: custom_font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
@@ -408,7 +405,7 @@ fn spawn_game_entities(
                 index: animation_indices.first,
             }
         ))
-        .insert(Transform::from_xyz(-FORTRESS_SIZE - WALL_THICKNESS * 2.0 - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
+        .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
         .insert(PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)))
@@ -440,6 +437,7 @@ fn spawn_game_entities(
             })
             .insert(DirectionChangeTimer(Timer::from_seconds(4.0, TimerMode::Once)))
             .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
+            .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
             .insert(Sprite::from_atlas_image(
                 texture.clone(),
                 TextureAtlas{
@@ -449,7 +447,6 @@ fn spawn_game_entities(
             ))
             .insert(Transform::from_translation(pos))
             .insert(animation_indices)
-            .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
             .insert(Velocity{
                 linvel: Vec2::new(0.0, -TANK_SPEED),
                 angvel: 0.0,
@@ -516,24 +513,6 @@ fn animate_start_screen(
     }
 }
 
-fn animate_game_sprites(
-    time: Res<Time>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite)>,
-) {
-    for (indices, mut timer, mut sprite) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = if atlas.index == indices.last {
-                    indices.first
-                } else {
-                    atlas.index + 1
-                };
-            }
-        }
-    }
-}
 fn setup(
     mut commands: Commands,
 ) {
@@ -668,7 +647,6 @@ fn move_enemy_tanks(
 
         // 直接设置速度以保持匀速运动
         velocity.linvel = enemy_tank.direction * TANK_SPEED;
-
         // 更新旋转以面向移动方向
         if enemy_tank.direction.length() > 0.0 {
             let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
@@ -783,8 +761,8 @@ fn check_bullet_bounds(
         let y = transform.translation.y;
 
         // 检查子弹是否超出游戏窗口边界
-        if x < -ARENA_WIDTH / 2.0 || x > ARENA_WIDTH / 2.0 ||
-           y < -ARENA_HEIGHT / 2.0 || y > ARENA_HEIGHT / 2.0 {
+        if !(-ARENA_WIDTH / 2.0..=ARENA_WIDTH / 2.0).contains(&x) ||
+           !(-ARENA_HEIGHT / 2.0..=ARENA_HEIGHT / 2.0).contains(&y) {
             commands.entity(entity).despawn();
         }
     }
@@ -816,13 +794,13 @@ fn handle_bullet_collisions(
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是子弹与坦克的碰撞
-            let (bullet_entity, tank_entity) = if let Ok(bullet) = bullets.get(*e1) {
+            let (bullet_entity, tank_entity) = if bullets.get(*e1).is_ok() {
                 if enemy_tank_set.contains(e2) || player_tank_set.contains(e2) {
                     (*e1, *e2)
                 } else {
                     continue;
                 }
-            } else if let Ok(bullet) = bullets.get(*e2) {
+            } else if bullets.get(*e2).is_ok() {
                 if enemy_tank_set.contains(e1) || player_tank_set.contains(e1) {
                     (*e2, *e1)
                 } else {
@@ -855,7 +833,35 @@ fn handle_bullet_collisions(
     }
 }
 
+fn animate_tank_texture(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &Velocity)>,
+) {
+    for (mut timer, mut sprite, indices, velocity) in &mut query {
+        // 只有坦克在运动时才刷新纹理
+        if velocity.linvel.length() > 0.0 {
+            timer.tick(time.delta());
+            if timer.just_finished() {
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = if atlas.index == indices.last {
+                        indices.first
+                    } else {
+                        atlas.index + 1
+                    };
+                }
+            }
+        } else {
+            // 坦克静止时重置到第一帧
+            timer.reset();
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = indices.first;
+            }
+        }
+    }
+}
+
 fn move_player_tank(
+    _time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &mut Velocity), With<PlayerTank>>,
 ) {
@@ -891,12 +897,12 @@ fn player_shoot_bullet(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<(Entity, &Transform, &Velocity, &mut PlayerShootTimer), With<PlayerTank>>,
+    mut query: Query<(Entity, &Transform, &mut PlayerShootTimer), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
     _player_tanks: Query<Entity, With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
-    for (entity, transform, velocity, mut timer) in &mut query {
+    for (entity, transform, mut timer) in &mut query {
         timer.tick(time.delta());
 
         // 空格键射击
