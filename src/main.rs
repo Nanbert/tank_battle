@@ -46,11 +46,6 @@ struct ColliderEventSet{
     entities:HashSet<Entity>,
 }
 
-#[derive(Resource, Default)]
-struct TankContactMap{
-    max_depth_normals:HashMap<Entity, Vec2>,
-}
-
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
 
@@ -132,6 +127,13 @@ const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0,
 const FORTRESS_SIZE: f32 = 60.0;
 const WALL_THICKNESS: f32 = 15.0;
 
+const DIRECTIONS: [Vec2; 4] = [
+    Vec2::new(0.0, 1.0),   // 上
+    Vec2::new(0.0, -1.0),  // 下
+    Vec2::new(-1.0, 0.0),  // 左
+    Vec2::new(1.0, 0.0),   // 右
+];
+
 fn main() {
     App::new()
         .add_plugins((
@@ -166,7 +168,6 @@ fn main() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
         .init_state::<GameState>()
         .init_resource::<ColliderEventSet>()
-        .init_resource::<TankContactMap>()
         .init_resource::<CanFire>()
         .init_resource::<BulletOwners>()
         .init_resource::<StartAnimationFrames>()
@@ -179,7 +180,7 @@ fn main() {
         .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
         .add_systems(Startup, setup)
         .add_systems(Update, (
-            (collect_contact_info, collect_collision, move_enemy_tanks).chain(),
+            (collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
             animate_tank_texture,
             shoot_bullets,
@@ -332,7 +333,6 @@ fn spawn_game_entities(
     let fortress_x = 0.0;
 
     // 堡垒主体（红色五角星）
-    let _star_points = create_star_points(FORTRESS_SIZE / 2.0);
     commands.spawn((
         Fortress,
         Sprite {
@@ -480,18 +480,6 @@ fn handle_start_screen_input(
     }
 }
 
-fn create_star_points(radius: f32) -> Vec<Vec2> {
-    let mut points = Vec::with_capacity(10);
-    let inner_radius = radius * 0.4;
-
-    for i in 0..10 {
-        let angle = std::f32::consts::PI * 2.0 * i as f32 / 10.0 - std::f32::consts::PI / 2.0;
-        let r = if i % 2 == 0 { radius } else { inner_radius };
-        points.push(Vec2::new(r * angle.cos(), r * angle.sin()));
-    }
-    points
-}
-
 fn animate_start_screen(
     time: Res<Time>,
     mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, &mut CurrentAnimationFrame), With<StartScreenUI>>,
@@ -598,14 +586,7 @@ fn move_enemy_tanks(
                 };
 
                 // 选择一个不与碰撞方向相反的可移动方向
-                let possible_directions = [
-                    Vec2::new(0.0, 1.0),   // 上
-                    Vec2::new(0.0, -1.0),  // 下
-                    Vec2::new(-1.0, 0.0),  // 左
-                    Vec2::new(1.0, 0.0),   // 右
-                ];
-
-                let available_directions: Vec<Vec2> = possible_directions
+                let available_directions: Vec<Vec2> = DIRECTIONS
                     .iter()
                     .filter(|dir| **dir != blocked_direction)
                     .copied()
@@ -631,15 +612,8 @@ fn move_enemy_tanks(
         if direction_timer.just_finished() {
             let mut rng = rand::rng();
             if rng.random::<f32>() < 0.1 {
-                let possible_directions = [
-                    Vec2::new(0.0, 1.0),   // 上
-                    Vec2::new(0.0, -1.0),  // 下
-                    Vec2::new(-1.0, 0.0),  // 左
-                    Vec2::new(1.0, 0.0),   // 右
-                ];
-
-                let random_index = rng.random_range(0..possible_directions.len());
-                enemy_tank.direction = possible_directions[random_index];
+                let random_index = rng.random_range(0..DIRECTIONS.len());
+                enemy_tank.direction = DIRECTIONS[random_index];
             }
             // 重置计时器为4秒
             direction_timer.reset();
@@ -653,50 +627,6 @@ fn move_enemy_tanks(
             transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
         }
     }
-}
-
-fn collect_contact_info(
-    rapier_context: ReadRapierContext,
-    tanks: Query<Entity, With<EnemyTank>>,
-    mut contact_info: ResMut<TankContactMap>,
-){
-    contact_info.max_depth_normals.clear();
-    let rapier_context = rapier_context.single().unwrap();
-    for entity_tank in tanks{
-        let mut max_depth:f32 = 0.0;
-        let mut max_depth_normal = Vec2::new(0.0, 0.0);
-        for contact_pair in rapier_context.contact_pairs_with(entity_tank){
-            if !contact_pair.has_any_active_contact(){
-                continue;
-            }
-            for manifold in contact_pair.manifolds(){
-                let dist = -manifold.find_deepest_contact().unwrap().dist();
-                if dist < max_depth{
-                    continue;
-                }
-                max_depth = dist;
-                max_depth_normal = if contact_pair.collider1() == Some(entity_tank) {
-                    -manifold.normal()
-                } else{
-                    manifold.normal()
-                }
-            }
-        }
-        let abs_x =max_depth_normal.x.abs();
-        let abs_y =max_depth_normal.y.abs();
-
-        max_depth_normal = if abs_x > abs_y {
-            Vec2::new(max_depth_normal.x.signum(), 0.0)
-        } else {
-            Vec2::new(0.0, max_depth_normal.y.signum())
-        };
-        // 降低阈值，更早检测到碰撞
-        if max_depth < 0.2{
-            continue;
-        }
-        contact_info.max_depth_normals.insert(entity_tank, max_depth_normal);
-    }
-
 }
 
 fn shoot_bullets(
@@ -785,23 +715,20 @@ fn handle_bullet_collisions(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     bullets: Query<(Entity, &BulletOwner), With<Bullet>>,
-    enemy_tanks: Query<Entity, With<EnemyTank>>,
-    player_tanks: Query<Entity, With<PlayerTank>>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
+    player_tanks: Query<(), With<PlayerTank>>,
 ) {
-    let enemy_tank_set: HashSet<Entity> = enemy_tanks.iter().collect();
-    let player_tank_set: HashSet<Entity> = player_tanks.iter().collect();
-
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是子弹与坦克的碰撞
             let (bullet_entity, tank_entity) = if bullets.get(*e1).is_ok() {
-                if enemy_tank_set.contains(e2) || player_tank_set.contains(e2) {
+                if enemy_tanks.get(*e2).is_ok() || player_tanks.get(*e2).is_ok() {
                     (*e1, *e2)
                 } else {
                     continue;
                 }
             } else if bullets.get(*e2).is_ok() {
-                if enemy_tank_set.contains(e1) || player_tank_set.contains(e1) {
+                if enemy_tanks.get(*e1).is_ok() || player_tanks.get(*e1).is_ok() {
                     (*e2, *e1)
                 } else {
                     continue;
@@ -813,10 +740,10 @@ fn handle_bullet_collisions(
             let bullet_owner = bullets.get(bullet_entity).unwrap().1.owner;
 
             // 判断碰撞类型
-            let is_player_bullet = player_tank_set.contains(&bullet_owner);
-            let is_enemy_bullet = enemy_tank_set.contains(&bullet_owner);
-            let is_player_tank = player_tank_set.contains(&tank_entity);
-            let is_enemy_tank = enemy_tank_set.contains(&tank_entity);
+            let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
+            let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
+            let is_player_tank = player_tanks.get(tank_entity).is_ok();
+            let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
 
             // 规则：
             // 1. 玩家子弹打到敌方坦克 -> 子弹消失
@@ -851,10 +778,12 @@ fn animate_tank_texture(
                 }
             }
         } else {
-            // 坦克静止时重置到第一帧
-            timer.reset();
+            // 坦克静止时，只在纹理索引不是第一帧时才重置
             if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = indices.first;
+                if atlas.index != indices.first {
+                    atlas.index = indices.first;
+                    timer.reset();
+                }
             }
         }
     }
