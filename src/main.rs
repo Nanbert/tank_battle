@@ -102,9 +102,6 @@ impl Default for FadingOut {
     }
 }
 
-#[derive(Component, Deref, DerefMut)]
-struct PlayerShootTimer(Timer);
-
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
 const ARENA_WIDTH: f32 = 1600.0;
@@ -141,6 +138,7 @@ fn main() {
                 primary_window: Some(Window {
                     title: "For Communism!".into(),
                     name: Some("bevy.app".into()),
+                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
                     resolution: (ARENA_WIDTH as u32, ARENA_HEIGHT as u32).into(),
                     present_mode: PresentMode::AutoVsync,
                     // Tells Wasm to resize the window according to the available canvas
@@ -266,16 +264,7 @@ fn spawn_start_screen(
 }
 
 
-fn spawn_game_entities(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    asset_server: Res<AssetServer>,
-    mut can_fire: ResMut<CanFire>,
-    mut clear_color: ResMut<ClearColor>,
-) {
-    // 设置背景色为黑色
-    clear_color.0 = BACKGROUND_COLOR;
-
+fn spawn_walls(commands: &mut Commands) {
     // 左墙
     commands.spawn((
         Wall,
@@ -327,8 +316,9 @@ fn spawn_game_entities(
             ..default()
         }
     ));
+}
 
-    // 堡垒（底部中央）
+fn spawn_fortress(commands: &mut Commands) {
     let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
     let fortress_x = 0.0;
 
@@ -386,29 +376,28 @@ fn spawn_game_entities(
             ..default()
         }
     ));
-    let texture = asset_server.load("texture/tank_player.png");
+}
 
-    // 精灵图是 1x3 的布局
-    let tile_size = UVec2::new(87, 103); // 每个精灵的实际尺寸
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
-
-    // 玩家坦克 - 初始位置在堡垒左侧
+fn spawn_player_tank(
+    commands: &mut Commands,
+    texture: Handle<Image>,
+    texture_atlas_layout: Handle<TextureAtlasLayout>,
+    animation_indices: AnimationIndices,
+) -> Entity {
     let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
-    let player_tank_entity = commands.spawn_empty()
+    
+    commands.spawn_empty()
         .insert(PlayerTank)
         .insert(Sprite::from_atlas_image(
-            texture.clone(),
+            texture,
             TextureAtlas{
-                layout: texture_atlas_layout.clone(),
+                layout: texture_atlas_layout,
                 index: animation_indices.first,
             }
         ))
         .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
-        .insert(PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)))
         .insert(Velocity{
             linvel: Vec2::new(0.0, 0.0),
             angvel: 0.0,
@@ -425,49 +414,94 @@ fn spawn_game_entities(
             linear_damping: 0.5,
             angular_damping: 0.5,
         })
-        .id();
+        .id()
+}
 
-    // 敌方坦克
-    let mut enemy_tank_entities = Vec::new();
-    for pos in ENEMY_BORN_PLACES {
+fn spawn_enemy_tank(
+    commands: &mut Commands,
+    texture: Handle<Image>,
+    texture_atlas_layout: Handle<TextureAtlasLayout>,
+    animation_indices: AnimationIndices,
+    position: Vec3,
+) -> Entity {
+    commands.spawn_empty()
+        .insert(EnemyTank {
+            direction: Vec2::new(0.0, -1.0),
+        })
+        .insert(DirectionChangeTimer(Timer::from_seconds(4.0, TimerMode::Once)))
+        .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
+        .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+        .insert(Sprite::from_atlas_image(
+            texture,
+            TextureAtlas{
+                layout: texture_atlas_layout,
+                index: animation_indices.first,
+            }
+        ))
+        .insert(Transform::from_translation(position))
+        .insert(animation_indices)
+        .insert(Velocity{
+            linvel: Vec2::new(0.0, -TANK_SPEED),
+            angvel: 0.0,
+        })
+        .insert(RigidBody::Dynamic)
+        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+        .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
+        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
+        .insert(LockedAxes::ROTATION_LOCKED)
+        .insert(GravityScale(0.0))
+        .insert(Friction::new(0.0))
+        .insert(Restitution::new(0.0))
+        .id()
+}
 
-        let entity = commands.spawn_empty()
-            .insert(EnemyTank {
-                direction: Vec2::new(0.0, -1.0),
-            })
-            .insert(DirectionChangeTimer(Timer::from_seconds(4.0, TimerMode::Once)))
-            .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
-            .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
-            .insert(Sprite::from_atlas_image(
-                texture.clone(),
-                TextureAtlas{
-                    layout: texture_atlas_layout.clone(),
-                    index: animation_indices.first,
-                }
-            ))
-            .insert(Transform::from_translation(pos))
-            .insert(animation_indices)
-            .insert(Velocity{
-                linvel: Vec2::new(0.0, -TANK_SPEED),
-                angvel: 0.0,
-            })
-            .insert(RigidBody::Dynamic)
-            .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
-            .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
-            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
-            .insert(LockedAxes::ROTATION_LOCKED)
-            .insert(GravityScale(0.0))
-            .insert(Friction::new(0.0))
-            .insert(Restitution::new(0.0))
-            .id();
-        enemy_tank_entities.push(entity);
-    }
+fn spawn_game_entities(
+    mut commands: Commands,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    mut can_fire: ResMut<CanFire>,
+    mut clear_color: ResMut<ClearColor>,
+) {
+    // 设置背景色为黑色
+    clear_color.0 = BACKGROUND_COLOR;
 
-    // 初始化所有敌方坦克都可以射击
+    // 生成墙壁
+    spawn_walls(&mut commands);
+
+    // 生成堡垒
+    spawn_fortress(&mut commands);
+
+    // 加载纹理和创建精灵图
+    let texture = asset_server.load("texture/tank_player.png");
+    let tile_size = UVec2::new(87, 103);
+    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
+    let animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 生成玩家坦克
+    let player_tank_entity = spawn_player_tank(
+        &mut commands,
+        texture.clone(),
+        texture_atlas_layout.clone(),
+        animation_indices,
+    );
+
+    // 生成敌方坦克
+    let enemy_tank_entities: Vec<Entity> = ENEMY_BORN_PLACES
+        .iter()
+        .map(|&pos| spawn_enemy_tank(
+            &mut commands,
+            texture.clone(),
+            texture_atlas_layout.clone(),
+            animation_indices,
+            pos,
+        ))
+        .collect();
+
+    // 初始化所有坦克都可以射击
     for entity in enemy_tank_entities {
         can_fire.0.insert(entity);
     }
-    // 初始化玩家坦克可以射击
     can_fire.0.insert(player_tank_entity);
 }
 
@@ -768,23 +802,21 @@ fn animate_tank_texture(
         // 只有坦克在运动时才刷新纹理
         if velocity.linvel.length() > 0.0 {
             timer.tick(time.delta());
-            if timer.just_finished() {
-                if let Some(atlas) = &mut sprite.texture_atlas {
+            if timer.just_finished()
+                && let Some(atlas) = &mut sprite.texture_atlas {
                     atlas.index = if atlas.index == indices.last {
                         indices.first
                     } else {
                         atlas.index + 1
                     };
                 }
-            }
         } else {
             // 坦克静止时，只在纹理索引不是第一帧时才重置
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                if atlas.index != indices.first {
+            if let Some(atlas) = &mut sprite.texture_atlas
+                && atlas.index != indices.first {
                     atlas.index = indices.first;
                     timer.reset();
                 }
-            }
         }
     }
 }
@@ -825,17 +857,14 @@ fn move_player_tank(
 fn player_shoot_bullet(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
-    mut query: Query<(Entity, &Transform, &mut PlayerShootTimer), With<PlayerTank>>,
+    query: Query<(Entity, &Transform), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
     _player_tanks: Query<Entity, With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
-    for (entity, transform, mut timer) in &mut query {
-        timer.tick(time.delta());
-
+    for (entity, transform) in &query {
         // 空格键射击
-        if keyboard_input.pressed(KeyCode::Space) && timer.just_finished() && can_fire.0.contains(&entity) {
+        if keyboard_input.just_pressed(KeyCode::Space) && can_fire.0.contains(&entity) {
             // 计算子弹发射方向（基于坦克当前的旋转角度）
             // 坦克旋转时使用：angle - 270.0_f32.to_radians()
             // 因此需要补偿：actual_angle = euler_angle + 270.0_f32.to_radians()
