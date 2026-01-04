@@ -16,6 +16,7 @@ use bevy::{
     },
 };
 use bevy_rapier2d::prelude::*;
+use rand::Rng;
 
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 enum GameState {
@@ -59,16 +60,15 @@ struct CurrentAnimationFrame(usize);
 #[derive(Component, Deref, DerefMut)]
 struct MoveTimer(Timer);
 
-#[derive(Component)]
-struct EnemyTank;
+#[derive(Component, Deref, DerefMut)]
+struct DirectionChangeTimer(Timer);
 
 #[derive(Component, Deref, DerefMut)]
-struct PauseTimer(Timer);
+struct CollisionCooldownTimer(Timer);
 
-#[derive(Component)]
-struct Accelerating {
-    target_speed: f32,
-    current_speed: f32,
+#[derive(Component, Copy, Clone)]
+struct EnemyTank {
+    direction: Vec2,
 }
 
 #[derive(Component)]
@@ -78,6 +78,11 @@ struct PlayerTank;
 struct Bullet;
 
 #[derive(Component)]
+struct BulletOwner {
+    owner: Entity,
+}
+
+#[derive(Component)]
 struct Wall;
 
 #[derive(Component)]
@@ -85,6 +90,11 @@ struct Fortress;
 
 #[derive(Resource, Default)]
 struct CanFire(HashSet<Entity>);
+
+#[derive(Resource, Default)]
+struct BulletOwners {
+    owners: HashMap<Entity, Entity>, // 子弹实体 -> 坦克实体
+}
 
 #[derive(Resource, Default, Deref, DerefMut)]
 struct StartAnimationFrames(Vec<Handle<Image>>);
@@ -109,8 +119,8 @@ const ARENA_WIDTH: f32 = 1600.0;
 const ARENA_HEIGHT: f32 = 1200.0;
 const TANK_WIDTH: f32 = 87.0;
 const TANK_HEIGHT: f32 = 103.0;
-const TANK_SPEED: f32 = 200.0;
-const BULLET_SPEED: f32 = 400.0;
+const TANK_SPEED: f32 = 300.0;
+const BULLET_SPEED: f32 = 900.0;
 const BULLET_SIZE: f32 = 10.0;
 
 const ENEMY_BORN_PLACES: [Vec3; 3] = [
@@ -161,6 +171,7 @@ fn main() {
         .init_resource::<ColliderEventSet>()
         .init_resource::<TankContactMap>()
         .init_resource::<CanFire>()
+        .init_resource::<BulletOwners>()
         .init_resource::<StartAnimationFrames>()
         .init_resource::<FadingOut>()
         .insert_resource(Score(0))
@@ -177,8 +188,10 @@ fn main() {
             player_shoot_bullet,
             check_bullet_bounds,
             check_bullet_destruction,
+            handle_bullet_collisions,
+            animate_game_sprites,
         ).run_if(in_state(GameState::Playing)))
-        .add_systems(Update, animate_sprite.run_if(not(in_state(GameState::Playing))))
+        .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, handle_start_screen_input.run_if(in_state(GameState::StartScreen)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)))
         .run();
@@ -386,57 +399,70 @@ fn spawn_game_entities(
 
     // 玩家坦克 - 初始位置在堡垒左侧
     let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
-    let player_tank_entity = commands.spawn((
-        PlayerTank,
-        Sprite::from_atlas_image(
+    let player_tank_entity = commands.spawn_empty()
+        .insert(PlayerTank)
+        .insert(Sprite::from_atlas_image(
             texture.clone(),
             TextureAtlas{
                 layout: texture_atlas_layout.clone(),
                 index: animation_indices.first,
             }
-        ),
-        Transform::from_xyz(-FORTRESS_SIZE - WALL_THICKNESS * 2.0 - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0),
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-        PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)),
-        Velocity{
+        ))
+        .insert(Transform::from_xyz(-FORTRESS_SIZE - WALL_THICKNESS * 2.0 - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
+        .insert(animation_indices)
+        .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+        .insert(PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)))
+        .insert(Velocity{
             linvel: Vec2::new(0.0, 0.0),
             angvel: 0.0,
-        },
-        RigidBody::KinematicVelocityBased,
-        Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
-        ActiveEvents::COLLISION_EVENTS,
-        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
-        LockedAxes::ROTATION_LOCKED,
-    )).id();
+        })
+        .insert(RigidBody::Dynamic)
+        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+        .insert(ActiveEvents::COLLISION_EVENTS)
+        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_STATIC)
+        .insert(LockedAxes::ROTATION_LOCKED)
+        .insert(GravityScale(0.0))
+        .insert(Friction::new(0.0))
+        .insert(Restitution::new(0.0))
+        .insert(Damping {
+            linear_damping: 0.5,
+            angular_damping: 0.5,
+        })
+        .id();
 
     // 敌方坦克
     let mut enemy_tank_entities = Vec::new();
     for pos in ENEMY_BORN_PLACES {
-        let entity = commands.spawn((
-            EnemyTank,
-            Sprite::from_atlas_image(
+
+        let entity = commands.spawn_empty()
+            .insert(EnemyTank {
+                direction: Vec2::new(0.0, -1.0),
+            })
+            .insert(DirectionChangeTimer(Timer::from_seconds(4.0, TimerMode::Once)))
+            .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
+            .insert(Sprite::from_atlas_image(
                 texture.clone(),
                 TextureAtlas{
                     layout: texture_atlas_layout.clone(),
                     index: animation_indices.first,
                 }
-            ),
-            Transform::from_translation(pos),
-            animation_indices,
-            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-            PauseTimer(Timer::from_seconds(0.5, TimerMode::Once)), // 初始停顿 0.5 秒
-            Velocity{
+            ))
+            .insert(Transform::from_translation(pos))
+            .insert(animation_indices)
+            .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+            .insert(Velocity{
                 linvel: Vec2::new(0.0, -TANK_SPEED),
                 angvel: 0.0,
-            },
-            MoveTimer(Timer::from_seconds(6.0, TimerMode::Repeating)),
-            RigidBody::KinematicVelocityBased,
-            Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
-            ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS,
-            ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC | ActiveCollisionTypes::KINEMATIC_STATIC,
-            LockedAxes::ROTATION_LOCKED,
-        )).id();
+            })
+            .insert(RigidBody::Dynamic)
+            .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+            .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
+            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
+            .insert(LockedAxes::ROTATION_LOCKED)
+            .insert(GravityScale(0.0))
+            .insert(Friction::new(0.0))
+            .insert(Restitution::new(0.0))
+            .id();
         enemy_tank_entities.push(entity);
     }
 
@@ -469,27 +495,36 @@ fn create_star_points(radius: f32) -> Vec<Vec2> {
     points
 }
 
-fn animate_sprite(
+fn animate_start_screen(
     time: Res<Time>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, Option<&StartScreenUI>, Option<&mut CurrentAnimationFrame>)>,
+    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, &mut CurrentAnimationFrame), With<StartScreenUI>>,
     animation_frames: Res<StartAnimationFrames>,
 ) {
-    for (indices, mut timer, mut sprite, _is_start_screen, current_frame) in &mut query {
+    for (indices, mut timer, mut sprite, mut current_frame) in &mut query {
         timer.tick(time.delta());
 
         if timer.just_finished() {
-            if let Some(mut frame) = current_frame {
-                // 开机动画：切换独立的帧图片
-                let current = frame.0;
-                let next_index = if current == indices.last {
-                    indices.first
-                } else {
-                    current + 1
-                };
-                frame.0 = next_index;
-                *sprite = Sprite::from_image(animation_frames[next_index].clone());
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                // 游戏内动画：切换纹理图集帧
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            *sprite = Sprite::from_image(animation_frames[next_index].clone());
+        }
+    }
+}
+
+fn animate_game_sprites(
+    time: Res<Time>,
+    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite)>,
+) {
+    for (indices, mut timer, mut sprite) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            if let Some(atlas) = &mut sprite.texture_atlas {
                 atlas.index = if atlas.index == indices.last {
                     indices.first
                 } else {
@@ -520,100 +555,123 @@ fn collect_collision(
 }
 
 fn move_enemy_tanks(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform, &mut Velocity, &mut MoveTimer, Option<&mut PauseTimer>, Option<&mut Accelerating>), With<EnemyTank>>,
     time: Res<Time>,
-    collision_set: ResMut<ColliderEventSet>,
-    contact_info: ResMut<TankContactMap>,
+    mut query: Query<(
+        Entity,
+        &mut Velocity,
+        &mut EnemyTank,
+        &mut DirectionChangeTimer,
+        &mut CollisionCooldownTimer,
+        &mut Transform,
+    )>,
+    rapier_context: ReadRapierContext,
 ) {
-    for (entity, mut transform, mut velocity, mut timer, mut pause_timer, mut accelerating) in &mut query {
-        timer.tick(time.delta());
+    let rapier_context = rapier_context.single().unwrap();
 
-        // 如果在停顿状态，处理停顿计时器
-        if let Some(ref mut pause) = pause_timer {
-            pause.tick(time.delta());
-            if pause.just_finished() {
-                // 停顿结束，移除停顿组件，进入加速状态
-                commands.entity(entity).remove::<PauseTimer>();
+    for (entity, mut velocity, mut enemy_tank, mut direction_timer, mut collision_cooldown, mut transform) in &mut query {
+        // 更新碰撞冷却计时器
+        collision_cooldown.tick(time.delta());
 
-                // 获取当前方向
-                let direction = if velocity.linvel.length() > 0.0 {
-                    velocity.linvel.normalize()
+        // 只在冷却时间结束后才检测碰撞
+        if collision_cooldown.is_finished() {
+            // 检查碰撞
+            let mut collision_detected = false;
+            let mut collision_normal = Vec2::ZERO;
+
+            for contact_pair in rapier_context.contact_pairs_with(entity) {
+                if !contact_pair.has_any_active_contact() {
+                    continue;
+                }
+
+                for manifold in contact_pair.manifolds() {
+                    if let Some(_contact) = manifold.find_deepest_contact() {
+                        // 检测到碰撞
+                        collision_detected = true;
+
+                        // 获取碰撞法线方向
+                        collision_normal = if contact_pair.collider1() == Some(entity) {
+                            -manifold.normal()
+                        } else {
+                            manifold.normal()
+                        };
+                    }
+                }
+            }
+
+            // 如果检测到碰撞，根据碰撞法线选择可移动方向
+            if collision_detected {
+                // 将法线规范化到四个主要方向
+                let abs_x = collision_normal.x.abs();
+                let abs_y = collision_normal.y.abs();
+
+                let blocked_direction = if abs_x > abs_y {
+                    if collision_normal.x > 0.0 {
+                        Vec2::new(1.0, 0.0) // 碰撞来自右侧，不能向右
+                    } else {
+                        Vec2::new(-1.0, 0.0) // 碰撞来自左侧，不能向左
+                    }
                 } else {
-                    Vec2::new(0.0, -1.0)
+                    if collision_normal.y > 0.0 {
+                        Vec2::new(0.0, 1.0) // 碰撞来自上方，不能向上
+                    } else {
+                        Vec2::new(0.0, -1.0) // 碰撞来自下方，不能向下
+                    }
                 };
 
-                // 添加加速组件
-                commands.entity(entity).insert(Accelerating {
-                    target_speed: TANK_SPEED,
-                    current_speed: 0.0,
-                });
+                // 选择一个不与碰撞方向相反的可移动方向
+                let possible_directions = [
+                    Vec2::new(0.0, 1.0),   // 上
+                    Vec2::new(0.0, -1.0),  // 下
+                    Vec2::new(-1.0, 0.0),  // 左
+                    Vec2::new(1.0, 0.0),   // 右
+                ];
 
-                velocity.linvel = direction * 0.0;
-            } else {
-                // 停顿期间，速度为0
-                velocity.linvel = Vec2::ZERO;
-                continue;
+                let available_directions: Vec<Vec2> = possible_directions
+                    .iter()
+                    .filter(|dir| **dir != blocked_direction)
+                    .copied()
+                    .collect();
+
+                if !available_directions.is_empty() {
+                    let mut rng = rand::rng();
+                    let random_index = rng.random_range(0..available_directions.len());
+                    enemy_tank.direction = available_directions[random_index];
+                }
+
+                // 重置计时器
+                direction_timer.reset();
+                // 重置碰撞冷却时间
+                collision_cooldown.reset();
             }
         }
 
-        // 如果在加速状态，处理加速逻辑
-        if let Some(ref mut acc) = accelerating {
-            let acceleration_rate = TANK_SPEED * 2.0; // 0.5秒内加速到目标速度
-            acc.current_speed += acceleration_rate * time.delta_secs();
+        // 更新方向计时器
+        direction_timer.tick(time.delta());
 
-            if acc.current_speed >= acc.target_speed {
-                // 加速完成
-                acc.current_speed = acc.target_speed;
-                commands.entity(entity).remove::<Accelerating>();
+        // 如果计时器结束，有10%几率随机转向
+        if direction_timer.just_finished() {
+            let mut rng = rand::rng();
+            if rng.random::<f32>() < 0.1 {
+                let possible_directions = [
+                    Vec2::new(0.0, 1.0),   // 上
+                    Vec2::new(0.0, -1.0),  // 下
+                    Vec2::new(-1.0, 0.0),  // 左
+                    Vec2::new(1.0, 0.0),   // 右
+                ];
+
+                let random_index = rng.random_range(0..possible_directions.len());
+                enemy_tank.direction = possible_directions[random_index];
             }
-
-            let direction = if velocity.linvel.length() > 0.0 {
-                velocity.linvel.normalize()
-            } else {
-                Vec2::new(0.0, -1.0)
-            };
-
-            velocity.linvel = direction * acc.current_speed;
+            // 重置计时器为4秒
+            direction_timer.reset();
         }
 
-        // 碰撞检测和转向逻辑
-        if let Some(_max_depth_normal) = contact_info.max_depth_normals.get(&entity) {
-            // 遇到障碍物，停顿并准备转向
-            if pause_timer.is_none() && accelerating.is_none() {
-                commands.entity(entity).insert(PauseTimer(Timer::from_seconds(0.5, TimerMode::Once)));
-                velocity.linvel = Vec2::ZERO;
-            }
-        } else if timer.just_finished() || collision_set.entities.contains(&entity) {
-            // 定时转向或碰撞后转向
-            if pause_timer.is_none() && accelerating.is_none() {
-                let rand_num = rand::random::<f32>();
-                let current_vel = velocity.linvel;
+        // 直接设置速度以保持匀速运动
+        velocity.linvel = enemy_tank.direction * TANK_SPEED;
 
-                let new_direction = if rand_num < 0.25 {
-                    // 逆时针90: (x, y) -> (-y, x)
-                    Vec2::new(-current_vel.y, current_vel.x)
-                } else if rand_num < 0.5 {
-                    // 顺时针90: (x, y) -> (y, -x)
-                    Vec2::new(current_vel.y, -current_vel.x)
-                } else {
-                    // 180度: (x, y) -> (-x, -y)
-                    Vec2::new(-current_vel.x, -current_vel.y)
-                };
-
-                let normalized_dir = if new_direction.length() > 0.0 {
-                    new_direction.normalize()
-                } else {
-                    Vec2::new(0.0, -1.0)
-                };
-
-                velocity.linvel = normalized_dir * TANK_SPEED;
-            }
-        }
-
-        // 更新旋转
-        if velocity.linvel.length() > 0.0 {
-            let angle = velocity.linvel.y.atan2(velocity.linvel.x);
+        // 更新旋转以面向移动方向
+        if enemy_tank.direction.length() > 0.0 {
+            let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
             transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
         }
     }
@@ -654,7 +712,8 @@ fn collect_contact_info(
         } else {
             Vec2::new(0.0, max_depth_normal.y.signum())
         };
-        if max_depth < 0.4{
+        // 降低阈值，更早检测到碰撞
+        if max_depth < 0.2{
             continue;
         }
         contact_info.max_depth_normals.insert(entity_tank, max_depth_normal);
@@ -666,12 +725,14 @@ fn shoot_bullets(
     mut commands: Commands,
     mut query: Query<(Entity, &Transform, &Velocity), With<EnemyTank>>,
     mut can_fire: ResMut<CanFire>,
+    mut bullet_owners: ResMut<BulletOwners>,
 ) {
     for (entity, transform, velocity) in &mut query {
         // 检查是否可以射击（当前没有子弹）
         if can_fire.0.contains(&entity) {
             // 随机射击，每帧有 0.5% 的概率射击
-            if rand::random::<f32>() < 0.005 {
+            let mut rng = rand::rng();
+            if rng.random::<f32>() < 0.005 {
                 // 计算子弹发射方向（基于坦克当前移动方向）
                 let direction = if velocity.linvel.length() > 0.0 {
                     velocity.linvel.normalize()
@@ -683,8 +744,9 @@ fn shoot_bullets(
                 let bullet_pos = transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
 
                 // 生成子弹
-                commands.spawn((
+                let bullet_entity = commands.spawn((
                     Bullet,
+                    BulletOwner { owner: entity },
                     Sprite {
                         color: Color::srgb(1.0, 1.0, 1.0),
                         custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
@@ -698,7 +760,12 @@ fn shoot_bullets(
                     RigidBody::KinematicVelocityBased,
                     Collider::ball(BULLET_SIZE / 200.0),
                     LockedAxes::ROTATION_LOCKED,
-                ));
+                    Sensor, // 设置为 Sensor，不施加物理推力
+                    ActiveEvents::COLLISION_EVENTS,
+                )).id();
+
+                // 记录子弹所有者
+                bullet_owners.owners.insert(bullet_entity, entity);
 
                 // 标记该坦克暂时不能射击
                 can_fire.0.remove(&entity);
@@ -724,18 +791,66 @@ fn check_bullet_bounds(
 }
 
 fn check_bullet_destruction(
-    removed_bullets: RemovedComponents<Bullet>,
+    mut removed_bullets: RemovedComponents<Bullet>,
     mut can_fire: ResMut<CanFire>,
+    mut bullet_owners: ResMut<BulletOwners>,
+) {
+    // 当子弹被销毁时，只允许该子弹所属的坦克可以再次射击
+    for bullet_entity in removed_bullets.read() {
+        if let Some(tank_entity) = bullet_owners.owners.remove(&bullet_entity) {
+            can_fire.0.insert(tank_entity);
+        }
+    }
+}
+
+fn handle_bullet_collisions(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
+    bullets: Query<(Entity, &BulletOwner), With<Bullet>>,
     enemy_tanks: Query<Entity, With<EnemyTank>>,
     player_tanks: Query<Entity, With<PlayerTank>>,
 ) {
-    // 当子弹被销毁时，允许所有敌方坦克和玩家坦克可以再次射击
-    if !removed_bullets.is_empty() {
-        for tank_entity in enemy_tanks.iter() {
-            can_fire.0.insert(tank_entity);
-        }
-        for tank_entity in player_tanks.iter() {
-            can_fire.0.insert(tank_entity);
+    let enemy_tank_set: HashSet<Entity> = enemy_tanks.iter().collect();
+    let player_tank_set: HashSet<Entity> = player_tanks.iter().collect();
+
+    for event in collision_events.read() {
+        if let CollisionEvent::Started(e1, e2, _) = event {
+            // 检查是否是子弹与坦克的碰撞
+            let (bullet_entity, tank_entity) = if let Ok(bullet) = bullets.get(*e1) {
+                if enemy_tank_set.contains(e2) || player_tank_set.contains(e2) {
+                    (*e1, *e2)
+                } else {
+                    continue;
+                }
+            } else if let Ok(bullet) = bullets.get(*e2) {
+                if enemy_tank_set.contains(e1) || player_tank_set.contains(e1) {
+                    (*e2, *e1)
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            };
+
+            let bullet_owner = bullets.get(bullet_entity).unwrap().1.owner;
+
+            // 判断碰撞类型
+            let is_player_bullet = player_tank_set.contains(&bullet_owner);
+            let is_enemy_bullet = enemy_tank_set.contains(&bullet_owner);
+            let is_player_tank = player_tank_set.contains(&tank_entity);
+            let is_enemy_tank = enemy_tank_set.contains(&tank_entity);
+
+            // 规则：
+            // 1. 玩家子弹打到敌方坦克 -> 子弹消失
+            // 2. 敌方子弹打到玩家坦克 -> 子弹消失
+            // 3. 敌方子弹打到敌方坦克 -> 子弹穿过（不消失）
+            // 4. 玩家子弹打到玩家坦克 -> 子弹穿过（不消失）
+
+            if (is_player_bullet && is_enemy_tank) || (is_enemy_bullet && is_player_tank) {
+                // 子弹应该消失
+                commands.entity(bullet_entity).despawn();
+            }
+            // 其他情况子弹穿过，不做处理
         }
     }
 }
@@ -759,7 +874,7 @@ fn move_player_tank(
             _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
         };
 
-        // 应用速度
+        // 应用速度（直接设置速度，配合高阻尼实现类似 Kinematic 的控制）
         if direction.length() > 0.0 {
             velocity.linvel = direction * TANK_SPEED;
 
@@ -779,25 +894,27 @@ fn player_shoot_bullet(
     mut query: Query<(Entity, &Transform, &Velocity, &mut PlayerShootTimer), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
     _player_tanks: Query<Entity, With<PlayerTank>>,
+    mut bullet_owners: ResMut<BulletOwners>,
 ) {
     for (entity, transform, velocity, mut timer) in &mut query {
         timer.tick(time.delta());
 
         // 空格键射击
         if keyboard_input.pressed(KeyCode::Space) && timer.just_finished() && can_fire.0.contains(&entity) {
-            // 计算子弹发射方向（基于坦克当前移动方向，如果没有移动则向上）
-            let direction = if velocity.linvel.length() > 0.0 {
-                velocity.linvel.normalize()
-            } else {
-                Vec2::new(0.0, 1.0) // 默认向上
-            };
+            // 计算子弹发射方向（基于坦克当前的旋转角度）
+            // 坦克旋转时使用：angle - 270.0_f32.to_radians()
+            // 因此需要补偿：actual_angle = euler_angle + 270.0_f32.to_radians()
+            let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
+            let actual_angle = euler_angle + 270.0_f32.to_radians();
+            let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
             // 计算子弹初始位置（坦克前方）
             let bullet_pos = transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
 
             // 生成玩家子弹
-            commands.spawn((
+            let bullet_entity = commands.spawn((
                 Bullet,
+                BulletOwner { owner: entity },
                 Sprite {
                     color: Color::srgb(1.0, 1.0, 1.0),
                     custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
@@ -811,7 +928,12 @@ fn player_shoot_bullet(
                 RigidBody::KinematicVelocityBased,
                 Collider::ball(BULLET_SIZE / 200.0),
                 LockedAxes::ROTATION_LOCKED,
-            ));
+                Sensor, // 设置为 Sensor，不施加物理推力
+                ActiveEvents::COLLISION_EVENTS,
+            )).id();
+
+            // 记录子弹所有者
+            bullet_owners.owners.insert(bullet_entity, entity);
 
             // 标记玩家坦克暂时不能射击
             can_fire.0.remove(&entity);
