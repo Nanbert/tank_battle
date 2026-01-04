@@ -24,10 +24,22 @@ enum GameState {
     StartScreen,
     FadingOut,
     Playing,
+    Paused,
 }
 
 #[derive(Component)]
 struct StartScreenUI;
+
+#[derive(Component)]
+struct MenuOption {
+    index: usize,
+}
+
+#[derive(Component)]
+struct MenuArrow;
+
+#[derive(Component)]
+struct PauseUI;
 
 #[derive(Resource, Deref, DerefMut)]
 struct Score(usize);
@@ -88,8 +100,10 @@ struct BulletOwners {
     owners: HashMap<Entity, Entity>, // 子弹实体 -> 坦克实体
 }
 
-#[derive(Resource, Default, Deref, DerefMut)]
-struct StartAnimationFrames(Vec<Handle<Image>>);
+#[derive(Resource, Default)]
+struct StartAnimationFrames {
+    frames: Vec<Handle<Image>>,
+}
 
 #[derive(Resource)]
 struct FadingOut {
@@ -101,6 +115,17 @@ impl Default for FadingOut {
         Self { alpha: 1.0 }
     }
 }
+
+#[derive(Resource, Default)]
+struct CurrentMenuSelection {
+    selected_index: usize, // 0 = PLAY, 1 = EXIT
+}
+
+#[derive(Resource, Default)]
+struct GameStarted(bool);
+
+#[derive(Resource, Default)]
+struct MenuBlinkTimer(Timer);
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -131,51 +156,57 @@ const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(1.0, 0.0),   // 右
 ];
 
-fn main() {
-    App::new()
-        .add_plugins((
-            DefaultPlugins.set(WindowPlugin {
-                primary_window: Some(Window {
-                    title: "For Communism!".into(),
-                    name: Some("bevy.app".into()),
-                    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-                    resolution: (ARENA_WIDTH as u32, ARENA_HEIGHT as u32).into(),
-                    present_mode: PresentMode::AutoVsync,
-                    // Tells Wasm to resize the window according to the available canvas
-                    fit_canvas_to_parent: true,
-                    // Tells Wasm not to override default event handling, like F5, Ctrl+R etc.
-                    prevent_default_event_handling: false,
-                    window_theme: Some(WindowTheme::Dark),
-                    enabled_buttons: bevy::window::EnabledButtons {
-                        maximize: false,
-                        ..Default::default()
-                    },
-                    // This will spawn an invisible window
-                    // The window will be made visible in the make_visible() system after 3 frames.
-                    // This is useful when you want to avoid the white window that shows up before the GPU is ready to render the app.
-                    visible: false,
-                    ..default()
-                }),
-                ..default()
-            }).set(AssetPlugin {
-                processed_file_path: "assets".to_string(),
-                unapproved_path_mode: bevy::asset::UnapprovedPathMode::Allow,
-                ..default()
-            }),
-        ))
-        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
-        .init_state::<GameState>()
+fn configure_window_plugin() -> WindowPlugin {
+    WindowPlugin {
+        primary_window: Some(Window {
+            title: "For Communism!".into(),
+            name: Some("bevy.app".into()),
+            #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+            resolution: (ARENA_WIDTH as u32, ARENA_HEIGHT as u32).into(),
+            present_mode: PresentMode::AutoVsync,
+            fit_canvas_to_parent: true,
+            prevent_default_event_handling: false,
+            window_theme: Some(WindowTheme::Dark),
+            enabled_buttons: bevy::window::EnabledButtons {
+                maximize: false,
+                ..Default::default()
+            },
+            visible: false,
+            ..default()
+        }),
+        ..default()
+    }
+}
+
+fn configure_asset_plugin() -> AssetPlugin {
+    AssetPlugin {
+        processed_file_path: "assets".to_string(),
+        unapproved_path_mode: bevy::asset::UnapprovedPathMode::Allow,
+        ..default()
+    }
+}
+
+fn configure_game_resources(app: &mut App) {
+    app.init_state::<GameState>()
         .init_resource::<ColliderEventSet>()
         .init_resource::<CanFire>()
         .init_resource::<BulletOwners>()
         .init_resource::<StartAnimationFrames>()
         .init_resource::<FadingOut>()
+        .init_resource::<CurrentMenuSelection>()
+        .init_resource::<GameStarted>()
+        .init_resource::<MenuBlinkTimer>()
         .insert_resource(Score(0))
         .insert_resource(Life(2))
-        .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .add_systems(OnEnter(GameState::StartScreen), spawn_start_screen)
+        .insert_resource(ClearColor(BACKGROUND_COLOR));
+}
+
+fn register_game_systems(app: &mut App) {
+    app.add_systems(OnEnter(GameState::StartScreen), spawn_start_screen)
         .add_systems(OnEnter(GameState::FadingOut), setup_fade_out)
         .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
+        .add_systems(OnEnter(GameState::Paused), spawn_pause_ui)
+        .add_systems(OnExit(GameState::Paused), despawn_pause_ui)
         .add_systems(Startup, setup)
         .add_systems(Update, (
             (collect_collision, move_enemy_tanks).chain(),
@@ -188,9 +219,147 @@ fn main() {
             handle_bullet_collisions,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
-        .add_systems(Update, handle_start_screen_input.run_if(in_state(GameState::StartScreen)))
-        .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)))
-        .run();
+        .add_systems(Update, (
+            handle_start_screen_input,
+            update_menu_highlight,
+            update_option_colors,
+        ).run_if(in_state(GameState::StartScreen)))
+        .add_systems(Update, update_menu_blink.run_if(in_state(GameState::FadingOut)))
+        .add_systems(Update, handle_game_input.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_pause_input.run_if(in_state(GameState::Paused)))
+        .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
+}
+
+fn main() {
+    let mut app = App::new();
+    app.add_plugins((
+        DefaultPlugins
+            .set(configure_window_plugin())
+            .set(configure_asset_plugin()),
+    ))
+    .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
+
+    configure_game_resources(&mut app);
+    register_game_systems(&mut app);
+
+    app.run();
+}
+
+fn load_animation_frames(
+    asset_server: &Res<AssetServer>,
+    animation_frames: &mut ResMut<StartAnimationFrames>,
+) {
+    // 预加载所有 70 帧动画，避免播放时按需加载导致闪烁
+    for i in 0..70 {
+        let frame_num = format!("{:04}", i + 1);
+        let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
+        animation_frames.frames.push(texture);
+    }
+}
+
+fn get_animation_frame(
+    frame_index: usize,
+    asset_server: &Res<AssetServer>,
+    animation_frames: &mut ResMut<StartAnimationFrames>,
+) -> Handle<Image> {
+    // 如果该帧已加载，直接返回
+    if frame_index < animation_frames.frames.len() {
+        return animation_frames.frames[frame_index].clone();
+    }
+
+    // 否则加载该帧
+    let frame_num = format!("{:04}", frame_index + 1);
+    let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
+    animation_frames.frames.push(texture.clone());
+    texture
+}
+
+fn spawn_start_screen_background(
+    commands: &mut Commands,
+    animation_frames: &ResMut<StartAnimationFrames>,
+) {
+    let animation_indices = AnimationIndices { first: 0, last: 69 };
+
+    commands.spawn((
+        StartScreenUI,
+        Sprite::from_image(animation_frames.frames[0].clone()),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        animation_indices,
+        AnimationTimer(Timer::from_seconds(0.083, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+    ));
+}
+
+fn spawn_start_screen_title(
+    commands: &mut Commands,
+    font: Handle<Font>,
+) {
+    commands.spawn((
+        StartScreenUI,
+        Text2d("For Communism!!".to_string()),
+        TextFont {
+            font_size: 60.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, 400.0, 1.0),
+    ));
+
+    // 菜单箭头（初始指向 PLAY）
+    commands.spawn((
+        StartScreenUI,
+        MenuArrow,
+        Text2d("->".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色箭头
+        Transform::from_xyz(-150.0, 0.0, 1.0),
+    ));
+
+    // PLAY 选项
+    commands.spawn((
+        StartScreenUI,
+        Text2d("PLAY".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, 0.0, 1.0),
+        MenuOption { index: 0 },
+    ));
+
+    // EXIT 选项
+    commands.spawn((
+        StartScreenUI,
+        Text2d("EXIT".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, -100.0, 1.0),
+        MenuOption { index: 1 },
+    ));
+}
+
+fn spawn_start_screen_instructions(commands: &mut Commands) {
+    commands.spawn((
+        StartScreenUI,
+        Text2d("W/S to select | SPACE to select/pause | J to shoot | ESC to exit".to_string()),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, -450.0, 1.0),
+    ));
 }
 
 fn spawn_start_screen(
@@ -203,64 +372,19 @@ fn spawn_start_screen(
     clear_color.0 = START_SCREEN_BACKGROUND_COLOR;
 
     // 加载所有动画帧
-    for i in 1..=70 {
-        let frame_num = format!("{i:04}");
-        let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
-        animation_frames.push(texture);
-    }
-
-    let animation_indices = AnimationIndices { first: 0, last: 69 };
+    load_animation_frames(&asset_server, &mut animation_frames);
 
     // 添加动画背景
-    commands.spawn((
-        StartScreenUI,
-        Sprite::from_image(animation_frames[0].clone()),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(0.083, TimerMode::Repeating)), // 约12fps
-        CurrentAnimationFrame(0),
-    ));
+    spawn_start_screen_background(&mut commands, &animation_frames);
 
     // 加载自定义字体
     let custom_font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
 
-    // 添加上方红色标题
-    commands.spawn((
-        StartScreenUI,
-        Text2d("For Communism!!".to_string()),
-        TextFont {
-            font_size: 60.0,
-            font: custom_font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 0.0, 0.0)),
-        Transform::from_xyz(0.0, 400.0, 1.0),
-    ));
+    // 添加标题文字
+    spawn_start_screen_title(&mut commands, custom_font);
 
-    // 添加中间 PLAY 文字
-    commands.spawn((
-        StartScreenUI,
-        Text2d("PLAY".to_string()),
-        TextFont {
-            font_size: 80.0,
-            font: custom_font,
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, 0.0, 1.0),
-    ));
-
-    // 添加下方操作说明
-    commands.spawn((
-        StartScreenUI,
-        Text2d("Press SPACE to start | WASD to move | SPACE to shoot".to_string()),
-        TextFont {
-            font_size: 24.0,
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -450.0, 1.0),
-    ));
+    // 添加操作说明
+    spawn_start_screen_instructions(&mut commands);
 }
 
 
@@ -461,7 +585,13 @@ fn spawn_game_entities(
     asset_server: Res<AssetServer>,
     mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
+    mut game_started: ResMut<GameStarted>,
 ) {
+    // 如果游戏已经启动过，就不再生成实体
+    if game_started.0 {
+        return;
+    }
+    game_started.0 = true;
     // 设置背景色为黑色
     clear_color.0 = BACKGROUND_COLOR;
 
@@ -508,16 +638,36 @@ fn spawn_game_entities(
 fn handle_start_screen_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut menu_selection: ResMut<CurrentMenuSelection>,
 ) {
+    // Esc 键退出游戏
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        std::process::exit(0);
+    }
+
+    // W 键向上选择
+    if keyboard_input.just_pressed(KeyCode::KeyW) {
+        menu_selection.selected_index = 0;
+    }
+    // S 键向下选择
+    if keyboard_input.just_pressed(KeyCode::KeyS) {
+        menu_selection.selected_index = 1;
+    }
+    // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::FadingOut);
+        match menu_selection.selected_index {
+            0 => next_state.set(GameState::FadingOut), // PLAY
+            1 => std::process::exit(0), // EXIT
+            _ => {}
+        }
     }
 }
 
 fn animate_start_screen(
     time: Res<Time>,
     mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, &mut CurrentAnimationFrame), With<StartScreenUI>>,
-    animation_frames: Res<StartAnimationFrames>,
+    asset_server: Res<AssetServer>,
+    mut animation_frames: ResMut<StartAnimationFrames>,
 ) {
     for (indices, mut timer, mut sprite, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -530,7 +680,7 @@ fn animate_start_screen(
                 current + 1
             };
             current_frame.0 = next_index;
-            *sprite = Sprite::from_image(animation_frames[next_index].clone());
+            *sprite = Sprite::from_image(get_animation_frame(next_index, &asset_server, &mut animation_frames));
         }
     }
 }
@@ -555,6 +705,103 @@ fn collect_collision(
     }
 }
 
+fn detect_enemy_tank_collision(
+    entity: Entity,
+    rapier_context: &RapierContext,
+) -> Option<Vec2> {
+    for contact_pair in rapier_context.contact_pairs_with(entity) {
+        if !contact_pair.has_any_active_contact() {
+            continue;
+        }
+
+        for manifold in contact_pair.manifolds() {
+            if manifold.find_deepest_contact().is_some() {
+                // 获取碰撞法线方向
+                return Some(if contact_pair.collider1() == Some(entity) {
+                    -manifold.normal()
+                } else {
+                    manifold.normal()
+                });
+            }
+        }
+    }
+    None
+}
+
+fn get_blocked_direction(collision_normal: Vec2) -> Vec2 {
+    let abs_x = collision_normal.x.abs();
+    let abs_y = collision_normal.y.abs();
+
+    if abs_x > abs_y {
+        if collision_normal.x > 0.0 {
+            Vec2::new(1.0, 0.0) // 碰撞来自右侧，不能向右
+        } else {
+            Vec2::new(-1.0, 0.0) // 碰撞来自左侧，不能向左
+        }
+    } else {
+        if collision_normal.y > 0.0 {
+            Vec2::new(0.0, 1.0) // 碰撞来自上方，不能向上
+        } else {
+            Vec2::new(0.0, -1.0) // 碰撞来自下方，不能向下
+        }
+    }
+}
+
+fn choose_available_direction(blocked_direction: Vec2) -> Vec2 {
+    let available_directions: Vec<Vec2> = DIRECTIONS
+        .iter()
+        .filter(|dir| **dir != blocked_direction)
+        .copied()
+        .collect();
+
+    if available_directions.is_empty() {
+        blocked_direction
+    } else {
+        let mut rng = rand::rng();
+        let random_index = rng.random_range(0..available_directions.len());
+        available_directions[random_index]
+    }
+}
+
+fn handle_enemy_tank_collision(
+    entity: Entity,
+    enemy_tank: &mut EnemyTank,
+    direction_timer: &mut DirectionChangeTimer,
+    collision_cooldown: &mut CollisionCooldownTimer,
+    rapier_context: &RapierContext,
+) {
+    if let Some(collision_normal) = detect_enemy_tank_collision(entity, rapier_context) {
+        let blocked_direction = get_blocked_direction(collision_normal);
+        enemy_tank.direction = choose_available_direction(blocked_direction);
+        direction_timer.reset();
+        collision_cooldown.reset();
+    }
+}
+
+fn handle_random_direction_change(
+    enemy_tank: &mut EnemyTank,
+    direction_timer: &mut DirectionChangeTimer,
+) {
+    let mut rng = rand::rng();
+    if rng.random::<f32>() < 0.1 {
+        let random_index = rng.random_range(0..DIRECTIONS.len());
+        enemy_tank.direction = DIRECTIONS[random_index];
+    }
+    direction_timer.reset();
+}
+
+fn update_enemy_tank_movement(
+    enemy_tank: EnemyTank,
+    velocity: &mut Velocity,
+    transform: &mut Transform,
+) {
+    velocity.linvel = enemy_tank.direction * TANK_SPEED;
+    if enemy_tank.direction.length() > 0.0 {
+        let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
+        transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
+    }
+}
+
 fn move_enemy_tanks(
     time: Res<Time>,
     mut query: Query<(
@@ -575,68 +822,13 @@ fn move_enemy_tanks(
 
         // 只在冷却时间结束后才检测碰撞
         if collision_cooldown.is_finished() {
-            // 检查碰撞
-            let mut collision_detected = false;
-            let mut collision_normal = Vec2::ZERO;
-
-            for contact_pair in rapier_context.contact_pairs_with(entity) {
-                if !contact_pair.has_any_active_contact() {
-                    continue;
-                }
-
-                for manifold in contact_pair.manifolds() {
-                    if let Some(_contact) = manifold.find_deepest_contact() {
-                        // 检测到碰撞
-                        collision_detected = true;
-
-                        // 获取碰撞法线方向
-                        collision_normal = if contact_pair.collider1() == Some(entity) {
-                            -manifold.normal()
-                        } else {
-                            manifold.normal()
-                        };
-                    }
-                }
-            }
-
-            // 如果检测到碰撞，根据碰撞法线选择可移动方向
-            if collision_detected {
-                // 将法线规范化到四个主要方向
-                let abs_x = collision_normal.x.abs();
-                let abs_y = collision_normal.y.abs();
-
-                let blocked_direction = if abs_x > abs_y {
-                    if collision_normal.x > 0.0 {
-                        Vec2::new(1.0, 0.0) // 碰撞来自右侧，不能向右
-                    } else {
-                        Vec2::new(-1.0, 0.0) // 碰撞来自左侧，不能向左
-                    }
-                } else {
-                    if collision_normal.y > 0.0 {
-                        Vec2::new(0.0, 1.0) // 碰撞来自上方，不能向上
-                    } else {
-                        Vec2::new(0.0, -1.0) // 碰撞来自下方，不能向下
-                    }
-                };
-
-                // 选择一个不与碰撞方向相反的可移动方向
-                let available_directions: Vec<Vec2> = DIRECTIONS
-                    .iter()
-                    .filter(|dir| **dir != blocked_direction)
-                    .copied()
-                    .collect();
-
-                if !available_directions.is_empty() {
-                    let mut rng = rand::rng();
-                    let random_index = rng.random_range(0..available_directions.len());
-                    enemy_tank.direction = available_directions[random_index];
-                }
-
-                // 重置计时器
-                direction_timer.reset();
-                // 重置碰撞冷却时间
-                collision_cooldown.reset();
-            }
+            handle_enemy_tank_collision(
+                entity,
+                &mut enemy_tank,
+                &mut direction_timer,
+                &mut collision_cooldown,
+                &rapier_context,
+            );
         }
 
         // 更新方向计时器
@@ -644,22 +836,11 @@ fn move_enemy_tanks(
 
         // 如果计时器结束，有10%几率随机转向
         if direction_timer.just_finished() {
-            let mut rng = rand::rng();
-            if rng.random::<f32>() < 0.1 {
-                let random_index = rng.random_range(0..DIRECTIONS.len());
-                enemy_tank.direction = DIRECTIONS[random_index];
-            }
-            // 重置计时器为4秒
-            direction_timer.reset();
+            handle_random_direction_change(&mut enemy_tank, &mut direction_timer);
         }
 
-        // 直接设置速度以保持匀速运动
-        velocity.linvel = enemy_tank.direction * TANK_SPEED;
-        // 更新旋转以面向移动方向
-        if enemy_tank.direction.length() > 0.0 {
-            let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
-            transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
-        }
+        // 更新坦克移动
+        update_enemy_tank_movement(*enemy_tank, &mut velocity, &mut transform);
     }
 }
 
@@ -745,6 +926,41 @@ fn check_bullet_destruction(
     }
 }
 
+fn find_bullet_and_tank_in_collision(
+    e1: Entity,
+    e2: Entity,
+    bullets: &Query<(Entity, &BulletOwner), With<Bullet>>,
+    enemy_tanks: &Query<(), With<EnemyTank>>,
+    player_tanks: &Query<(), With<PlayerTank>>,
+) -> Option<(Entity, Entity)> {
+    if bullets.get(e1).is_ok() && (enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok()) {
+        return Some((e1, e2));
+    } else if bullets.get(e2).is_ok()
+        && (enemy_tanks.get(e1).is_ok() || player_tanks.get(e1).is_ok()) {
+        return Some((e2, e1));
+    }
+    None
+}
+
+fn should_bullet_destroy(
+    bullet_owner: Entity,
+    tank_entity: Entity,
+    enemy_tanks: &Query<(), With<EnemyTank>>,
+    player_tanks: &Query<(), With<PlayerTank>>,
+) -> bool {
+    let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
+    let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
+    let is_player_tank = player_tanks.get(tank_entity).is_ok();
+    let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
+
+    // 规则：
+    // 1. 玩家子弹打到敌方坦克 -> 子弹消失
+    // 2. 敌方子弹打到玩家坦克 -> 子弹消失
+    // 3. 敌方子弹打到敌方坦克 -> 子弹穿过（不消失）
+    // 4. 玩家子弹打到玩家坦克 -> 子弹穿过（不消失）
+    (is_player_bullet && is_enemy_tank) || (is_enemy_bullet && is_player_tank)
+}
+
 fn handle_bullet_collisions(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
@@ -755,41 +971,19 @@ fn handle_bullet_collisions(
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是子弹与坦克的碰撞
-            let (bullet_entity, tank_entity) = if bullets.get(*e1).is_ok() {
-                if enemy_tanks.get(*e2).is_ok() || player_tanks.get(*e2).is_ok() {
-                    (*e1, *e2)
-                } else {
-                    continue;
+            if let Some((bullet_entity, tank_entity)) = find_bullet_and_tank_in_collision(
+                *e1,
+                *e2,
+                &bullets,
+                &enemy_tanks,
+                &player_tanks,
+            ) {
+                let bullet_owner = bullets.get(bullet_entity).unwrap().1.owner;
+
+                if should_bullet_destroy(bullet_owner, tank_entity, &enemy_tanks, &player_tanks) {
+                    commands.entity(bullet_entity).despawn();
                 }
-            } else if bullets.get(*e2).is_ok() {
-                if enemy_tanks.get(*e1).is_ok() || player_tanks.get(*e1).is_ok() {
-                    (*e2, *e1)
-                } else {
-                    continue;
-                }
-            } else {
-                continue;
-            };
-
-            let bullet_owner = bullets.get(bullet_entity).unwrap().1.owner;
-
-            // 判断碰撞类型
-            let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
-            let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
-            let is_player_tank = player_tanks.get(tank_entity).is_ok();
-            let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
-
-            // 规则：
-            // 1. 玩家子弹打到敌方坦克 -> 子弹消失
-            // 2. 敌方子弹打到玩家坦克 -> 子弹消失
-            // 3. 敌方子弹打到敌方坦克 -> 子弹穿过（不消失）
-            // 4. 玩家子弹打到玩家坦克 -> 子弹穿过（不消失）
-
-            if (is_player_bullet && is_enemy_tank) || (is_enemy_bullet && is_player_tank) {
-                // 子弹应该消失
-                commands.entity(bullet_entity).despawn();
             }
-            // 其他情况子弹穿过，不做处理
         }
     }
 }
@@ -863,8 +1057,8 @@ fn player_shoot_bullet(
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
     for (entity, transform) in &query {
-        // 空格键射击
-        if keyboard_input.just_pressed(KeyCode::Space) && can_fire.0.contains(&entity) {
+        // J 键射击
+        if keyboard_input.just_pressed(KeyCode::KeyJ) && can_fire.0.contains(&entity) {
             // 计算子弹发射方向（基于坦克当前的旋转角度）
             // 坦克旋转时使用：angle - 270.0_f32.to_radians()
             // 因此需要补偿：actual_angle = euler_angle + 270.0_f32.to_radians()
@@ -905,8 +1099,35 @@ fn player_shoot_bullet(
     }
 }
 
-fn setup_fade_out(mut fading_out: ResMut<FadingOut>) {
+fn setup_fade_out(
+    mut fading_out: ResMut<FadingOut>,
+    mut game_started: ResMut<GameStarted>,
+) {
     fading_out.alpha = 1.0;
+    game_started.0 = false; // 重置游戏启动标志，以便重新游戏时重新生成实体
+}
+
+fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
+    let linear = sprite.color.to_linear();
+    sprite.color = Color::srgba(linear.red, linear.green, linear.blue, alpha);
+}
+
+fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
+    let linear = text_color.0.to_linear();
+    text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, alpha);
+}
+
+fn cleanup_start_screen(
+    commands: &mut Commands,
+    sprite_query: &Query<(Entity, &mut Sprite), With<StartScreenUI>>,
+    text_query: &Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
+) {
+    for (entity, _) in sprite_query.iter() {
+        commands.entity(entity).despawn();
+    }
+    for (entity, _, _) in text_query.iter() {
+        commands.entity(entity).despawn();
+    }
 }
 
 fn fade_out_screen(
@@ -915,31 +1136,165 @@ fn fade_out_screen(
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
     mut sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
-    mut text_query: Query<(Entity, &mut TextColor), With<StartScreenUI>>,
+    mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     // 减少透明度
     fading_out.alpha -= time.delta_secs() * (1.0 / 3.0); // 淡出速度，约 3 秒完成
 
     // 更新所有 Sprite 元素的透明度
     for (_entity, mut sprite) in &mut sprite_query {
-        let linear = sprite.color.to_linear();
-        sprite.color = Color::srgba(linear.red, linear.green, linear.blue, fading_out.alpha);
+        update_sprite_alpha(fading_out.alpha, &mut sprite);
     }
 
-    // 更新所有 Text 元素的颜色
-    for (_entity, mut text_color) in &mut text_query {
-        let linear = text_color.0.to_linear();
-        text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, fading_out.alpha);
+    // 更新所有 Text 元素的颜色（跳过 PLAY 选项，因为它的闪烁由 update_menu_blink 处理）
+    for (_entity, mut text_color, menu_option) in &mut text_query {
+        // 如果是 PLAY 选项（index=0），跳过透明度更新
+        if menu_option.is_some_and(|opt| opt.index == 0) {
+            continue;
+        }
+        update_text_color_alpha(fading_out.alpha, &mut text_color);
     }
 
     // 淡出完成，切换到 Playing 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
         next_state.set(GameState::Playing);
-        for (entity, _) in sprite_query.iter() {
-            commands.entity(entity).despawn();
+        cleanup_start_screen(&mut commands, &sprite_query, &text_query);
+    }
+}
+
+fn update_menu_highlight(
+    menu_selection: Res<CurrentMenuSelection>,
+    mut arrow_query: Query<&mut Transform, With<MenuArrow>>,
+) {
+    // 获取箭头位置
+    if let Ok(mut arrow_transform) = arrow_query.single_mut() {
+        // 根据当前选择的索引更新箭头位置
+        let y_position = if menu_selection.selected_index == 1 {
+            -100.0 // EXIT 的 Y 位置
+        } else {
+            0.0 // PLAY 的 Y 位置
+        };
+        arrow_transform.translation.y = y_position;
+    }
+}
+
+fn update_option_colors(
+    menu_selection: Res<CurrentMenuSelection>,
+    mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+) {
+    for (option, mut text_color) in &mut text_query {
+        if option.index == menu_selection.selected_index {
+            // 选中的选项使用黄色
+            text_color.0 = Color::srgb(1.0, 1.0, 0.0);
+        } else {
+            text_color.0 = Color::srgb(1.0, 1.0, 1.0); // 白色
         }
-        for (entity, _) in text_query.iter() {
-            commands.entity(entity).despawn();
+    }
+}
+
+fn update_menu_blink(
+    time: Res<Time>,
+    fading_out: Res<FadingOut>,
+    mut blink_timer: ResMut<MenuBlinkTimer>,
+    mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+) {
+    blink_timer.0.tick(time.delta());
+
+    // 初始化计时器（0.2秒闪烁）
+    if blink_timer.0.duration().is_zero() {
+        blink_timer.0 = Timer::from_seconds(0.2, TimerMode::Repeating);
+    }
+
+    if blink_timer.0.just_finished() {
+        for (option, mut text_color) in &mut text_query {
+            if option.index == 0 {
+                // PLAY 选项（index=0）闪烁
+                // 出现时使用当前淡出透明度，消失时完全透明
+                let linear = text_color.0.to_linear();
+                if linear.alpha < 0.5 {
+                    // 当前不可见，切换到可见（使用当前淡出透明度）
+                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(fading_out.alpha);
+                } else {
+                    // 当前可见，切换到不可见（完全透明）
+                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(0.0);
+                }
+            }
         }
+    }
+}
+
+fn spawn_pause_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
+    mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
+) {
+    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+
+    // 停止玩家坦克的移动
+    for mut velocity in &mut player_velocity_query {
+        velocity.linvel = Vec2::ZERO;
+    }
+
+    // 停止敌方坦克的移动
+    for mut velocity in &mut enemy_velocity_query {
+        velocity.linvel = Vec2::ZERO;
+    }
+
+    commands.spawn((
+        PauseUI,
+        Text2d("PAUSED".to_string()),
+        TextFont {
+            font_size: 100.0,
+            font,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)),
+        Transform::from_xyz(0.0, 0.0, 10.0),
+    ));
+
+    commands.spawn((
+        PauseUI,
+        Text2d("Press SPACE to resume | ESC to exit".to_string()),
+        TextFont {
+            font_size: 30.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, -100.0, 10.0),
+    ));
+}
+
+fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseUI>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn handle_game_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    // Space 键暂停
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::Paused);
+    }
+    // Esc 键退出
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        std::process::exit(0);
+    }
+}
+
+fn handle_pause_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    // Space 键恢复游戏
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::Playing);
+    }
+    // Esc 键退出
+    if keyboard_input.just_pressed(KeyCode::Escape) {
+        std::process::exit(0);
     }
 }
