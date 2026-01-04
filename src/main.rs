@@ -21,6 +21,7 @@ use bevy_rapier2d::prelude::*;
 enum GameState {
     #[default]
     StartScreen,
+    FadingOut,
     Playing,
 }
 
@@ -53,6 +54,9 @@ struct TankContactMap{
 struct AnimationTimer(Timer);
 
 #[derive(Component, Deref, DerefMut)]
+struct CurrentAnimationFrame(usize);
+
+#[derive(Component, Deref, DerefMut)]
 struct MoveTimer(Timer);
 
 #[derive(Component)]
@@ -82,6 +86,20 @@ struct Fortress;
 #[derive(Resource, Default)]
 struct CanFire(HashSet<Entity>);
 
+#[derive(Resource, Default, Deref, DerefMut)]
+struct StartAnimationFrames(Vec<Handle<Image>>);
+
+#[derive(Resource)]
+struct FadingOut {
+    alpha: f32,
+}
+
+impl Default for FadingOut {
+    fn default() -> Self {
+        Self { alpha: 1.0 }
+    }
+}
+
 #[derive(Component, Deref, DerefMut)]
 struct PlayerShootTimer(Timer);
 
@@ -102,6 +120,7 @@ const ENEMY_BORN_PLACES: [Vec3; 3] = [
 ];
 
 const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.0, 0.0);
+const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
 const FORTRESS_SIZE: f32 = 60.0;
 const WALL_THICKNESS: f32 = 15.0;
@@ -142,136 +161,96 @@ fn main() {
         .init_resource::<ColliderEventSet>()
         .init_resource::<TankContactMap>()
         .init_resource::<CanFire>()
+        .init_resource::<StartAnimationFrames>()
+        .init_resource::<FadingOut>()
         .insert_resource(Score(0))
         .insert_resource(Life(2))
         .insert_resource(ClearColor(BACKGROUND_COLOR))
-        .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::StartScreen), spawn_start_screen)
+        .add_systems(OnEnter(GameState::FadingOut), setup_fade_out)
         .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
+        .add_systems(Startup, setup)
         .add_systems(Update, (
-            animate_sprite,
             (collect_contact_info, collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
             shoot_bullets,
             player_shoot_bullet,
-            move_bullets,
             check_bullet_bounds,
             check_bullet_destruction,
         ).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_sprite.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, handle_start_screen_input.run_if(in_state(GameState::StartScreen)))
+        .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)))
         .run();
 }
 
-fn spawn_start_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // 苏联硬核风格背景 - 深红色渐变效果
+fn spawn_start_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut animation_frames: ResMut<StartAnimationFrames>,
+    mut clear_color: ResMut<ClearColor>,
+) {
+    // 设置背景色为蓝色
+    clear_color.0 = START_SCREEN_BACKGROUND_COLOR;
+
+    // 加载所有动画帧
+    for i in 1..=70 {
+        let frame_num = format!("{:04}", i);
+        let texture = asset_server.load(format!("start_scene/frame_{}.png", frame_num));
+        animation_frames.push(texture);
+    }
+
+    let animation_indices = AnimationIndices { first: 0, last: 69 };
+
+    // 添加动画背景
     commands.spawn((
         StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgb(0.1, 0.05, 0.05)),
+        Sprite::from_image(animation_frames[0].clone()),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        animation_indices,
+        AnimationTimer(Timer::from_seconds(0.083, TimerMode::Repeating)), // 约12fps
+        CurrentAnimationFrame(0),
     ));
 
-    // 大五角星背景装饰
-    commands.spawn((
-        StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(50.0),
-            left: Val::Px(50.0),
-            width: Val::Px(100.0),
-            height: Val::Px(100.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgb(0.8, 0.1, 0.1)),
-    ));
+    // 加载自定义字体
+    let custom_font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
 
+    // 添加上方红色标题
     commands.spawn((
         StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(50.0),
-            right: Val::Px(50.0),
-            width: Val::Px(80.0),
-            height: Val::Px(80.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgb(0.6, 0.08, 0.08)),
-    ));
-
-    // 装饰性线条 - 镰刀锤头风格
-    commands.spawn((
-        StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(ARENA_HEIGHT / 2.0 - 5.0),
-            left: Val::Px(0.0),
-            width: Val::Px(20.0),
-            height: Val::Px(10.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgb(0.9, 0.2, 0.0)),
-    ));
-
-    commands.spawn((
-        StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(ARENA_HEIGHT / 2.0 - 5.0),
-            right: Val::Px(0.0),
-            width: Val::Px(20.0),
-            height: Val::Px(10.0),
-            ..default()
-        },
-        BackgroundColor(Color::srgb(0.9, 0.2, 0.0)),
-    ));
-
-    // 主标题 "开始"
-    commands.spawn((
-        StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            top: Val::Px(ARENA_HEIGHT / 2.0 - 80.0),
-            left: Val::Px(ARENA_WIDTH / 2.0 - 100.0),
-            width: Val::Px(200.0),
-            height: Val::Px(120.0),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        },
-        Text::new("Fire for Communism!!"),
+        Text2d("For Communism!!".to_string()),
         TextFont {
-            font: asset_server.load("/home/nanbert/.fonts/msyh.ttc"),
-            font_size: 120.0,
+            font_size: 60.0,
+            font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 0.9, 0.0)),
-        TextLayout::new_with_justify(Justify::Center),
+        TextColor(Color::srgb(1.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, 400.0, 1.0),
     ));
 
-    // 底部操作提示
+    // 添加中间 PLAY 文字
     commands.spawn((
         StartScreenUI,
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(100.0),
-            left: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            height: Val::Auto,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        Text::new("WASD: Direction  Space: shoot/confirm"),
+        Text2d("PLAY".to_string()),
         TextFont {
-            font: asset_server.load("/home/nanbert/.fonts/msyh.ttc"),
-            font_size: 32.0,
+            font_size: 80.0,
+            font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.9, 0.9, 0.9)),
-        TextLayout::new_with_justify(Justify::Center),
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, 0.0, 1.0),
+    ));
+
+    // 添加下方操作说明
+    commands.spawn((
+        StartScreenUI,
+        Text2d("Press SPACE to start | WASD to move | SPACE to shoot".to_string()),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(0.0, -450.0, 1.0),
     ));
 }
 
@@ -281,127 +260,10 @@ fn spawn_game_entities(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     mut can_fire: ResMut<CanFire>,
+    mut clear_color: ResMut<ClearColor>,
 ) {
-    let texture = asset_server.load("texture/tank_player.png");
-
-    // 精灵图是 1x3 的布局
-    let tile_size = UVec2::new(87, 103); // 每个精灵的实际尺寸
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
-
-    // 玩家坦克 - 初始位置在堡垒左侧
-    let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
-    let player_tank_entity = commands.spawn((
-        PlayerTank,
-        Sprite::from_atlas_image(
-            texture.clone(),
-            TextureAtlas{
-                layout: texture_atlas_layout.clone(),
-                index: animation_indices.first,
-            }
-        ),
-        Transform::from_xyz(-FORTRESS_SIZE - WALL_THICKNESS * 2.0 - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0),
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-        PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)),
-        Velocity{
-            linvel: Vec2::new(0.0, 0.0),
-            angvel: 0.0,
-        },
-        RigidBody::KinematicVelocityBased,
-        Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
-        ActiveEvents::COLLISION_EVENTS,
-        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
-        LockedAxes::ROTATION_LOCKED,
-    )).id();
-
-    // 敌方坦克
-    let mut enemy_tank_entities = Vec::new();
-    for pos in ENEMY_BORN_PLACES {
-        let entity = commands.spawn((
-            EnemyTank,
-            Sprite::from_atlas_image(
-                texture.clone(),
-                TextureAtlas{
-                    layout: texture_atlas_layout.clone(),
-                    index: animation_indices.first,
-                }
-            ),
-            Transform::from_translation(pos),
-            animation_indices,
-            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-            Velocity{
-                linvel: Vec2::new(0.0, -TANK_SPEED),
-                angvel: 0.0,
-            },
-            MoveTimer(Timer::from_seconds(6.0, TimerMode::Repeating)),
-            RigidBody::KinematicVelocityBased,
-            Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
-            ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS,
-            ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC | ActiveCollisionTypes::KINEMATIC_STATIC,
-            LockedAxes::ROTATION_LOCKED,
-        )).id();
-        enemy_tank_entities.push(entity);
-    }
-
-    // 初始化所有敌方坦克都可以射击
-    for entity in enemy_tank_entities {
-        can_fire.0.insert(entity);
-    }
-    // 初始化玩家坦克可以射击
-    can_fire.0.insert(player_tank_entity);
-}
-
-fn handle_start_screen_input(
-    mut commands: Commands,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut next_state: ResMut<NextState<GameState>>,
-    query: Query<Entity, With<StartScreenUI>>
-) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::Playing);
-        for entity in query.iter() {
-            commands.entity(entity).despawn();
-        }
-    }
-}
-
-fn create_star_points(radius: f32) -> Vec<Vec2> {
-    let mut points = Vec::with_capacity(10);
-    let inner_radius = radius * 0.4;
-
-    for i in 0..10 {
-        let angle = std::f32::consts::PI * 2.0 * i as f32 / 10.0 - std::f32::consts::PI / 2.0;
-        let r = if i % 2 == 0 { radius } else { inner_radius };
-        points.push(Vec2::new(r * angle.cos(), r * angle.sin()));
-    }
-    points
-}
-
-fn animate_sprite(
-    time: Res<Time>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite)>,
-) {
-    for (indices, mut timer, mut sprite) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas
-        {
-            atlas.index = if atlas.index == indices.last {
-                indices.first
-            } else {
-                atlas.index + 1
-            };
-        }
-    }
-}
-fn setup(
-    mut commands: Commands,
-) {
-    // Camera
-    commands.spawn(Camera2d);
+    // 设置背景色为黑色
+    clear_color.0 = BACKGROUND_COLOR;
 
     // 左墙
     commands.spawn((
@@ -514,6 +376,134 @@ fn setup(
             ..default()
         }
     ));
+    let texture = asset_server.load("texture/tank_player.png");
+
+    // 精灵图是 1x3 的布局
+    let tile_size = UVec2::new(87, 103); // 每个精灵的实际尺寸
+    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
+    let animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 玩家坦克 - 初始位置在堡垒左侧
+    let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
+    let player_tank_entity = commands.spawn((
+        PlayerTank,
+        Sprite::from_atlas_image(
+            texture.clone(),
+            TextureAtlas{
+                layout: texture_atlas_layout.clone(),
+                index: animation_indices.first,
+            }
+        ),
+        Transform::from_xyz(-FORTRESS_SIZE - WALL_THICKNESS * 2.0 - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0),
+        animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        PlayerShootTimer(Timer::from_seconds(0.3, TimerMode::Repeating)),
+        Velocity{
+            linvel: Vec2::new(0.0, 0.0),
+            angvel: 0.0,
+        },
+        RigidBody::KinematicVelocityBased,
+        Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
+        ActiveEvents::COLLISION_EVENTS,
+        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
+        LockedAxes::ROTATION_LOCKED,
+    )).id();
+
+    // 敌方坦克
+    let mut enemy_tank_entities = Vec::new();
+    for pos in ENEMY_BORN_PLACES {
+        let entity = commands.spawn((
+            EnemyTank,
+            Sprite::from_atlas_image(
+                texture.clone(),
+                TextureAtlas{
+                    layout: texture_atlas_layout.clone(),
+                    index: animation_indices.first,
+                }
+            ),
+            Transform::from_translation(pos),
+            animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            PauseTimer(Timer::from_seconds(0.5, TimerMode::Once)), // 初始停顿 0.5 秒
+            Velocity{
+                linvel: Vec2::new(0.0, -TANK_SPEED),
+                angvel: 0.0,
+            },
+            MoveTimer(Timer::from_seconds(6.0, TimerMode::Repeating)),
+            RigidBody::KinematicVelocityBased,
+            Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0),
+            ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS,
+            ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC | ActiveCollisionTypes::KINEMATIC_STATIC,
+            LockedAxes::ROTATION_LOCKED,
+        )).id();
+        enemy_tank_entities.push(entity);
+    }
+
+    // 初始化所有敌方坦克都可以射击
+    for entity in enemy_tank_entities {
+        can_fire.0.insert(entity);
+    }
+    // 初始化玩家坦克可以射击
+    can_fire.0.insert(player_tank_entity);
+}
+
+fn handle_start_screen_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::FadingOut);
+    }
+}
+
+fn create_star_points(radius: f32) -> Vec<Vec2> {
+    let mut points = Vec::with_capacity(10);
+    let inner_radius = radius * 0.4;
+
+    for i in 0..10 {
+        let angle = std::f32::consts::PI * 2.0 * i as f32 / 10.0 - std::f32::consts::PI / 2.0;
+        let r = if i % 2 == 0 { radius } else { inner_radius };
+        points.push(Vec2::new(r * angle.cos(), r * angle.sin()));
+    }
+    points
+}
+
+fn animate_sprite(
+    time: Res<Time>,
+    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, Option<&StartScreenUI>, Option<&mut CurrentAnimationFrame>)>,
+    animation_frames: Res<StartAnimationFrames>,
+) {
+    for (indices, mut timer, mut sprite, _is_start_screen, current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            if let Some(mut frame) = current_frame {
+                // 开机动画：切换独立的帧图片
+                let current = frame.0;
+                let next_index = if current == indices.last {
+                    indices.first
+                } else {
+                    current + 1
+                };
+                frame.0 = next_index;
+                *sprite = Sprite::from_image(animation_frames[next_index].clone());
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                // 游戏内动画：切换纹理图集帧
+                atlas.index = if atlas.index == indices.last {
+                    indices.first
+                } else {
+                    atlas.index + 1
+                };
+            }
+        }
+    }
+}
+fn setup(
+    mut commands: Commands,
+) {
+    // 创建全局相机
+    commands.spawn(Camera2d);
 }
 fn collect_collision(
     mut collision_events: MessageReader<CollisionEvent>,
@@ -717,12 +707,6 @@ fn shoot_bullets(
     }
 }
 
-fn move_bullets(
-    _query: Query<&Transform, With<Bullet>>,
-) {
-    // 子弹移动由物理引擎处理，这里不需要额外操作
-}
-
 fn check_bullet_bounds(
     mut commands: Commands,
     mut query: Query<(Entity, &Transform), With<Bullet>>,
@@ -831,6 +815,45 @@ fn player_shoot_bullet(
 
             // 标记玩家坦克暂时不能射击
             can_fire.0.remove(&entity);
+        }
+    }
+}
+
+fn setup_fade_out(mut fading_out: ResMut<FadingOut>) {
+    fading_out.alpha = 1.0;
+}
+
+fn fade_out_screen(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut fading_out: ResMut<FadingOut>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
+    mut text_query: Query<(Entity, &mut TextColor), With<StartScreenUI>>,
+) {
+    // 减少透明度
+    fading_out.alpha -= time.delta_secs() * (1.0 / 3.0); // 淡出速度，约 3 秒完成
+
+    // 更新所有 Sprite 元素的透明度
+    for (_entity, mut sprite) in &mut sprite_query {
+        let linear = sprite.color.to_linear();
+        sprite.color = Color::srgba(linear.red, linear.green, linear.blue, fading_out.alpha);
+    }
+
+    // 更新所有 Text 元素的颜色
+    for (_entity, mut text_color) in &mut text_query {
+        let linear = text_color.0.to_linear();
+        text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, fading_out.alpha);
+    }
+
+    // 淡出完成，切换到 Playing 状态并清理所有 StartScreenUI 元素
+    if fading_out.alpha <= 0.0 {
+        next_state.set(GameState::Playing);
+        for (entity, _) in sprite_query.iter() {
+            commands.entity(entity).despawn();
+        }
+        for (entity, _) in text_query.iter() {
+            commands.entity(entity).despawn();
         }
     }
 }
