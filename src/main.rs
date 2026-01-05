@@ -70,6 +70,14 @@ struct DirectionChangeTimer(Timer);
 #[derive(Component, Deref, DerefMut)]
 struct CollisionCooldownTimer(Timer);
 
+#[derive(Component, Deref, DerefMut)]
+struct RotationTimer(Timer);
+
+#[derive(Component)]
+struct TargetRotation {
+    angle: f32,
+}
+
 #[derive(Component, Copy, Clone)]
 struct EnemyTank {
     direction: Vec2,
@@ -512,6 +520,8 @@ fn spawn_player_tank(
     
     commands.spawn_empty()
         .insert(PlayerTank)
+        .insert(RotationTimer(Timer::from_seconds(0.2, TimerMode::Once)))
+        .insert(TargetRotation { angle: 270.0_f32.to_radians() })
         .insert(Sprite::from_atlas_image(
             texture,
             TextureAtlas{
@@ -554,6 +564,8 @@ fn spawn_enemy_tank(
         })
         .insert(DirectionChangeTimer(Timer::from_seconds(4.0, TimerMode::Once)))
         .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
+        .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
+        .insert(TargetRotation { angle: 270.0_f32.to_radians() })
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
         .insert(Sprite::from_atlas_image(
             texture,
@@ -793,12 +805,26 @@ fn handle_random_direction_change(
 fn update_enemy_tank_movement(
     enemy_tank: EnemyTank,
     velocity: &mut Velocity,
-    transform: &mut Transform,
+    target_rotation: &mut TargetRotation,
+    rotation_timer: &mut RotationTimer,
 ) {
-    velocity.linvel = enemy_tank.direction * TANK_SPEED;
     if enemy_tank.direction.length() > 0.0 {
         let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
-        transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
+        let target_angle = angle - 270.0_f32.to_radians();
+        
+        // 检查是否需要转向
+        let current_euler = target_rotation.angle;
+        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        
+        if angle_diff.abs() > 0.01 {
+            // 需要转向，设置速度为0实现原地转向
+            velocity.linvel = Vec2::ZERO;
+            target_rotation.angle = target_angle;
+            rotation_timer.reset();
+        } else {
+            // 不需要转向，正常移动
+            velocity.linvel = enemy_tank.direction * TANK_SPEED;
+        }
     }
 }
 
@@ -811,12 +837,14 @@ fn move_enemy_tanks(
         &mut DirectionChangeTimer,
         &mut CollisionCooldownTimer,
         &mut Transform,
+        &mut RotationTimer,
+        &mut TargetRotation,
     )>,
     rapier_context: ReadRapierContext,
 ) {
     let rapier_context = rapier_context.single().unwrap();
 
-    for (entity, mut velocity, mut enemy_tank, mut direction_timer, mut collision_cooldown, mut transform) in &mut query {
+    for (entity, mut velocity, mut enemy_tank, mut direction_timer, mut collision_cooldown, mut transform, mut rotation_timer, mut target_rotation) in &mut query {
         // 更新碰撞冷却计时器
         collision_cooldown.tick(time.delta());
 
@@ -840,7 +868,28 @@ fn move_enemy_tanks(
         }
 
         // 更新坦克移动
-        update_enemy_tank_movement(*enemy_tank, &mut velocity, &mut transform);
+        update_enemy_tank_movement(*enemy_tank, &mut velocity, &mut target_rotation, &mut rotation_timer);
+
+        // 更新旋转计时器
+        rotation_timer.tick(time.delta());
+
+        // 平滑旋转
+        let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let target_angle = target_rotation.angle;
+        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        
+        if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
+            // 计算旋转进度（0.0 到 1.0）
+            let progress = rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
+            // 使用缓动函数使旋转更平滑
+            let eased_progress = progress * progress * (3.0 - 2.0 * progress);
+            // 插值计算当前角度
+            let new_angle = current_euler + angle_diff * eased_progress;
+            transform.rotation = Quat::from_rotation_z(new_angle);
+        } else if angle_diff.abs() > 0.01 {
+            // 旋转完成，直接设置为目标角度
+            transform.rotation = Quat::from_rotation_z(target_angle);
+        }
     }
 }
 
@@ -1016,11 +1065,11 @@ fn animate_tank_texture(
 }
 
 fn move_player_tank(
-    _time: Res<Time>,
+    time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut Velocity), With<PlayerTank>>,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut RotationTimer, &mut TargetRotation), With<PlayerTank>>,
 ) {
-    for (mut transform, mut velocity) in &mut query {
+    for (mut transform, mut velocity, mut rotation_timer, mut target_rotation) in &mut query {
         let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
         let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
         let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
@@ -1035,15 +1084,52 @@ fn move_player_tank(
             _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
         };
 
-        // 应用速度（直接设置速度，配合高阻尼实现类似 Kinematic 的控制）
-        if direction.length() > 0.0 {
-            velocity.linvel = direction * TANK_SPEED;
-
-            // 更新旋转以面向移动方向
+        // 检查是否需要转向
+        let needs_rotation = if direction.length() > 0.0 {
             let angle = direction.y.atan2(direction.x);
-            transform.rotation = Quat::from_rotation_z(angle - 270.0_f32.to_radians());
+            let target_angle = angle - 270.0_f32.to_radians();
+            
+            let current_euler = target_rotation.angle;
+            let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+            
+            if angle_diff.abs() > 0.01 {
+                target_rotation.angle = target_angle;
+                rotation_timer.reset();
+                true
+            } else {
+                false
+            }
         } else {
             velocity.linvel = Vec2::ZERO;
+            false
+        };
+
+        // 应用速度（原地转向时速度为0）
+        if needs_rotation {
+            velocity.linvel = Vec2::ZERO;
+        } else if direction.length() > 0.0 {
+            velocity.linvel = direction * TANK_SPEED;
+        }
+
+        // 更新旋转计时器
+        rotation_timer.tick(time.delta());
+
+        // 平滑旋转
+        let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
+        let target_angle = target_rotation.angle;
+        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        
+        if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
+            // 计算旋转进度（0.0 到 1.0）
+            let progress = rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
+            // 使用缓动函数使旋转更平滑
+            let eased_progress = progress * progress * (3.0 - 2.0 * progress);
+            // 插值计算当前角度
+            let new_angle = current_euler + angle_diff * eased_progress;
+            transform.rotation = Quat::from_rotation_z(new_angle);
+        } else if angle_diff.abs() > 0.01 {
+            // 旋转完成，直接设置为目标角度
+            transform.rotation = Quat::from_rotation_z(target_angle);
         }
     }
 }
