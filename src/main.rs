@@ -622,65 +622,9 @@ fn spawn_enemy_tank(
         .id()
 }
 
-fn spawn_game_entities(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    asset_server: Res<AssetServer>,
-    mut can_fire: ResMut<CanFire>,
-    mut clear_color: ResMut<ClearColor>,
-    mut game_started: ResMut<GameStarted>,
-) {
-    // 如果游戏已经启动过，就不再生成实体
-    if game_started.0 {
-        return;
-    }
-    game_started.0 = true;
-    // 设置背景色为黑色
-    clear_color.0 = BACKGROUND_COLOR;
-
-    // 生成墙壁
-    spawn_walls(&mut commands);
-
-    // 生成堡垒
-    spawn_fortress(&mut commands);
-
-    // 加载纹理和创建精灵图
-    let texture = asset_server.load("texture/tank_player.png");
-    let tile_size = UVec2::new(87, 103);
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
-
-    // 生成玩家坦克
-    let player_tank_entity = spawn_player_tank(
-        &mut commands,
-        texture.clone(),
-        texture_atlas_layout.clone(),
-        animation_indices,
-    );
-
-    // 生成敌方坦克
-    let enemy_tank_entities: Vec<Entity> = ENEMY_BORN_PLACES
-        .iter()
-        .map(|&pos| spawn_enemy_tank(
-            &mut commands,
-            texture.clone(),
-            texture_atlas_layout.clone(),
-            animation_indices,
-            pos,
-        ))
-        .collect();
-
-    // 初始化所有坦克都可以射击
-    for entity in enemy_tank_entities {
-        can_fire.0.insert(entity);
-    }
-    can_fire.0.insert(player_tank_entity);
-
-    // 生成玩家信息文字（在左侧留白处）
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
-
-// player1
+#[allow(clippy::too_many_lines)]
+fn spawn_player_info(commands: &mut Commands, font: &Handle<Font>) {
+    // player1
     commands.spawn((
         Text2d("player1".to_string()),
         TextFont {
@@ -811,50 +755,6 @@ fn spawn_game_entities(
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
         Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 50.0, 1.0),
-    ));
-
-    // player头像（Scores1下方）
-    let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
-    let player_avatar_tile_size = UVec2::new(120, 112);
-    let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 4, None, None);
-    let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
-    // 13列4行，共52帧，索引从0到51
-    let player_avatar_animation_indices = AnimationIndices { first: 0, last: 51 };
-    commands.spawn((
-        PlayerAvatar,
-        Sprite {
-            image: player_avatar_texture.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: player_avatar_texture_atlas_layout,
-                index: 0,
-            }),
-            custom_size: Some(Vec2::new(120.0, 112.0)),
-            ..default()
-        },
-        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 150.0, 1.0),
-        player_avatar_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-        CurrentAnimationFrame(0),
-    ));
-
-    // 血条（红色）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(1.0, 0.0, 0.0),
-            custom_size: Some(Vec2::new(100.0, 10.0)),
-            ..default()
-        },
-        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 215.0, 1.0),
-    ));
-
-    // 蓝条（蓝色）
-    commands.spawn((
-        Sprite {
-            color: Color::srgb(0.0, 0.5, 1.0),
-            custom_size: Some(Vec2::new(100.0, 10.0)),
-            ..default()
-        },
-        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 230.0, 1.0),
     ));
 
     // Commander Life:（Scores1右侧200像素）
@@ -1007,13 +907,61 @@ fn spawn_game_entities(
         Text2d("Effects".to_string()),
         TextFont {
             font_size: 32.0,
-            font,
+            font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
         Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 300.0, 1.0),
     ));
+}
 
+fn spawn_player_avatar(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>) {
+    // player头像（Scores1下方）
+    let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
+    let player_avatar_tile_size = UVec2::new(120, 112);
+    let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 4, None, None);
+    let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
+    // 13列4行，共52帧，索引从0到51
+    let player_avatar_animation_indices = AnimationIndices { first: 0, last: 51 };
+    commands.spawn((
+        PlayerAvatar,
+        Sprite {
+            image: player_avatar_texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: player_avatar_texture_atlas_layout,
+                index: 0,
+            }),
+            custom_size: Some(Vec2::new(120.0, 112.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 150.0, 1.0),
+        player_avatar_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+    ));
+
+    // 血条（红色）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 0.0, 0.0),
+            custom_size: Some(Vec2::new(100.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 215.0, 1.0),
+    ));
+
+    // 蓝条（蓝色）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(0.0, 0.5, 1.0),
+            custom_size: Some(Vec2::new(100.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 230.0, 1.0),
+    ));
+}
+
+fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>) {
     // 生成道具（轮胎精灵图）
     let power_up_texture: Handle<Image> = asset_server.load("tire_sprite_sheet.png");
     let power_up_tile_size = UVec2::new(87, 69);
@@ -1060,6 +1008,72 @@ fn spawn_game_entities(
             ActiveEvents::COLLISION_EVENTS,
         ));
     }
+}
+
+fn spawn_game_entities(
+    mut commands: Commands,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    mut can_fire: ResMut<CanFire>,
+    mut clear_color: ResMut<ClearColor>,
+    mut game_started: ResMut<GameStarted>,
+) {
+    // 如果游戏已经启动过，就不再生成实体
+    if game_started.0 {
+        return;
+    }
+    game_started.0 = true;
+    // 设置背景色为黑色
+    clear_color.0 = BACKGROUND_COLOR;
+
+    // 生成墙壁
+    spawn_walls(&mut commands);
+
+    // 生成堡垒
+    spawn_fortress(&mut commands);
+
+    // 加载纹理和创建精灵图
+    let texture = asset_server.load("texture/tank_player.png");
+    let tile_size = UVec2::new(87, 103);
+    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
+    let animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 生成玩家坦克
+    let player_tank_entity = spawn_player_tank(
+        &mut commands,
+        texture.clone(),
+        texture_atlas_layout.clone(),
+        animation_indices,
+    );
+
+    // 生成敌方坦克
+    let enemy_tank_entities: Vec<Entity> = ENEMY_BORN_PLACES
+        .iter()
+        .map(|&pos| spawn_enemy_tank(
+            &mut commands,
+            texture.clone(),
+            texture_atlas_layout.clone(),
+            animation_indices,
+            pos,
+        ))
+        .collect();
+
+    // 初始化所有坦克都可以射击
+    for entity in enemy_tank_entities {
+        can_fire.0.insert(entity);
+    }
+    can_fire.0.insert(player_tank_entity);
+
+    // 生成玩家信息文字（在左侧留白处）
+    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    spawn_player_info(&mut commands, &font);
+
+    // 生成玩家头像
+    spawn_player_avatar(&mut commands, &asset_server, &mut texture_atlas_layouts);
+
+    // 生成道具
+    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts);
 }
 
 fn handle_start_screen_input(
@@ -1229,7 +1243,7 @@ fn update_enemy_tank_movement(
         
         // 检查是否需要转向
         let current_euler = target_rotation.angle;
-        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
         
         if angle_diff.abs() > 0.01 {
             // 需要转向，设置速度为0实现原地转向
@@ -1243,6 +1257,7 @@ fn update_enemy_tank_movement(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn move_enemy_tanks(
     time: Res<Time>,
     mut query: Query<(
@@ -1256,8 +1271,7 @@ fn move_enemy_tanks(
         &mut TargetRotation,
     )>,
     rapier_context: ReadRapierContext,
-) {
-    let rapier_context = rapier_context.single().unwrap();
+) {    let rapier_context = rapier_context.single().unwrap();
 
     for (entity, mut velocity, mut enemy_tank, mut direction_timer, mut collision_cooldown, mut transform, mut rotation_timer, mut target_rotation) in &mut query {
         // 更新碰撞冷却计时器
@@ -1291,13 +1305,13 @@ fn move_enemy_tanks(
         // 平滑旋转
         let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
         let target_angle = target_rotation.angle;
-        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
-        
+        let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+
         if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
             // 计算旋转进度（0.0 到 1.0）
             let progress = rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
             // 使用缓动函数使旋转更平滑
-            let eased_progress = progress * progress * (3.0 - 2.0 * progress);
+            let eased_progress = progress * progress * 2.0f32.mul_add(-progress, 3.0);
             // 插值计算当前角度
             let new_angle = current_euler + angle_diff * eased_progress;
             transform.rotation = Quat::from_rotation_z(new_angle);
@@ -1538,13 +1552,14 @@ fn animate_player_info_text(
             commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
             color.0 = Color::srgb(1.0, 1.0, 1.0);
         } else {
-            // 每0.3秒切换颜色
+            // 每0.6秒切换颜色（0.3秒亮，0.3秒灭）
             let elapsed = timer.elapsed_secs();
-            if (elapsed / 0.3) as u32 % 2 == 0 {
-                color.0 = Color::srgb(1.0, 1.0, 1.0);
+            let cycle = elapsed % 0.6;
+            color.0 = if cycle < 0.3 {
+                Color::srgb(1.0, 1.0, 1.0)
             } else {
-                color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
-            }
+                Color::srgba(1.0, 1.0, 1.0, 0.0)
+            };
         }
     }
 }
@@ -1642,10 +1657,10 @@ fn move_player_tank(
         let needs_rotation = if direction.length() > 0.0 {
             let angle = direction.y.atan2(direction.x);
             let target_angle = angle - 270.0_f32.to_radians();
-            
+
             let current_euler = target_rotation.angle;
-            let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
-            
+            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+
             if angle_diff.abs() > 0.01 {
                 target_rotation.angle = target_angle;
                 rotation_timer.reset();
@@ -1671,13 +1686,13 @@ fn move_player_tank(
         // 平滑旋转
         let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
         let target_angle = target_rotation.angle;
-        let angle_diff = (target_angle - current_euler + std::f32::consts::PI * 3.0) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
         
         if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
             // 计算旋转进度（0.0 到 1.0）
             let progress = rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
             // 使用缓动函数使旋转更平滑
-            let eased_progress = progress * progress * (3.0 - 2.0 * progress);
+            let eased_progress = progress * progress * 2.0f32.mul_add(-progress, 3.0);
             // 插值计算当前角度
             let new_angle = current_euler + angle_diff * eased_progress;
             transform.rotation = Quat::from_rotation_z(new_angle);
