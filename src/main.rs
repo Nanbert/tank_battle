@@ -100,6 +100,12 @@ struct Wall;
 #[derive(Component)]
 struct Fortress;
 
+#[derive(Component)]
+struct PowerUp;
+
+#[derive(Component)]
+struct PowerUpBorder;
+
 #[derive(Resource, Default)]
 struct CanFire(HashSet<Entity>);
 
@@ -220,11 +226,14 @@ fn register_game_systems(app: &mut App) {
             (collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
             animate_tank_texture,
+            animate_powerup_border,
+            animate_powerup_texture,
             shoot_bullets,
             player_shoot_bullet,
             check_bullet_bounds,
             check_bullet_destruction,
             handle_bullet_collisions,
+            handle_powerup_collision,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
@@ -645,6 +654,44 @@ fn spawn_game_entities(
         can_fire.0.insert(entity);
     }
     can_fire.0.insert(player_tank_entity);
+
+    // 生成道具（轮胎精灵图）
+    let power_up_texture: Handle<Image> = asset_server.load("tire_sprite_sheet.png");
+    let power_up_tile_size = UVec2::new(87, 69);
+    let power_up_texture_atlas = TextureAtlasLayout::from_grid(power_up_tile_size, 3, 1, None, None);
+    let power_up_texture_atlas_layout = texture_atlas_layouts.add(power_up_texture_atlas);
+    let power_up_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 白色边框
+    commands.spawn((
+        PowerUpBorder,
+        Sprite {
+            color: Color::WHITE,
+            custom_size: Some(Vec2::new(87.0 + 6.0, 69.0 + 6.0)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, -0.1),
+        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+    ));
+
+    commands.spawn((
+        PowerUp,
+        Sprite::from_atlas_image(
+            power_up_texture,
+            TextureAtlas {
+                layout: power_up_texture_atlas_layout,
+                index: power_up_animation_indices.first,
+            }
+        ),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        power_up_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
 }
 
 fn handle_start_screen_input(
@@ -1032,6 +1079,73 @@ fn handle_bullet_collisions(
                 if should_bullet_destroy(bullet_owner, tank_entity, &enemy_tanks, &player_tanks) {
                     commands.entity(bullet_entity).despawn();
                 }
+            }
+        }
+    }
+}
+
+fn handle_powerup_collision(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
+    powerups: Query<(), With<PowerUp>>,
+    powerup_borders: Query<Entity, With<PowerUpBorder>>,
+    player_tanks: Query<(), With<PlayerTank>>,
+) {
+    for event in collision_events.read() {
+        if let CollisionEvent::Started(e1, e2, _) = event {
+            // 检查是否是玩家坦克与道具的碰撞
+            let (powerup_entity, _) = if powerups.get(*e1).is_ok() && player_tanks.get(*e2).is_ok() {
+                (*e1, *e2)
+            } else if powerups.get(*e2).is_ok() && player_tanks.get(*e1).is_ok() {
+                (*e2, *e1)
+            } else {
+                continue;
+            };
+
+            // 销毁道具和白色边框
+            commands.entity(powerup_entity).despawn();
+            for border_entity in powerup_borders.iter() {
+                commands.entity(border_entity).despawn();
+            }
+        }
+    }
+}
+
+fn animate_powerup_border(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite), With<PowerUpBorder>>,
+) {
+    for (mut timer, mut sprite) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            // 每0.2秒切换显示/隐藏状态
+            if sprite.color == Color::WHITE {
+                sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.0);
+            } else {
+                sprite.color = Color::WHITE;
+            }
+        }
+    }
+}
+
+fn animate_powerup_texture(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<PowerUp>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
             }
         }
     }
