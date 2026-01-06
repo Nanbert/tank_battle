@@ -87,6 +87,9 @@ struct EnemyTank {
 struct PlayerTank;
 
 #[derive(Component)]
+struct PlayerAvatar;
+
+#[derive(Component)]
 struct Bullet;
 
 #[derive(Component)]
@@ -105,6 +108,15 @@ struct PowerUp;
 
 #[derive(Component)]
 struct PowerUpBorder;
+
+#[derive(Component)]
+struct PlayerInfoText;
+
+#[derive(Component, Deref, DerefMut)]
+struct PlayerInfoBlinkTimer(Timer);
+
+#[derive(Resource, Default)]
+struct PlayerSpeed(usize);
 
 #[derive(Resource, Default)]
 struct CanFire(HashSet<Entity>);
@@ -143,8 +155,15 @@ struct MenuBlinkTimer(Timer);
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
-const ARENA_WIDTH: f32 = 1600.0;
-const ARENA_HEIGHT: f32 = 1200.0;
+const ORIGINAL_WIDTH: f32 = 1600.0; // 原游戏区域宽度
+const ORIGINAL_HEIGHT: f32 = 1200.0; // 原游戏区域高度
+const LEFT_PADDING: f32 = 230.0; // 左侧留白
+const RIGHT_PADDING: f32 = 230.0; // 右侧留白
+const TOP_PADDING: f32 = 100.0; // 上方留白
+const BOTTOM_PADDING: f32 = 0.0; // 下方留白
+const VERTICAL_OFFSET: f32 = -50.0; // 垂直偏移，向下平移50像素
+const ARENA_WIDTH: f32 = ORIGINAL_WIDTH + LEFT_PADDING + RIGHT_PADDING; // 总宽度
+const ARENA_HEIGHT: f32 = ORIGINAL_HEIGHT + TOP_PADDING + BOTTOM_PADDING; // 总高度
 const TANK_WIDTH: f32 = 87.0;
 const TANK_HEIGHT: f32 = 103.0;
 const TANK_SPEED: f32 = 300.0;
@@ -152,12 +171,12 @@ const BULLET_SPEED: f32 = 900.0;
 const BULLET_SIZE: f32 = 10.0;
 
 const ENEMY_BORN_PLACES: [Vec3; 3] = [
-    Vec3::new(-ARENA_WIDTH / 2.0 + TANK_WIDTH / 2.0, ARENA_HEIGHT/2.0 - TANK_HEIGHT / 2.0, 0.0),
-    Vec3::new(0.0, ARENA_HEIGHT/2.0 - TANK_HEIGHT / 2.0, 0.0),
-    Vec3::new(ARENA_WIDTH/2.0 - TANK_WIDTH / 2.0, ARENA_HEIGHT/2.0 - TANK_HEIGHT / 2.0, 0.0),
+    Vec3::new(-ORIGINAL_WIDTH / 2.0 + TANK_WIDTH / 2.0, ORIGINAL_HEIGHT/2.0 - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
+    Vec3::new(0.0, ORIGINAL_HEIGHT/2.0 - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
+    Vec3::new(ORIGINAL_WIDTH/2.0 - TANK_WIDTH / 2.0, ORIGINAL_HEIGHT/2.0 - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
 ];
 
-const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.0, 0.0);
+const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
 const FORTRESS_SIZE: f32 = 60.0;
@@ -212,6 +231,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<MenuBlinkTimer>()
         .insert_resource(Score(0))
         .insert_resource(Life(2))
+        .insert_resource(PlayerSpeed(40))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
 
@@ -226,8 +246,10 @@ fn register_game_systems(app: &mut App) {
             (collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
             animate_tank_texture,
+            animate_player_avatar,
             animate_powerup_border,
             animate_powerup_texture,
+            animate_player_info_text,
             shoot_bullets,
             player_shoot_bullet,
             check_bullet_bounds,
@@ -406,61 +428,61 @@ fn spawn_start_screen(
 
 
 fn spawn_walls(commands: &mut Commands) {
-    // 左墙
+    // 左墙（在原游戏区域左边界，向下平移40像素）
     commands.spawn((
         Wall,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(0.1, ARENA_HEIGHT / 200.0),
+        Collider::cuboid(0.1, ORIGINAL_HEIGHT / 200.0),
         Transform{
-            translation: Vec3::new(-ARENA_WIDTH / 2.0 - 5.0, 0.0, 0.0),
-            scale: Vec3::new(10.0 , ARENA_HEIGHT, 1.0),
+            translation: Vec3::new(-ORIGINAL_WIDTH / 2.0 - 5.0, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(10.0 , ORIGINAL_HEIGHT, 1.0),
             ..default()
         }
     ));
 
-    // 右墙
+    // 右墙（在原游戏区域右边界，向下平移40像素）
     commands.spawn((
         Wall,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(0.1, ARENA_HEIGHT / 200.0),
+        Collider::cuboid(0.1, ORIGINAL_HEIGHT / 200.0),
         Transform{
-            translation: Vec3::new(ARENA_WIDTH / 2.0 + 5.0, 0.0, 0.0),
-            scale: Vec3::new(10.0 , ARENA_HEIGHT, 1.0),
+            translation: Vec3::new(ORIGINAL_WIDTH / 2.0 + 5.0, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(10.0 , ORIGINAL_HEIGHT, 1.0),
             ..default()
         }
     ));
 
-    // 上墙
+    // 上墙（在原游戏区域上边界，向下平移40像素）
     commands.spawn((
         Wall,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(ARENA_WIDTH / 200.0, 0.1),
+        Collider::cuboid(ORIGINAL_WIDTH / 200.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, ARENA_HEIGHT / 2.0 + 5.0, 0.0),
-            scale: Vec3::new(ARENA_WIDTH, 10.0, 1.0),
+            translation: Vec3::new(0.0, ORIGINAL_HEIGHT / 2.0 + 5.0 + VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(ORIGINAL_WIDTH, 10.0, 1.0),
             ..default()
         }
     ));
 
-    // 下墙
+    // 下墙（在原游戏区域下边界，向下平移40像素）
     commands.spawn((
         Wall,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(ARENA_WIDTH / 200.0, 0.1),
+        Collider::cuboid(ORIGINAL_WIDTH / 200.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, -ARENA_HEIGHT / 2.0 -5.0, 0.0),
-            scale: Vec3::new(ARENA_WIDTH, 10.0 , 1.0),
+            translation: Vec3::new(0.0, -ORIGINAL_HEIGHT / 2.0 -5.0 + VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(ORIGINAL_WIDTH, 10.0 , 1.0),
             ..default()
         }
     ));
 }
 
 fn spawn_fortress(commands: &mut Commands) {
-    let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
+    let fortress_y = -ORIGINAL_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0 + VERTICAL_OFFSET;
     let fortress_x = 0.0;
 
     // 堡垒主体（红色五角星）
@@ -525,8 +547,8 @@ fn spawn_player_tank(
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
 ) -> Entity {
-    let fortress_y = -ARENA_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0;
-    
+    let fortress_y = -ORIGINAL_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0 + VERTICAL_OFFSET;
+
     commands.spawn_empty()
         .insert(PlayerTank)
         .insert(RotationTimer(Timer::from_seconds(0.2, TimerMode::Once)))
@@ -655,6 +677,343 @@ fn spawn_game_entities(
     }
     can_fire.0.insert(player_tank_entity);
 
+    // 生成玩家信息文字（在左侧留白处）
+    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+
+// player1
+    commands.spawn((
+        Text2d("player1".to_string()),
+        TextFont {
+            font_size: 32.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET - 80.0, 1.0),
+    ));
+
+    // Speed:40%
+    commands.spawn((
+        PlayerInfoText,
+        Text2d("Speed:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET - 130.0, 1.0),
+    ));
+
+    // Fire Speed:40%
+    commands.spawn((
+        Text2d("Fire Speed:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET - 180.0, 1.0),
+    ));
+
+    // Protection:40%
+    commands.spawn((
+        Text2d("Protection:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET - 230.0, 1.0),
+    ));
+
+    // Shells: 1
+    commands.spawn((
+        Text2d("Shells: 1".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET - 280.0, 1.0),
+    ));
+
+    // Pnetrate: No
+    commands.spawn((
+        Text2d("Pnetrate: No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET + 100.0, 1.0),
+    ));
+
+    // Track Chain:No
+    commands.spawn((
+        Text2d("Track Chain:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET + 150.0, 1.0),
+    ));
+
+    // Air Cushion:No
+    commands.spawn((
+        Text2d("Air Cushion:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET + 200.0, 1.0),
+    ));
+
+    // Fire Shell:No
+    commands.spawn((
+        Text2d("Fire Shell:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET + 250.0, 1.0),
+    ));
+
+    // Effects
+    commands.spawn((
+        Text2d("Effects".to_string()),
+        TextFont {
+            font_size: 32.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, VERTICAL_OFFSET + 300.0, 1.0),
+    ));
+
+    // Scores1:0（左上角）
+    commands.spawn((
+        Text2d("Scores1:0".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 50.0, 1.0),
+    ));
+
+    // player头像（Scores1下方）
+    let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
+    let player_avatar_tile_size = UVec2::new(120, 112);
+    let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 4, None, None);
+    let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
+    // 13列4行，共52帧，索引从0到51
+    let player_avatar_animation_indices = AnimationIndices { first: 0, last: 51 };
+    commands.spawn((
+        PlayerAvatar,
+        Sprite {
+            image: player_avatar_texture.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: player_avatar_texture_atlas_layout,
+                index: 0,
+            }),
+            custom_size: Some(Vec2::new(120.0, 112.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 150.0, 1.0),
+        player_avatar_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+    ));
+
+    // 血条（红色）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(1.0, 0.0, 0.0),
+            custom_size: Some(Vec2::new(100.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 215.0, 1.0),
+    ));
+
+    // 蓝条（蓝色）
+    commands.spawn((
+        Sprite {
+            color: Color::srgb(0.0, 0.5, 1.0),
+            custom_size: Some(Vec2::new(100.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 230.0, 1.0),
+    ));
+
+    // Commander Life:（Scores1右侧200像素）
+    commands.spawn((
+        Text2d("Commander Life:".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(-ORIGINAL_WIDTH / 2.0 - LEFT_PADDING / 2.0 + 350.0, ARENA_HEIGHT / 2.0 - 50.0, 1.0),
+    ));
+
+    // Scores2:0（右上角）
+    commands.spawn((
+        Text2d("Scores2:0".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, ARENA_HEIGHT / 2.0 - 50.0, 1.0),
+    ));
+
+    // Enemy Left:20/20（Scores2左侧300像素）
+    commands.spawn((
+        Text2d("Enemy Left:20/20".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0 - 300.0, ARENA_HEIGHT / 2.0 - 50.0, 1.0),
+    ));
+
+    // player2 信息（在右侧留白处）
+    // player2
+    commands.spawn((
+        Text2d("player2".to_string()),
+        TextFont {
+            font_size: 32.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET - 80.0, 1.0),
+    ));
+
+    // Speed:40%
+    commands.spawn((
+        Text2d("Speed:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET - 130.0, 1.0),
+    ));
+
+    // Fire Speed:40%
+    commands.spawn((
+        Text2d("Fire Speed:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET - 180.0, 1.0),
+    ));
+
+    // Protection:40%
+    commands.spawn((
+        Text2d("Protection:40%".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET - 230.0, 1.0),
+    ));
+
+    // Shells: 1
+    commands.spawn((
+        Text2d("Shells: 1".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET - 280.0, 1.0),
+    ));
+
+    // Pnetrate: No
+    commands.spawn((
+        Text2d("Pnetrate: No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 100.0, 1.0),
+    ));
+
+    // Track Chain:No
+    commands.spawn((
+        Text2d("Track Chain:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 150.0, 1.0),
+    ));
+
+    // Air Cushion:No
+    commands.spawn((
+        Text2d("Air Cushion:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 200.0, 1.0),
+    ));
+
+    // Fire Shell:No
+    commands.spawn((
+        Text2d("Fire Shell:No".to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 250.0, 1.0),
+    ));
+
+    // Effects
+    commands.spawn((
+        Text2d("Effects".to_string()),
+        TextFont {
+            font_size: 32.0,
+            font,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(ORIGINAL_WIDTH / 2.0 + RIGHT_PADDING / 2.0, VERTICAL_OFFSET + 300.0, 1.0),
+    ));
+
     // 生成道具（轮胎精灵图）
     let power_up_texture: Handle<Image> = asset_server.load("tire_sprite_sheet.png");
     let power_up_tile_size = UVec2::new(87, 69);
@@ -662,36 +1021,45 @@ fn spawn_game_entities(
     let power_up_texture_atlas_layout = texture_atlas_layouts.add(power_up_texture_atlas);
     let power_up_animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    // 白色边框
-    commands.spawn((
-        PowerUpBorder,
-        Sprite {
-            color: Color::WHITE,
-            custom_size: Some(Vec2::new(87.0 + 6.0, 69.0 + 6.0)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, -0.1),
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-    ));
+    // 道具位置：墙内任意位置（包括中间的道具）
+    let power_up_positions = [
+        Vec3::new(0.0, 0.0, 0.0),        // 中间
+        Vec3::new(-400.0, 200.0, 0.0),   // 左上
+        Vec3::new(400.0, -100.0, 0.0),   // 右下
+    ];
 
-    commands.spawn((
-        PowerUp,
-        Sprite::from_atlas_image(
-            power_up_texture,
-            TextureAtlas {
-                layout: power_up_texture_atlas_layout,
-                index: power_up_animation_indices.first,
-            }
-        ),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        power_up_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-        CurrentAnimationFrame(0),
-        RigidBody::Fixed,
-        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
-        Sensor,
-        ActiveEvents::COLLISION_EVENTS,
-    ));
+    for pos in power_up_positions {
+        // 白色边框
+        commands.spawn((
+            PowerUpBorder,
+            Sprite {
+                color: Color::WHITE,
+                custom_size: Some(Vec2::new(87.0 + 6.0, 69.0 + 6.0)),
+                ..default()
+            },
+            Transform::from_xyz(pos.x, pos.y, pos.z - 0.1),
+            AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+        ));
+
+        commands.spawn((
+            PowerUp,
+            Sprite::from_atlas_image(
+                power_up_texture.clone(),
+                TextureAtlas {
+                    layout: power_up_texture_atlas_layout.clone(),
+                    index: power_up_animation_indices.first,
+                }
+            ),
+            Transform::from_translation(pos),
+            power_up_animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+            RigidBody::Fixed,
+            Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+            Sensor,
+            ActiveEvents::COLLISION_EVENTS,
+        ));
+    }
 }
 
 fn handle_start_screen_input(
@@ -1087,25 +1455,53 @@ fn handle_bullet_collisions(
 fn handle_powerup_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
-    powerups: Query<(), With<PowerUp>>,
-    powerup_borders: Query<Entity, With<PowerUpBorder>>,
+    powerups: Query<(Entity, &Transform), With<PowerUp>>,
+    powerup_borders: Query<(Entity, &Transform), With<PowerUpBorder>>,
     player_tanks: Query<(), With<PlayerTank>>,
+    player_info_texts: Query<(Entity, &Text2d), With<PlayerInfoText>>,
+    mut player_speed: ResMut<PlayerSpeed>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是玩家坦克与道具的碰撞
-            let (powerup_entity, _) = if powerups.get(*e1).is_ok() && player_tanks.get(*e2).is_ok() {
-                (*e1, *e2)
+            let (powerup_entity, powerup_transform) = if powerups.get(*e1).is_ok() && player_tanks.get(*e2).is_ok() {
+                (*e1, powerups.get(*e1).unwrap().1)
             } else if powerups.get(*e2).is_ok() && player_tanks.get(*e1).is_ok() {
-                (*e2, *e1)
+                (*e2, powerups.get(*e2).unwrap().1)
             } else {
                 continue;
             };
 
-            // 销毁道具和白色边框
+            // 销毁道具
             commands.entity(powerup_entity).despawn();
-            for border_entity in powerup_borders.iter() {
-                commands.entity(border_entity).despawn();
+
+            // 只销毁对应位置的白色边框
+            for (border_entity, border_transform) in powerup_borders.iter() {
+                // 检查边框是否在道具附近（位置相近）
+                let distance = (powerup_transform.translation - border_transform.translation).length();
+                if distance < 1.0 {
+                    commands.entity(border_entity).despawn();
+                    break;
+                }
+            }
+
+            // 增加速度
+            if player_speed.0 < 100 {
+                player_speed.0 += 20;
+            }
+
+            // 更新 Speed 文字显示
+            for (entity, text) in player_info_texts.iter() {
+                if text.0.starts_with("Speed:") {
+                    let speed_text = if player_speed.0 >= 100 {
+                        "Speed:MAX".to_string()
+                    } else {
+                        format!("Speed:{}%", player_speed.0)
+                    };
+                    commands.entity(entity).insert(Text2d(speed_text));
+                    commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                    break;
+                }
             }
         }
     }
@@ -1124,6 +1520,30 @@ fn animate_powerup_border(
                 sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.0);
             } else {
                 sprite.color = Color::WHITE;
+            }
+        }
+    }
+}
+
+fn animate_player_info_text(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor), With<PlayerInfoText>>,
+) {
+    for (entity, mut timer, mut color) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.is_finished() {
+            // 闪烁结束，移除计时器组件
+            commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
+            color.0 = Color::srgb(1.0, 1.0, 1.0);
+        } else {
+            // 每0.3秒切换颜色
+            let elapsed = timer.elapsed_secs();
+            if (elapsed / 0.3) as u32 % 2 == 0 {
+                color.0 = Color::srgb(1.0, 1.0, 1.0);
+            } else {
+                color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
             }
         }
     }
@@ -1175,6 +1595,26 @@ fn animate_tank_texture(
                     timer.reset();
                 }
         }
+    }
+}
+
+fn animate_player_avatar(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<PlayerAvatar>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas {
+                let current = current_frame.0;
+                let next_index = if current == indices.last {
+                    indices.first
+                } else {
+                    current + 1
+                };
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
     }
 }
 
