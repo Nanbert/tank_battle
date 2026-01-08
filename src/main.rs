@@ -213,7 +213,7 @@ const VERTICAL_OFFSET: f32 = -50.0; // 垂直偏移，向下平移50像素
 const ARENA_WIDTH: f32 = ORIGINAL_WIDTH + LEFT_PADDING + RIGHT_PADDING; // 总宽度
 const ARENA_HEIGHT: f32 = ORIGINAL_HEIGHT + TOP_PADDING + BOTTOM_PADDING; // 总高度
 const TANK_WIDTH: f32 = 87.0;
-const TANK_HEIGHT: f32 = 103.0;
+const TANK_HEIGHT: f32 = 87.0;
 const TANK_SPEED: f32 = 300.0;
 const BULLET_SPEED: f32 = 900.0;
 const BULLET_SIZE: f32 = 10.0;
@@ -319,7 +319,8 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, (
             (collect_collision, move_enemy_tanks).chain(),
             move_player_tank,
-            animate_tank_texture,
+            animate_player_tank_texture,
+            animate_enemy_tank_texture,
             animate_player_avatar,
             animate_powerup_border,
             animate_powerup_texture,
@@ -646,6 +647,7 @@ fn spawn_player_tank(
             }
         ))
         .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
+        .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
         .insert(RigidBody::KinematicPositionBased)
@@ -675,7 +677,7 @@ fn spawn_enemy_tank(
         .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
         .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
         .insert(TargetRotation { angle: 270.0_f32.to_radians() })
-        .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+        .insert(AnimationTimer(Timer::from_seconds(0.25, TimerMode::Repeating)))
         .insert(Sprite::from_atlas_image(
             texture,
             TextureAtlas{
@@ -1170,29 +1172,36 @@ fn spawn_game_entities(
     // 生成堡垒
     spawn_fortress(&mut commands);
 
-    // 加载纹理和创建精灵图
-    let texture = asset_server.load("texture/tank_player.png");
-    let tile_size = UVec2::new(87, 103);
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
+    // 加载玩家坦克纹理和创建精灵图
+    let player_texture = asset_server.load("texture/player_tank_sprite.png");
+    let player_tile_size = UVec2::new(87, 87);
+    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 3, 1, None, None);
+    let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
+    let player_animation_indices = AnimationIndices { first: 0, last: 2 };
 
     // 生成玩家坦克
     let player_tank_entity = spawn_player_tank(
         &mut commands,
-        texture.clone(),
-        texture_atlas_layout.clone(),
-        animation_indices,
+        player_texture.clone(),
+        player_texture_atlas_layout.clone(),
+        player_animation_indices,
     );
+
+    // 加载敌方坦克纹理和创建精灵图
+    let enemy_texture = asset_server.load("texture/tank_player.png");
+    let enemy_tile_size = UVec2::new(87, 103);
+    let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 3, 1, None, None);
+    let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
+    let enemy_animation_indices = AnimationIndices { first: 0, last: 2 };
 
     // 生成敌方坦克
     let enemy_tank_entities: Vec<Entity> = ENEMY_BORN_PLACES
         .iter()
         .map(|&pos| spawn_enemy_tank(
             &mut commands,
-            texture.clone(),
-            texture_atlas_layout.clone(),
-            animation_indices,
+            enemy_texture.clone(),
+            enemy_texture_atlas_layout.clone(),
+            enemy_animation_indices,
             pos,
         ))
         .collect();
@@ -1847,13 +1856,16 @@ fn animate_powerup_texture(
     }
 }
 
-fn animate_tank_texture(
+fn animate_player_tank_texture(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &Velocity)>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &Velocity), With<PlayerTank>>,
 ) {
+    // 玩家坦克：只有移动时才刷新纹理
     for (mut timer, mut sprite, indices, velocity) in &mut query {
-        // 只有坦克在运动时才刷新纹理
-        if velocity.linvel.length() > 0.0 {
+        let speed = velocity.linvel.length();
+        let current_index = sprite.texture_atlas.as_ref().map(|atlas| atlas.index).unwrap_or(0);
+        
+        if speed > 0.0 {
             timer.tick(time.delta());
             if timer.just_finished()
                 && let Some(atlas) = &mut sprite.texture_atlas {
@@ -1864,13 +1876,31 @@ fn animate_tank_texture(
                     };
                 }
         } else {
-            // 坦克静止时，只在纹理索引不是第一帧时才重置
+            // 坦克静止时，重置为第一帧
             if let Some(atlas) = &mut sprite.texture_atlas
                 && atlas.index != indices.first {
                     atlas.index = indices.first;
                     timer.reset();
                 }
         }
+    }
+}
+
+fn animate_enemy_tank_texture(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices), With<EnemyTank>>,
+) {
+    // 敌方坦克：统一刷新
+    for (mut timer, mut sprite, indices) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = if atlas.index == indices.last {
+                    indices.first
+                } else {
+                    atlas.index + 1
+                };
+            }
     }
 }
 
@@ -2223,19 +2253,19 @@ fn handle_player_respawn(
 
         // 如果计时器结束，重生玩家
         if respawn_timer.just_finished() {
-            // 加载纹理
-            let texture = asset_server.load("texture/tank_player.png");
-            let tile_size = UVec2::new(87, 103);
-            let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-            let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-            let animation_indices = AnimationIndices { first: 0, last: 2 };
+            // 加载玩家坦克纹理
+            let player_texture = asset_server.load("texture/player_tank_sprite.png");
+            let player_tile_size = UVec2::new(87, 87);
+            let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 3, 1, None, None);
+            let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
+            let player_animation_indices = AnimationIndices { first: 0, last: 2 };
 
             // 重生玩家坦克
             let player_tank_entity = spawn_player_tank(
                 &mut commands,
-                texture,
-                texture_atlas_layout,
-                animation_indices,
+                player_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
             );
 
             // 允许玩家射击
