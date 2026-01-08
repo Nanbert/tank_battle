@@ -648,21 +648,14 @@ fn spawn_player_tank(
         .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
-        .insert(Velocity{
-            linvel: Vec2::new(0.0, 0.0),
-            angvel: 0.0,
-        })
-        .insert(RigidBody::Dynamic)
+        .insert(RigidBody::KinematicPositionBased)
         .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
         .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_STATIC)
+        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
         .insert(LockedAxes::ROTATION_LOCKED)
-        .insert(GravityScale(0.0))
-        .insert(Friction::new(0.0))
-        .insert(Restitution::new(0.0))
-        .insert(Damping {
-            linear_damping: 0.5,
-            angular_damping: 0.5,
+        .insert(KinematicCharacterController {
+            offset: CharacterLength::Absolute(0.01),
+            ..default()
         })
         .id()
 }
@@ -1971,9 +1964,9 @@ fn handle_game_over_delay(
 fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut Velocity, &mut RotationTimer, &mut TargetRotation), With<PlayerTank>>,
+    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation), With<PlayerTank>>,
 ) {
-    for (mut transform, mut velocity, mut rotation_timer, mut target_rotation) in &mut query {
+    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation) in &mut query {
         let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
         let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
         let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
@@ -2007,16 +2000,17 @@ fn move_player_tank(
                 false
             }
         } else {
-            velocity.linvel = Vec2::ZERO;
+            character_controller.translation = None;
             false
         };
 
-        // 应用速度（转向时保持一定速度，而不是完全停止）
-        if needs_rotation {
-            // 转向时保持 50% 速度，减少卡顿感
-            velocity.linvel = direction * (TANK_SPEED * 0.5);
-        } else if direction.length() > 0.0 {
-            velocity.linvel = direction * TANK_SPEED;
+        // 使用 KinematicCharacterController 的 translation 字段控制移动
+        // 转向时保持 50% 速度，减少卡顿感
+        let speed = if needs_rotation { TANK_SPEED * 0.5 } else { TANK_SPEED };
+        if direction.length() > 0.0 {
+            character_controller.translation = Some(direction * speed * time.delta_secs());
+        } else {
+            character_controller.translation = None;
         }
 
         // 只在需要旋转时才更新旋转计时器和计算旋转
