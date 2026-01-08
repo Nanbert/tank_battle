@@ -25,122 +25,11 @@ use bevy::{
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
+#[allow(clippy::wildcard_imports)]
 use constants::*;
+#[allow(clippy::wildcard_imports)]
 use resources::*;
 
-#[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-enum GameState {
-    #[default]
-    StartScreen,
-    FadingOut,
-    Playing,
-    Paused,
-    GameOver,
-}
-
-#[derive(Component)]
-struct StartScreenUI;
-
-#[derive(Component)]
-struct MenuOption {
-    index: usize,
-}
-
-#[derive(Component)]
-struct MenuArrow;
-
-#[derive(Component)]
-struct PauseUI;
-
-#[derive(Component)]
-struct GameOverUI;
-
-#[derive(Component, Copy, Clone)]
-struct AnimationIndices {
-    first: usize,
-    last: usize,
-}
-
-#[derive(Component, Deref, DerefMut)]
-struct AnimationTimer(Timer);
-
-#[derive(Component, Deref, DerefMut)]
-struct CurrentAnimationFrame(usize);
-
-#[derive(Component, Deref, DerefMut)]
-struct DirectionChangeTimer(Timer);
-
-#[derive(Component, Deref, DerefMut)]
-struct CollisionCooldownTimer(Timer);
-
-#[derive(Component, Deref, DerefMut)]
-struct RotationTimer(Timer);
-
-#[derive(Component)]
-struct TargetRotation {
-    angle: f32,
-}
-
-#[derive(Component, Copy, Clone)]
-struct EnemyTank {
-    direction: Vec2,
-}
-
-#[derive(Component)]
-struct PlayerTank;
-
-#[derive(Component)]
-struct PlayerAvatar;
-
-#[derive(Component)]
-struct PlayerDead;
-
-#[derive(Component)]
-struct Bullet;
-
-#[derive(Component)]
-struct BulletOwner {
-    owner: Entity,
-}
-
-#[derive(Component)]
-struct Explosion;
-
-#[derive(Component)]
-struct Spark;
-
-#[derive(Component)]
-struct GameOverTimer;
-
-#[derive(Component)]
-struct Wall;
-
-#[derive(Component)]
-struct Fortress;
-
-#[derive(Component)]
-struct PowerUp;
-
-#[derive(Component)]
-struct PowerUpBorder;
-
-#[derive(Component)]
-struct PlayerInfoText;
-
-#[derive(Component)]
-struct GameInfoText;
-
-#[derive(Component)]
-struct HealthBar;
-
-#[derive(Component)]
-struct BlueBar;
-
-#[derive(Component, Deref, DerefMut)]
-struct PlayerInfoBlinkTimer(Timer);
-
-#[derive(Resource, Deref, DerefMut)]
-struct PlayerRespawnTimer(Timer);
 
 
 
@@ -150,7 +39,7 @@ fn configure_window_plugin() -> WindowPlugin {
             title: "For Communism!".into(),
             name: Some("bevy.app".into()),
             #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-            resolution: (ARENA_WIDTH as u32, ARENA_HEIGHT as u32).into(),
+            resolution: (WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32).into(),
             present_mode: PresentMode::AutoVsync,
             fit_canvas_to_parent: true,
             prevent_default_event_handling: false,
@@ -176,7 +65,6 @@ fn configure_asset_plugin() -> AssetPlugin {
 
 fn configure_game_resources(app: &mut App) {
     app.init_state::<GameState>()
-        .init_resource::<ColliderEventSet>()
         .init_resource::<CanFire>()
         .init_resource::<BulletOwners>()
         .init_resource::<StartAnimationFrames>()
@@ -184,47 +72,21 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<CurrentMenuSelection>()
         .init_resource::<GameStarted>()
         .init_resource::<MenuBlinkTimer>()
-        .init_resource::<ShouldCleanup>()
-        .insert_resource(Score(0))
-        .insert_resource(Life(3))
-        .insert_resource(PlayerSpeed(40))
-        .insert_resource(PlayerInfoData {
-            speed: 40,
-            fire_speed: 40,
-            protection: 40,
-            shells: 1,
-            penetrate: false,
-            track_chain: false,
-            air_cushion: false,
-            fire_shell: false,
-        })
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
 
 fn register_game_systems(app: &mut App) {
-    app.add_systems(OnEnter(GameState::StartScreen), spawn_start_screen)
+    app.add_systems(OnEnter(GameState::StartScreen), (cleanup_playing_entities, spawn_start_screen).chain())
         .add_systems(OnEnter(GameState::FadingOut), setup_fade_out)
-        .add_systems(OnEnter(GameState::Playing), (
-            reset_player_info,
-            spawn_game_entities,
-        ))
+        .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
         .add_systems(OnEnter(GameState::Paused), spawn_pause_ui)
-        .add_systems(OnExit(GameState::Paused), (
-            despawn_pause_ui,
-            cleanup_game_entities,
-        ))
+        .add_systems(OnExit(GameState::Paused), ( despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), spawn_game_over_ui)
-        .add_systems(OnExit(GameState::GameOver), (
-            |mut should_cleanup: ResMut<ShouldCleanup>| {
-                should_cleanup.0 = true;
-            },
-            despawn_game_over_ui,
-            cleanup_game_entities,
-        ).chain())
+        .add_systems(OnExit(GameState::GameOver), (despawn_game_over_ui, cleanup_playing_entities))
         .add_systems(Startup, setup)
         .add_systems(Update, (
-            (collect_collision, move_enemy_tanks).chain(),
+            (move_enemy_tanks).chain(),
             move_player_tank,
             animate_player_tank_texture,
             animate_enemy_tank_texture,
@@ -241,9 +103,8 @@ fn register_game_systems(app: &mut App) {
             check_bullet_destruction,
             handle_bullet_collisions,
             handle_powerup_collision,
-            update_score_display,
+            update_player_info_display,
             update_health_bar,
-            handle_player_respawn,
         ).run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
@@ -255,8 +116,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, handle_game_input.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_pause_input.run_if(in_state(GameState::Paused)))
         .add_systems(Update, (handle_game_over_input, update_menu_highlight, update_option_colors)
-            .chain()
-            .run_if(in_state(GameState::GameOver)))
+            .chain().run_if(in_state(GameState::GameOver)))
         .add_systems(Update, update_menu_highlight.run_if(in_state(GameState::GameOver)))
         .add_systems(Update, update_option_colors.run_if(in_state(GameState::GameOver)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
@@ -424,12 +284,13 @@ fn spawn_walls(commands: &mut Commands) {
     // 左墙（在原游戏区域左边界，向下平移40像素）
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(0.1, ORIGINAL_HEIGHT / 200.0),
+        Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
         Transform{
-            translation: Vec3::new(-ORIGINAL_WIDTH / 2.0 - 5.0, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(10.0 , ORIGINAL_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_LEFT_X - 5.0, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(10.0 , MAP_HEIGHT, 1.0),
             ..default()
         }
     ));
@@ -437,12 +298,13 @@ fn spawn_walls(commands: &mut Commands) {
     // 右墙（在原游戏区域右边界，向下平移40像素）
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(0.1, ORIGINAL_HEIGHT / 200.0),
+        Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
         Transform{
-            translation: Vec3::new(ORIGINAL_WIDTH / 2.0 + 5.0, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(10.0 , ORIGINAL_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_RIGHT_X + 5.0, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(10.0 , MAP_HEIGHT, 1.0),
             ..default()
         }
     ));
@@ -450,12 +312,13 @@ fn spawn_walls(commands: &mut Commands) {
     // 上墙（在原游戏区域上边界，向下平移40像素）
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(ORIGINAL_WIDTH / 200.0, 0.1),
+        Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, ORIGINAL_HEIGHT / 2.0 + 5.0 + VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(ORIGINAL_WIDTH, 10.0, 1.0),
+            translation: Vec3::new(0.0, MAP_TOP_Y + 5.0, 0.0),
+            scale: Vec3::new(MAP_WIDTH, 10.0, 1.0),
             ..default()
         }
     ));
@@ -463,24 +326,26 @@ fn spawn_walls(commands: &mut Commands) {
     // 下墙（在原游戏区域下边界，向下平移40像素）
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
-        Collider::cuboid(ORIGINAL_WIDTH / 200.0, 0.1),
+        Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, -ORIGINAL_HEIGHT / 2.0 -5.0 + VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(ORIGINAL_WIDTH, 10.0 , 1.0),
+            translation: Vec3::new(0.0, MAP_BOTTOM_Y -5.0, 0.0),
+            scale: Vec3::new(MAP_WIDTH, 10.0 , 1.0),
             ..default()
         }
     ));
 }
 
 fn spawn_fortress(commands: &mut Commands) {
-    let fortress_y = -ORIGINAL_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0 + VERTICAL_OFFSET;
+    let fortress_y = MAP_BOTTOM_Y + FORTRESS_SIZE / 2.0 + 20.0 ;
     let fortress_x = 0.0;
 
     // 堡垒主体（红色五角星）
     commands.spawn((
         Fortress,
+        PlayingEntity,
         Sprite {
             color: Color::srgb(1.0, 0.0, 0.0),
             custom_size: Some(Vec2::new(FORTRESS_SIZE, FORTRESS_SIZE)),
@@ -497,6 +362,7 @@ fn spawn_fortress(commands: &mut Commands) {
     // 堡垒保护墙 - 左墙
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(WALL_THICKNESS / 200.0, FORTRESS_SIZE / 200.0),
@@ -510,6 +376,7 @@ fn spawn_fortress(commands: &mut Commands) {
     // 堡垒保护墙 - 右墙
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(WALL_THICKNESS / 200.0, FORTRESS_SIZE / 200.0),
@@ -523,6 +390,7 @@ fn spawn_fortress(commands: &mut Commands) {
     // 堡垒保护墙 - 上墙
     commands.spawn((
         Wall,
+        PlayingEntity,
         Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(FORTRESS_SIZE / 200.0, WALL_THICKNESS / 200.0),
@@ -534,18 +402,33 @@ fn spawn_fortress(commands: &mut Commands) {
     ));
 }
 
-fn spawn_player_tank(
+fn spawn_player1_tank(
     commands: &mut Commands,
     texture: Handle<Image>,
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
-) -> Entity {
-    let fortress_y = -ORIGINAL_HEIGHT / 2.0 + FORTRESS_SIZE / 2.0 + 20.0 + VERTICAL_OFFSET;
+) -> (Entity, PlayerTank) {
+    let player_tank = PlayerTank{
+        score:0,
+        index: 0,
+        name: "player1".to_string(),
+        speed: 40,
+        fire_speed: 40,
+        protection: 40,
+        shells: 1,
+        penetrate: false,
+        track_chain: false,
+        air_cushion: false,
+        fire_shell:false,
+        life_red_bar: 3,
+        energy_blue_bar: 100,
+    };
 
-    commands.spawn_empty()
-        .insert(PlayerTank)
+    let entity = commands.spawn_empty()
+        .insert(player_tank.clone())
+        .insert(PlayingEntity)
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation { angle: 270.0_f32.to_radians() })
+        .insert(TargetRotation { angle: 180.0_f32.to_radians() })
         .insert(Sprite::from_atlas_image(
             texture,
             TextureAtlas{
@@ -553,7 +436,7 @@ fn spawn_player_tank(
                 index: animation_indices.first,
             }
         ))
-        .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, fortress_y, 0.0))
+        .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
@@ -566,7 +449,9 @@ fn spawn_player_tank(
             offset: CharacterLength::Absolute(0.01),
             ..default()
         })
-        .id()
+        .id();
+
+    (entity, player_tank)
 }
 
 fn spawn_enemy_tank(
@@ -580,6 +465,7 @@ fn spawn_enemy_tank(
         .insert(EnemyTank {
             direction: Vec2::new(0.0, -1.0),
         })
+        .insert(PlayingEntity)
         .insert(DirectionChangeTimer(Timer::from_seconds(2.0, TimerMode::Once)))
         .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
         .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
@@ -609,117 +495,62 @@ fn spawn_enemy_tank(
         .id()
 }
 
-#[allow(clippy::too_many_lines)]
-fn reset_player_info(
-    mut score: ResMut<Score>,
-    mut life: ResMut<Life>,
-    mut player_speed: ResMut<PlayerSpeed>,
-    mut player_info: ResMut<PlayerInfoData>,
-) {
-    **score = 0;
-    **life = 3;
-    player_speed.0 = 40;
-    player_info.speed = 40;
-    player_info.fire_speed = 40;
-    player_info.protection = 40;
-    player_info.shells = 1;
-    player_info.penetrate = false;
-    player_info.track_chain = false;
-    player_info.air_cushion = false;
-    player_info.fire_shell = false;
-}
-
-fn spawn_player_info(
+fn spawn_player1_info(
     commands: &mut Commands,
+    player_tank: &PlayerTank,
     font: &Handle<Font>,
-    player_info: &PlayerInfoData,
     asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
     // 生成玩家1 UI 元素
     for config in PLAYER1_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, player_info, asset_server, texture_atlas_layouts, config);
+        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts,config,player_tank);
     }
+}
 
-    // 生成玩家2 UI 元素
-    for config in PLAYER2_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, player_info, asset_server, texture_atlas_layouts, config);
-    }
-
-    // 生成其他游戏信息 UI 元素
-    for config in OTHER_GAME_INFO_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, player_info, asset_server, texture_atlas_layouts, config);
-    }
+fn spawn_top_text_info(
+    commands: &mut Commands,
+    font: &Handle<Font>,
+) {
+    // 其他游戏信息 UI 元素配置
+    commands.spawn((
+        PlayingEntity,
+        Text2d("Commander Life:".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(WINDOW_LEFT_X + 465.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+    commands.spawn((
+        PlayingEntity,
+        Text2d("Enemy Left: 20/20".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(WINDOW_RIGHT_X - 465.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
 }
 
 fn spawn_ui_element_from_config(
     commands: &mut Commands,
     font: &Handle<Font>,
-    player_info: &PlayerInfoData,
     asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     config: &UIElementConfig,
+    player_tank: &PlayerTank,
 ) {
     match config.element_type {
-        UIElementType::StaticText(s) => {
-            if config.is_player_info {
-                commands.spawn((
-                    PlayerInfoText,
-                    Text2d(s.to_string()),
-                    TextFont {
-                        font_size: config.font_size,
-                        font: font.clone(),
-                        ..default()
-                    },
-                    TextColor(Color::srgb(1.0, 1.0, 1.0)),
-                    Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
-                ));
-            } else {
-                commands.spawn((
-                    GameInfoText,
-                    Text2d(s.to_string()),
-                    TextFont {
-                        font_size: config.font_size,
-                        font: font.clone(),
-                        ..default()
-                    },
-                    TextColor(Color::srgb(1.0, 1.0, 1.0)),
-                    Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
-                ));
-            }
-        }
-        UIElementType::DynamicText(f) => {
-            let text = f(player_info);
-            if config.is_player_info {
-                commands.spawn((
-                    PlayerInfoText,
-                    Text2d(text),
-                    TextFont {
-                        font_size: config.font_size,
-                        font: font.clone(),
-                        ..default()
-                    },
-                    TextColor(Color::srgb(1.0, 1.0, 1.0)),
-                    Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
-                ));
-            } else {
-                commands.spawn((
-                    GameInfoText,
-                    Text2d(text),
-                    TextFont {
-                        font_size: config.font_size,
-                        font: font.clone(),
-                        ..default()
-                    },
-                    TextColor(Color::srgb(1.0, 1.0, 1.0)),
-                    Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
-                ));
-            }
-        }
-        UIElementType::ScoreText(player_index) => {
-            let text = format!("Scores{}:0", player_index + 1);
+        UIElementType::NormalText(f) => {
+            let text = f(player_tank);
             commands.spawn((
-                GameInfoText,
+                PlayerIndex(player_tank.index),
+                PlayingEntity,
                 Text2d(text),
                 TextFont {
                     font_size: config.font_size,
@@ -727,17 +558,19 @@ fn spawn_ui_element_from_config(
                     ..default()
                 },
                 TextColor(Color::srgb(1.0, 1.0, 1.0)),
-                Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
+                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
-        UIElementType::PlayerAvatar(_player_index) => {
+        UIElementType::PlayerAvatar => {
             let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
             let player_avatar_tile_size = UVec2::new(120, 112);
             let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 4, None, None);
             let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
             let player_avatar_animation_indices = AnimationIndices { first: 0, last: 51 };
             commands.spawn((
+                PlayerIndex(player_tank.index),
                 PlayerAvatar,
+                PlayingEntity,
                 Sprite {
                     image: player_avatar_texture,
                     texture_atlas: Some(TextureAtlas {
@@ -747,32 +580,37 @@ fn spawn_ui_element_from_config(
                     custom_size: Some(Vec2::new(120.0, 112.0)),
                     ..default()
                 },
-                Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
+                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
                 player_avatar_animation_indices,
                 AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
                 CurrentAnimationFrame(0),
             ));
         }
-        UIElementType::HealthBar(_player_index) => {
+        UIElementType::HealthBar => {
             commands.spawn((
+                PlayerIndex(player_tank.index),
                 HealthBar,
+                HealthBarOriginalPosition(config.x_pos),
+                PlayingEntity,
                 Sprite {
                     color: Color::srgb(1.0, 0.0, 0.0),
                     custom_size: Some(Vec2::new(100.0, 10.0)),
                     ..default()
                 },
-                Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
+                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
-        UIElementType::BlueBar(_player_index) => {
+        UIElementType::BlueBar => {
             commands.spawn((
+                PlayerIndex(player_tank.index),
                 BlueBar,
+                PlayingEntity,
                 Sprite {
                     color: Color::srgb(0.0, 0.5, 1.0),
                     custom_size: Some(Vec2::new(100.0, 10.0)),
                     ..default()
                 },
-                Transform::from_xyz(config.x_offset, config.y_offset, 1.0),
+                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
     }
@@ -797,6 +635,7 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
         // 白色边框
         commands.spawn((
             PowerUpBorder,
+            PlayingEntity,
             Sprite {
                 color: Color::WHITE,
                 custom_size: Some(Vec2::new(87.0 + 6.0, 69.0 + 6.0)),
@@ -808,6 +647,7 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
 
         commands.spawn((
             PowerUp,
+            PlayingEntity,
             Sprite::from_atlas_image(
                 power_up_texture.clone(),
                 TextureAtlas {
@@ -834,7 +674,6 @@ fn spawn_game_entities(
     mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
     mut game_started: ResMut<GameStarted>,
-    player_info: Res<PlayerInfoData>,
 ) {
     // 如果游戏已经启动过，就不再生成实体
     if game_started.0 {
@@ -857,14 +696,18 @@ fn spawn_game_entities(
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
     let player_animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    // 生成玩家坦克
-    let player_tank_entity = spawn_player_tank(
+    // 生成玩家坦克（暂时只生成玩家1）
+    let (player1_tank_entity, player_tank) = spawn_player1_tank(
         &mut commands,
-        player_texture.clone(),
-        player_texture_atlas_layout.clone(),
+        player_texture,
+        player_texture_atlas_layout,
         player_animation_indices,
     );
 
+    // 加载字体
+    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    spawn_player1_info(&mut commands, &player_tank, &font, &asset_server, &mut texture_atlas_layouts);
+    spawn_top_text_info(&mut commands, &font);
     // 加载敌方坦克纹理和创建精灵图
     let enemy_texture = asset_server.load("texture/tank_player.png");
     let enemy_tile_size = UVec2::new(87, 103);
@@ -888,12 +731,8 @@ fn spawn_game_entities(
     for entity in enemy_tank_entities {
         can_fire.0.insert(entity);
     }
-    can_fire.0.insert(player_tank_entity);
-
-    // 生成玩家信息文字、头像和血条
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
-    spawn_player_info(&mut commands, &font, &player_info, &asset_server, &mut texture_atlas_layouts);
-
+    can_fire.0.insert(player1_tank_entity);
+    
     // 生成道具
     spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts);
 }
@@ -953,19 +792,6 @@ fn setup(
 ) {
     // 创建全局相机
     commands.spawn(Camera2d);
-}
-fn collect_collision(
-    mut collision_events: MessageReader<CollisionEvent>,
-    mut collision_set: ResMut<ColliderEventSet>,
-)
-{
-    collision_set.entities.clear();
-    for event in collision_events.read(){
-        if let CollisionEvent::Started(e1, e2, _) = event{
-            collision_set.entities.insert(*e1);
-            collision_set.entities.insert(*e2);
-        }
-    }
 }
 
 fn detect_enemy_tank_collision(
@@ -1169,6 +995,7 @@ fn shoot_bullets(
                 // 生成子弹
                 let bullet_entity = commands.spawn((
                     Bullet,
+                    PlayingEntity,
                     BulletOwner { owner: entity },
                     Sprite {
                         color: Color::srgb(1.0, 1.0, 1.0),
@@ -1206,8 +1033,8 @@ fn check_bullet_bounds(
         let y = transform.translation.y;
 
         // 检查子弹是否超出游戏窗口边界
-        if !(-ARENA_WIDTH / 2.0..=ARENA_WIDTH / 2.0).contains(&x) ||
-           !(-ARENA_HEIGHT / 2.0..=ARENA_HEIGHT / 2.0).contains(&y) {
+        if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x) ||
+           !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y) {
             commands.entity(entity).despawn();
         }
     }
@@ -1231,7 +1058,7 @@ fn find_bullet_and_tank_in_collision(
     e2: Entity,
     bullets: &Query<(Entity, &BulletOwner), With<Bullet>>,
     enemy_tanks: &Query<(), With<EnemyTank>>,
-    player_tanks: &Query<(), With<PlayerTank>>,
+    player_tanks: &Query<&mut PlayerTank, With<PlayerTank>>,
 ) -> Option<(Entity, Entity)> {
     if bullets.get(e1).is_ok() && (enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok()) {
         return Some((e1, e2));
@@ -1246,7 +1073,7 @@ fn should_bullet_destroy(
     bullet_owner: Entity,
     tank_entity: Entity,
     enemy_tanks: &Query<(), With<EnemyTank>>,
-    player_tanks: &Query<(), With<PlayerTank>>,
+    player_tanks: &Query<&mut PlayerTank, With<PlayerTank>>,
 ) -> bool {
     let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
     let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
@@ -1276,6 +1103,7 @@ fn spawn_explosion(
 
     commands.spawn((
         Explosion,
+        PlayingEntity,
         Sprite::from_atlas_image(
             explosion_texture,
             TextureAtlas {
@@ -1304,6 +1132,7 @@ fn spawn_spark(
 
     commands.spawn((
         Spark,
+        PlayingEntity,
         Sprite {
             image: spark_texture,
             custom_size: Some(Vec2::new(87.0, 83.6)),
@@ -1322,11 +1151,9 @@ fn handle_bullet_collisions(
     bullets: Query<(Entity, &BulletOwner), With<Bullet>>,
     enemy_tanks: Query<(), With<EnemyTank>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
-    player_tanks: Query<(), With<PlayerTank>>,
+    mut player_tanks: Query<&mut PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: Query<Entity, With<PlayerAvatar>>,
-    mut score: ResMut<Score>,
-    mut life: ResMut<Life>,
+    player_avatars: Query<(Entity, &PlayerIndex)>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -1357,8 +1184,10 @@ fn handle_bullet_collisions(
                         commands.entity(tank_entity).despawn();
 
                         // 增加分数
-                        **score += 100;
+                        let mut player_tank = player_tanks.get_mut(bullet_owner).expect("无法获取玩家坦克!");
+                        player_tank.score += 100;
                     } else if !is_player_bullet && is_player_tank {
+                        let mut player_tank = player_tanks.get_mut(tank_entity).expect("无法获取玩家坦克!");
                         // 敌方子弹击中玩家坦克
                         // 播放中弹音效
                         let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
@@ -1369,13 +1198,11 @@ fn handle_bullet_collisions(
                             spawn_spark(&mut commands, &asset_server, tank_transform.translation);
                         }
 
-                        // 扣除生命值
-                        if **life > 0 {
-                            **life -= 1;
+                        // 扣除对应玩家的生命值
+                        if player_tank.life_red_bar > 0 {
+                            player_tank.life_red_bar -= 1;
                         }
-
-                        // 如果生命值为 0，玩家死亡
-                        if **life == 0 {
+                        if player_tank.life_red_bar == 0{
                             // 获取玩家坦克的位置
                             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
                                 // 生成爆炸效果
@@ -1385,11 +1212,12 @@ fn handle_bullet_collisions(
                             // 销毁玩家坦克
                             commands.entity(tank_entity).despawn();
 
-                            // 标记玩家头像为死亡状态
-                            for avatar_entity in player_avatars.iter() {
-                                commands.entity(avatar_entity).insert(PlayerDead);
+                            // 标记对应玩家的头像为死亡状态
+                            for (avatar_entity, player_index) in player_avatars.iter() {
+                                if player_index.0 == player_tank.index {
+                                    commands.entity(avatar_entity).insert(PlayerDead);
+                                }
                             }
-
                             // 启动 Game Over 延迟计时器（2秒）
                             commands.spawn((
                                 GameOverTimer,
@@ -1397,7 +1225,6 @@ fn handle_bullet_collisions(
                             ));
                         }
                     }
-
                     // 销毁子弹
                     commands.entity(bullet_entity).despawn();
                 }
@@ -1408,59 +1235,48 @@ fn handle_bullet_collisions(
 
 fn handle_powerup_collision(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
     asset_server: Res<AssetServer>,
     powerups: Query<(Entity, &Transform), With<PowerUp>>,
     powerup_borders: Query<(Entity, &Transform), With<PowerUpBorder>>,
-    player_tanks: Query<(), With<PlayerTank>>,
-    player_info_texts: Query<(Entity, &Text2d), With<PlayerInfoText>>,
-    mut player_speed: ResMut<PlayerSpeed>,
+    player_tanks: Query<(&Transform, &mut PlayerTank), With<PlayerTank>>,
+    player_info_texts: Query<(Entity, &Text2d), With<Text2d>>,
 ) {
-    for event in collision_events.read() {
-        if let CollisionEvent::Started(e1, e2, _) = event {
-            // 检查是否是玩家坦克与道具的碰撞
-            let (powerup_entity, powerup_transform) = if powerups.get(*e1).is_ok() && player_tanks.get(*e2).is_ok() {
-                (*e1, powerups.get(*e1).unwrap().1)
-            } else if powerups.get(*e2).is_ok() && player_tanks.get(*e1).is_ok() {
-                (*e2, powerups.get(*e2).unwrap().1)
-            } else {
-                continue;
-            };
-
-            // 播放道具音效
-            let powerup_sound: Handle<AudioSource> = asset_server.load("powerup_sound.ogg");
-            commands.spawn(AudioPlayer::new(powerup_sound));
-
+    for (tank_transform, mut player_tank) in player_tanks{
+        let mut is_power_up:bool = false;
+        // 销毁texture
+        for (powerup_entity, powerup_transform) in powerups{
+            let distance = (powerup_transform.translation - tank_transform.translation).length();
+            if distance < 81.0 {
+                // 播放道具音效
+                let powerup_sound: Handle<AudioSource> = asset_server.load("powerup_sound.ogg");
+                commands.spawn(AudioPlayer::new(powerup_sound));
+                commands.entity(powerup_entity).despawn();
+                is_power_up = true;
+            }
             // 销毁道具
-            commands.entity(powerup_entity).despawn();
-
-            // 只销毁对应位置的白色边框
-            for (border_entity, border_transform) in powerup_borders.iter() {
-                // 检查边框是否在道具附近（位置相近）
-                let distance = (powerup_transform.translation - border_transform.translation).length();
-                if distance < 1.0 {
-                    commands.entity(border_entity).despawn();
-                    break;
-                }
+        }
+        // 销毁对应位置的白色边框
+        for (border_entity, border_transform) in powerup_borders.iter() {
+            // 检查边框是否在道具附近（位置相近）
+            let distance = (tank_transform.translation - border_transform.translation).length();
+            if distance < 81.0 {
+                commands.entity(border_entity).despawn();
+                is_power_up = true;
             }
+        }
+        if !is_power_up{
+            continue;
+        }
+        // 增加速度
+        if player_tank.speed < 100 {
+            player_tank.speed += 20;
+        }
 
-            // 增加速度
-            if player_speed.0 < 100 {
-                player_speed.0 += 20;
-            }
-
-            // 更新 Speed 文字显示
-            for (entity, text) in player_info_texts.iter() {
-                if text.0.starts_with("Speed:") {
-                    let speed_text = if player_speed.0 >= 100 {
-                        "Speed:MAX".to_string()
-                    } else {
-                        format!("Speed:{}%", player_speed.0)
-                    };
-                    commands.entity(entity).insert(Text2d(speed_text));
-                    commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
-                    break;
-                }
+        // 闪烁文字
+        for (entity, text) in player_info_texts.iter() {
+            if text.0.starts_with("Speed:") {
+                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                break;
             }
         }
     }
@@ -1487,7 +1303,7 @@ fn animate_powerup_border(
 fn animate_player_info_text(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor), With<PlayerInfoText>>,
+    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor), With<Text2d>>,
 ) {
     for (entity, mut timer, mut color) in &mut query {
         timer.tick(time.delta());
@@ -1538,25 +1354,23 @@ fn animate_player_tank_texture(
     // 玩家坦克：只有移动时才刷新纹理
     for (mut timer, mut sprite, indices, velocity) in &mut query {
         let speed = velocity.linvel.length();
-        let current_index = sprite.texture_atlas.as_ref().map(|atlas| atlas.index).unwrap_or(0);
-        
-        if speed > 0.0 {
-            timer.tick(time.delta());
-            if timer.just_finished()
-                && let Some(atlas) = &mut sprite.texture_atlas {
-                    atlas.index = if atlas.index == indices.last {
-                        indices.first
-                    } else {
-                        atlas.index + 1
-                    };
-                }
+        if sprite.texture_atlas.is_none() {
+            continue;
+        }
+        let atlas = sprite.texture_atlas.as_mut().expect("玩家坦克没有纹理！");
+        if speed <= 0.0 {
+            atlas.index = indices.last;
+            timer.reset();
         } else {
-            // 坦克静止时，重置为第一帧
-            if let Some(atlas) = &mut sprite.texture_atlas
-                && atlas.index != indices.first {
-                    atlas.index = indices.first;
-                    timer.reset();
-                }
+            timer.tick(time.delta());
+            if !timer.just_finished() {
+                continue;
+            }
+            atlas.index = if atlas.index == indices.last {
+                indices.first
+            } else {
+                atlas.index + 1
+            }
         }
     }
 }
@@ -1767,6 +1581,7 @@ fn player_shoot_bullet(
             // 生成玩家子弹
             let bullet_entity = commands.spawn((
                 Bullet,
+                PlayingEntity,
                 BulletOwner { owner: entity },
                 Sprite {
                     color: Color::srgb(1.0, 1.0, 1.0),
@@ -1887,70 +1702,49 @@ fn update_option_colors(
     }
 }
 
-fn update_score_display(
-    mut commands: Commands,
-    score: Res<Score>,
-    mut query: Query<(Entity, &Text2d), Without<PlayerInfoText>>,
+fn update_player_info_display(
+    mut text2ds: Query<(&PlayerIndex, &mut Text2d), With<Text2d>>,
+    player_tanks: Query<&PlayerTank, With<PlayerTank>>,
 ) {
-    for (entity, text) in &mut query {
-        if text.0.starts_with("Scores1:") {
-            let new_text = format!("Scores1:{}", **score);
-            commands.entity(entity).insert(Text2d(new_text));
+    for player_tank in player_tanks {
+        for (player_index, mut text) in &mut text2ds {
+            if player_tank.index != player_index.0{
+                continue;
+            }
+            //更新文字
+            if text.0.starts_with("Scores"){
+                let key_words = format!("Scores{}:", (player_index.0+1).to_string());
+                text.0 = key_words;
+            } else if text.0.starts_with("Speed"){
+                let key_words = if player_tank.speed<100{
+                    format!("Speed: {}%", player_tank.speed)
+                } else{
+                    format!("Speed: Max")
+                };
+                text.0 = key_words;
+            }
         }
     }
 }
 
 fn update_health_bar(
-    life: Res<Life>,
-    mut query: Query<&mut Sprite, With<HealthBar>>,
+    mut health_bars: Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform), With<HealthBar>>,
+    player_tanks: Query<&PlayerTank, With<PlayerTank>>,
 ) {
-    for mut sprite in &mut query {
-        // 血条总宽度 100，生命值 3，每条代表 1/3
-        let health_width = (**life as f32 / 3.0) * 100.0;
-        sprite.custom_size = Some(Vec2::new(health_width, 10.0));
-    }
-}
+    for (mut sprite, original_pos, mut transform) in &mut health_bars {
+        for player_tank in player_tanks{
+            // 血条总宽度 100，生命值 3，每条代表 1/3
+            let health_width = (player_tank.life_red_bar as f32 / 3.0) * 100.0;
+            sprite.custom_size = Some(Vec2::new(health_width, 10.0));
 
-fn handle_player_respawn(
-    time: Res<Time>,
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    asset_server: Res<AssetServer>,
-    player_tanks: Query<(), With<PlayerTank>>,
-    mut respawn_timer: ResMut<PlayerRespawnTimer>,
-    life: Res<Life>,
-    mut can_fire: ResMut<CanFire>,
-) {
-    // 检查玩家是否死亡（没有玩家坦克实体）
-    if player_tanks.is_empty() && **life > 0 {
-        // 更新重生计时器
-        respawn_timer.tick(time.delta());
-
-        // 如果计时器结束，重生玩家
-        if respawn_timer.just_finished() {
-            // 加载玩家坦克纹理
-            let player_texture = asset_server.load("texture/player_tank_sprite.png");
-            let player_tile_size = UVec2::new(87, 87);
-            let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 3, 1, None, None);
-            let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
-            let player_animation_indices = AnimationIndices { first: 0, last: 2 };
-
-            // 重生玩家坦克
-            let player_tank_entity = spawn_player_tank(
-                &mut commands,
-                player_texture,
-                player_texture_atlas_layout,
-                player_animation_indices,
-            );
-
-            // 允许玩家射击
-            can_fire.0.insert(player_tank_entity);
-
-            // 重置计时器
-            respawn_timer.reset();
+            // 左对齐：将血条向左移动，使其从左边界开始
+            // 原始位置是中心点，需要向左偏移 (100 - health_width) / 2
+            let offset = (100.0 - health_width) / 2.0;
+            transform.translation.x = original_pos.0 - offset;
         }
     }
 }
+
 
 fn update_menu_blink(
     time: Res<Time>,
@@ -2048,16 +1842,13 @@ fn handle_game_input(
 fn handle_pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut should_cleanup: ResMut<ShouldCleanup>,
 ) {
     // Space 键恢复游戏
     if keyboard_input.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Playing);
-        should_cleanup.0 = false;
     }
     // B 键返回菜单
     if keyboard_input.just_pressed(KeyCode::KeyB) {
-        should_cleanup.0 = true;
         next_state.set(GameState::StartScreen);
     }
     // Esc 键退出
@@ -2196,70 +1987,13 @@ fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOv
         commands.entity(entity).despawn();
     }
 }
-
-fn cleanup_game_entities(
+// 清理游戏过程中的所有entity
+fn cleanup_playing_entities(
     mut commands: Commands,
-    should_cleanup: Res<ShouldCleanup>,
-    player_tanks: Query<Entity, With<PlayerTank>>,
-    enemy_tanks: Query<Entity, With<EnemyTank>>,
-    walls: Query<Entity, With<Wall>>,
-    fortress: Query<Entity, With<Fortress>>,
-    powerups: Query<Entity, With<PowerUp>>,
-    powerup_borders: Query<Entity, With<PowerUpBorder>>,
-    bullets: Query<Entity, With<Bullet>>,
-    explosions: Query<Entity, With<Explosion>>,
-    sparks: Query<Entity, With<Spark>>,
-    health_bars: Query<Entity, With<HealthBar>>,
-    blue_bars: Query<Entity, With<BlueBar>>,
-    player_info_texts: Query<Entity, With<PlayerInfoText>>,
-    player_avatars: Query<Entity, With<PlayerAvatar>>,
-    game_info_texts: Query<Entity, With<GameInfoText>>,
+    playing_entities: Query<Entity, With<PlayingEntity>>,
 ) {
-    // 只有当 ShouldCleanup 为 true 时才清理实体
-    if !should_cleanup.0 {
-        return;
-    }
     // 清理所有游戏实体
-    for entity in player_tanks.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in enemy_tanks.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in walls.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in fortress.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in powerups.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in powerup_borders.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in bullets.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in explosions.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in sparks.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in health_bars.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in blue_bars.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in player_info_texts.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in player_avatars.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in game_info_texts.iter() {
+    for entity in playing_entities.iter() {
         commands.entity(entity).despawn();
     }
 }

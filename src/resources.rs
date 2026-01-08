@@ -3,32 +3,6 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Resource, Deref, DerefMut)]
-pub struct Score(pub usize);
-
-#[derive(Resource, Deref, DerefMut)]
-pub struct Life(pub usize);
-
-#[derive(Resource, Default)]
-pub struct PlayerInfoData {
-    pub speed: usize,
-    pub fire_speed: usize,
-    pub protection: usize,
-    pub shells: usize,
-    pub penetrate: bool,
-    pub track_chain: bool,
-    pub air_cushion: bool,
-    pub fire_shell: bool,
-}
-
-#[derive(Resource, Default)]
-pub struct ColliderEventSet{
-    pub entities: HashSet<Entity>,
-}
-
-#[derive(Resource, Default)]
-pub struct PlayerSpeed(pub usize);
-
 #[derive(Resource, Default)]
 pub struct CanFire(pub HashSet<Entity>);
 
@@ -63,9 +37,3 @@ pub struct GameStarted(pub bool);
 
 #[derive(Resource, Default)]
 pub struct MenuBlinkTimer(pub Timer);
-
-#[derive(Resource, Default)]
-pub struct ShouldCleanup(pub bool);
-
-#[derive(Resource, Deref, DerefMut)]
-pub struct PlayerRespawnTimer(pub Timer);
