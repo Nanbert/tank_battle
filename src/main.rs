@@ -91,7 +91,6 @@ fn register_game_systems(app: &mut App) {
             animate_player_tank_texture,
             animate_enemy_tank_texture,
             animate_player_avatar,
-            animate_powerup_border,
             animate_powerup_texture,
             animate_player_info_text,
             animate_explosion,
@@ -618,7 +617,7 @@ fn spawn_ui_element_from_config(
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>) {
     // 生成道具（轮胎精灵图）
-    let power_up_texture: Handle<Image> = asset_server.load("tire_sprite_sheet.png");
+    let power_up_texture: Handle<Image> = asset_server.load("speed_up.png");
     let power_up_tile_size = UVec2::new(87, 69);
     let power_up_texture_atlas = TextureAtlasLayout::from_grid(power_up_tile_size, 3, 1, None, None);
     let power_up_texture_atlas_layout = texture_atlas_layouts.add(power_up_texture_atlas);
@@ -632,19 +631,6 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
     ];
 
     for pos in power_up_positions {
-        // 白色边框
-        commands.spawn((
-            PowerUpBorder,
-            PlayingEntity,
-            Sprite {
-                color: Color::WHITE,
-                custom_size: Some(Vec2::new(87.0 + 6.0, 69.0 + 6.0)),
-                ..default()
-            },
-            Transform::from_xyz(pos.x, pos.y, pos.z - 0.1),
-            AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-        ));
-
         commands.spawn((
             PowerUp,
             PlayingEntity,
@@ -1237,7 +1223,6 @@ fn handle_powerup_collision(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     powerups: Query<(Entity, &Transform), With<PowerUp>>,
-    powerup_borders: Query<(Entity, &Transform), With<PowerUpBorder>>,
     player_tanks: Query<(&Transform, &mut PlayerTank), With<PlayerTank>>,
     player_info_texts: Query<(Entity, &Text2d), With<Text2d>>,
 ) {
@@ -1255,15 +1240,6 @@ fn handle_powerup_collision(
             }
             // 销毁道具
         }
-        // 销毁对应位置的白色边框
-        for (border_entity, border_transform) in powerup_borders.iter() {
-            // 检查边框是否在道具附近（位置相近）
-            let distance = (tank_transform.translation - border_transform.translation).length();
-            if distance < 81.0 {
-                commands.entity(border_entity).despawn();
-                is_power_up = true;
-            }
-        }
         if !is_power_up{
             continue;
         }
@@ -1277,24 +1253,6 @@ fn handle_powerup_collision(
             if text.0.starts_with("Speed:") {
                 commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
                 break;
-            }
-        }
-    }
-}
-
-fn animate_powerup_border(
-    time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite), With<PowerUpBorder>>,
-) {
-    for (mut timer, mut sprite) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            // 每0.2秒切换显示/隐藏状态
-            if sprite.color == Color::WHITE {
-                sprite.color = Color::srgba(1.0, 1.0, 1.0, 0.0);
-            } else {
-                sprite.color = Color::WHITE;
             }
         }
     }

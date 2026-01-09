@@ -186,7 +186,7 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
 ];
 
 /// 玩家2 UI 元素配置（与玩家1相同，但位置在右侧）
-pub const PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
+pub const _PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     // 玩家2名称
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| {info.name.clone()}),
@@ -377,7 +377,7 @@ pub struct PlayerTank {
     pub air_cushion: bool,
     pub fire_shell: bool,
     pub life_red_bar: usize, // max 3
-    pub energy_blue_bar: usize, // max 100
+    pub _energy_blue_bar: usize, // max 100
     pub score: usize,
 }
 
@@ -416,9 +416,6 @@ pub struct Fortress;
 
 #[derive(Component)]
 pub struct PowerUp;
-
-#[derive(Component)]
-pub struct PowerUpBorder;
 
 #[derive(Component)]
 pub struct HealthBar;
