@@ -37,8 +37,9 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
-pub const FORTRESS_SIZE: f32 = 60.0;
 pub const WALL_THICKNESS: f32 = 15.0;
+pub const COMMANDER_WIDTH: f32 = 140.0;
+pub const COMMANDER_HEIGHT: f32 = 120.0;
 
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
@@ -173,14 +174,14 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::HealthBar,
         x_pos: WINDOW_LEFT_X + 115.0,
-        y_pos: WINDOW_TOP_Y - 215.0,
+        y_pos: WINDOW_TOP_Y - 235.0,
         font_size: 0.0,
     },
     // 玩家1蓝条
     UIElementConfig {
         element_type: UIElementType::BlueBar,
         x_pos: WINDOW_LEFT_X + 115.0,
-        y_pos: WINDOW_TOP_Y - 230.0,
+        y_pos: WINDOW_TOP_Y - 250.0,
         font_size: 0.0,
     },
 ];
@@ -293,14 +294,14 @@ pub const _PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::HealthBar,
         x_pos: WINDOW_RIGHT_X - 115.0,
-        y_pos: WINDOW_TOP_Y - 215.0,
+        y_pos: WINDOW_TOP_Y - 235.0,
         font_size: 0.0,
     },
     // 玩家2蓝条
     UIElementConfig {
         element_type: UIElementType::BlueBar,
         x_pos: WINDOW_RIGHT_X - 115.0,
-        y_pos: WINDOW_TOP_Y - 230.0,
+        y_pos: WINDOW_TOP_Y - 250.0,
         font_size: 0.0,
     },
 ];
@@ -412,7 +413,12 @@ pub struct GameOverTimer;
 pub struct Wall;
 
 #[derive(Component)]
-pub struct Fortress;
+pub struct Commander {
+    pub life_red_bar: usize, // max 3
+}
+
+#[derive(Component)]
+pub struct CommanderDead;
 
 #[derive(Component)]
 pub struct PowerUp;
@@ -425,6 +431,12 @@ pub struct BlueBar;
 
 #[derive(Component)]
 pub struct HealthBarOriginalPosition(pub f32); // 记录血条的原始 X 位置
+
+#[derive(Component)]
+pub struct CommanderHealthBar;
+
+#[derive(Component)]
+pub struct CommanderHealthBarOriginalPosition(pub f32); // 记录 Commander 血条的原始 X 位置
 
 // 标记游戏过程中所有的Entity
 #[derive(Component)]

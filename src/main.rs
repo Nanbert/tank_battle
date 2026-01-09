@@ -91,6 +91,7 @@ fn register_game_systems(app: &mut App) {
             animate_player_tank_texture,
             animate_enemy_tank_texture,
             animate_player_avatar,
+            animate_commander,
             animate_powerup_texture,
             animate_player_info_text,
             animate_explosion,
@@ -104,7 +105,9 @@ fn register_game_systems(app: &mut App) {
             handle_powerup_collision,
             update_player_info_display,
             update_health_bar,
+            update_commander_health_bar,
         ).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
             handle_start_screen_input,
@@ -337,67 +340,41 @@ fn spawn_walls(commands: &mut Commands) {
     ));
 }
 
-fn spawn_fortress(commands: &mut Commands) {
-    let fortress_y = MAP_BOTTOM_Y + FORTRESS_SIZE / 2.0 + 20.0 ;
-    let fortress_x = 0.0;
+fn spawn_commander(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+) {
+    let commander_texture: Handle<Image> = asset_server.load("commander.png");
+    let commander_tile_size = UVec2::new(COMMANDER_WIDTH as u32, COMMANDER_HEIGHT as u32);
+    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
+    let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
+    let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
-    // 堡垒主体（红色五角星）
+    let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
+    let commander_x = 0.0;
+
     commands.spawn((
-        Fortress,
+        Commander {
+            life_red_bar: 3,
+        },
         PlayingEntity,
         Sprite {
-            color: Color::srgb(1.0, 0.0, 0.0),
-            custom_size: Some(Vec2::new(FORTRESS_SIZE, FORTRESS_SIZE)),
+            image: commander_texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: commander_texture_atlas_layout,
+                index: commander_animation_indices.first,
+            }),
+            custom_size: Some(Vec2::new(COMMANDER_WIDTH, COMMANDER_HEIGHT)),
             ..default()
         },
+        Transform::from_xyz(commander_x, commander_y, 0.0),
+        commander_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
         RigidBody::Fixed,
-        Collider::cuboid(FORTRESS_SIZE / 200.0, FORTRESS_SIZE / 200.0),
-        Transform{
-            translation: Vec3::new(fortress_x, fortress_y, 0.0),
-            ..default()
-        }
-    ));
-
-    // 堡垒保护墙 - 左墙
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(WALL_THICKNESS / 200.0, FORTRESS_SIZE / 200.0),
-        Transform{
-            translation: Vec3::new(fortress_x - FORTRESS_SIZE / 2.0 - WALL_THICKNESS / 2.0, fortress_y, 0.0),
-            scale: Vec3::new(WALL_THICKNESS, FORTRESS_SIZE, 1.0),
-            ..default()
-        }
-    ));
-
-    // 堡垒保护墙 - 右墙
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(WALL_THICKNESS / 200.0, FORTRESS_SIZE / 200.0),
-        Transform{
-            translation: Vec3::new(fortress_x + FORTRESS_SIZE / 2.0 + WALL_THICKNESS / 2.0, fortress_y, 0.0),
-            scale: Vec3::new(WALL_THICKNESS, FORTRESS_SIZE, 1.0),
-            ..default()
-        }
-    ));
-
-    // 堡垒保护墙 - 上墙
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::srgb(0.6, 0.4, 0.2), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(FORTRESS_SIZE / 200.0, WALL_THICKNESS / 200.0),
-        Transform{
-            translation: Vec3::new(fortress_x, fortress_y + FORTRESS_SIZE / 2.0 + WALL_THICKNESS / 2.0, 0.0),
-            scale: Vec3::new(FORTRESS_SIZE, WALL_THICKNESS, 1.0),
-            ..default()
-        }
+        Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
+        ActiveEvents::COLLISION_EVENTS,
     ));
 }
 
@@ -410,7 +387,7 @@ fn spawn_player1_tank(
     let player_tank = PlayerTank{
         score:0,
         index: 0,
-        name: "player1".to_string(),
+        name: "Li Yun Long".to_string(),
         speed: 40,
         fire_speed: 40,
         protection: 40,
@@ -420,7 +397,7 @@ fn spawn_player1_tank(
         air_cushion: false,
         fire_shell:false,
         life_red_bar: 3,
-        energy_blue_bar: 100,
+        _energy_blue_bar: 100,
     };
 
     let entity = commands.spawn_empty()
@@ -435,7 +412,7 @@ fn spawn_player1_tank(
                 index: animation_indices.first,
             }
         ))
-        .insert(Transform::from_xyz(WALL_THICKNESS.mul_add(-2.0, -FORTRESS_SIZE) - TANK_WIDTH / 2.0 - 20.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
@@ -512,6 +489,7 @@ fn spawn_top_text_info(
     font: &Handle<Font>,
 ) {
     // 其他游戏信息 UI 元素配置
+    let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
     commands.spawn((
         PlayingEntity,
         Text2d("Commander Life:".to_string()),
@@ -521,7 +499,19 @@ fn spawn_top_text_info(
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(WINDOW_LEFT_X + 465.0, WINDOW_TOP_Y - 50.0, 1.0),
+        Transform::from_xyz(commander_text_x - 42.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+    // Commander 血条（与玩家血条长度相同：160像素），放在文字正右方
+    commands.spawn((
+        PlayingEntity,
+        CommanderHealthBar,
+        CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
+        Sprite {
+            color: Color::srgb(1.0, 0.0, 0.0),
+            custom_size: Some(Vec2::new(160.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
     ));
     commands.spawn((
         PlayingEntity,
@@ -562,10 +552,10 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::PlayerAvatar => {
             let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
-            let player_avatar_tile_size = UVec2::new(120, 112);
-            let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 4, None, None);
+            let player_avatar_tile_size = UVec2::new(160, 147);
+            let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
             let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
-            let player_avatar_animation_indices = AnimationIndices { first: 0, last: 51 };
+            let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
             commands.spawn((
                 PlayerIndex(player_tank.index),
                 PlayerAvatar,
@@ -576,7 +566,7 @@ fn spawn_ui_element_from_config(
                         layout: player_avatar_texture_atlas_layout,
                         index: 0,
                     }),
-                    custom_size: Some(Vec2::new(120.0, 112.0)),
+                    custom_size: Some(Vec2::new(160.0, 147.0)),
                     ..default()
                 },
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
@@ -593,7 +583,7 @@ fn spawn_ui_element_from_config(
                 PlayingEntity,
                 Sprite {
                     color: Color::srgb(1.0, 0.0, 0.0),
-                    custom_size: Some(Vec2::new(100.0, 10.0)),
+                    custom_size: Some(Vec2::new(160.0, 10.0)),
                     ..default()
                 },
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
@@ -606,7 +596,7 @@ fn spawn_ui_element_from_config(
                 PlayingEntity,
                 Sprite {
                     color: Color::srgb(0.0, 0.5, 1.0),
-                    custom_size: Some(Vec2::new(100.0, 10.0)),
+                    custom_size: Some(Vec2::new(160.0, 10.0)),
                     ..default()
                 },
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
@@ -672,8 +662,8 @@ fn spawn_game_entities(
     // 生成墙壁
     spawn_walls(&mut commands);
 
-    // 生成堡垒
-    spawn_fortress(&mut commands);
+    // 生成司令官
+    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
     // 加载玩家坦克纹理和创建精灵图
     let player_texture = asset_server.load("texture/player_tank_sprite.png");
@@ -1171,7 +1161,8 @@ fn handle_bullet_collisions(
 
                         // 增加分数
                         let mut player_tank = player_tanks.get_mut(bullet_owner).expect("无法获取玩家坦克!");
-                        player_tank.score += 100;
+                        println!("score:{}", player_tank.score);
+                        player_tank.score+=100;
                     } else if !is_player_bullet && is_player_tank {
                         let mut player_tank = player_tanks.get_mut(tank_entity).expect("无法获取玩家坦克!");
                         // 敌方子弹击中玩家坦克
@@ -1204,10 +1195,10 @@ fn handle_bullet_collisions(
                                     commands.entity(avatar_entity).insert(PlayerDead);
                                 }
                             }
-                            // 启动 Game Over 延迟计时器（2秒）
+                            // 启动 Game Over 延迟计时器（1.2秒）
                             commands.spawn((
                                 GameOverTimer,
-                                AnimationTimer(Timer::from_seconds(2.0, TimerMode::Once)),
+                                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
                             ));
                         }
                     }
@@ -1361,18 +1352,68 @@ fn animate_player_avatar(
         &mut CurrentAnimationFrame,
         Option<&PlayerDead>,
     ), With<PlayerAvatar>>,
+    commander_query: Query<(), With<CommanderDead>>,
 ) {
+    let commander_dead = !commander_query.is_empty();
+
     for (mut timer, mut sprite, indices, mut current_frame, player_dead) in &mut query {
         // 如果玩家已死亡，切换到死亡图片并停止动画
         if player_dead.is_some() {
-            let dead_texture: Handle<Image> = asset_server.load("player_dead.png");
+            let dead_texture: Handle<Image> = asset_server.load("player1_death.png");
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
+            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
+            continue;
+        }
+
+        // 如果Commander已死亡，切换到commander死亡图片并停止动画
+        if commander_dead {
+            let dead_texture: Handle<Image> = asset_server.load("player1_commander_dead.png");
+            sprite.image = dead_texture;
+            sprite.texture_atlas = None;
+            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
             continue;
         }
 
         // 正常动画
         timer.tick(time.delta());
+        if timer.just_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas {
+                let current = current_frame.0;
+                let next_index = if current == indices.last {
+                    indices.first
+                } else {
+                    current + 1
+                };
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+    }
+}
+
+fn animate_commander(
+    time: Res<Time>,
+    asset_server: Res<AssetServer>,
+    mut query: Query<(
+        &mut AnimationTimer,
+        &mut Sprite,
+        &AnimationIndices,
+        &mut CurrentAnimationFrame,
+        Option<&CommanderDead>,
+    ), With<Commander>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame, commander_dead) in &mut query {
+        // 如果Commander已死亡，切换到死亡图片并停止动画
+        if commander_dead.is_some() {
+            let dead_texture: Handle<Image> = asset_server.load("commander_dead.png");
+            sprite.image = dead_texture;
+            sprite.texture_atlas = None;
+            sprite.custom_size = Some(Vec2::new(COMMANDER_WIDTH, COMMANDER_HEIGHT));
+            continue;
+        }
+
+        timer.tick(time.delta());
+
         if timer.just_finished()
             && let Some(atlas) = &mut sprite.texture_atlas {
                 let current = current_frame.0;
@@ -1431,7 +1472,7 @@ fn handle_game_over_delay(
     for (entity, mut timer) in &mut query {
         timer.tick(time.delta());
         if timer.is_finished() {
-            // 2秒后切换到 GameOver 状态
+            // 1.2秒后切换到 GameOver 状态
             commands.entity(entity).despawn();
             next_state.set(GameState::GameOver);
         }
@@ -1671,7 +1712,7 @@ fn update_player_info_display(
             }
             //更新文字
             if text.0.starts_with("Scores"){
-                let key_words = format!("Scores{}:", (player_index.0+1).to_string());
+                let key_words = format!("Scores{}: {}", player_index.0 + 1, player_tank.score);
                 text.0 = key_words;
             } else if text.0.starts_with("Speed"){
                 let key_words = if player_tank.speed<100{
@@ -1691,14 +1732,86 @@ fn update_health_bar(
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
         for player_tank in player_tanks{
-            // 血条总宽度 100，生命值 3，每条代表 1/3
-            let health_width = (player_tank.life_red_bar as f32 / 3.0) * 100.0;
+            // 血条总宽度 160，生命值 3，每条代表 1/3
+            let health_width = (player_tank.life_red_bar as f32 / 3.0) * 160.0;
             sprite.custom_size = Some(Vec2::new(health_width, 10.0));
 
             // 左对齐：将血条向左移动，使其从左边界开始
-            // 原始位置是中心点，需要向左偏移 (100 - health_width) / 2
-            let offset = (100.0 - health_width) / 2.0;
+            // 原始位置是中心点，需要向左偏移 (160 - health_width) / 2
+            let offset = (160.0 - health_width) / 2.0;
             transform.translation.x = original_pos.0 - offset;
+        }
+    }
+}
+
+fn update_commander_health_bar(
+    mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
+    commanders: Query<&Commander, With<Commander>>,
+) {
+    for (mut sprite, original_pos, mut transform) in &mut health_bars {
+        for commander in commanders{
+            // 血条总宽度 160，生命值 3，每条代表 1/3
+            let health_width = (commander.life_red_bar as f32 / 3.0) * 160.0;
+            sprite.custom_size = Some(Vec2::new(health_width, 10.0));
+
+            // 左对齐：将血条向左移动，使其从左边界开始
+            // 原始位置是中心点，需要向左偏移 (160 - health_width) / 2
+            let offset = (160.0 - health_width) / 2.0;
+            transform.translation.x = original_pos.0 - offset;
+        }
+    }
+}
+
+fn check_bullet_commander_collision(
+    mut commands: Commands,
+    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
+    mut commander_query: Query<(Entity, &Transform, &mut Commander), With<Commander>>,
+    health_bar_query: Query<Entity, With<CommanderHealthBar>>,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    for (bullet_entity, bullet_transform) in bullet_query.iter() {
+        for (commander_entity, commander_transform, mut commander) in commander_query.iter_mut() {
+            // 检测子弹是否在Commander的矩形范围内
+            let bullet_x = bullet_transform.translation.x;
+            let bullet_y = bullet_transform.translation.y;
+            let commander_x = commander_transform.translation.x;
+            let commander_y = commander_transform.translation.y;
+
+            let half_width = COMMANDER_WIDTH / 2.0;
+            let half_height = COMMANDER_HEIGHT / 2.0;
+
+            let in_x_range = bullet_x >= commander_x - half_width && bullet_x <= commander_x + half_width;
+            let in_y_range = bullet_y >= commander_y - half_height && bullet_y <= commander_y + half_height;
+
+            if in_x_range && in_y_range {
+                // 子弹在Commander范围内，销毁子弹
+                commands.entity(bullet_entity).despawn();
+
+                // 生成爆炸效果
+                spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, commander_transform.translation);
+
+                // 扣除1/3血量
+                if commander.life_red_bar > 0 {
+                    commander.life_red_bar -= 1;
+                }
+
+                // 如果血量为0，进入GameOver状态
+                if commander.life_red_bar == 0 {
+                    commands.entity(commander_entity).insert(CommanderDead);
+                    // 销毁Commander血条
+                    for health_bar_entity in health_bar_query.iter() {
+                        commands.entity(health_bar_entity).despawn();
+                    }
+                    // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
+                    commands.spawn((
+                        GameOverTimer,
+                        AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                    ));
+                }
+
+                break; // 子弹已经销毁，不需要检查其他Commander
+            }
         }
     }
 }
