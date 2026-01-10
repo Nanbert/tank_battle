@@ -35,5 +35,27 @@ pub struct CurrentMenuSelection {
 #[derive(Resource, Default)]
 pub struct GameStarted(pub bool);
 
+#[derive(Resource)]
+pub struct EnemyCount {
+    pub total_spawned: usize, // 已生成的敌方坦克总数
+    pub max_count: usize,     // 最大敌方坦克数量
+}
+
+impl Default for EnemyCount {
+    fn default() -> Self {
+        Self {
+            total_spawned: 0,
+            max_count: 20,
+        }
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct MenuBlinkTimer(pub Timer);
+
+#[derive(Resource, Default)]
+pub struct StageIntroTimer {
+    pub fade_in: Timer,
+    pub stay: Timer,
+    pub fade_out: Timer,
+}

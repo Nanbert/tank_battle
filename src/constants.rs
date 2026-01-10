@@ -12,7 +12,8 @@ pub const TOP_PADDING: f32 = 100.0; // 上方留白
 pub const BOTTOM_PADDING: f32 = 0.0; // 下方不留白
 pub const TANK_WIDTH: f32 = 87.0;
 pub const TANK_HEIGHT: f32 = 87.0;
-pub const TANK_SPEED: f32 = 300.0;
+pub const TANK_SPEED: f32 = 200.0;
+pub const PLAYER_TANK_SPEED: f32 = 300.0;
 pub const BULLET_SPEED: f32 = 900.0;
 pub const BULLET_SIZE: f32 = 10.0;
 pub const VERTICAL_OFFSET: f32 = (BOTTOM_PADDING-TOP_PADDING) / 2.0; // 由于下边不留白，会导致坐标垂直便移-50
@@ -29,9 +30,9 @@ pub const MAP_BOTTOM_Y:f32 = -MAP_HEIGHT / 2.0 + VERTICAL_OFFSET;
 
 
 pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
-    Vec3::new(MAP_LEFT_X + TANK_WIDTH / 2.0, MAP_TOP_Y - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
-    Vec3::new(0.0, MAP_TOP_Y - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
-    Vec3::new(MAP_RIGHT_X - TANK_WIDTH / 2.0, MAP_TOP_Y - TANK_HEIGHT / 2.0 + VERTICAL_OFFSET, 0.0),
+    Vec3::new(MAP_LEFT_X + TANK_WIDTH / 2.0, MAP_TOP_Y - TANK_HEIGHT / 2.0, 0.0),
+    Vec3::new(0.0, MAP_TOP_Y - TANK_HEIGHT / 2.0, 0.0),
+    Vec3::new(MAP_RIGHT_X - TANK_WIDTH / 2.0, MAP_TOP_Y - TANK_HEIGHT / 2.0, 0.0),
 ];
 
 pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
@@ -312,6 +313,7 @@ pub enum GameState {
     #[default]
     StartScreen,
     FadingOut,
+    StageIntro,
     Playing,
     Paused,
     GameOver,
@@ -333,6 +335,9 @@ pub struct PauseUI;
 
 #[derive(Component)]
 pub struct GameOverUI;
+
+#[derive(Component)]
+pub struct StageIntroUI;
 
 #[derive(Component, Copy, Clone)]
 pub struct AnimationIndices {
@@ -364,6 +369,9 @@ pub struct TargetRotation {
 pub struct EnemyTank {
     pub direction: Vec2,
 }
+
+#[derive(Component)]
+pub struct EnemyBornAnimation;
 
 #[derive(Component, Clone)]
 pub struct PlayerTank {
@@ -437,6 +445,9 @@ pub struct CommanderHealthBar;
 
 #[derive(Component)]
 pub struct CommanderHealthBarOriginalPosition(pub f32); // 记录 Commander 血条的原始 X 位置
+
+#[derive(Component)]
+pub struct EnemyCountText;
 
 // 标记游戏过程中所有的Entity
 #[derive(Component)]

@@ -72,6 +72,8 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<CurrentMenuSelection>()
         .init_resource::<GameStarted>()
         .init_resource::<MenuBlinkTimer>()
+        .init_resource::<StageIntroTimer>()
+        .init_resource::<EnemyCount>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -79,34 +81,37 @@ fn configure_game_resources(app: &mut App) {
 fn register_game_systems(app: &mut App) {
     app.add_systems(OnEnter(GameState::StartScreen), (cleanup_playing_entities, spawn_start_screen).chain())
         .add_systems(OnEnter(GameState::FadingOut), setup_fade_out)
+        .add_systems(OnEnter(GameState::StageIntro), spawn_stage_intro)
+        .add_systems(Update, handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)))
+        .add_systems(OnExit(GameState::StageIntro), despawn_stage_intro)
         .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
         .add_systems(OnEnter(GameState::Paused), spawn_pause_ui)
         .add_systems(OnExit(GameState::Paused), ( despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), spawn_game_over_ui)
         .add_systems(OnExit(GameState::GameOver), (despawn_game_over_ui, cleanup_playing_entities))
         .add_systems(Startup, setup)
-        .add_systems(Update, (
-            (move_enemy_tanks).chain(),
-            move_player_tank,
-            animate_player_tank_texture,
-            animate_enemy_tank_texture,
-            animate_player_avatar,
-            animate_commander,
-            animate_powerup_texture,
-            animate_player_info_text,
-            animate_explosion,
-            animate_spark,
-            handle_game_over_delay,
-            shoot_bullets,
-            player_shoot_bullet,
-            check_bullet_bounds,
-            check_bullet_destruction,
-            handle_bullet_collisions,
-            handle_powerup_collision,
-            update_player_info_display,
-            update_health_bar,
-            update_commander_health_bar,
-        ).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, (move_enemy_tanks).chain().run_if(in_state(GameState::Playing)))
+        .add_systems(Update, move_player_tank.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_player_tank_texture.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_enemy_tank_texture.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_player_avatar.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_commander.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_powerup_texture.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_player_info_text.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, shoot_bullets.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, player_shoot_bullet.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_bullet_bounds.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_bullet_destruction.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_bullet_collisions.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_player_info_display.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_health_bar.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_commander_health_bar.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_enemy_count_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
@@ -430,46 +435,39 @@ fn spawn_player1_tank(
     (entity, player_tank)
 }
 
-fn spawn_enemy_tank(
+fn spawn_enemy_born_animation(
     commands: &mut Commands,
-    texture: Handle<Image>,
-    texture_atlas_layout: Handle<TextureAtlasLayout>,
-    animation_indices: AnimationIndices,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) -> Entity {
-    commands.spawn_empty()
-        .insert(EnemyTank {
-            direction: Vec2::new(0.0, -1.0),
-        })
-        .insert(PlayingEntity)
-        .insert(DirectionChangeTimer(Timer::from_seconds(2.0, TimerMode::Once)))
-        .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
-        .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
-        .insert(TargetRotation { angle: 270.0_f32.to_radians() })
-        .insert(AnimationTimer(Timer::from_seconds(0.25, TimerMode::Repeating)))
-        .insert(Sprite::from_atlas_image(
-            texture,
-            TextureAtlas{
-                layout: texture_atlas_layout,
-                index: animation_indices.first,
+    let enemy_born_texture: Handle<Image> = asset_server.load("enemy_born_sheet.png");
+    let enemy_born_tile_size = UVec2::new(87, 87);
+    let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 4, 4, None, None);
+    let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
+    let enemy_born_animation_indices = AnimationIndices { first: 0, last: 12 };
+
+    commands.spawn((
+        EnemyBornAnimation,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            enemy_born_texture,
+            TextureAtlas {
+                layout: enemy_born_texture_atlas_layout,
+                index: enemy_born_animation_indices.first,
             }
-        ))
-        .insert(Transform::from_translation(position))
-        .insert(animation_indices)
-        .insert(Velocity{
-            linvel: Vec2::new(0.0, -TANK_SPEED),
-            angvel: 0.0,
-        })
-        .insert(RigidBody::Dynamic)
-        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
-        .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
-        .insert(LockedAxes::ROTATION_LOCKED)
-        .insert(GravityScale(0.0))
-        .insert(Friction::new(0.0))
-        .insert(Restitution::new(0.0))
-        .id()
+        ),
+        Transform::from_translation(position),
+        enemy_born_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        BornPosition(position), // 记录出生位置
+    )).id()
 }
+
+// 记录出生位置的组件
+#[derive(Component)]
+pub struct BornPosition(pub Vec3);
 
 fn spawn_player1_info(
     commands: &mut Commands,
@@ -515,6 +513,7 @@ fn spawn_top_text_info(
     ));
     commands.spawn((
         PlayingEntity,
+        EnemyCountText,
         Text2d("Enemy Left: 20/20".to_string()),
         TextFont {
             font_size: 28.0,
@@ -650,6 +649,7 @@ fn spawn_game_entities(
     mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
     mut game_started: ResMut<GameStarted>,
+    mut enemy_count: ResMut<EnemyCount>,
 ) {
     // 如果游戏已经启动过，就不再生成实体
     if game_started.0 {
@@ -684,30 +684,17 @@ fn spawn_game_entities(
     let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
     spawn_player1_info(&mut commands, &player_tank, &font, &asset_server, &mut texture_atlas_layouts);
     spawn_top_text_info(&mut commands, &font);
-    // 加载敌方坦克纹理和创建精灵图
-    let enemy_texture = asset_server.load("texture/tank_player.png");
-    let enemy_tile_size = UVec2::new(87, 103);
-    let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 3, 1, None, None);
-    let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
-    let enemy_animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    // 生成敌方坦克
-    let enemy_tank_entities: Vec<Entity> = ENEMY_BORN_PLACES
-        .iter()
-        .map(|&pos| spawn_enemy_tank(
-            &mut commands,
-            enemy_texture.clone(),
-            enemy_texture_atlas_layout.clone(),
-            enemy_animation_indices,
-            pos,
-        ))
-        .collect();
-
-    // 初始化所有坦克都可以射击
-    for entity in enemy_tank_entities {
-        can_fire.0.insert(entity);
+    // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
+    for &pos in ENEMY_BORN_PLACES.iter() {
+        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, pos);
     }
+
+    // 初始化玩家坦克可以射击
     can_fire.0.insert(player1_tank_entity);
+
+    // 初始化敌方坦克计数（初始生成3个）
+    enemy_count.total_spawned = 3;
     
     // 生成道具
     spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts);
@@ -1094,7 +1081,7 @@ fn spawn_explosion(
     ));
 
     // 播放爆炸音效
-    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_sound.ogg");
+    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
     commands.spawn(AudioPlayer::new(explosion_sound));
 }
 
@@ -1130,6 +1117,8 @@ fn handle_bullet_collisions(
     mut player_tanks: Query<&mut PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerIndex)>,
+    mut enemy_count: ResMut<EnemyCount>,
+    mut can_fire: ResMut<CanFire>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -1163,6 +1152,18 @@ fn handle_bullet_collisions(
                         let mut player_tank = player_tanks.get_mut(bullet_owner).expect("无法获取玩家坦克!");
                         println!("score:{}", player_tank.score);
                         player_tank.score+=100;
+
+                        // 检查是否需要重新生成敌方坦克
+                        if enemy_count.total_spawned < enemy_count.max_count {
+                            // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
+                            let mut rng = rand::rng();
+                            let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
+                            let position = ENEMY_BORN_PLACES[random_index];
+                            spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
+
+                            // 增加已生成计数
+                            enemy_count.total_spawned += 1;
+                        }
                     } else if !is_player_bullet && is_player_tank {
                         let mut player_tank = player_tanks.get_mut(tank_entity).expect("无法获取玩家坦克!");
                         // 敌方子弹击中玩家坦克
@@ -1274,6 +1275,19 @@ fn animate_player_info_text(
     }
 }
 
+fn update_enemy_count_display(
+    enemy_count: Res<EnemyCount>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
+    mut query: Query<&mut Text2d, With<EnemyCountText>>,
+) {
+    let current_enemy_count = enemy_tanks.iter().count();
+    let remaining = enemy_count.max_count - enemy_count.total_spawned + current_enemy_count;
+
+    for mut text in &mut query {
+        text.0 = format!("Enemy Left: {}/{}", remaining, enemy_count.max_count);
+    }
+}
+
 fn animate_powerup_texture(
     time: Res<Time>,
     mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<PowerUp>>,
@@ -1338,6 +1352,83 @@ fn animate_enemy_tank_texture(
                 } else {
                     atlas.index + 1
                 };
+            }
+    }
+}
+
+fn animate_enemy_born_animation(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame, &BornPosition), With<EnemyBornAnimation>>,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut can_fire: ResMut<CanFire>,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas {
+                let current = current_frame.0;
+                let total_frames = indices.last - indices.first + 1;
+                let spawn_frame = indices.first + (total_frames / 2); // 1/2 处生成坦克
+
+                if current >= indices.last {
+                    // 动画播放完毕，销毁出生动画实体
+                    commands.entity(entity).despawn();
+                } else {
+                    // 继续播放动画
+                    let next_index = current + 1;
+                    current_frame.0 = next_index;
+                    atlas.index = next_index;
+
+                    // 在动画播放到 2/3 时生成敌方坦克
+                    if next_index == spawn_frame {
+                        // 加载敌方坦克纹理和创建精灵图
+                        let enemy_texture = asset_server.load("texture/tank_player.png");
+                        let enemy_tile_size = UVec2::new(87, 103);
+                        let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 3, 1, None, None);
+                        let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
+                        let enemy_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+                        // 生成敌方坦克
+                        let enemy_entity = commands.spawn_empty()
+                            .insert(EnemyTank {
+                                direction: Vec2::new(0.0, -1.0),
+                            })
+                            .insert(PlayingEntity)
+                            .insert(DirectionChangeTimer(Timer::from_seconds(2.0, TimerMode::Once)))
+                            .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
+                            .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
+                            .insert(TargetRotation { angle: 270.0_f32.to_radians() })
+                            .insert(AnimationTimer(Timer::from_seconds(0.25, TimerMode::Repeating)))
+                            .insert(Sprite::from_atlas_image(
+                                enemy_texture,
+                                TextureAtlas {
+                                    layout: enemy_texture_atlas_layout,
+                                    index: enemy_animation_indices.first,
+                                }
+                            ))
+                            .insert(Transform::from_translation(born_position.0))
+                            .insert(enemy_animation_indices)
+                            .insert(Velocity {
+                                linvel: Vec2::new(0.0, -TANK_SPEED),
+                                angvel: 0.0,
+                            })
+                            .insert(RigidBody::Dynamic)
+                            .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+                            .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
+                            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
+                            .insert(LockedAxes::ROTATION_LOCKED)
+                            .insert(GravityScale(0.0))
+                            .insert(Friction::new(0.0))
+                            .insert(Restitution::new(0.0))
+                            .id();
+
+                        // 初始化敌方坦克可以射击
+                        can_fire.0.insert(enemy_entity);
+                    }
+                }
             }
     }
 }
@@ -1524,7 +1615,7 @@ fn move_player_tank(
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 转向时保持 50% 速度，减少卡顿感
-        let speed = if needs_rotation { TANK_SPEED * 0.5 } else { TANK_SPEED };
+        let speed = if needs_rotation { PLAYER_TANK_SPEED * 0.5 } else { PLAYER_TANK_SPEED };
         if direction.length() > 0.0 {
             character_controller.translation = Some(direction * speed * time.delta_secs());
         } else {
@@ -1639,6 +1730,100 @@ fn cleanup_start_screen(
     }
 }
 
+fn spawn_stage_intro(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut stage_intro_timer: ResMut<StageIntroTimer>,
+    mut clear_color: ResMut<ClearColor>,
+) {
+    // 设置背景色为白色
+    clear_color.0 = Color::srgb(1.0, 1.0, 1.0);
+
+    // 初始化计时器
+    stage_intro_timer.fade_in = Timer::from_seconds(1.0, TimerMode::Once);
+    stage_intro_timer.stay = Timer::from_seconds(2.0, TimerMode::Once);
+    stage_intro_timer.fade_out = Timer::from_seconds(1.0, TimerMode::Once);
+
+    // 加载字体
+    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+
+    // Stage 1 标题
+    commands.spawn((
+        StageIntroUI,
+        Text2d("Stage 1".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
+        Transform::from_xyz(0.0, 100.0, 1.0),
+    ));
+
+    // 描述文字
+    commands.spawn((
+        StageIntroUI,
+        Text2d("The brave commander will not retreat even when hit. He will stand firm in place, waiting for his soldiers to rescue him.".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font,
+            ..default()
+        },
+        TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0
+        TextLayout::new_with_justify(Justify::Center),
+        Transform::from_xyz(0.0, -50.0, 1.0),
+    ));
+}
+
+fn handle_stage_intro_timer(
+    time: Res<Time>,
+    mut stage_intro_timer: ResMut<StageIntroTimer>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut text_query: Query<&mut TextColor, With<StageIntroUI>>,
+) {
+    // 淡入阶段
+    if !stage_intro_timer.fade_in.is_finished() {
+        stage_intro_timer.fade_in.tick(time.delta());
+        let progress = stage_intro_timer.fade_in.elapsed_secs() / stage_intro_timer.fade_in.duration().as_secs_f32();
+        let alpha = progress.min(1.0);
+        for mut text_color in &mut text_query {
+            // 获取当前颜色（不包含透明度）
+            let color = text_color.0;
+            // 只更新透明度，保持原始颜色
+            text_color.0 = color.with_alpha(alpha);
+        }
+    }
+    // 停留阶段
+    else if !stage_intro_timer.stay.is_finished() {
+        stage_intro_timer.stay.tick(time.delta());
+    }
+    // 淡出阶段
+    else if !stage_intro_timer.fade_out.is_finished() {
+        stage_intro_timer.fade_out.tick(time.delta());
+        let progress = stage_intro_timer.fade_out.elapsed_secs() / stage_intro_timer.fade_out.duration().as_secs_f32();
+        let alpha = 1.0 - progress.min(1.0);
+        for mut text_color in &mut text_query {
+            // 获取当前颜色（不包含透明度）
+            let color = text_color.0;
+            // 只更新透明度，保持原始颜色
+            text_color.0 = color.with_alpha(alpha);
+        }
+    }
+    // 所有阶段完成，切换到 Playing 状态
+    else {
+        next_state.set(GameState::Playing);
+    }
+}
+
+fn despawn_stage_intro(
+    mut commands: Commands,
+    stage_intro_query: Query<Entity, With<StageIntroUI>>,
+) {
+    for entity in stage_intro_query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
 fn fade_out_screen(
     mut commands: Commands,
     time: Res<Time>,
@@ -1648,7 +1833,7 @@ fn fade_out_screen(
     mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     // 减少透明度
-    fading_out.alpha -= time.delta_secs() * (1.0 / 3.0); // 淡出速度，约 3 秒完成
+    fading_out.alpha -= time.delta_secs() * (1.0 / 1.5); // 淡出速度，1.5秒完成
 
     // 更新所有 Sprite 元素的透明度
     for (_entity, mut sprite) in &mut sprite_query {
@@ -1664,9 +1849,9 @@ fn fade_out_screen(
         update_text_color_alpha(fading_out.alpha, &mut text_color);
     }
 
-    // 淡出完成，切换到 Playing 状态并清理所有 StartScreenUI 元素
+    // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
-        next_state.set(GameState::Playing);
+        next_state.set(GameState::StageIntro);
         cleanup_start_screen(&mut commands, &sprite_query, &text_query);
     }
 }
@@ -1794,22 +1979,29 @@ fn check_bullet_commander_collision(
                 // 扣除1/3血量
                 if commander.life_red_bar > 0 {
                     commander.life_red_bar -= 1;
-                }
-
-                // 如果血量为0，进入GameOver状态
-                if commander.life_red_bar == 0 {
-                    commands.entity(commander_entity).insert(CommanderDead);
-                    // 销毁Commander血条
-                    for health_bar_entity in health_bar_query.iter() {
-                        commands.entity(health_bar_entity).despawn();
+                    // 如果血量为0，进入GameOver状态
+                    if commander.life_red_bar == 0 {
+                        commands.entity(commander_entity).insert(CommanderDead);
+                        // 播放 commander 死亡音效
+                        let commander_death_sound: Handle<AudioSource> = asset_server.load("commander_death.ogg");
+                        commands.spawn(AudioPlayer::new(commander_death_sound));
+                        // 销毁Commander血条
+                        for health_bar_entity in health_bar_query.iter() {
+                            commands.entity(health_bar_entity).despawn();
+                        }
+                        // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
+                        commands.spawn((
+                            GameOverTimer,
+                            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                        ));
+                        break;
                     }
-                    // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
-                    commands.spawn((
-                        GameOverTimer,
-                        AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-                    ));
+                    // 非致命伤，播放受伤音效
+                    let commander_get_shot_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
+                    commands.spawn(AudioPlayer::new(commander_get_shot_sound));
+                    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
+                    commands.spawn(AudioPlayer::new(explosion_sound));
                 }
-
                 break; // 子弹已经销毁，不需要检查其他Commander
             }
         }
