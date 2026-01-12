@@ -95,3 +95,23 @@ pub struct PlayerStats {
     pub energy_blue_bar: usize,
     pub score: usize,
 }
+
+// 玩家回城计时器
+#[derive(Resource, Default)]
+pub struct RecallTimers {
+    pub timers: HashMap<Entity, RecallTimer>,
+}
+
+pub struct RecallTimer {
+    pub timer: Timer,
+    pub start_position: Vec3,
+}
+
+impl RecallTimer {
+    pub fn new(start_position: Vec3, duration: f32) -> Self {
+        Self {
+            timer: Timer::from_seconds(duration, TimerMode::Once),
+            start_position,
+        }
+    }
+}

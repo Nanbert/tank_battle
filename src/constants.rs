@@ -17,6 +17,7 @@ pub const TANK_SPEED: f32 = 200.0;
 pub const PLAYER_TANK_SPEED: f32 = 300.0;
 pub const BULLET_SPEED: f32 = 900.0;
 pub const BULLET_SIZE: f32 = 10.0;
+pub const RECALL_TIME: f32 = 4.0; // 回城时间（秒）
 pub const VERTICAL_OFFSET: f32 = (BOTTOM_PADDING-TOP_PADDING) / 2.0; // 由于下边不留白，会导致坐标垂直便移-50
 pub const WINDOW_WIDTH: f32 = MAP_WIDTH + LEFT_PADDING + RIGHT_PADDING; // 总宽度
 pub const WINDOW_HEIGHT: f32 = MAP_HEIGHT + TOP_PADDING + BOTTOM_PADDING; // 总高度

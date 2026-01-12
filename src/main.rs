@@ -76,6 +76,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<EnemyCount>()
         .init_resource::<StageLevel>()
         .init_resource::<PlayerInfo>()
+        .init_resource::<RecallTimers>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -121,11 +122,16 @@ fn register_game_systems(app: &mut App) {
             handle_start_screen_input,
             update_option_colors,
         ).run_if(in_state(GameState::StartScreen)))
-        .add_systems(Update, update_menu_blink.run_if(in_state(GameState::FadingOut)))
+        .add_systems(Update, update_menu_blink.run_if(in_state(GameState::FadingOut).or(in_state(GameState::StartScreen))))
         .add_systems(Update, handle_game_input.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_pause_input.run_if(in_state(GameState::Paused)))
         .add_systems(Update, (handle_game_over_input, update_option_colors)
             .chain().run_if(in_state(GameState::GameOver)))
+        .add_systems(Update, (
+            handle_recall_input,
+            update_recall_timers,
+        ).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_recall_progress_bars.run_if(in_state(GameState::Playing)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
 
@@ -479,6 +485,17 @@ fn spawn_enemy_born_animation(
 // 记录出生位置的组件
 #[derive(Component)]
 pub struct BornPosition(pub Vec3);
+
+// 回城进度条组件
+#[derive(Component)]
+pub struct RecallProgressBar {
+    pub player_index: usize,
+    pub player_entity: Entity,
+}
+
+// 玩家正在回城标记
+#[derive(Component)]
+pub struct IsRecalling;
 
 fn spawn_player_info(
     commands: &mut Commands,
@@ -1903,6 +1920,148 @@ fn player_shoot_bullet(
     }
 }
 
+fn handle_recall_input(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
+    mut recall_timers: ResMut<RecallTimers>,
+    _recall_progress_query: Query<(Entity, &RecallProgressBar)>,
+) {
+    for (entity, transform, player_tank) in &query {
+        // 检查是否正在回城
+        let is_recalling = recall_timers.timers.contains_key(&entity);
+
+        // 根据玩家索引选择不同的回城键
+        let is_recall_key_pressed = if player_tank.index == 0 {
+            // 玩家1使用 B 键回城
+            keyboard_input.pressed(KeyCode::KeyB)
+        } else {
+            // 玩家2使用数字4键（包括大键盘4和小键盘4）回城
+            keyboard_input.pressed(KeyCode::Digit4) || keyboard_input.pressed(KeyCode::Numpad4)
+        };
+
+        if is_recall_key_pressed && !is_recalling {
+            // 计算初始位置
+            let initial_position = if player_tank.index == 0 {
+                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+            } else {
+                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+            };
+
+            // 开始回城
+            let recall_timer = RecallTimer::new(initial_position, RECALL_TIME);
+            recall_timers.timers.insert(entity, recall_timer);
+
+            // 添加回城标记
+            commands.entity(entity).insert(IsRecalling);
+
+            // 创建回城进度条（在坦克正上方，初始满格）
+            commands.spawn((
+                PlayingEntity,
+                RecallProgressBar { player_index: player_tank.index, player_entity: entity },
+                Sprite {
+                    color: Color::srgb(0.0, 1.0, 0.0), // 绿色
+                    custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
+                    ..default()
+                },
+                Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
+            ));
+        }
+    }
+}
+
+fn update_recall_timers(
+    time: Res<Time>,
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut player_query: Query<(Entity, &mut Transform, &PlayerTank, Option<&IsRecalling>), With<PlayerTank>>,
+    mut recall_timers: ResMut<RecallTimers>,
+    mut progress_bar_query: Query<(Entity, &mut Sprite, &RecallProgressBar)>,
+) {
+    for (entity, mut transform, player_tank, is_recalling) in &mut player_query {
+        if let Some(IsRecalling) = is_recalling {
+            if let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
+                // 检查是否被打断（移动或射击）
+                let is_interrupted = if player_tank.index == 0 {
+                    // 玩家1：检查WASD或J键
+                    keyboard_input.pressed(KeyCode::KeyW) ||
+                    keyboard_input.pressed(KeyCode::KeyS) ||
+                    keyboard_input.pressed(KeyCode::KeyA) ||
+                    keyboard_input.pressed(KeyCode::KeyD) ||
+                    keyboard_input.just_pressed(KeyCode::KeyJ)
+                } else {
+                    // 玩家2：检查方向键或数字1键
+                    keyboard_input.pressed(KeyCode::ArrowUp) ||
+                    keyboard_input.pressed(KeyCode::ArrowDown) ||
+                    keyboard_input.pressed(KeyCode::ArrowLeft) ||
+                    keyboard_input.pressed(KeyCode::ArrowRight) ||
+                    keyboard_input.just_pressed(KeyCode::Digit1) ||
+                    keyboard_input.just_pressed(KeyCode::Numpad1)
+                };
+
+                if is_interrupted {
+                    // 打断回城
+                    commands.entity(entity).remove::<IsRecalling>();
+                    recall_timers.timers.remove(&entity);
+
+                    // 删除进度条
+                    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+                        if progress_bar.player_entity == entity {
+                            commands.entity(progress_entity).despawn();
+                        }
+                    }
+                } else {
+                    // 更新计时器
+                    recall_timer.timer.tick(time.delta());
+
+                    // 更新进度条（从满格递减）
+                    let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
+                    let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
+
+                    for (_progress_entity, mut sprite, progress_bar) in progress_bar_query.iter_mut() {
+                        if progress_bar.player_entity == entity {
+                            sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
+                        }
+                    }
+
+                    // 检查是否完成
+                    if recall_timer.timer.just_finished() {
+                        // 完成回城，传送到初始位置
+                        let initial_position = recall_timer.start_position;
+                        transform.translation = initial_position;
+
+                        // 移除回城标记和计时器
+                        commands.entity(entity).remove::<IsRecalling>();
+                        recall_timers.timers.remove(&entity);
+
+                        // 删除进度条
+                        for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+                            if progress_bar.player_entity == entity {
+                                commands.entity(progress_entity).despawn();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn update_recall_progress_bars(
+    player_query: Query<(Entity, &Transform, &PlayerTank)>,
+    mut progress_bar_query: Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
+) {
+    for (entity, transform, _player_tank) in &player_query {
+        for (progress_bar, mut progress_transform) in progress_bar_query.iter_mut() {
+            if progress_bar.player_entity == entity {
+                // 更新倒计时文本位置（跟随坦克）
+                progress_transform.translation.x = transform.translation.x;
+                progress_transform.translation.y = transform.translation.y + TANK_HEIGHT / 2.0 + 20.0;
+            }
+        }
+    }
+}
+
 fn setup_fade_out(
     mut fading_out: ResMut<FadingOut>,
 ) {
@@ -2035,6 +2194,7 @@ fn fade_out_screen(
     time: Res<Time>,
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
+    menu_selection: Res<CurrentMenuSelection>,
     mut sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
     mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
@@ -2046,10 +2206,12 @@ fn fade_out_screen(
         update_sprite_alpha(fading_out.alpha, &mut sprite);
     }
 
-    // 更新所有 Text 元素的颜色（跳过 PLAY 选项，因为它的闪烁由 update_menu_blink 处理）
+    // 更新所有 Text 元素的颜色（跳过当前选中的选项，因为它的闪烁由 update_menu_blink 处理）
+    let selected_index = menu_selection.selected_index;
+
     for (_entity, mut text_color, menu_option) in &mut text_query {
-        // 如果是 PLAY 选项（index=0），跳过透明度更新
-        if menu_option.is_some_and(|opt| opt.index == 0) {
+        // 如果是当前选中的选项，跳过透明度更新
+        if menu_option.is_some_and(|opt| opt.index == selected_index) {
             continue;
         }
         update_text_color_alpha(fading_out.alpha, &mut text_color);
@@ -2205,6 +2367,7 @@ fn check_bullet_commander_collision(
 fn update_menu_blink(
     time: Res<Time>,
     fading_out: Res<FadingOut>,
+    menu_selection: Res<CurrentMenuSelection>,
     mut blink_timer: ResMut<MenuBlinkTimer>,
     mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
 ) {
@@ -2217,17 +2380,18 @@ fn update_menu_blink(
 
     if blink_timer.0.just_finished() {
         for (option, mut text_color) in &mut text_query {
-            if option.index == 0 {
-                // PLAY 选项（index=0）闪烁
+            if option.index == menu_selection.selected_index {
+                // 当前选中的选项闪烁
                 // 出现时使用当前淡出透明度，消失时完全透明
                 let linear = text_color.0.to_linear();
-                if linear.alpha < 0.5 {
+                let alpha = if linear.alpha < 0.5 {
                     // 当前不可见，切换到可见（使用当前淡出透明度）
-                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(fading_out.alpha);
+                    fading_out.alpha
                 } else {
                     // 当前可见，切换到不可见（完全透明）
-                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(0.0);
-                }
+                    0.0
+                };
+                text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(alpha);
             }
         }
     }
