@@ -258,7 +258,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot".to_string()),
+        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -270,7 +270,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家2操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 / Numpad1 to shoot".to_string()),
+        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -1874,8 +1874,8 @@ fn player_shoot_bullet(
             // 玩家1使用 J 键射击
             keyboard_input.just_pressed(KeyCode::KeyJ)
         } else {
-            // 玩家2使用数字1键（包括大键盘1和小键盘1）射击
-            keyboard_input.just_pressed(KeyCode::Digit1) || keyboard_input.just_pressed(KeyCode::Numpad1)
+            // 玩家2使用小键盘1键射击
+            keyboard_input.just_pressed(KeyCode::Numpad1)
         };
 
         if should_shoot && can_fire.0.contains(&entity) {
@@ -1936,8 +1936,8 @@ fn handle_recall_input(
             // 玩家1使用 B 键回城
             keyboard_input.pressed(KeyCode::KeyB)
         } else {
-            // 玩家2使用数字4键（包括大键盘4和小键盘4）回城
-            keyboard_input.pressed(KeyCode::Digit4) || keyboard_input.pressed(KeyCode::Numpad4)
+            // 玩家2使用小键盘4键回城
+            keyboard_input.pressed(KeyCode::Numpad4)
         };
 
         if is_recall_key_pressed && !is_recalling {
@@ -1990,12 +1990,11 @@ fn update_recall_timers(
                     keyboard_input.pressed(KeyCode::KeyD) ||
                     keyboard_input.just_pressed(KeyCode::KeyJ)
                 } else {
-                    // 玩家2：检查方向键或数字1键
+                    // 玩家2：检查方向键或小键盘1键
                     keyboard_input.pressed(KeyCode::ArrowUp) ||
                     keyboard_input.pressed(KeyCode::ArrowDown) ||
                     keyboard_input.pressed(KeyCode::ArrowLeft) ||
                     keyboard_input.pressed(KeyCode::ArrowRight) ||
-                    keyboard_input.just_pressed(KeyCode::Digit1) ||
                     keyboard_input.just_pressed(KeyCode::Numpad1)
                 };
 
