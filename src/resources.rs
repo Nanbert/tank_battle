@@ -29,16 +29,21 @@ impl Default for FadingOut {
 
 #[derive(Resource, Default)]
 pub struct CurrentMenuSelection {
-    pub selected_index: usize, // 0 = PLAY, 1 = EXIT
+    pub selected_index: usize, // 0 = 1 Player, 1 = 2 Player, 2 = EXIT
 }
 
-#[derive(Resource, Default)]
-pub struct GameStarted(pub bool);
+#[derive(Resource, Default, Clone, Copy, PartialEq, Eq)]
+pub enum GameMode {
+    #[default]
+    OnePlayer,
+    TwoPlayers,
+}
 
 #[derive(Resource)]
 pub struct EnemyCount {
     pub total_spawned: usize, // 已生成的敌方坦克总数
     pub max_count: usize,     // 最大敌方坦克数量
+    pub current_enemies: usize, // 当前存活的敌方坦克数量
 }
 
 impl Default for EnemyCount {
@@ -46,7 +51,17 @@ impl Default for EnemyCount {
         Self {
             total_spawned: 0,
             max_count: 20,
+            current_enemies: 0,
         }
+    }
+}
+
+#[derive(Resource)]
+pub struct StageLevel(pub usize); // 当前关卡
+
+impl Default for StageLevel {
+    fn default() -> Self {
+        Self(1) // 默认从第一关开始
     }
 }
 
@@ -58,4 +73,25 @@ pub struct StageIntroTimer {
     pub fade_in: Timer,
     pub stay: Timer,
     pub fade_out: Timer,
+}
+
+#[derive(Resource, Default)]
+pub struct PlayerInfo {
+    pub players: Vec<PlayerStats>,
+}
+
+#[derive(Clone)]
+pub struct PlayerStats {
+    pub name: String,
+    pub speed: usize,
+    pub fire_speed: usize,
+    pub protection: usize,
+    pub shells: usize,
+    pub penetrate: bool,
+    pub track_chain: bool,
+    pub air_cushion: bool,
+    pub fire_shell: bool,
+    pub life_red_bar: usize,
+    pub energy_blue_bar: usize,
+    pub score: usize,
 }

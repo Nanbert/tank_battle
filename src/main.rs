@@ -70,10 +70,12 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<StartAnimationFrames>()
         .init_resource::<FadingOut>()
         .init_resource::<CurrentMenuSelection>()
-        .init_resource::<GameStarted>()
+        .init_resource::<GameMode>()
         .init_resource::<MenuBlinkTimer>()
         .init_resource::<StageIntroTimer>()
         .init_resource::<EnemyCount>()
+        .init_resource::<StageLevel>()
+        .init_resource::<PlayerInfo>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -81,7 +83,7 @@ fn configure_game_resources(app: &mut App) {
 fn register_game_systems(app: &mut App) {
     app.add_systems(OnEnter(GameState::StartScreen), (cleanup_playing_entities, spawn_start_screen).chain())
         .add_systems(OnEnter(GameState::FadingOut), setup_fade_out)
-        .add_systems(OnEnter(GameState::StageIntro), spawn_stage_intro)
+        .add_systems(OnEnter(GameState::StageIntro), (reset_for_next_stage, spawn_stage_intro).chain())
         .add_systems(Update, handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)))
         .add_systems(OnExit(GameState::StageIntro), despawn_stage_intro)
         .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
@@ -112,20 +114,18 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, update_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_commander_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_enemy_count_display.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_stage_complete.run_if(in_state(GameState::Playing)))
+        // .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
             handle_start_screen_input,
-            update_menu_highlight,
             update_option_colors,
         ).run_if(in_state(GameState::StartScreen)))
         .add_systems(Update, update_menu_blink.run_if(in_state(GameState::FadingOut)))
         .add_systems(Update, handle_game_input.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_pause_input.run_if(in_state(GameState::Paused)))
-        .add_systems(Update, (handle_game_over_input, update_menu_highlight, update_option_colors)
+        .add_systems(Update, (handle_game_over_input, update_option_colors)
             .chain().run_if(in_state(GameState::GameOver)))
-        .add_systems(Update, update_menu_highlight.run_if(in_state(GameState::GameOver)))
-        .add_systems(Update, update_option_colors.run_if(in_state(GameState::GameOver)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
 
@@ -205,32 +205,32 @@ fn spawn_start_screen_title(
         Transform::from_xyz(0.0, 400.0, 1.0),
     ));
 
-    // 菜单箭头（初始指向 PLAY）
+    // 1 Player 选项
     commands.spawn((
         StartScreenUI,
-        MenuArrow,
-        Text2d("->".to_string()),
+        Text2d("1 Player".to_string()),
         TextFont {
             font_size: 80.0,
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色箭头
-        Transform::from_xyz(-150.0, 0.0, 1.0),
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 初始选中，黄色
+        Transform::from_xyz(0.0, 50.0, 1.0),
+        MenuOption { index: 0 },
     ));
 
-    // PLAY 选项
+    // 2 Player 选项
     commands.spawn((
         StartScreenUI,
-        Text2d("PLAY".to_string()),
+        Text2d("2 Player".to_string()),
         TextFont {
             font_size: 80.0,
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, 0.0, 1.0),
-        MenuOption { index: 0 },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
+        Transform::from_xyz(0.0, -50.0, 1.0),
+        MenuOption { index: 1 },
     ));
 
     // EXIT 选项
@@ -242,22 +242,47 @@ fn spawn_start_screen_title(
             font,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -100.0, 1.0),
-        MenuOption { index: 1 },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
+        Transform::from_xyz(0.0, -150.0, 1.0),
+        MenuOption { index: 2 },
     ));
 }
 
 fn spawn_start_screen_instructions(commands: &mut Commands) {
+    // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("W/S to select | SPACE to select/pause | J to shoot | ESC to exit".to_string()),
+        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
         Transform::from_xyz(0.0, -450.0, 1.0),
+    ));
+
+    // 玩家2操作说明
+    commands.spawn((
+        StartScreenUI,
+        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 / Numpad1 to shoot".to_string()),
+        TextFont {
+            font_size: 24.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 1.0, 1.0)), // 青色
+        Transform::from_xyz(0.0, -480.0, 1.0),
+    ));
+
+    // 通用操作说明
+    commands.spawn((
+        StartScreenUI,
+        Text2d("W/S to select | SPACE to select/pause | ESC to exit".to_string()),
+        TextFont {
+            font_size: 20.0,
+            ..default()
+        },
+        TextColor(Color::srgb(0.8, 0.8, 0.8)), // 灰色
+        Transform::from_xyz(0.0, -510.0, 1.0),
     ));
 }
 
@@ -388,25 +413,11 @@ fn spawn_player1_tank(
     texture: Handle<Image>,
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
-) -> (Entity, PlayerTank) {
-    let player_tank = PlayerTank{
-        score:0,
-        index: 0,
-        name: "Li Yun Long".to_string(),
-        speed: 40,
-        fire_speed: 40,
-        protection: 40,
-        shells: 1,
-        penetrate: false,
-        track_chain: false,
-        air_cushion: false,
-        fire_shell:false,
-        life_red_bar: 3,
-        _energy_blue_bar: 100,
-    };
+) -> Entity {
+    let player_tank = PlayerTank { index: 0 };
 
     let entity = commands.spawn_empty()
-        .insert(player_tank.clone())
+        .insert(player_tank)
         .insert(PlayingEntity)
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
         .insert(TargetRotation { angle: 180.0_f32.to_radians() })
@@ -432,7 +443,7 @@ fn spawn_player1_tank(
         })
         .id();
 
-    (entity, player_tank)
+    entity
 }
 
 fn spawn_enemy_born_animation(
@@ -469,25 +480,44 @@ fn spawn_enemy_born_animation(
 #[derive(Component)]
 pub struct BornPosition(pub Vec3);
 
-fn spawn_player1_info(
+fn spawn_player_info(
     commands: &mut Commands,
-    player_tank: &PlayerTank,
     font: &Handle<Font>,
     asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_info: &PlayerInfo,
 ) {
     // 生成玩家1 UI 元素
     for config in PLAYER1_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts,config,player_tank);
+        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info);
+    }
+    // 生成玩家2 UI 元素
+    for config in PLAYER2_UI_ELEMENTS {
+        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info);
     }
 }
 
 fn spawn_top_text_info(
     commands: &mut Commands,
     font: &Handle<Font>,
+    stage_level: usize,
 ) {
     // 其他游戏信息 UI 元素配置
     let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
+
+    // 关卡信息显示在顶部中心
+    commands.spawn((
+        PlayingEntity,
+        Text2d(format!("Stage {}", stage_level)),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+
     commands.spawn((
         PlayingEntity,
         Text2d("Commander Life:".to_string()),
@@ -531,13 +561,17 @@ fn spawn_ui_element_from_config(
     asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     config: &UIElementConfig,
-    player_tank: &PlayerTank,
+    player_info: &PlayerInfo,
 ) {
+    // 根据 x_pos 判断是哪个玩家（左侧是玩家1，右侧是玩家2）
+    let player_index = if config.x_pos < 0.0 { 0 } else { 1 };
+    let player_stats = &player_info.players[player_index];
+
     match config.element_type {
         UIElementType::NormalText(f) => {
-            let text = f(player_tank);
+            let text = f(player_stats);
             commands.spawn((
-                PlayerIndex(player_tank.index),
+                PlayerIndex(player_index),
                 PlayingEntity,
                 Text2d(text),
                 TextFont {
@@ -556,7 +590,7 @@ fn spawn_ui_element_from_config(
             let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
             let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
             commands.spawn((
-                PlayerIndex(player_tank.index),
+                PlayerIndex(player_index),
                 PlayerAvatar,
                 PlayingEntity,
                 Sprite {
@@ -576,7 +610,7 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::HealthBar => {
             commands.spawn((
-                PlayerIndex(player_tank.index),
+                PlayerIndex(player_index),
                 HealthBar,
                 HealthBarOriginalPosition(config.x_pos),
                 PlayingEntity,
@@ -590,7 +624,7 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::BlueBar => {
             commands.spawn((
-                PlayerIndex(player_tank.index),
+                PlayerIndex(player_index),
                 BlueBar,
                 PlayingEntity,
                 Sprite {
@@ -648,14 +682,11 @@ fn spawn_game_entities(
     asset_server: Res<AssetServer>,
     mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
-    mut game_started: ResMut<GameStarted>,
     mut enemy_count: ResMut<EnemyCount>,
+    mut player_info: ResMut<PlayerInfo>,
+    stage_level: Res<StageLevel>,
+    game_mode: Res<GameMode>,
 ) {
-    // 如果游戏已经启动过，就不再生成实体
-    if game_started.0 {
-        return;
-    }
-    game_started.0 = true;
     // 设置背景色为黑色
     clear_color.0 = BACKGROUND_COLOR;
 
@@ -672,29 +703,137 @@ fn spawn_game_entities(
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
     let player_animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    // 生成玩家坦克（暂时只生成玩家1）
-    let (player1_tank_entity, player_tank) = spawn_player1_tank(
-        &mut commands,
-        player_texture,
-        player_texture_atlas_layout,
-        player_animation_indices,
-    );
+    // 根据游戏模式生成玩家
+    match *game_mode {
+        GameMode::OnePlayer => {
+            // 单人模式：只生成玩家1
+            let player1_tank_entity = spawn_player1_tank(
+                &mut commands,
+                player_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
+            );
+
+            // 初始化玩家1信息
+            player_info.players.push(PlayerStats {
+                name: "Li Yun Long".to_string(),
+                speed: 40,
+                fire_speed: 40,
+                protection: 40,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_red_bar: 3,
+                energy_blue_bar: 100,
+                score: 0,
+            });
+
+            // 初始化玩家坦克可以射击
+            can_fire.0.insert(player1_tank_entity);
+        }
+        GameMode::TwoPlayers => {
+            // 双人模式：生成玩家1和玩家2
+            let player1_tank_entity = spawn_player1_tank(
+                &mut commands,
+                player_texture.clone(),
+                player_texture_atlas_layout.clone(),
+                player_animation_indices.clone(),
+            );
+
+            let player2_tank_entity = commands.spawn_empty()
+                .insert(PlayerTank { index: 1 })
+                .insert(PlayingEntity)
+                .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
+                .insert(TargetRotation { angle: 180.0_f32.to_radians() })
+                .insert(Sprite::from_atlas_image(
+                    player_texture.clone(),
+                    TextureAtlas{
+                        layout: player_texture_atlas_layout.clone(),
+                        index: player_animation_indices.first,
+                    }
+                ))
+                .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+                .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
+                .insert(player_animation_indices.clone())
+                .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+                .insert(RigidBody::KinematicPositionBased)
+                .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
+                .insert(LockedAxes::ROTATION_LOCKED)
+                .insert(KinematicCharacterController {
+                    offset: CharacterLength::Absolute(0.01),
+                    ..default()
+                })
+                .id();
+
+            // 初始化玩家1信息
+            player_info.players.push(PlayerStats {
+                name: "Li Yun Long".to_string(),
+                speed: 40,
+                fire_speed: 40,
+                protection: 40,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_red_bar: 3,
+                energy_blue_bar: 100,
+                score: 0,
+            });
+
+            // 初始化玩家2信息
+            player_info.players.push(PlayerStats {
+                name: "Chu Yun Fei".to_string(),
+                speed: 40,
+                fire_speed: 40,
+                protection: 40,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_red_bar: 3,
+                energy_blue_bar: 100,
+                score: 0,
+            });
+
+            // 初始化玩家坦克可以射击
+            can_fire.0.insert(player1_tank_entity);
+            can_fire.0.insert(player2_tank_entity);
+        }
+    }
 
     // 加载字体
     let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
-    spawn_player1_info(&mut commands, &player_tank, &font, &asset_server, &mut texture_atlas_layouts);
-    spawn_top_text_info(&mut commands, &font);
+    
+    // 根据游戏模式生成UI
+    match *game_mode {
+        GameMode::OnePlayer => {
+            // 单人模式：只生成玩家1的UI
+            for config in PLAYER1_UI_ELEMENTS {
+                spawn_ui_element_from_config(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, config, &player_info);
+            }
+        }
+        GameMode::TwoPlayers => {
+            // 双人模式：生成玩家1和玩家2的UI
+            spawn_player_info(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, &player_info);
+        }
+    }
+    
+    spawn_top_text_info(&mut commands, &font, stage_level.0);
 
     // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
     for &pos in ENEMY_BORN_PLACES.iter() {
         spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, pos);
     }
 
-    // 初始化玩家坦克可以射击
-    can_fire.0.insert(player1_tank_entity);
-
     // 初始化敌方坦克计数（初始生成3个）
     enemy_count.total_spawned = 3;
+    enemy_count.current_enemies = 0;
     
     // 生成道具
     spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts);
@@ -704,6 +843,7 @@ fn handle_start_screen_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
+    mut game_mode: ResMut<GameMode>,
 ) {
     // Esc 键退出游戏
     if keyboard_input.just_pressed(KeyCode::Escape) {
@@ -712,17 +852,28 @@ fn handle_start_screen_input(
 
     // W 键向上选择
     if keyboard_input.just_pressed(KeyCode::KeyW) {
-        menu_selection.selected_index = 0;
+        menu_selection.selected_index = if menu_selection.selected_index > 0 {
+            menu_selection.selected_index - 1
+        } else {
+            2
+        };
     }
     // S 键向下选择
     if keyboard_input.just_pressed(KeyCode::KeyS) {
-        menu_selection.selected_index = 1;
+        menu_selection.selected_index = (menu_selection.selected_index + 1) % 3;
     }
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
         match menu_selection.selected_index {
-            0 => next_state.set(GameState::FadingOut), // PLAY
-            1 => std::process::exit(0), // EXIT
+            0 => {
+                *game_mode = GameMode::OnePlayer;
+                next_state.set(GameState::FadingOut); // 1 Player
+            }
+            1 => {
+                *game_mode = GameMode::TwoPlayers;
+                next_state.set(GameState::FadingOut); // 2 Player
+            }
+            2 => std::process::exit(0), // EXIT
             _ => {}
         }
     }
@@ -1021,7 +1172,7 @@ fn find_bullet_and_tank_in_collision(
     e2: Entity,
     bullets: &Query<(Entity, &BulletOwner), With<Bullet>>,
     enemy_tanks: &Query<(), With<EnemyTank>>,
-    player_tanks: &Query<&mut PlayerTank, With<PlayerTank>>,
+    player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
 ) -> Option<(Entity, Entity)> {
     if bullets.get(e1).is_ok() && (enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok()) {
         return Some((e1, e2));
@@ -1036,7 +1187,7 @@ fn should_bullet_destroy(
     bullet_owner: Entity,
     tank_entity: Entity,
     enemy_tanks: &Query<(), With<EnemyTank>>,
-    player_tanks: &Query<&mut PlayerTank, With<PlayerTank>>,
+    player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
 ) -> bool {
     let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
     let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
@@ -1114,11 +1265,12 @@ fn handle_bullet_collisions(
     bullets: Query<(Entity, &BulletOwner), With<Bullet>>,
     enemy_tanks: Query<(), With<EnemyTank>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
-    mut player_tanks: Query<&mut PlayerTank, With<PlayerTank>>,
+    player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerIndex)>,
     mut enemy_count: ResMut<EnemyCount>,
-    mut can_fire: ResMut<CanFire>,
+    _can_fire: ResMut<CanFire>,
+    mut player_info: ResMut<PlayerInfo>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -1148,10 +1300,14 @@ fn handle_bullet_collisions(
                         // 销毁敌方坦克
                         commands.entity(tank_entity).despawn();
 
+                        // 减少当前敌方坦克计数
+                        enemy_count.current_enemies -= 1;
+
                         // 增加分数
-                        let mut player_tank = player_tanks.get_mut(bullet_owner).expect("无法获取玩家坦克!");
-                        println!("score:{}", player_tank.score);
-                        player_tank.score+=100;
+                        let player_tank = player_tanks.get(bullet_owner).expect("无法获取玩家坦克!");
+                        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                            player_stats.score += 100;
+                        }
 
                         // 检查是否需要重新生成敌方坦克
                         if enemy_count.total_spawned < enemy_count.max_count {
@@ -1165,7 +1321,7 @@ fn handle_bullet_collisions(
                             enemy_count.total_spawned += 1;
                         }
                     } else if !is_player_bullet && is_player_tank {
-                        let mut player_tank = player_tanks.get_mut(tank_entity).expect("无法获取玩家坦克!");
+                        let player_tank = player_tanks.get(tank_entity).expect("无法获取玩家坦克!");
                         // 敌方子弹击中玩家坦克
                         // 播放中弹音效
                         let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
@@ -1177,30 +1333,32 @@ fn handle_bullet_collisions(
                         }
 
                         // 扣除对应玩家的生命值
-                        if player_tank.life_red_bar > 0 {
-                            player_tank.life_red_bar -= 1;
-                        }
-                        if player_tank.life_red_bar == 0{
-                            // 获取玩家坦克的位置
-                            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
-                                // 生成爆炸效果
-                                spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                            if player_stats.life_red_bar > 0 {
+                                player_stats.life_red_bar -= 1;
                             }
-
-                            // 销毁玩家坦克
-                            commands.entity(tank_entity).despawn();
-
-                            // 标记对应玩家的头像为死亡状态
-                            for (avatar_entity, player_index) in player_avatars.iter() {
-                                if player_index.0 == player_tank.index {
-                                    commands.entity(avatar_entity).insert(PlayerDead);
+                            if player_stats.life_red_bar == 0{
+                                // 获取玩家坦克的位置
+                                if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
+                                    // 生成爆炸效果
+                                    spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
                                 }
+
+                                // 销毁玩家坦克
+                                commands.entity(tank_entity).despawn();
+
+                                // 标记对应玩家的头像为死亡状态
+                                for (avatar_entity, player_index) in player_avatars.iter() {
+                                    if player_index.0 == player_tank.index {
+                                        commands.entity(avatar_entity).insert(PlayerDead);
+                                    }
+                                }
+                                // 启动 Game Over 延迟计时器（1.2秒）
+                                commands.spawn((
+                                    GameOverTimer,
+                                    AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                                ));
                             }
-                            // 启动 Game Over 延迟计时器（1.2秒）
-                            commands.spawn((
-                                GameOverTimer,
-                                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-                            ));
                         }
                     }
                     // 销毁子弹
@@ -1215,10 +1373,11 @@ fn handle_powerup_collision(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     powerups: Query<(Entity, &Transform), With<PowerUp>>,
-    player_tanks: Query<(&Transform, &mut PlayerTank), With<PlayerTank>>,
-    player_info_texts: Query<(Entity, &Text2d), With<Text2d>>,
+    player_tanks: Query<(&Transform, &PlayerTank), With<PlayerTank>>,
+    mut player_info: ResMut<PlayerInfo>,
+    player_info_texts: Query<(Entity, &Text2d, &PlayerIndex), With<Text2d>>,
 ) {
-    for (tank_transform, mut player_tank) in player_tanks{
+    for (tank_transform, player_tank) in player_tanks{
         let mut is_power_up:bool = false;
         // 销毁texture
         for (powerup_entity, powerup_transform) in powerups{
@@ -1236,13 +1395,15 @@ fn handle_powerup_collision(
             continue;
         }
         // 增加速度
-        if player_tank.speed < 100 {
-            player_tank.speed += 20;
+        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+            if player_stats.speed < 100 {
+                player_stats.speed += 20;
+            }
         }
 
-        // 闪烁文字
-        for (entity, text) in player_info_texts.iter() {
-            if text.0.starts_with("Speed:") {
+        // 闪烁文字：只闪烁当前玩家的 Speed 文字
+        for (entity, text, player_index) in player_info_texts.iter() {
+            if text.0.starts_with("Speed:") && player_index.0 == player_tank.index {
                 commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
                 break;
             }
@@ -1363,6 +1524,7 @@ fn animate_enemy_born_animation(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut can_fire: ResMut<CanFire>,
+    mut enemy_count: ResMut<EnemyCount>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
         timer.tick(time.delta());
@@ -1427,6 +1589,9 @@ fn animate_enemy_born_animation(
 
                         // 初始化敌方坦克可以射击
                         can_fire.0.insert(enemy_entity);
+
+                        // 增加当前敌方坦克计数
+                        enemy_count.current_enemies += 1;
                     }
                 }
             }
@@ -1442,15 +1607,20 @@ fn animate_player_avatar(
         &AnimationIndices,
         &mut CurrentAnimationFrame,
         Option<&PlayerDead>,
+        &PlayerIndex,
     ), With<PlayerAvatar>>,
     commander_query: Query<(), With<CommanderDead>>,
 ) {
     let commander_dead = !commander_query.is_empty();
 
-    for (mut timer, mut sprite, indices, mut current_frame, player_dead) in &mut query {
+    for (mut timer, mut sprite, indices, mut current_frame, player_dead, player_index) in &mut query {
         // 如果玩家已死亡，切换到死亡图片并停止动画
         if player_dead.is_some() {
-            let dead_texture: Handle<Image> = asset_server.load("player1_death.png");
+            let dead_texture: Handle<Image> = asset_server.load(if player_index.0 == 0 {
+                "player1_death.png"
+            } else {
+                "player1_death.png" // 暂时使用相同的图片，后续可以添加玩家2的死亡图片
+            });
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -1459,7 +1629,11 @@ fn animate_player_avatar(
 
         // 如果Commander已死亡，切换到commander死亡图片并停止动画
         if commander_dead {
-            let dead_texture: Handle<Image> = asset_server.load("player1_commander_dead.png");
+            let dead_texture: Handle<Image> = asset_server.load(if player_index.0 == 0 {
+                "player1_commander_dead.png"
+            } else {
+                "player1_commander_dead.png" // 暂时使用相同的图片，后续可以添加玩家2的commander死亡图片
+            });
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -1559,13 +1733,20 @@ fn handle_game_over_delay(
     mut commands: Commands,
     mut query: Query<(Entity, &mut AnimationTimer), With<GameOverTimer>>,
     mut next_state: ResMut<NextState<GameState>>,
+    player_tanks: Query<(), With<PlayerTank>>,
 ) {
     for (entity, mut timer) in &mut query {
         timer.tick(time.delta());
         if timer.is_finished() {
-            // 1.2秒后切换到 GameOver 状态
-            commands.entity(entity).despawn();
-            next_state.set(GameState::GameOver);
+            // 只要场上没有玩家坦克就游戏结束
+            if player_tanks.is_empty() {
+                // 1.2秒后切换到 GameOver 状态
+                commands.entity(entity).despawn();
+                next_state.set(GameState::GameOver);
+            } else {
+                // 还有玩家存活，移除计时器
+                commands.entity(entity).despawn();
+            }
         }
     }
 }
@@ -1573,21 +1754,36 @@ fn handle_game_over_delay(
 fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation), With<PlayerTank>>,
+    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &PlayerTank), With<PlayerTank>>,
 ) {
-    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation) in &mut query {
-        let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
-        let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
-        let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
-        let d_pressed = keyboard_input.pressed(KeyCode::KeyD);
-
-        // 只允许单一方向移动，多个方向键同时按下时停止
-        let direction = match (w_pressed, s_pressed, a_pressed, d_pressed) {
-            (true, false, false, false) => Vec2::new(0.0, 1.0),  // 上
-            (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
-            (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
-            (false, false, false, true) => Vec2::new(1.0, 0.0),  // 右
-            _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
+    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation, player_tank) in &mut query {
+        // 根据玩家索引选择不同的控制键
+        let direction = if player_tank.index == 0 {
+            // 玩家1使用 WASD
+            let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
+            let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
+            let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
+            let d_pressed = keyboard_input.pressed(KeyCode::KeyD);
+            match (w_pressed, s_pressed, a_pressed, d_pressed) {
+                (true, false, false, false) => Vec2::new(0.0, 1.0),  // 上
+                (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
+                (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
+                (false, false, false, true) => Vec2::new(1.0, 0.0),  // 右
+                _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
+            }
+        } else {
+            // 玩家2使用方向键
+            let up_pressed = keyboard_input.pressed(KeyCode::ArrowUp);
+            let down_pressed = keyboard_input.pressed(KeyCode::ArrowDown);
+            let left_pressed = keyboard_input.pressed(KeyCode::ArrowLeft);
+            let right_pressed = keyboard_input.pressed(KeyCode::ArrowRight);
+            match (up_pressed, down_pressed, left_pressed, right_pressed) {
+                (true, false, false, false) => Vec2::new(0.0, 1.0),  // 上
+                (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
+                (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
+                (false, false, false, true) => Vec2::new(1.0, 0.0),  // 右
+                _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
+            }
         };
 
         // 检查是否需要转向
@@ -1650,14 +1846,22 @@ fn move_player_tank(
 fn player_shoot_bullet(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    query: Query<(Entity, &Transform), With<PlayerTank>>,
+    query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
     _player_tanks: Query<Entity, With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
-    for (entity, transform) in &query {
-        // J 键射击
-        if keyboard_input.just_pressed(KeyCode::KeyJ) && can_fire.0.contains(&entity) {
+    for (entity, transform, player_tank) in &query {
+        // 根据玩家索引选择不同的射击键
+        let should_shoot = if player_tank.index == 0 {
+            // 玩家1使用 J 键射击
+            keyboard_input.just_pressed(KeyCode::KeyJ)
+        } else {
+            // 玩家2使用数字1键（包括大键盘1和小键盘1）射击
+            keyboard_input.just_pressed(KeyCode::Digit1) || keyboard_input.just_pressed(KeyCode::Numpad1)
+        };
+
+        if should_shoot && can_fire.0.contains(&entity) {
             // 计算子弹发射方向（基于坦克当前的旋转角度）
             // 坦克旋转时使用：angle - 270.0_f32.to_radians()
             // 因此需要补偿：actual_angle = euler_angle + 270.0_f32.to_radians()
@@ -1701,10 +1905,8 @@ fn player_shoot_bullet(
 
 fn setup_fade_out(
     mut fading_out: ResMut<FadingOut>,
-    mut game_started: ResMut<GameStarted>,
 ) {
     fading_out.alpha = 1.0;
-    game_started.0 = false; // 重置游戏启动标志，以便重新游戏时重新生成实体
 }
 
 fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
@@ -1735,6 +1937,7 @@ fn spawn_stage_intro(
     asset_server: Res<AssetServer>,
     mut stage_intro_timer: ResMut<StageIntroTimer>,
     mut clear_color: ResMut<ClearColor>,
+    stage_level: Res<StageLevel>,
 ) {
     // 设置背景色为白色
     clear_color.0 = Color::srgb(1.0, 1.0, 1.0);
@@ -1747,10 +1950,10 @@ fn spawn_stage_intro(
     // 加载字体
     let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
 
-    // Stage 1 标题
+    // Stage 标题（显示在屏幕中心）
     commands.spawn((
         StageIntroUI,
-        Text2d("Stage 1".to_string()),
+        Text2d(format!("Stage {}", stage_level.0)),
         TextFont {
             font_size: 80.0,
             font: font.clone(),
@@ -1760,10 +1963,13 @@ fn spawn_stage_intro(
         Transform::from_xyz(0.0, 100.0, 1.0),
     ));
 
-    // 描述文字
+    // 描述文字（随机选择一条俏皮话）
+    let mut rng = rand::rng();
+    let quote_index = rng.random_range(0..STAGE_QUOTES.len());
+    let quote_text = STAGE_QUOTES[quote_index];
     commands.spawn((
         StageIntroUI,
-        Text2d("The brave commander will not retreat even when hit. He will stand firm in place, waiting for his soldiers to rescue him.".to_string()),
+        Text2d(quote_text.to_string()),
         TextFont {
             font_size: 28.0,
             font,
@@ -1856,25 +2062,9 @@ fn fade_out_screen(
     }
 }
 
-fn update_menu_highlight(
-    menu_selection: Res<CurrentMenuSelection>,
-    mut arrow_query: Query<&mut Transform, With<MenuArrow>>,
-) {
-    // 获取箭头位置
-    if let Ok(mut arrow_transform) = arrow_query.single_mut() {
-        // 根据当前选择的索引更新箭头位置
-        let y_position = if menu_selection.selected_index == 1 {
-            -100.0 // EXIT 的 Y 位置
-        } else {
-            0.0 // PLAY 的 Y 位置
-        };
-        arrow_transform.translation.y = y_position;
-    }
-}
-
 fn update_option_colors(
     menu_selection: Res<CurrentMenuSelection>,
-    mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+    mut text_query: Query<(&MenuOption, &mut TextColor)>,
 ) {
     for (option, mut text_color) in &mut text_query {
         if option.index == menu_selection.selected_index {
@@ -1888,37 +2078,40 @@ fn update_option_colors(
 
 fn update_player_info_display(
     mut text2ds: Query<(&PlayerIndex, &mut Text2d), With<Text2d>>,
+    player_info: Res<PlayerInfo>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
 ) {
     for player_tank in player_tanks {
-        for (player_index, mut text) in &mut text2ds {
-            if player_tank.index != player_index.0{
-                continue;
-            }
-            //更新文字
-            if text.0.starts_with("Scores"){
-                let key_words = format!("Scores{}: {}", player_index.0 + 1, player_tank.score);
-                text.0 = key_words;
-            } else if text.0.starts_with("Speed"){
-                let key_words = if player_tank.speed<100{
-                    format!("Speed: {}%", player_tank.speed)
-                } else{
-                    format!("Speed: Max")
-                };
-                text.0 = key_words;
+        if let Some(player_stats) = player_info.players.get(player_tank.index) {
+            for (player_index, mut text) in &mut text2ds {
+                if player_tank.index != player_index.0{
+                    continue;
+                }
+                //更新文字
+                if text.0.starts_with("Scores"){
+                    let key_words = format!("Scores{}: {}", player_index.0 + 1, player_stats.score);
+                    text.0 = key_words;
+                } else if text.0.starts_with("Speed"){
+                    let key_words = if player_stats.speed<100{
+                        format!("Speed: {}%", player_stats.speed)
+                    } else{
+                        format!("Speed: Max")
+                    };
+                    text.0 = key_words;
+                }
             }
         }
     }
 }
 
 fn update_health_bar(
-    mut health_bars: Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform), With<HealthBar>>,
-    player_tanks: Query<&PlayerTank, With<PlayerTank>>,
+    mut health_bars: Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform, &PlayerIndex), With<HealthBar>>,
+    player_info: Res<PlayerInfo>,
 ) {
-    for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        for player_tank in player_tanks{
+    for (mut sprite, original_pos, mut transform, player_index) in &mut health_bars {
+        if let Some(player_stats) = player_info.players.get(player_index.0) {
             // 血条总宽度 160，生命值 3，每条代表 1/3
-            let health_width = (player_tank.life_red_bar as f32 / 3.0) * 160.0;
+            let health_width = (player_stats.life_red_bar as f32 / 3.0) * 160.0;
             sprite.custom_size = Some(Vec2::new(health_width, 10.0));
 
             // 左对齐：将血条向左移动，使其从左边界开始
@@ -2209,7 +2402,6 @@ fn handle_game_over_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
-    mut game_started: ResMut<GameStarted>,
 ) {
     // W 键向上选择
     if keyboard_input.just_pressed(KeyCode::KeyW) {
@@ -2228,12 +2420,10 @@ fn handle_game_over_input(
         match menu_selection.selected_index {
             0 => {
                 // Restart: 重置游戏状态并重新开始
-                game_started.0 = false;
                 next_state.set(GameState::Playing);
             }
             1 => {
                 // Back to Menu: 返回开始界面
-                game_started.0 = false;
                 next_state.set(GameState::StartScreen);
             }
             2 => {
@@ -2254,9 +2444,50 @@ fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOv
 fn cleanup_playing_entities(
     mut commands: Commands,
     playing_entities: Query<Entity, With<PlayingEntity>>,
+    mut player_info: ResMut<PlayerInfo>,
+    mut enemy_count: ResMut<EnemyCount>,
+    mut stage_level: ResMut<StageLevel>,
 ) {
     // 清理所有游戏实体
     for entity in playing_entities.iter() {
         commands.entity(entity).despawn();
     }
+
+    // 重置玩家信息
+    player_info.players.clear();
+
+    // 重置敌方坦克计数
+    enemy_count.total_spawned = 0;
+    enemy_count.current_enemies = 0;
+
+    // 重置关卡数
+    stage_level.0 = 1;
+}
+
+fn check_stage_complete(
+    enemy_count: Res<EnemyCount>,
+    mut next_state: ResMut<NextState<GameState>>,
+    mut stage_level: ResMut<StageLevel>,
+) {
+    // 检查是否完成关卡：已生成所有敌方坦克且当前没有存活的敌方坦克
+    if enemy_count.total_spawned >= enemy_count.max_count && enemy_count.current_enemies == 0 {
+        // 进入下一关
+        stage_level.0 += 1;
+        next_state.set(GameState::StageIntro);
+    }
+}
+
+fn reset_for_next_stage(
+    mut commands: Commands,
+    playing_entities: Query<Entity, With<PlayingEntity>>,
+    mut enemy_count: ResMut<EnemyCount>,
+) {
+    // 清理所有游戏实体
+    for entity in playing_entities.iter() {
+        commands.entity(entity).despawn();
+    }
+
+    // 重置敌方坦克计数
+    enemy_count.total_spawned = 0;
+    enemy_count.current_enemies = 0;
 }

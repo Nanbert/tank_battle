@@ -1,6 +1,7 @@
 //! Game constants for the Tank Battle game
 
 use bevy::prelude::*;
+use crate::resources::PlayerStats;
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -38,7 +39,6 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
-pub const WALL_THICKNESS: f32 = 15.0;
 pub const COMMANDER_WIDTH: f32 = 140.0;
 pub const COMMANDER_HEIGHT: f32 = 120.0;
 
@@ -49,10 +49,28 @@ pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(1.0, 0.0),   // 右
 ];
 
+// 关卡俏皮话，根据关卡序号选择（索引从0开始）
+pub const STAGE_QUOTES: [&str; 14] = [
+    "The brave commander will not retreat even when hit. He will stand firm in place,\nwaiting for his soldiers to rescue him.",
+    "When you fire while turning, your bullet might not go straight!\nThough controlling bullet trajectory is quite difficult.",
+    "Beware, enemy tanks aren't fools either - they can shoot diagonally too.",
+    "Both enemy and our factories have constrained our tanks to fire straight,\nincreasing hit rate. After all, a shell is expensive.",
+    "All tanks move in straight lines, not like crabs. This is to commemorate\nthe countless tanks sacrificed in the tank battles of the last century.",
+    "The cunning enemy tanks have upgraded their shells,\nmaking our shells unable to intercept theirs. This is truly frustrating.",
+    "When all your stats reach max, please share the power-ups with your teammates,\nyou greedy person.",
+    "Our power-ups have been sprayed with invisible paint - only you can see them,\nthe enemy cannot, even if they're right next to them.",
+    "It is said that in the tank battles of the last century, there was a period\nwhen enemies could also pick up our power-ups. That was truly a disaster.",
+    "Our shells have been specially treated - when they encounter the commander,\nthey pass through without harming him. It is said this was strongly requested\nby the commander, because in the tank battles of the last century,\ncountless commanders died at the hands of their own troops. Truly pitiful.",
+    "Our commander has investigated the enemy numbers in advance -\nthere are at most a few hundred enemies. The war will have an end.",
+    "In the tank battles of the last century, the enemies seemed endless,\nand no one lived to see the end of the war.",
+    "In the tank battles of the last century, the super bomb power-up would destroy\nmany enemy tanks, yet the destroyed tanks would not count towards your\nbattle record. This is truly strange.",
+    "When you're alone, you can request an extra tank from the commander.\nYou can tell the commander that the extra tank can help block some shells for you.",
+];
+
 /// UI 元素类型枚举
 #[derive(Clone, Copy)]
 pub enum UIElementType {
-    NormalText(fn(&PlayerTank) -> String),
+    NormalText(fn(&PlayerStats) -> String),
     PlayerAvatar,
     HealthBar, 
     BlueBar
@@ -188,7 +206,7 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
 ];
 
 /// 玩家2 UI 元素配置（与玩家1相同，但位置在右侧）
-pub const _PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
+pub const PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     // 玩家2名称
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| {info.name.clone()}),
@@ -279,7 +297,7 @@ pub const _PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     },
     // 玩家2分数
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Scores2:{}", info.score)),
+        element_type: UIElementType::NormalText(|info| format!("Scores2: {}", info.score)),
         x_pos: WINDOW_RIGHT_X - 115.0,
         y_pos: WINDOW_TOP_Y - 50.0,
         font_size: 28.0,
@@ -373,21 +391,9 @@ pub struct EnemyTank {
 #[derive(Component)]
 pub struct EnemyBornAnimation;
 
-#[derive(Component, Clone)]
+#[derive(Component)]
 pub struct PlayerTank {
     pub index: usize, // 0 = 玩家1, 1 = 玩家2
-    pub name:String,
-    pub speed: usize, // max 100
-    pub fire_speed: usize, // max 100
-    pub protection: usize, // max 100
-    pub shells: usize, // max 100
-    pub penetrate: bool,
-    pub track_chain: bool,
-    pub air_cushion: bool,
-    pub fire_shell: bool,
-    pub life_red_bar: usize, // max 3
-    pub _energy_blue_bar: usize, // max 100
-    pub score: usize,
 }
 
 #[derive(Component)]
