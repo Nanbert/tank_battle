@@ -115,3 +115,37 @@ impl RecallTimer {
         }
     }
 }
+
+// 玩家冲刺计时器
+#[derive(Resource, Default)]
+pub struct DashTimers {
+    pub timers: HashMap<Entity, DashTimer>,
+}
+
+pub struct DashTimer {
+    pub timer: Timer,
+    pub direction: Vec2,
+}
+
+impl DashTimer {
+    pub fn new(direction: Vec2, duration: f32) -> Self {
+        Self {
+            timer: Timer::from_seconds(duration, TimerMode::Once),
+            direction,
+        }
+    }
+}
+
+// 蓝条恢复计时器
+#[derive(Resource)]
+pub struct BlueBarRegenTimer {
+    pub timer: Timer,
+}
+
+impl Default for BlueBarRegenTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(5.0, TimerMode::Repeating),
+        }
+    }
+}

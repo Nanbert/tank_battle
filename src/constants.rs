@@ -50,8 +50,12 @@ pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(1.0, 0.0),   // 右
 ];
 
+// 冲刺相关常量
+pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
+pub const DASH_DISTANCE: f32 = TANK_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
+
 // 关卡俏皮话，根据关卡序号选择（索引从0开始）
-pub const STAGE_QUOTES: [&str; 14] = [
+pub const STAGE_QUOTES: [&str; 16] = [
     "The brave commander will not retreat even when hit. He will stand firm in place,\nwaiting for his soldiers to rescue him.",
     "When you fire while turning, your bullet might not go straight!\nThough controlling bullet trajectory is quite difficult.",
     "Beware, enemy tanks aren't fools either - they can shoot diagonally too.",
@@ -66,6 +70,8 @@ pub const STAGE_QUOTES: [&str; 14] = [
     "In the tank battles of the last century, the enemies seemed endless,\nand no one lived to see the end of the war.",
     "In the tank battles of the last century, the super bomb power-up would destroy\nmany enemy tanks, yet the destroyed tanks would not count towards your\nbattle record. This is truly strange.",
     "When you're alone, you can request an extra tank from the commander.\nYou can tell the commander that the extra tank can help block some shells for you.",
+    "When dashing, you must strike from the front or side. When attacking from behind,\nyou're moving in the same direction, so the impact force may not be enough.",
+    "When dashing, if there are obstacles or enemies, make sure to maintain a certain distance\nto more successfully trigger the dash destruction effect.",
 ];
 
 /// UI 元素类型枚举
@@ -407,6 +413,10 @@ pub struct PlayerIndex(pub usize);// 0->Player 1, 1-> Player 2
 #[derive(Component)]
 pub struct PlayerDead;
 
+// 玩家正在冲刺标记
+#[derive(Component)]
+pub struct IsDashing;
+
 #[derive(Component)]
 pub struct Bullet;
 
@@ -443,6 +453,9 @@ pub struct HealthBar;
 
 #[derive(Component)]
 pub struct BlueBar;
+
+#[derive(Component)]
+pub struct BlueBarOriginalPosition(pub f32); // 记录蓝条的原始 X 位置
 
 #[derive(Component)]
 pub struct HealthBarOriginalPosition(pub f32); // 记录血条的原始 X 位置

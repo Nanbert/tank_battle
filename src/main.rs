@@ -77,6 +77,8 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<StageLevel>()
         .init_resource::<PlayerInfo>()
         .init_resource::<RecallTimers>()
+        .init_resource::<DashTimers>()
+        .init_resource::<BlueBarRegenTimer>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -113,6 +115,8 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_player_info_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_health_bar.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_blue_bar.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_blue_bar_regen.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_commander_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_enemy_count_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_stage_complete.run_if(in_state(GameState::Playing)))
@@ -131,6 +135,9 @@ fn register_game_systems(app: &mut App) {
             handle_recall_input,
             update_recall_timers,
         ).run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_dash_input.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_dash_movement.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_dash_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_recall_progress_bars.run_if(in_state(GameState::Playing)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
@@ -258,7 +265,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall".to_string()),
+        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall | K to dash".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -270,7 +277,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家2操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall".to_string()),
+        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall | Numpad2 to dash".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -643,6 +650,7 @@ fn spawn_ui_element_from_config(
             commands.spawn((
                 PlayerIndex(player_index),
                 BlueBar,
+                BlueBarOriginalPosition(config.x_pos),
                 PlayingEntity,
                 Sprite {
                     color: Color::srgb(0.0, 0.5, 1.0),
@@ -1771,9 +1779,13 @@ fn handle_game_over_delay(
 fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &PlayerTank), With<PlayerTank>>,
+    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
 ) {
-    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation, player_tank) in &mut query {
+    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation, player_tank, is_dashing) in &mut query {
+        // 如果正在冲刺，跳过移动处理
+        if is_dashing.is_some() {
+            continue;
+        }
         // 根据玩家索引选择不同的控制键
         let direction = if player_tank.index == 0 {
             // 玩家1使用 WASD
@@ -2061,6 +2073,177 @@ fn update_recall_progress_bars(
     }
 }
 
+fn handle_dash_input(
+    mut commands: Commands,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
+    mut dash_timers: ResMut<DashTimers>,
+    mut player_info: ResMut<PlayerInfo>,
+) {
+    for (entity, transform, player_tank) in &query {
+        // 检查是否正在冲刺
+        let is_dashing = dash_timers.timers.contains_key(&entity);
+
+        // 根据玩家索引选择不同的冲刺键
+        let is_dash_key_pressed = if player_tank.index == 0 {
+            // 玩家1使用 K 键冲刺
+            keyboard_input.just_pressed(KeyCode::KeyK)
+        } else {
+            // 玩家2使用小键盘2键冲刺
+            keyboard_input.just_pressed(KeyCode::Numpad2)
+        };
+
+        if is_dash_key_pressed && !is_dashing {
+            // 检查蓝条是否足够（需要至少1/3蓝条）
+            if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                let energy_cost = 100 / 3; // 1/3蓝条
+                if player_stats.energy_blue_bar >= energy_cost {
+                    // 立即扣除蓝条
+                    player_stats.energy_blue_bar -= energy_cost;
+
+                    // 计算坦克当前朝向
+                    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
+                    let actual_angle = euler_angle + 270.0_f32.to_radians();
+                    let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+
+                    // 开始冲刺
+                    let dash_timer = DashTimer::new(direction, DASH_DURATION);
+                    dash_timers.timers.insert(entity, dash_timer);
+
+                    // 添加冲刺标记
+                    commands.entity(entity).insert(IsDashing);
+                }
+            }
+        }
+    }
+}
+
+fn update_dash_movement(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut player_query: Query<(Entity, &mut Transform, &mut KinematicCharacterController, Option<&IsDashing>, &PlayerTank), With<PlayerTank>>,
+    mut dash_timers: ResMut<DashTimers>,
+    _player_info: ResMut<PlayerInfo>,
+) {
+    for (entity, _transform, mut character_controller, is_dashing, _player_tank) in &mut player_query {
+        if let Some(IsDashing) = is_dashing {
+            if let Some(dash_timer) = dash_timers.timers.get_mut(&entity) {
+                // 更新计时器
+                dash_timer.timer.tick(time.delta());
+
+                // 计算冲刺速度：距离 / 时间
+                let dash_speed = DASH_DISTANCE / DASH_DURATION;
+
+                // 设置移动
+                let movement = dash_timer.direction * dash_speed * time.delta_secs();
+                character_controller.translation = Some(movement);
+
+                // 检查是否完成
+                if dash_timer.timer.just_finished() {
+                    // 移除冲刺标记和计时器
+                    commands.entity(entity).remove::<IsDashing>();
+                    dash_timers.timers.remove(&entity);
+                }
+            }
+        }
+    }
+}
+
+fn handle_dash_collision(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
+    player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
+    enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
+    mut enemy_count: ResMut<EnemyCount>,
+    mut player_info: ResMut<PlayerInfo>,
+    player_avatars: Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+) {
+    for event in collision_events.read() {
+        if let CollisionEvent::Started(e1, e2, _) = event {
+            // 检查是否是玩家坦克与敌方坦克的碰撞
+            let (player_entity, enemy_entity) = if let Ok((player_entity, _player_tank, is_dashing)) = player_tanks.get(*e1) {
+                if is_dashing.is_some() && enemy_tanks.get(*e2).is_ok() {
+                    (player_entity, *e2)
+                } else {
+                    continue;
+                }
+            } else if let Ok((player_entity, _player_tank, is_dashing)) = player_tanks.get(*e2) {
+                if is_dashing.is_some() && enemy_tanks.get(*e1).is_ok() {
+                    (player_entity, *e1)
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            };
+
+        // 获取玩家坦克信息
+        let player_tank = player_tanks.get(player_entity).unwrap().1;
+
+        // 获取敌方坦克位置用于生成爆炸效果
+        if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
+            // 生成爆炸效果
+            spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, enemy_transform.translation);
+        }
+
+        // 销毁敌方坦克
+        commands.entity(enemy_entity).despawn();
+
+        // 减少当前敌方坦克计数
+        enemy_count.current_enemies -= 1;
+
+        // 增加分数
+        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+            player_stats.score += 100;
+
+            // 扣除1/3血条
+            let health_cost = 1; // 1/3血条（最大3格）
+            player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+
+            // 检查玩家是否死亡
+            if player_stats.life_red_bar == 0 {
+                // 获取玩家坦克位置用于生成爆炸效果
+                if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+                    // 生成爆炸效果
+                    spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                }
+
+                // 销毁玩家坦克
+                commands.entity(player_entity).despawn();
+
+                // 标记对应玩家的头像为死亡状态
+                for (avatar_entity, player_index) in player_avatars.iter() {
+                    if player_index.0 == player_tank.index {
+                        commands.entity(avatar_entity).insert(PlayerDead);
+                    }
+                }
+
+                // 启动 Game Over 延迟计时器（1.2秒）
+                commands.spawn((
+                    GameOverTimer,
+                    AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                ));
+            }
+        }
+
+        // 检查是否需要重新生成敌方坦克
+        if enemy_count.total_spawned < enemy_count.max_count {
+            // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
+            let mut rng = rand::rng();
+            let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
+            let position = ENEMY_BORN_PLACES[random_index];
+            spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
+
+            // 增加已生成计数
+            enemy_count.total_spawned += 1;
+        }
+    }
+}
+}
+
 fn setup_fade_out(
     mut fading_out: ResMut<FadingOut>,
 ) {
@@ -2298,6 +2481,51 @@ fn update_commander_health_bar(
             let offset = (160.0 - health_width) / 2.0;
             transform.translation.x = original_pos.0 - offset;
         }
+    }
+}
+
+fn update_blue_bar(
+    mut blue_bars: Query<(&mut Sprite, &BlueBarOriginalPosition, &mut Transform, &PlayerIndex), With<BlueBar>>,
+    player_info: Res<PlayerInfo>,
+) {
+    for (mut sprite, original_pos, mut transform, player_index) in &mut blue_bars {
+        if let Some(player_stats) = player_info.players.get(player_index.0) {
+            // 蓝条总宽度 160，能量值 100
+            let blue_width = (player_stats.energy_blue_bar as f32 / 100.0) * 160.0;
+            sprite.custom_size = Some(Vec2::new(blue_width, 10.0));
+
+            // 左对齐：将蓝条向左移动，使其从左边界开始
+            // 原始位置是中心点，需要向左偏移 (160 - blue_width) / 2
+            let offset = (160.0 - blue_width) / 2.0;
+            transform.translation.x = original_pos.0 - offset;
+        }
+    }
+}
+
+fn update_blue_bar_regen(
+    time: Res<Time>,
+    mut regen_timer: ResMut<BlueBarRegenTimer>,
+    mut player_info: ResMut<PlayerInfo>,
+) {
+    // 检查是否有玩家蓝条不满
+    let any_player_needs_regen = player_info.players.iter().any(|p| p.energy_blue_bar < 100);
+
+    // 只有当有玩家蓝条不满时才更新计时器
+    if any_player_needs_regen {
+        regen_timer.timer.tick(time.delta());
+
+        // 当计时器触发时，恢复1/3蓝条
+        if regen_timer.timer.just_finished() {
+            let regen_amount = 100 / 3; // 1/3蓝条
+            for player_stats in player_info.players.iter_mut() {
+                if player_stats.energy_blue_bar < 100 {
+                    player_stats.energy_blue_bar = (player_stats.energy_blue_bar + regen_amount).min(100);
+                }
+            }
+        }
+    } else {
+        // 所有玩家蓝条都满时，重置计时器
+        regen_timer.timer.reset();
     }
 }
 
