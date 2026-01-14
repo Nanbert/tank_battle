@@ -429,7 +429,9 @@ fn spawn_player1_tank(
 ) -> Entity {
     let player_tank = PlayerTank { index: 0 };
 
-    let entity = commands.spawn_empty()
+    
+
+    commands.spawn_empty()
         .insert(player_tank)
         .insert(PlayingEntity)
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
@@ -454,9 +456,7 @@ fn spawn_player1_tank(
             offset: CharacterLength::Absolute(0.01),
             ..default()
         })
-        .id();
-
-    entity
+        .id()
 }
 
 fn spawn_enemy_born_animation(
@@ -532,7 +532,7 @@ fn spawn_top_text_info(
     // 关卡信息显示在顶部中心
     commands.spawn((
         PlayingEntity,
-        Text2d(format!("Stage {}", stage_level)),
+        Text2d(format!("Stage {stage_level}")),
         TextFont {
             font_size: 28.0,
             font: font.clone(),
@@ -588,7 +588,7 @@ fn spawn_ui_element_from_config(
     player_info: &PlayerInfo,
 ) {
     // 根据 x_pos 判断是哪个玩家（左侧是玩家1，右侧是玩家2）
-    let player_index = if config.x_pos < 0.0 { 0 } else { 1 };
+    let player_index = usize::from(config.x_pos >= 0.0);
     let player_stats = &player_info.players[player_index];
 
     match config.element_type {
@@ -789,7 +789,7 @@ fn spawn_game_entities(
                 &mut commands,
                 player_texture.clone(),
                 player_texture_atlas_layout.clone(),
-                player_animation_indices.clone(),
+                player_animation_indices,
             );
 
             let player2_tank_entity = commands.spawn_empty()
@@ -798,15 +798,15 @@ fn spawn_game_entities(
                 .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
                 .insert(TargetRotation { angle: 180.0_f32.to_radians() })
                 .insert(Sprite::from_atlas_image(
-                    player_texture.clone(),
+                    player_texture,
                     TextureAtlas{
-                        layout: player_texture_atlas_layout.clone(),
+                        layout: player_texture_atlas_layout,
                         index: player_animation_indices.first,
                     }
                 ))
                 .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
                 .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
-                .insert(player_animation_indices.clone())
+                .insert(player_animation_indices)
                 .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
                 .insert(RigidBody::KinematicPositionBased)
                 .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
@@ -877,7 +877,7 @@ fn spawn_game_entities(
     spawn_top_text_info(&mut commands, &font, stage_level.0);
 
     // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
-    for &pos in ENEMY_BORN_PLACES.iter() {
+    for &pos in &ENEMY_BORN_PLACES {
         spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, pos);
     }
 
@@ -1315,7 +1315,6 @@ fn handle_bullet_collisions(
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerIndex)>,
     mut enemy_count: ResMut<EnemyCount>,
-    _can_fire: ResMut<CanFire>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
@@ -1517,7 +1516,7 @@ fn handle_powerup_collision(
 }
 
 // 获取属性类型对应的前缀
-fn get_stat_prefix(stat_type: StatType) -> &'static str {
+const fn get_stat_prefix(stat_type: StatType) -> &'static str {
     match stat_type {
         StatType::Shells => "Shells:",
         StatType::Speed => "Speed:",
@@ -1560,11 +1559,7 @@ fn animate_player_info_text(
         timer.tick(time.delta());
 
         // 判断是否达到最大值或On状态
-        let is_max = if let Some(player_stats) = player_info.players.get(player_index.0) {
-            is_stat_at_max_value(&text.0, player_stats)
-        } else {
-            false
-        };
+        let is_max = player_info.players.get(player_index.0).is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
 
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
@@ -1609,10 +1604,8 @@ fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
         player_stats.track_chain
     } else if text.starts_with("Penetrate:") {
         player_stats.penetrate
-    } else if text.starts_with("Scores:") {
-        false  // 分数没有最大值
     } else {
-        false
+        false  // 分数等其他属性没有最大值
     }
 }
 
@@ -1788,19 +1781,14 @@ fn animate_player_avatar(
         &AnimationIndices,
         &mut CurrentAnimationFrame,
         Option<&PlayerDead>,
-        &PlayerIndex,
     ), With<PlayerAvatar>>,
 ) {
     let commander_dead = commander_life.life_red_bar == 0;
 
-    for (mut timer, mut sprite, indices, mut current_frame, player_dead, player_index) in &mut query {
+    for (mut timer, mut sprite, indices, mut current_frame, player_dead) in &mut query {
         // 如果玩家已死亡，切换到死亡图片并停止动画
         if player_dead.is_some() {
-            let dead_texture: Handle<Image> = asset_server.load(if player_index.0 == 0 {
-                "player1_death.png"
-            } else {
-                "player1_death.png" // 暂时使用相同的图片，后续可以添加玩家2的死亡图片
-            });
+            let dead_texture: Handle<Image> = asset_server.load("player1_death.png"); // 暂时使用相同的图片，后续可以添加玩家2的死亡图片
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -1809,11 +1797,7 @@ fn animate_player_avatar(
 
         // 如果Commander已死亡，切换到commander死亡图片并停止动画
         if commander_dead {
-            let dead_texture: Handle<Image> = asset_server.load(if player_index.0 == 0 {
-                "player1_commander_dead.png"
-            } else {
-                "player1_commander_dead.png" // 暂时使用相同的图片，后续可以添加玩家2的commander死亡图片
-            });
+            let dead_texture: Handle<Image> = asset_server.load("player1_commander_dead.png"); // 暂时使用相同的图片，后续可以添加玩家2的commander死亡图片
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -2065,7 +2049,6 @@ fn player_shoot_bullet(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
-    _player_tanks: Query<Entity, With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
     for (entity, transform, player_tank) in &query {
@@ -2124,7 +2107,6 @@ fn handle_recall_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     mut recall_timers: ResMut<RecallTimers>,
-    _recall_progress_query: Query<(Entity, &RecallProgressBar)>,
 ) {
     for (entity, transform, player_tank) in &query {
         // 检查是否正在回城
@@ -2178,8 +2160,8 @@ fn update_recall_timers(
     mut progress_bar_query: Query<(Entity, &mut Sprite, &RecallProgressBar)>,
 ) {
     for (entity, mut transform, player_tank, is_recalling) in &mut player_query {
-        if let Some(IsRecalling) = is_recalling {
-            if let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
+        if matches!(is_recalling, Some(IsRecalling))
+            && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
                 // 检查是否被打断（移动或射击）
                 let is_interrupted = if player_tank.index == 0 {
                     // 玩家1：检查WASD或J键
@@ -2216,7 +2198,7 @@ fn update_recall_timers(
                     let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
                     let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
 
-                    for (_progress_entity, mut sprite, progress_bar) in progress_bar_query.iter_mut() {
+                    for (_, mut sprite, progress_bar) in &mut progress_bar_query {
                         if progress_bar.player_entity == entity {
                             sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
                         }
@@ -2241,21 +2223,28 @@ fn update_recall_timers(
                     }
                 }
             }
-        }
     }
 }
 
 fn update_recall_progress_bars(
-    player_query: Query<(Entity, &Transform, &PlayerTank)>,
-    mut progress_bar_query: Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
+    mut param_set: ParamSet<(
+        Query<(Entity, &Transform)>,
+        Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
+    )>,
 ) {
-    for (entity, transform, _player_tank) in &player_query {
-        for (progress_bar, mut progress_transform) in progress_bar_query.iter_mut() {
-            if progress_bar.player_entity == entity {
-                // 更新倒计时文本位置（跟随坦克）
-                progress_transform.translation.x = transform.translation.x;
-                progress_transform.translation.y = transform.translation.y + TANK_HEIGHT / 2.0 + 20.0;
-            }
+    let mut player_transforms: Vec<(Entity, Vec3)> = Vec::new();
+    
+    // 先收集所有玩家的位置信息
+    for (entity, transform) in &param_set.p0() {
+        player_transforms.push((entity, transform.translation));
+    }
+    
+    // 然后更新进度条位置
+    for (progress_bar, mut progress_transform) in &mut param_set.p1() {
+        if let Some((_, player_pos)) = player_transforms.iter().find(|(e, _)| *e == progress_bar.player_entity) {
+            // 更新倒计时文本位置（跟随坦克）
+            progress_transform.translation.x = player_pos.x;
+            progress_transform.translation.y = player_pos.y + TANK_HEIGHT / 2.0 + 20.0;
         }
     }
 }
@@ -2308,13 +2297,12 @@ fn handle_dash_input(
 fn update_dash_movement(
     time: Res<Time>,
     mut commands: Commands,
-    mut player_query: Query<(Entity, &mut Transform, &mut KinematicCharacterController, Option<&IsDashing>, &PlayerTank), With<PlayerTank>>,
+    mut player_query: Query<(Entity, &mut KinematicCharacterController, Option<&IsDashing>), With<PlayerTank>>,
     mut dash_timers: ResMut<DashTimers>,
-    _player_info: ResMut<PlayerInfo>,
 ) {
-    for (entity, _transform, mut character_controller, is_dashing, _player_tank) in &mut player_query {
-        if let Some(IsDashing) = is_dashing {
-            if let Some(dash_timer) = dash_timers.timers.get_mut(&entity) {
+    for (entity, mut character_controller, is_dashing) in &mut player_query {
+        if matches!(is_dashing, Some(IsDashing))
+            && let Some(dash_timer) = dash_timers.timers.get_mut(&entity) {
                 // 更新计时器
                 dash_timer.timer.tick(time.delta());
 
@@ -2332,7 +2320,6 @@ fn update_dash_movement(
                     dash_timers.timers.remove(&entity);
                 }
             }
-        }
     }
 }
 
@@ -2341,7 +2328,7 @@ fn handle_dash_collision(
     mut collision_events: MessageReader<CollisionEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
-    player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
+    player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     mut enemy_count: ResMut<EnemyCount>,
@@ -2352,13 +2339,13 @@ fn handle_dash_collision(
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是玩家坦克与敌方坦克的碰撞
-            let (player_entity, enemy_entity) = if let Ok((player_entity, _player_tank, is_dashing)) = player_tanks.get(*e1) {
+            let (player_entity, enemy_entity) = if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e1) {
                 if is_dashing.is_some() && enemy_tanks.get(*e2).is_ok() {
                     (player_entity, *e2)
                 } else {
                     continue;
                 }
-            } else if let Ok((player_entity, _player_tank, is_dashing)) = player_tanks.get(*e2) {
+            } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e2) {
                 if is_dashing.is_some() && enemy_tanks.get(*e1).is_ok() {
                     (player_entity, *e1)
                 } else {
@@ -2369,7 +2356,7 @@ fn handle_dash_collision(
             };
 
         // 获取玩家坦克信息
-        let player_tank = player_tanks.get(player_entity).unwrap().1;
+        let (_, player_tank, _) = player_tanks.get(player_entity).unwrap();
 
         // 获取敌方坦克位置用于生成爆炸效果
         if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
@@ -2578,14 +2565,14 @@ fn fade_out_screen(
     fading_out.alpha -= time.delta_secs() * (1.0 / 1.5); // 淡出速度，1.5秒完成
 
     // 更新所有 Sprite 元素的透明度
-    for (_entity, mut sprite) in &mut sprite_query {
+    for (_, mut sprite) in &mut sprite_query {
         update_sprite_alpha(fading_out.alpha, &mut sprite);
     }
 
     // 更新所有 Text 元素的颜色（跳过当前选中的选项，因为它的闪烁由 update_menu_blink 处理）
     let selected_index = menu_selection.selected_index;
 
-    for (_entity, mut text_color, menu_option) in &mut text_query {
+    for (_, mut text_color, menu_option) in &mut text_query {
         // 如果是当前选中的选项，跳过透明度更新
         if menu_option.is_some_and(|opt| opt.index == selected_index) {
             continue;
@@ -2702,7 +2689,7 @@ fn update_player_info_display(
             }
 
             // 更新血条
-            for (mut sprite, original_pos, mut transform, player_index) in bar_queries.p0().iter_mut() {
+            for (mut sprite, original_pos, mut transform, player_index) in &mut bar_queries.p0() {
                 if player_tank.index != player_index.0 {
                     continue;
                 }
@@ -2717,7 +2704,7 @@ fn update_player_info_display(
             }
 
             // 更新蓝条
-            for (mut sprite, original_pos, mut transform, player_index) in bar_queries.p1().iter_mut() {
+            for (mut sprite, original_pos, mut transform, player_index) in &mut bar_queries.p1() {
                 if player_tank.index != player_index.0 {
                     continue;
                 }
@@ -2738,7 +2725,7 @@ fn update_commander_health_bar(
     changed_commander_life: Res<CommanderLife>,
     mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
 ) {
-    for (mut sprite, original_pos, mut transform) in health_bars.iter_mut() {
+    for (mut sprite, original_pos, mut transform) in &mut health_bars {
         let health_width = (changed_commander_life.life_red_bar as f32 / 3.0) * 160.0;
         sprite.custom_size = Some(Vec2::new(health_width, 10.0));
         transform.translation.x = original_pos.0 - (160.0 - health_width) / 2.0;
@@ -2760,7 +2747,7 @@ fn update_blue_bar_regen(
         // 当计时器触发时，恢复1/3蓝条
         if regen_timer.timer.just_finished() {
             let regen_amount = 100 / 3; // 1/3蓝条
-            for player_stats in player_info.players.iter_mut() {
+            for player_stats in &mut player_info.players {
                 if player_stats.energy_blue_bar < 100 {
                     player_stats.energy_blue_bar = (player_stats.energy_blue_bar + regen_amount).min(100);
                 }
