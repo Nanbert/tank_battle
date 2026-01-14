@@ -454,6 +454,23 @@ pub enum PowerUp {
     Hamburger,
 }
 
+impl PowerUp {
+    pub fn texture_path(&self) -> &'static str {
+        match self {
+            PowerUp::SpeedUp => "power_up/speed_up.png",
+            PowerUp::Shell => "power_up/shell.png",
+            PowerUp::Protection => "power_up/protection.png",
+            PowerUp::FireSpeed => "power_up/fire_speed.png",
+            PowerUp::FireShell => "power_up/fire_shell.png",
+            PowerUp::AirCushion => "power_up/air_cushion.png",
+            PowerUp::TrackChain => "power_up/track_chain.png",
+            PowerUp::Penetrate => "power_up/penetrate.png",
+            PowerUp::Repair => "power_up/repair.png",
+            PowerUp::Hamburger => "power_up/hamburger.png",
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct HealthBar;
 

@@ -161,3 +161,24 @@ impl Default for CommanderLife {
         Self { life_red_bar: 3 }
     }
 }
+
+// 玩家属性变更事件
+#[derive(Message, Clone, Copy)]
+pub struct PlayerStatChanged {
+    pub player_index: usize,
+    pub stat_type: StatType,
+}
+
+// 玩家属性类型
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum StatType {
+    Score,
+    Speed,
+    Shells,
+    Protection,
+    FireSpeed,
+    FireShell,
+    AirCushion,
+    TrackChain,
+    Penetrate,
+}
