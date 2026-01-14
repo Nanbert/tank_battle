@@ -79,6 +79,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<RecallTimers>()
         .init_resource::<DashTimers>()
         .init_resource::<BlueBarRegenTimer>()
+        .init_resource::<CommanderLife>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -107,6 +108,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_game_over.run_if(in_state(GameState::Playing)))
         .add_systems(Update, shoot_bullets.run_if(in_state(GameState::Playing)))
         .add_systems(Update, player_shoot_bullet.run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_bullet_bounds.run_if(in_state(GameState::Playing)))
@@ -120,7 +122,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, update_commander_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_enemy_count_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_stage_complete.run_if(in_state(GameState::Playing)))
-        // .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
             handle_start_screen_input,
@@ -398,9 +400,7 @@ fn spawn_commander(
     let commander_x = 0.0;
 
     commands.spawn((
-        Commander {
-            life_red_bar: 3,
-        },
+        Commander,
         PlayingEntity,
         Sprite {
             image: commander_texture,
@@ -664,33 +664,33 @@ fn spawn_ui_element_from_config(
 }
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>) {
-    // 生成道具（轮胎精灵图）
-    let power_up_texture: Handle<Image> = asset_server.load("speed_up.png");
-    let power_up_tile_size = UVec2::new(87, 69);
-    let power_up_texture_atlas = TextureAtlasLayout::from_grid(power_up_tile_size, 3, 1, None, None);
-    let power_up_texture_atlas_layout = texture_atlas_layouts.add(power_up_texture_atlas);
-    let power_up_animation_indices = AnimationIndices { first: 0, last: 2 };
+    // 生成炮弹道具
+    let shell_powerup_texture: Handle<Image> = asset_server.load("power_up/shell.png");
+    let shell_powerup_tile_size = UVec2::new(87, 69);
+    let shell_powerup_texture_atlas = TextureAtlasLayout::from_grid(shell_powerup_tile_size, 3, 1, None, None);
+    let shell_powerup_texture_atlas_layout = texture_atlas_layouts.add(shell_powerup_texture_atlas);
+    let shell_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    // 道具位置：墙内任意位置（包括中间的道具）
-    let power_up_positions = [
+    // 炮弹道具位置：墙内任意位置
+    let shell_powerup_positions = [
         Vec3::new(0.0, 0.0, 0.0),        // 中间
         Vec3::new(-400.0, 200.0, 0.0),   // 左上
         Vec3::new(400.0, -100.0, 0.0),   // 右下
     ];
 
-    for pos in power_up_positions {
+    for pos in shell_powerup_positions {
         commands.spawn((
-            PowerUp,
+            PowerUp::Shell,
             PlayingEntity,
             Sprite::from_atlas_image(
-                power_up_texture.clone(),
+                shell_powerup_texture.clone(),
                 TextureAtlas {
-                    layout: power_up_texture_atlas_layout.clone(),
-                    index: power_up_animation_indices.first,
+                    layout: shell_powerup_texture_atlas_layout.clone(),
+                    index: shell_powerup_animation_indices.first,
                 }
             ),
             Transform::from_translation(pos),
-            power_up_animation_indices,
+            shell_powerup_animation_indices,
             AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
             CurrentAnimationFrame(0),
             RigidBody::Fixed,
@@ -699,6 +699,257 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
             ActiveEvents::COLLISION_EVENTS,
         ));
     }
+
+    // 生成护盾道具
+    /*
+    let protection_powerup_texture: Handle<Image> = asset_server.load("power_up/protection.png");
+    let protection_powerup_tile_size = UVec2::new(87, 69);
+    let protection_powerup_texture_atlas = TextureAtlasLayout::from_grid(protection_powerup_tile_size, 3, 1, None, None);
+    let protection_powerup_texture_atlas_layout = texture_atlas_layouts.add(protection_powerup_texture_atlas);
+    let protection_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 护盾道具位置
+    let protection_powerup_positions = [
+        Vec3::new(-200.0, 0.0, 0.0),     // 左中
+        Vec3::new(200.0, 0.0, 0.0),      // 右中
+        Vec3::new(0.0, 200.0, 0.0),      // 上中
+    ];
+
+    for pos in protection_powerup_positions {
+        commands.spawn((
+            PowerUp::Protection,
+            PlayingEntity,
+            Sprite::from_atlas_image(
+                protection_powerup_texture.clone(),
+                TextureAtlas {
+                    layout: protection_powerup_texture_atlas_layout.clone(),
+                    index: protection_powerup_animation_indices.first,
+                }
+            ),
+            Transform::from_translation(pos),
+            protection_powerup_animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+            RigidBody::Fixed,
+            Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+            Sensor,
+            ActiveEvents::COLLISION_EVENTS,
+        ));
+    }
+    */
+
+    // 生成火焰速度道具
+    /*
+    let fire_speed_powerup_texture: Handle<Image> = asset_server.load("power_up/fire_speed.png");
+    let fire_speed_powerup_tile_size = UVec2::new(87, 69);
+    let fire_speed_powerup_texture_atlas = TextureAtlasLayout::from_grid(fire_speed_powerup_tile_size, 3, 1, None, None);
+    let fire_speed_powerup_texture_atlas_layout = texture_atlas_layouts.add(fire_speed_powerup_texture_atlas);
+    let fire_speed_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 火焰速度道具位置
+    let fire_speed_powerup_positions = [
+        Vec3::new(-300.0, -200.0, 0.0),  // 左下
+        Vec3::new(300.0, -200.0, 0.0),   // 右下
+        Vec3::new(0.0, -300.0, 0.0),     // 下中
+    ];
+
+    for pos in fire_speed_powerup_positions {
+        commands.spawn((
+            PowerUp::FireSpeed,
+            PlayingEntity,
+            Sprite::from_atlas_image(
+                fire_speed_powerup_texture.clone(),
+                TextureAtlas {
+                    layout: fire_speed_powerup_texture_atlas_layout.clone(),
+                    index: fire_speed_powerup_animation_indices.first,
+                }
+            ),
+            Transform::from_translation(pos),
+            fire_speed_powerup_animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+            RigidBody::Fixed,
+            Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+            Sensor,
+            ActiveEvents::COLLISION_EVENTS,
+        ));
+    }
+    */
+
+    // 生成火焰炮弹道具
+    /*
+    let fire_shell_powerup_texture: Handle<Image> = asset_server.load("power_up/fire_shell.png");
+    let fire_shell_powerup_tile_size = UVec2::new(87, 69);
+    let fire_shell_powerup_texture_atlas = TextureAtlasLayout::from_grid(fire_shell_powerup_tile_size, 3, 1, None, None);
+    let fire_shell_powerup_texture_atlas_layout = texture_atlas_layouts.add(fire_shell_powerup_texture_atlas);
+    let fire_shell_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 火焰炮弹道具位置
+    let fire_shell_powerup_positions = [
+        Vec3::new(-100.0, -100.0, 0.0),  // 左下偏中
+        Vec3::new(100.0, -100.0, 0.0),   // 右下偏中
+        Vec3::new(0.0, -150.0, 0.0),      // 下中偏下
+    ];
+
+    for pos in fire_shell_powerup_positions {
+        commands.spawn((
+            PowerUp::FireShell,
+            PlayingEntity,
+            Sprite::from_atlas_image(
+                fire_shell_powerup_texture.clone(),
+                TextureAtlas {
+                    layout: fire_shell_powerup_texture_atlas_layout.clone(),
+                    index: fire_shell_powerup_animation_indices.first,
+                }
+            ),
+            Transform::from_translation(pos),
+            fire_shell_powerup_animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+            RigidBody::Fixed,
+            Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+            Sensor,
+            ActiveEvents::COLLISION_EVENTS,
+        ));
+    }
+    */
+
+    // 生成气垫道具（测试：只生成一个）
+    /*
+    let air_cushion_powerup_texture: Handle<Image> = asset_server.load("power_up/air_cushion.png");
+    let air_cushion_powerup_tile_size = UVec2::new(87, 69);
+    let air_cushion_powerup_texture_atlas = TextureAtlasLayout::from_grid(air_cushion_powerup_tile_size, 3, 1, None, None);
+    let air_cushion_powerup_texture_atlas_layout = texture_atlas_layouts.add(air_cushion_powerup_texture_atlas);
+    let air_cushion_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    commands.spawn((
+        PowerUp::AirCushion,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            air_cushion_powerup_texture.clone(),
+            TextureAtlas {
+                layout: air_cushion_powerup_texture_atlas_layout.clone(),
+                index: air_cushion_powerup_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(0.0, -200.0, 0.0)), // 测试位置
+        air_cushion_powerup_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+    */
+
+    // 生成履带链道具（测试：只生成一个）
+    let track_chain_powerup_texture: Handle<Image> = asset_server.load("power_up/track_chain.png");
+    let track_chain_powerup_tile_size = UVec2::new(87, 69);
+    let track_chain_powerup_texture_atlas = TextureAtlasLayout::from_grid(track_chain_powerup_tile_size, 3, 1, None, None);
+    let track_chain_powerup_texture_atlas_layout = texture_atlas_layouts.add(track_chain_powerup_texture_atlas);
+    let track_chain_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    commands.spawn((
+        PowerUp::TrackChain,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            track_chain_powerup_texture.clone(),
+            TextureAtlas {
+                layout: track_chain_powerup_texture_atlas_layout.clone(),
+                index: track_chain_powerup_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(100.0, -200.0, 0.0)), // 测试位置
+        track_chain_powerup_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+
+    // 生成穿透道具（测试：只生成一个）
+    let penetrate_powerup_texture: Handle<Image> = asset_server.load("power_up/penetrate.png");
+    let penetrate_powerup_tile_size = UVec2::new(87, 69);
+    let penetrate_powerup_texture_atlas = TextureAtlasLayout::from_grid(penetrate_powerup_tile_size, 3, 1, None, None);
+    let penetrate_powerup_texture_atlas_layout = texture_atlas_layouts.add(penetrate_powerup_texture_atlas);
+    let penetrate_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    commands.spawn((
+        PowerUp::Penetrate,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            penetrate_powerup_texture.clone(),
+            TextureAtlas {
+                layout: penetrate_powerup_texture_atlas_layout.clone(),
+                index: penetrate_powerup_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(-100.0, -200.0, 0.0)), // 测试位置
+        penetrate_powerup_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+
+    // 生成修理道具（测试：只生成一个）
+    let repair_powerup_texture: Handle<Image> = asset_server.load("power_up/repair.png");
+    let repair_powerup_tile_size = UVec2::new(87, 69);
+    let repair_powerup_texture_atlas = TextureAtlasLayout::from_grid(repair_powerup_tile_size, 3, 1, None, None);
+    let repair_powerup_texture_atlas_layout = texture_atlas_layouts.add(repair_powerup_texture_atlas);
+    let repair_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    commands.spawn((
+        PowerUp::Repair,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            repair_powerup_texture.clone(),
+            TextureAtlas {
+                layout: repair_powerup_texture_atlas_layout.clone(),
+                index: repair_powerup_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(0.0, -200.0, 0.0)), // 测试位置
+        repair_powerup_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+
+    // 生成汉堡道具（测试：只生成一个）
+    let hamburger_powerup_texture: Handle<Image> = asset_server.load("power_up/hamburger.png");
+    let hamburger_powerup_tile_size = UVec2::new(87, 69);
+    let hamburger_powerup_texture_atlas = TextureAtlasLayout::from_grid(hamburger_powerup_tile_size, 3, 1, None, None);
+    let hamburger_powerup_texture_atlas_layout = texture_atlas_layouts.add(hamburger_powerup_texture_atlas);
+    let hamburger_powerup_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    commands.spawn((
+        PowerUp::Hamburger,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            hamburger_powerup_texture.clone(),
+            TextureAtlas {
+                layout: hamburger_powerup_texture_atlas_layout.clone(),
+                index: hamburger_powerup_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(200.0, -200.0, 0.0)), // 测试位置
+        hamburger_powerup_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
+        Sensor,
+        ActiveEvents::COLLISION_EVENTS,
+    ));
 }
 
 fn spawn_game_entities(
@@ -1378,11 +1629,6 @@ fn handle_bullet_collisions(
                                         commands.entity(avatar_entity).insert(PlayerDead);
                                     }
                                 }
-                                // 启动 Game Over 延迟计时器（1.2秒）
-                                commands.spawn((
-                                    GameOverTimer,
-                                    AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-                                ));
                             }
                         }
                     }
@@ -1397,40 +1643,151 @@ fn handle_bullet_collisions(
 fn handle_powerup_collision(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    powerups: Query<(Entity, &Transform), With<PowerUp>>,
+    powerups: Query<(Entity, &Transform, &PowerUp)>,
     player_tanks: Query<(&Transform, &PlayerTank), With<PlayerTank>>,
     mut player_info: ResMut<PlayerInfo>,
     player_info_texts: Query<(Entity, &Text2d, &PlayerIndex), With<Text2d>>,
+    mut commander_life: ResMut<CommanderLife>,
 ) {
     for (tank_transform, player_tank) in player_tanks{
-        let mut is_power_up:bool = false;
-        // 销毁texture
-        for (powerup_entity, powerup_transform) in powerups{
+        let mut picked_powerup: Option<PowerUp> = None;
+        let mut powerup_entity_to_despawn: Option<Entity> = None;
+
+        // 检查道具碰撞
+        for (powerup_entity, powerup_transform, powerup_type) in powerups.iter(){
             let distance = (powerup_transform.translation - tank_transform.translation).length();
             if distance < 81.0 {
-                // 播放道具音效
-                let powerup_sound: Handle<AudioSource> = asset_server.load("powerup_sound.ogg");
-                commands.spawn(AudioPlayer::new(powerup_sound));
-                commands.entity(powerup_entity).despawn();
-                is_power_up = true;
-            }
-            // 销毁道具
-        }
-        if !is_power_up{
-            continue;
-        }
-        // 增加速度
-        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
-            if player_stats.speed < 100 {
-                player_stats.speed += 20;
+                picked_powerup = Some(*powerup_type);
+                powerup_entity_to_despawn = Some(powerup_entity);
             }
         }
 
-        // 闪烁文字：只闪烁当前玩家的 Speed 文字
-        for (entity, text, player_index) in player_info_texts.iter() {
-            if text.0.starts_with("Speed:") && player_index.0 == player_tank.index {
-                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
-                break;
+        if let Some(powerup_type) = picked_powerup {
+            let powerup_entity = powerup_entity_to_despawn.unwrap();
+
+            // 播放道具音效
+            let powerup_sound: Handle<AudioSource> = asset_server.load("powerup_sound.ogg");
+            commands.spawn(AudioPlayer::new(powerup_sound));
+            commands.entity(powerup_entity).despawn();
+
+            // 根据道具类型应用效果
+            if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                match powerup_type {
+                    PowerUp::Shell => {
+                        // 炮弹道具：增加炮弹数量，最大为 2
+                        if player_stats.shells < 2 {
+                            player_stats.shells += 1;
+                        }
+                    }
+                    PowerUp::SpeedUp => {
+                        // 速度道具：增加速度
+                        if player_stats.speed < 100 {
+                            player_stats.speed += 20;
+                        }
+                    }
+                    PowerUp::Protection => {
+                        // 护盾道具：增加护盾值，最大为 100
+                        if player_stats.protection < 100 {
+                            player_stats.protection += 20;
+                        }
+                    }
+                    PowerUp::FireSpeed => {
+                        // 火焰速度道具：增加火焰速度，最大为 100
+                        if player_stats.fire_speed < 100 {
+                            player_stats.fire_speed += 20;
+                        }
+                    }
+                    PowerUp::FireShell => {
+                        // 火焰炮弹道具：启用火焰炮弹
+                        player_stats.fire_shell = true;
+                    }
+                    PowerUp::AirCushion => {
+                        // 气垫道具：启用气垫
+                        player_stats.air_cushion = true;
+                    }
+                    PowerUp::TrackChain => {
+                        // 履带链道具：启用履带链
+                        player_stats.track_chain = true;
+                    }
+                    PowerUp::Penetrate => {
+                        // 穿透道具：启用穿透
+                        player_stats.penetrate = true;
+                    }
+                    PowerUp::Repair => {
+                        // 修理道具：恢复生命值
+                        if player_stats.life_red_bar < 3 {
+                            player_stats.life_red_bar += 1;
+                        }
+                    }
+                    PowerUp::Hamburger => {
+                        // 汉堡道具：给 Commander 回血
+                        if commander_life.life_red_bar < 3 {
+                            commander_life.life_red_bar += 1;
+                        }
+                    }
+                }
+            }
+
+            // 闪烁文字
+            for (entity, text, player_index) in player_info_texts.iter() {
+                if player_index.0 == player_tank.index {
+                    match powerup_type {
+                        PowerUp::Shell => {
+                            if text.0.starts_with("Shells:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::SpeedUp => {
+                            if text.0.starts_with("Speed:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::Protection => {
+                            if text.0.starts_with("Protection:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::FireSpeed => {
+                            if text.0.starts_with("Fire Speed:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::FireShell => {
+                            if text.0.starts_with("Fire Shell:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::AirCushion => {
+                            if text.0.starts_with("Air Cushion:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::TrackChain => {
+                            if text.0.starts_with("Track Chain:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::Penetrate => {
+                            if text.0.starts_with("Penetrate:") {
+                                commands.entity(entity).insert(PlayerInfoBlinkTimer(Timer::from_seconds(1.8, TimerMode::Once)));
+                                break;
+                            }
+                        }
+                        PowerUp::Repair => {
+                            // 修理道具不需要闪烁文字
+                        }
+                        PowerUp::Hamburger => {
+                            // 汉堡道具不需要闪烁文字
+                        }
+                    }
+                }
             }
         }
     }
@@ -1626,6 +1983,7 @@ fn animate_enemy_born_animation(
 fn animate_player_avatar(
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    commander_life: Res<CommanderLife>,
     mut query: Query<(
         &mut AnimationTimer,
         &mut Sprite,
@@ -1634,9 +1992,8 @@ fn animate_player_avatar(
         Option<&PlayerDead>,
         &PlayerIndex,
     ), With<PlayerAvatar>>,
-    commander_query: Query<(), With<CommanderDead>>,
 ) {
-    let commander_dead = !commander_query.is_empty();
+    let commander_dead = commander_life.life_red_bar == 0;
 
     for (mut timer, mut sprite, indices, mut current_frame, player_dead, player_index) in &mut query {
         // 如果玩家已死亡，切换到死亡图片并停止动画
@@ -1684,17 +2041,17 @@ fn animate_player_avatar(
 fn animate_commander(
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    commander_life: Res<CommanderLife>,
     mut query: Query<(
         &mut AnimationTimer,
         &mut Sprite,
         &AnimationIndices,
         &mut CurrentAnimationFrame,
-        Option<&CommanderDead>,
     ), With<Commander>>,
 ) {
-    for (mut timer, mut sprite, indices, mut current_frame, commander_dead) in &mut query {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         // 如果Commander已死亡，切换到死亡图片并停止动画
-        if commander_dead.is_some() {
+        if commander_life.life_red_bar == 0 {
             let dead_texture: Handle<Image> = asset_server.load("commander_dead.png");
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
@@ -1758,21 +2115,54 @@ fn handle_game_over_delay(
     mut commands: Commands,
     mut query: Query<(Entity, &mut AnimationTimer), With<GameOverTimer>>,
     mut next_state: ResMut<NextState<GameState>>,
-    player_tanks: Query<(), With<PlayerTank>>,
 ) {
     for (entity, mut timer) in &mut query {
         timer.tick(time.delta());
         if timer.is_finished() {
-            // 只要场上没有玩家坦克就游戏结束
-            if player_tanks.is_empty() {
-                // 1.2秒后切换到 GameOver 状态
-                commands.entity(entity).despawn();
-                next_state.set(GameState::GameOver);
-            } else {
-                // 还有玩家存活，移除计时器
-                commands.entity(entity).despawn();
-            }
+            commands.entity(entity).despawn();
+            next_state.set(GameState::GameOver);
         }
+    }
+}
+
+fn check_game_over(
+    mut commands: Commands,
+    player_info: Res<PlayerInfo>,
+    game_mode: Res<GameMode>,
+    commander_life: Res<CommanderLife>,
+    existing_timers: Query<(), With<GameOverTimer>>,
+) {
+    // 如果已经存在 GameOverTimer，说明已经触发了 GameOver，不再重复触发
+    if !existing_timers.is_empty() {
+        return;
+    }
+
+    // 检测 Commander 血量是否为 0
+    if commander_life.life_red_bar == 0 {
+        // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
+        commands.spawn((
+            GameOverTimer,
+            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+        ));
+        return;
+    }
+
+    // 检测所有玩家生命值是否都为 0
+    let all_players_dead = match *game_mode {
+        GameMode::OnePlayer => {
+            player_info.players[0].life_red_bar == 0
+        }
+        GameMode::TwoPlayers => {
+            player_info.players[0].life_red_bar == 0 && player_info.players[1].life_red_bar == 0
+        }
+    };
+
+    if all_players_dead {
+        // 启动 Game Over 延迟计时器（1.2秒）
+        commands.spawn((
+            GameOverTimer,
+            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+        ));
     }
 }
 
@@ -1884,10 +2274,10 @@ fn player_shoot_bullet(
         // 根据玩家索引选择不同的射击键
         let should_shoot = if player_tank.index == 0 {
             // 玩家1使用 J 键射击
-            keyboard_input.just_pressed(KeyCode::KeyJ)
+            keyboard_input.pressed(KeyCode::KeyJ)
         } else {
             // 玩家2使用小键盘1键射击
-            keyboard_input.just_pressed(KeyCode::Numpad1)
+            keyboard_input.pressed(KeyCode::Numpad1)
         };
 
         if should_shoot && can_fire.0.contains(&entity) {
@@ -2000,14 +2390,14 @@ fn update_recall_timers(
                     keyboard_input.pressed(KeyCode::KeyS) ||
                     keyboard_input.pressed(KeyCode::KeyA) ||
                     keyboard_input.pressed(KeyCode::KeyD) ||
-                    keyboard_input.just_pressed(KeyCode::KeyJ)
+                    keyboard_input.pressed(KeyCode::KeyJ)
                 } else {
                     // 玩家2：检查方向键或小键盘1键
                     keyboard_input.pressed(KeyCode::ArrowUp) ||
                     keyboard_input.pressed(KeyCode::ArrowDown) ||
                     keyboard_input.pressed(KeyCode::ArrowLeft) ||
                     keyboard_input.pressed(KeyCode::ArrowRight) ||
-                    keyboard_input.just_pressed(KeyCode::Numpad1)
+                    keyboard_input.pressed(KeyCode::Numpad1)
                 };
 
                 if is_interrupted {
@@ -2442,6 +2832,39 @@ fn update_player_info_display(
                         format!("Speed: Max")
                     };
                     text.0 = key_words;
+                } else if text.0.starts_with("Shells"){
+                    let key_words = format!("Shells: {}", player_stats.shells);
+                    text.0 = key_words;
+                } else if text.0.starts_with("Protection"){
+                    let key_words = if player_stats.protection<100{
+                        format!("Protection: {}%", player_stats.protection)
+                    } else{
+                        format!("Protection: Max")
+                    };
+                    text.0 = key_words;
+                } else if text.0.starts_with("Fire Speed"){
+                    let key_words = if player_stats.fire_speed<100{
+                        format!("Fire Speed:{}%", player_stats.fire_speed)
+                    } else{
+                        format!("Fire Speed:Max")
+                    };
+                    text.0 = key_words;
+                } else if text.0.starts_with("Fire Shell"){
+                    if player_stats.fire_shell{
+                        text.0 = "Fire Shell: On".to_string();
+                    }
+                } else if text.0.starts_with("Air Cushion"){
+                    if player_stats.air_cushion{
+                        text.0 = "Air Cushion: On".to_string();
+                    }
+                } else if text.0.starts_with("Track Chain"){
+                    if player_stats.track_chain{
+                        text.0 = "Track Chain: On".to_string();
+                    }
+                } else if text.0.starts_with("Penetrate"){
+                    if player_stats.penetrate{
+                        text.0 = "Penetrate: On".to_string();
+                    }
                 }
             }
         }
@@ -2468,19 +2891,12 @@ fn update_health_bar(
 
 fn update_commander_health_bar(
     mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
-    commanders: Query<&Commander, With<Commander>>,
+    commander_life: Res<CommanderLife>,
 ) {
-    for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        for commander in commanders{
-            // 血条总宽度 160，生命值 3，每条代表 1/3
-            let health_width = (commander.life_red_bar as f32 / 3.0) * 160.0;
-            sprite.custom_size = Some(Vec2::new(health_width, 10.0));
-
-            // 左对齐：将血条向左移动，使其从左边界开始
-            // 原始位置是中心点，需要向左偏移 (160 - health_width) / 2
-            let offset = (160.0 - health_width) / 2.0;
-            transform.translation.x = original_pos.0 - offset;
-        }
+    for (mut sprite, original_pos, mut transform) in health_bars.iter_mut() {
+        let health_width = (commander_life.life_red_bar as f32 / 3.0) * 160.0;
+        sprite.custom_size = Some(Vec2::new(health_width, 10.0));
+        transform.translation.x = original_pos.0 - (160.0 - health_width) / 2.0;
     }
 }
 
@@ -2532,13 +2948,14 @@ fn update_blue_bar_regen(
 fn check_bullet_commander_collision(
     mut commands: Commands,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-    mut commander_query: Query<(Entity, &Transform, &mut Commander), With<Commander>>,
+    commander_query: Query<(Entity, &Transform), With<Commander>>,
     health_bar_query: Query<Entity, With<CommanderHealthBar>>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut commander_life: ResMut<CommanderLife>,
 ) {
     for (bullet_entity, bullet_transform) in bullet_query.iter() {
-        for (commander_entity, commander_transform, mut commander) in commander_query.iter_mut() {
+        for (commander_entity, commander_transform) in commander_query.iter() {
             // 检测子弹是否在Commander的矩形范围内
             let bullet_x = bullet_transform.translation.x;
             let bullet_y = bullet_transform.translation.y;
@@ -2559,30 +2976,24 @@ fn check_bullet_commander_collision(
                 spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, commander_transform.translation);
 
                 // 扣除1/3血量
-                if commander.life_red_bar > 0 {
-                    commander.life_red_bar -= 1;
-                    // 如果血量为0，进入GameOver状态
-                    if commander.life_red_bar == 0 {
-                        commands.entity(commander_entity).insert(CommanderDead);
+                if commander_life.life_red_bar > 0 {
+                    commander_life.life_red_bar -= 1;
+                    // 如果血量为0，播放死亡音效并销毁血条
+                    if commander_life.life_red_bar == 0 {
                         // 播放 commander 死亡音效
                         let commander_death_sound: Handle<AudioSource> = asset_server.load("commander_death.ogg");
                         commands.spawn(AudioPlayer::new(commander_death_sound));
-                        // 销毁Commander血条
+                        // 销毁 Commander 血条
                         for health_bar_entity in health_bar_query.iter() {
                             commands.entity(health_bar_entity).despawn();
                         }
-                        // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
-                        commands.spawn((
-                            GameOverTimer,
-                            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-                        ));
-                        break;
+                    } else {
+                        // 非致命伤，播放受伤音效
+                        let commander_get_shot_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
+                        commands.spawn(AudioPlayer::new(commander_get_shot_sound));
+                        let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
+                        commands.spawn(AudioPlayer::new(explosion_sound));
                     }
-                    // 非致命伤，播放受伤音效
-                    let commander_get_shot_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
-                    commands.spawn(AudioPlayer::new(commander_get_shot_sound));
-                    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
-                    commands.spawn(AudioPlayer::new(explosion_sound));
                 }
                 break; // 子弹已经销毁，不需要检查其他Commander
             }
@@ -2838,6 +3249,7 @@ fn cleanup_playing_entities(
     mut player_info: ResMut<PlayerInfo>,
     mut enemy_count: ResMut<EnemyCount>,
     mut stage_level: ResMut<StageLevel>,
+    mut commander_life: ResMut<CommanderLife>,
 ) {
     // 清理所有游戏实体
     for entity in playing_entities.iter() {
@@ -2853,6 +3265,9 @@ fn cleanup_playing_entities(
 
     // 重置关卡数
     stage_level.0 = 1;
+
+    // 重置 Commander 生命值
+    commander_life.life_red_bar = 3;
 }
 
 fn check_stage_complete(

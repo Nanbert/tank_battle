@@ -147,30 +147,30 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
         y_pos: WINDOW_TOP_Y - 980.0,
         font_size: 24.0,
     },
-    // Pnetrate
+    // Penetrate
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Pnetrate: {}", if info.penetrate { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Penetrate: {}", if info.penetrate { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
         y_pos: WINDOW_TOP_Y - 520.0,
         font_size: 24.0,
     },
     // Track Chain
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Track Chain:{}", if info.track_chain { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Track Chain:{}", if info.track_chain { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
         y_pos: WINDOW_TOP_Y - 470.0,
         font_size: 24.0,
     },
     // Air Cushion
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
         y_pos: WINDOW_TOP_Y - 420.0,
         font_size: 24.0,
     },
     // Fire Shell
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Fire Shell:{}", if info.fire_shell { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Fire Shell:{}", if info.fire_shell { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
         y_pos: WINDOW_TOP_Y - 370.0,
         font_size: 24.0,
@@ -267,30 +267,30 @@ pub const PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
         y_pos: WINDOW_TOP_Y - 980.0,
         font_size: 24.0,
     },
-    // Pnetrate
+    // Penetrate
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Pnetrate: {}", if info.penetrate { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Penetrate: {}", if info.penetrate { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
         y_pos: WINDOW_TOP_Y - 520.0,
         font_size: 24.0,
     },
     // Track Chain
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Track Chain:{}", if info.track_chain { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Track Chain:{}", if info.track_chain { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
         y_pos: WINDOW_TOP_Y - 470.0,
         font_size: 24.0,
     },
     // Air Cushion
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
         y_pos: WINDOW_TOP_Y - 420.0,
         font_size: 24.0,
     },
     // Fire Shell
     UIElementConfig {
-        element_type: UIElementType::NormalText(|info| format!("Fire Shell:{}", if info.fire_shell { "Yes" } else { "No" })),
+        element_type: UIElementType::NormalText(|info| format!("Fire Shell:{}", if info.fire_shell { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
         y_pos: WINDOW_TOP_Y - 370.0,
         font_size: 24.0,
@@ -438,15 +438,21 @@ pub struct GameOverTimer;
 pub struct Wall;
 
 #[derive(Component)]
-pub struct Commander {
-    pub life_red_bar: usize, // max 3
+pub struct Commander;
+
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum PowerUp {
+    SpeedUp,
+    Shell,
+    Protection,
+    FireSpeed,
+    FireShell,
+    AirCushion,
+    TrackChain,
+    Penetrate,
+    Repair,
+    Hamburger,
 }
-
-#[derive(Component)]
-pub struct CommanderDead;
-
-#[derive(Component)]
-pub struct PowerUp;
 
 #[derive(Component)]
 pub struct HealthBar;

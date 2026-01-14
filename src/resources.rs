@@ -149,3 +149,15 @@ impl Default for BlueBarRegenTimer {
         }
     }
 }
+
+// Commander 生命值资源
+#[derive(Resource)]
+pub struct CommanderLife {
+    pub life_red_bar: usize, // max 3
+}
+
+impl Default for CommanderLife {
+    fn default() -> Self {
+        Self { life_red_bar: 3 }
+    }
+}
