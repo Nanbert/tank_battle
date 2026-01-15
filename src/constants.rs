@@ -43,6 +43,9 @@ pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/25
 pub const COMMANDER_WIDTH: f32 = 140.0;
 pub const COMMANDER_HEIGHT: f32 = 120.0;
 
+pub const FOREST_WIDTH: f32 = 87.0 * 1.5;
+pub const FOREST_HEIGHT: f32 = 87.0 * 1.5;
+
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
     Vec2::new(0.0, -1.0),  // 下
@@ -436,6 +439,12 @@ pub struct GameOverTimer;
 
 #[derive(Component)]
 pub struct Wall;
+
+#[derive(Component)]
+pub struct Forest;
+
+#[derive(Component)]
+pub struct ForestFire;
 
 #[derive(Component)]
 pub struct Commander;

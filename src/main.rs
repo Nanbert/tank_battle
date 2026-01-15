@@ -106,6 +106,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_powerup_texture.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_player_info_text.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_forest_fire.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
@@ -122,7 +123,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, update_commander_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_enemy_count_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, check_stage_complete.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
+        // .add_systems(Update, check_bullet_commander_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
             handle_start_screen_input,
@@ -385,6 +386,33 @@ fn spawn_walls(commands: &mut Commands) {
     ));
 }
 
+fn spawn_forest(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+) {
+    let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
+    
+    // 在地图中随机生成一块树林
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+    
+    commands.spawn((
+        Forest,
+        PlayingEntity,
+        Sprite {
+            image: forest_texture,
+            custom_size: Some(Vec2::new(FOREST_WIDTH, FOREST_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, 1.0), // z=1.0 使树林在坦克上方渲染
+        Sensor, // 树林是传感器，坦克可以穿过但会触发碰撞事件
+        RigidBody::Fixed,
+        Collider::cuboid(FOREST_WIDTH / 2.0, FOREST_HEIGHT / 2.0),
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+}
+
 fn spawn_commander(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
@@ -594,6 +622,12 @@ fn spawn_ui_element_from_config(
     match config.element_type {
         UIElementType::NormalText(f) => {
             let text = f(player_stats);
+            // 检查属性是否达到最大值或On状态，如果是则设置红色
+            let text_color = if is_stat_at_max_value(&text, player_stats) {
+                Color::srgb(1.0, 0.0, 0.0) // 红色
+            } else {
+                Color::srgb(1.0, 1.0, 1.0) // 白色
+            };
             commands.spawn((
                 PlayerIndex(player_index),
                 PlayingEntity,
@@ -603,7 +637,7 @@ fn spawn_ui_element_from_config(
                     font: font.clone(),
                     ..default()
                 },
-                TextColor(Color::srgb(1.0, 1.0, 1.0)),
+                TextColor(text_color),
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
@@ -663,25 +697,31 @@ fn spawn_ui_element_from_config(
     }
 }
 
-fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>) {
-    // 随机选择一个道具类型
-    let powerup_types = [
-        PowerUp::SpeedUp,
-        PowerUp::Shell,
-        PowerUp::Protection,
-        PowerUp::FireSpeed,
-        PowerUp::FireShell,
-        PowerUp::AirCushion,
-        PowerUp::TrackChain,
-        PowerUp::Penetrate,
-        PowerUp::Repair,
-        PowerUp::Hamburger,
-    ];
+fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
+    let powerup_type = if stage_level.0 == 1 {
+        // 第一关强制生成 fire_shell 道具用于测试
+        PowerUp::FireShell
+    } else {
+        // 其他关卡随机选择一个道具类型
+        let powerup_types = [
+            PowerUp::SpeedUp,
+            PowerUp::Shell,
+            PowerUp::Protection,
+            PowerUp::FireSpeed,
+            PowerUp::FireShell,
+            PowerUp::AirCushion,
+            PowerUp::TrackChain,
+            PowerUp::Penetrate,
+            PowerUp::Repair,
+            PowerUp::Hamburger,
+        ];
 
-    let mut rng = rand::rng();
-    let powerup_type = powerup_types[rng.random_range(0..powerup_types.len())];
+        let mut rng = rand::rng();
+        powerup_types[rng.random_range(0..powerup_types.len())]
+    };
 
     // 在随机位置生成道具（在地图范围内）
+    let mut rng = rand::rng();
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
     let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
     let position = Vec3::new(x, y, 0.0);
@@ -743,6 +783,9 @@ fn spawn_game_entities(
     // 生成墙壁
     spawn_walls(&mut commands);
 
+    // 生成树林
+    spawn_forest(&mut commands, &asset_server);
+
     // 生成司令官
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
@@ -754,102 +797,198 @@ fn spawn_game_entities(
     let player_animation_indices = AnimationIndices { first: 0, last: 2 };
 
     // 根据游戏模式生成玩家
-    match *game_mode {
-        GameMode::OnePlayer => {
-            // 单人模式：只生成玩家1
-            let player1_tank_entity = spawn_player1_tank(
-                &mut commands,
-                player_texture,
-                player_texture_atlas_layout,
-                player_animation_indices,
-            );
 
-            // 初始化玩家1信息
-            player_info.players.push(PlayerStats {
-                name: "Li Yun Long".to_string(),
-                speed: 40,
-                fire_speed: 40,
-                protection: 40,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_red_bar: 3,
-                energy_blue_bar: 100,
-                score: 0,
-            });
+        match *game_mode {
 
-            // 初始化玩家坦克可以射击
-            can_fire.0.insert(player1_tank_entity);
-        }
-        GameMode::TwoPlayers => {
-            // 双人模式：生成玩家1和玩家2
-            let player1_tank_entity = spawn_player1_tank(
-                &mut commands,
-                player_texture.clone(),
-                player_texture_atlas_layout.clone(),
-                player_animation_indices,
-            );
+            GameMode::OnePlayer => {
 
-            let player2_tank_entity = commands.spawn_empty()
-                .insert(PlayerTank { index: 1 })
-                .insert(PlayingEntity)
-                .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-                .insert(TargetRotation { angle: 180.0_f32.to_radians() })
-                .insert(Sprite::from_atlas_image(
+                // 单人模式：只生成玩家1
+
+                let player1_tank_entity = spawn_player1_tank(
+
+                    &mut commands,
+
                     player_texture,
-                    TextureAtlas{
-                        layout: player_texture_atlas_layout,
-                        index: player_animation_indices.first,
-                    }
-                ))
-                .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
-                .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
-                .insert(player_animation_indices)
-                .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
-                .insert(RigidBody::KinematicPositionBased)
-                .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
-                .insert(LockedAxes::ROTATION_LOCKED)
-                .insert(KinematicCharacterController {
-                    offset: CharacterLength::Absolute(0.01),
-                    ..default()
-                })
-                .id();
 
-            // 初始化玩家1信息
-            player_info.players.push(PlayerStats {
-                name: "Li Yun Long".to_string(),
-                speed: 40,
-                fire_speed: 40,
-                protection: 40,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_red_bar: 3,
-                energy_blue_bar: 100,
-                score: 0,
-            });
+                    player_texture_atlas_layout,
 
-            // 初始化玩家2信息
-            player_info.players.push(PlayerStats {
-                name: "Chu Yun Fei".to_string(),
-                speed: 40,
-                fire_speed: 40,
-                protection: 40,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_red_bar: 3,
-                energy_blue_bar: 100,
-                score: 0,
-            });
+                    player_animation_indices,
+
+                );
+
+    
+
+                // 初始化玩家1信息
+
+                player_info.players.push(PlayerStats {
+
+                    name: "Li Yun Long".to_string(),
+
+                    speed: 40,
+
+                    fire_speed: 40,
+
+                    protection: 40,
+
+                    shells: 1,
+
+                    penetrate: false,
+
+                    track_chain: false,
+
+                    air_cushion: false,
+
+                    fire_shell: false,
+
+                    life_red_bar: 3,
+
+                    energy_blue_bar: 100,
+
+                    score: 0,
+
+                });
+
+    
+
+                // 初始化玩家坦克可以射击
+
+                can_fire.0.insert(player1_tank_entity);
+
+            }
+
+            GameMode::TwoPlayers => {
+
+                // 双人模式：生成玩家1和玩家2
+
+                let player1_tank_entity = spawn_player1_tank(
+
+                    &mut commands,
+
+                    player_texture.clone(),
+
+                    player_texture_atlas_layout.clone(),
+
+                    player_animation_indices,
+
+                );
+
+    
+
+                let player2_tank_entity = commands.spawn_empty()
+
+                    .insert(PlayerTank { index: 1 })
+
+                    .insert(PlayingEntity)
+
+                    .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
+
+                    .insert(TargetRotation { angle: 180.0_f32.to_radians() })
+
+                    .insert(Sprite::from_atlas_image(
+
+                        player_texture,
+
+                        TextureAtlas{
+
+                            layout: player_texture_atlas_layout,
+
+                            index: player_animation_indices.first,
+
+                        }
+
+                    ))
+
+                    .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+
+                    .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
+
+                    .insert(player_animation_indices)
+
+                    .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+
+                    .insert(RigidBody::KinematicPositionBased)
+
+                    .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+
+                    .insert(ActiveEvents::COLLISION_EVENTS)
+
+                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
+
+                    .insert(LockedAxes::ROTATION_LOCKED)
+
+                    .insert(KinematicCharacterController {
+
+                        offset: CharacterLength::Absolute(0.01),
+
+                        ..default()
+
+                    })
+
+                    .id();
+
+    
+
+                // 初始化玩家1信息
+
+                player_info.players.push(PlayerStats {
+
+                    name: "Li Yun Long".to_string(),
+
+                    speed: 40,
+
+                    fire_speed: 40,
+
+                    protection: 40,
+
+                    shells: 1,
+
+                    penetrate: false,
+
+                    track_chain: false,
+
+                    air_cushion: false,
+
+                    fire_shell: false,
+
+                    life_red_bar: 3,
+
+                    energy_blue_bar: 100,
+
+                    score: 0,
+
+                });
+
+    
+
+                // 初始化玩家2信息
+
+                player_info.players.push(PlayerStats {
+
+                    name: "Chu Yun Fei".to_string(),
+
+                    speed: 40,
+
+                    fire_speed: 40,
+
+                    protection: 40,
+
+                    shells: 1,
+
+                    penetrate: false,
+
+                    track_chain: false,
+
+                    air_cushion: false,
+
+                    fire_shell: false,
+
+                    life_red_bar: 3,
+
+                    energy_blue_bar: 100,
+
+                    score: 0,
+
+                });
 
             // 初始化玩家坦克可以射击
             can_fire.0.insert(player1_tank_entity);
@@ -886,7 +1025,7 @@ fn spawn_game_entities(
     enemy_count.current_enemies = 0;
     
     // 生成道具
-    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts);
+    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
 }
 
 fn handle_start_screen_input(
@@ -1216,7 +1355,7 @@ fn check_bullet_destruction(
 fn find_bullet_and_tank_in_collision(
     e1: Entity,
     e2: Entity,
-    bullets: &Query<(Entity, &BulletOwner), With<Bullet>>,
+    bullets: &Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks: &Query<(), With<EnemyTank>>,
     player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
 ) -> Option<(Entity, Entity)> {
@@ -1282,6 +1421,40 @@ fn spawn_explosion(
     commands.spawn(AudioPlayer::new(explosion_sound));
 }
 
+fn spawn_forest_fire(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    position: Vec3,
+) {
+    // 加载树林燃烧精灵图（4帧，每帧130.5x130.5，1.5秒播完）
+    let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
+    let forest_fire_tile_size = UVec2::new(131, 131); // 使用整数近似值
+    let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 4, 1, None, None);
+    let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas);
+    let forest_fire_animation_indices = AnimationIndices { first: 0, last: 3 };
+
+    commands.spawn((
+        ForestFire,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            forest_fire_texture,
+            TextureAtlas {
+                layout: forest_fire_texture_atlas_layout,
+                index: forest_fire_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(position),
+        forest_fire_animation_indices,
+        AnimationTimer(Timer::from_seconds(1.5 / 4.0, TimerMode::Repeating)), // 1.5秒播完4帧
+        CurrentAnimationFrame(0),
+    ));
+
+    // 播放树林燃烧音效
+    let burn_tree_sound: Handle<AudioSource> = asset_server.load("burn_tree.ogg");
+    commands.spawn(AudioPlayer::new(burn_tree_sound));
+}
+
 fn spawn_spark(
     commands: &mut Commands,
     asset_server: &AssetServer,
@@ -1308,16 +1481,49 @@ fn handle_bullet_collisions(
     mut collision_events: MessageReader<CollisionEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
-    bullets: Query<(Entity, &BulletOwner), With<Bullet>>,
+    bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks: Query<(), With<EnemyTank>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerIndex)>,
+    forests: Query<(Entity, &Transform), With<Forest>>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
+    // 检查子弹与树林的距离
+    let mut bullets_to_despawn: Vec<Entity> = Vec::new();
+    let mut forests_to_despawn: Vec<Entity> = Vec::new();
+    
+    for (forest_entity, forest_transform) in forests.iter() {
+        for (bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
+            let distance = (bullet_transform.translation - forest_transform.translation).length();
+            if distance < FOREST_WIDTH / 2.0 {
+                // 检查子弹所有者是否具有 fire_shell 效果
+                if let Ok(player_tank) = player_tanks.get(bullet_owner.owner) {
+                    if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                        if player_stats.fire_shell {
+                            // 生成树林燃烧动画
+                            spawn_forest_fire(&mut commands, &asset_server, &mut texture_atlas_layouts, forest_transform.translation);
+
+                            // 标记需要销毁的实体（只销毁树林，不销毁子弹，让子弹穿过）
+                            forests_to_despawn.push(forest_entity);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 销毁标记的实体
+    for entity in forests_to_despawn {
+        commands.entity(entity).despawn();
+    }
+    for entity in bullets_to_despawn {
+        commands.entity(entity).despawn();
+    }
+
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 检查是否是子弹与坦克的碰撞
@@ -1868,6 +2074,27 @@ fn animate_explosion(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁爆炸实体
+                commands.entity(entity).despawn();
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+fn animate_forest_fire(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<ForestFire>>,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，销毁森林燃烧实体
                 commands.entity(entity).despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
