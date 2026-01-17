@@ -158,7 +158,7 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| format!("Penetrate: {}", if info.penetrate { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
-        y_pos: WINDOW_TOP_Y - 520.0,
+        y_pos: WINDOW_TOP_Y - 420.0,
         font_size: 24.0,
     },
     // Track Chain
@@ -172,7 +172,7 @@ pub const PLAYER1_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "On" } else { "Off" })),
         x_pos: WINDOW_LEFT_X + 115.0,
-        y_pos: WINDOW_TOP_Y - 420.0,
+        y_pos: WINDOW_TOP_Y - 520.0,
         font_size: 24.0,
     },
     // Fire Shell
@@ -278,7 +278,7 @@ pub const PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| format!("Penetrate: {}", if info.penetrate { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
-        y_pos: WINDOW_TOP_Y - 520.0,
+        y_pos: WINDOW_TOP_Y - 420.0,
         font_size: 24.0,
     },
     // Track Chain
@@ -292,7 +292,7 @@ pub const PLAYER2_UI_ELEMENTS: &[UIElementConfig] = &[
     UIElementConfig {
         element_type: UIElementType::NormalText(|info| format!("Air Cushion:{}", if info.air_cushion { "On" } else { "Off" })),
         x_pos: WINDOW_RIGHT_X - 115.0,
-        y_pos: WINDOW_TOP_Y - 420.0,
+        y_pos: WINDOW_TOP_Y - 520.0,
         font_size: 24.0,
     },
     // Fire Shell

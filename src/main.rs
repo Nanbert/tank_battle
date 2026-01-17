@@ -762,6 +762,15 @@ fn spawn_ui_element_from_config(
             } else {
                 Color::srgb(1.0, 1.0, 1.0) // 白色
             };
+
+            // 检查是否是 air_cushion 或 shells，如果是则设置透明
+            let is_air_cushion_or_shells = text.starts_with("Air Cushion") || text.starts_with("Shells");
+            let final_color = if is_air_cushion_or_shells {
+                Color::srgba(1.0, 1.0, 1.0, 0.0) // 完全透明
+            } else {
+                text_color
+            };
+
             commands.spawn((
                 PlayerIndex(player_index),
                 PlayingEntity,
@@ -771,7 +780,7 @@ fn spawn_ui_element_from_config(
                     font: font.clone(),
                     ..default()
                 },
-                TextColor(text_color),
+                TextColor(final_color),
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
@@ -839,11 +848,9 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
         // 其他关卡随机选择一个道具类型
         let powerup_types = [
             PowerUp::SpeedUp,
-            PowerUp::Shell,
             PowerUp::Protection,
             PowerUp::FireSpeed,
             PowerUp::FireShell,
-            PowerUp::AirCushion,
             PowerUp::TrackChain,
             PowerUp::Penetrate,
             PowerUp::Repair,
@@ -1820,23 +1827,52 @@ fn handle_bullet_collisions(
 
                         // 扣除对应玩家的生命值
                         if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
-                            if player_stats.life_red_bar > 0 {
-                                player_stats.life_red_bar -= 1;
-                            }
-                            if player_stats.life_red_bar == 0{
-                                // 获取玩家坦克的位置
-                                if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
-                                    // 生成爆炸效果
-                                    spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                            // 检查玩家是否有 fire_shell、track_chain 或 penetrate 特效
+                            let has_fire_shell = player_stats.fire_shell;
+                            let has_track_chain = player_stats.track_chain;
+                            let has_penetrate = player_stats.penetrate;
+
+                            if has_fire_shell || has_track_chain || has_penetrate {
+                                // 有特效，移除其中一个特效（优先级任意）
+                                if has_fire_shell {
+                                    player_stats.fire_shell = false;
+                                    stat_changed_events.write(PlayerStatChanged {
+                                        player_index: player_tank.index,
+                                        stat_type: StatType::FireShell,
+                                    });
+                                } else if has_track_chain {
+                                    player_stats.track_chain = false;
+                                    stat_changed_events.write(PlayerStatChanged {
+                                        player_index: player_tank.index,
+                                        stat_type: StatType::TrackChain,
+                                    });
+                                } else if has_penetrate {
+                                    player_stats.penetrate = false;
+                                    stat_changed_events.write(PlayerStatChanged {
+                                        player_index: player_tank.index,
+                                        stat_type: StatType::Penetrate,
+                                    });
                                 }
+                            } else {
+                                // 没有特效，正常扣血
+                                if player_stats.life_red_bar > 0 {
+                                    player_stats.life_red_bar -= 1;
+                                }
+                                if player_stats.life_red_bar == 0 {
+                                    // 获取玩家坦克的位置
+                                    if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
+                                        // 生成爆炸效果
+                                        spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                                    }
 
-                                // 销毁玩家坦克
-                                commands.entity(tank_entity).despawn();
+                                    // 销毁玩家坦克
+                                    commands.entity(tank_entity).despawn();
 
-                                // 标记对应玩家的头像为死亡状态
-                                for (avatar_entity, player_index) in player_avatars.iter() {
-                                    if player_index.0 == player_tank.index {
-                                        commands.entity(avatar_entity).insert(PlayerDead);
+                                    // 标记对应玩家的头像为死亡状态
+                                    for (avatar_entity, player_index) in player_avatars.iter() {
+                                        if player_index.0 == player_tank.index {
+                                            commands.entity(avatar_entity).insert(PlayerDead);
+                                        }
                                     }
                                 }
                             }
@@ -2872,6 +2908,7 @@ fn handle_dash_collision(
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
+    steels: Query<(Entity, &Transform), With<Steel>>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
     player_avatars: Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
@@ -2879,25 +2916,77 @@ fn handle_dash_collision(
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
-            // 检查是否是玩家坦克与 brick 的碰撞
-            let (player_entity, brick_entity, enemy_entity) = if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e1) {
-                if is_dashing.is_some() && bricks.get(*e2).is_ok() {
-                    (player_entity, Some(*e2), None)
+            // 检查是否是玩家坦克与 brick/steel/敌方坦克的碰撞
+            let (player_entity, brick_entity, steel_entity, enemy_entity): (Entity, Option<Entity>, Option<Entity>, Option<Entity>) = if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e1) {
+                if is_dashing.is_some() && steels.get(*e2).is_ok() {
+                    // 撞到 steel，检查 protection
+                    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                        player_stats.protection >= 100
+                    } else {
+                        false
+                    };
+
+                    if can_break_steel {
+                        // protection = 100%，可以撞碎铁块
+                        (player_entity, None, Some(*e2), None)
+                    } else {
+                        // protection < 100%，玩家死亡
+                        handle_steel_collision(
+                            &mut commands,
+                            &asset_server,
+                            &mut texture_atlas_layouts,
+                            &player_tanks,
+                            &player_tanks_with_transform,
+                            &mut player_info,
+                            &player_avatars,
+                            &mut stat_changed_events,
+                            player_entity,
+                        );
+                        continue;
+                    }
+                } else if is_dashing.is_some() && bricks.get(*e2).is_ok() {
+                    (player_entity, Some(*e2), None, None)
                 } else if let Some(enemy) = check_enemy_collision(player_entity, *e1, *e2, &player_tanks, &enemy_tanks) {
-                    (player_entity, None, Some(enemy))
+                    (player_entity, None, None, Some(enemy))
                 } else {
                     continue;
                 }
-            } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e2) {
-                if is_dashing.is_some() && bricks.get(*e1).is_ok() {
-                    (player_entity, Some(*e1), None)
+            } else if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e2) {
+                if is_dashing.is_some() && steels.get(*e1).is_ok() {
+                    // 撞到 steel，检查 protection
+                    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                        player_stats.protection >= 100
+                    } else {
+                        false
+                    };
+
+                    if can_break_steel {
+                        // protection = 100%，可以撞碎铁块
+                        (player_entity, None, Some(*e1), None)
+                    } else {
+                        // protection < 100%，玩家死亡
+                        handle_steel_collision(
+                            &mut commands,
+                            &asset_server,
+                            &mut texture_atlas_layouts,
+                            &player_tanks,
+                            &player_tanks_with_transform,
+                            &mut player_info,
+                            &player_avatars,
+                            &mut stat_changed_events,
+                            player_entity,
+                        );
+                        continue;
+                    }
+                } else if is_dashing.is_some() && bricks.get(*e1).is_ok() {
+                    (player_entity, Some(*e1), None, None)
                 } else if let Some(enemy) = check_enemy_collision(player_entity, *e2, *e1, &player_tanks, &enemy_tanks) {
-                    (player_entity, None, Some(enemy))
+                    (player_entity, None, None, Some(enemy))
                 } else {
                     continue;
                 }
             } else if let Some((pe, ee)) = check_enemy_collision_none(*e1, *e2, &player_tanks, &enemy_tanks) {
-                (pe, None, Some(ee))
+                (pe, None, None, Some(ee))
             } else {
                 continue;
             };
@@ -2916,6 +3005,17 @@ fn handle_dash_collision(
                     &mut stat_changed_events,
                     player_entity,
                     b_entity,
+                );
+                continue;
+            }
+
+            // 处理 steel 碰撞（protection = 100% 时）
+            if let Some(s_entity) = steel_entity {
+                handle_steel_break(
+                    &mut commands,
+                    &asset_server,
+                    &steels,
+                    s_entity,
                 );
                 continue;
             }
@@ -2993,19 +3093,19 @@ fn check_enemy_collision_none(
 fn handle_brick_collision(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
-    _texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     player_info: &mut ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
-    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
-    _player_entity: Entity,
+    _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+    player_entity: Entity,
     brick_entity: Entity,
 ) {
     // 获取玩家坦克信息
     let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
-        if e == _player_entity { Some(pt) } else { None }
+        if e == player_entity { Some(pt) } else { None }
     }).unwrap();
 
     // 获取 brick 位置用于生成效果
@@ -3024,21 +3124,28 @@ fn handle_brick_collision(
         commands.entity(brick_entity).despawn();
     }
 
-    // 扣除1/3血条
+    // 根据 protection 百分比决定扣血量
     if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
-        let health_cost = 1; // 1/3血条（最大3格）
+        let health_cost = if player_stats.protection < 40 {
+            2 // 2/3血条
+        } else if player_stats.protection < 80 {
+            1 // 1/3血条
+        } else {
+            0 // 不扣血
+        };
+
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
 
         // 检查玩家是否死亡
         if player_stats.life_red_bar == 0 {
             // 获取玩家坦克位置用于生成爆炸效果
-            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(_player_entity) {
+            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                spawn_explosion(commands, asset_server, _texture_atlas_layouts, tank_transform.translation);
+                spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
             }
 
             // 销毁玩家坦克
-            commands.entity(_player_entity).despawn();
+            commands.entity(player_entity).despawn();
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
@@ -3053,6 +3160,78 @@ fn handle_brick_collision(
                 AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
             ));
         }
+    }
+}
+
+fn handle_steel_collision(
+    mut commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    player_info: &mut ResMut<PlayerInfo>,
+    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+    player_entity: Entity,
+) {
+    // 获取玩家坦克信息
+    let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
+        if e == player_entity { Some(pt) } else { None }
+    }).unwrap();
+
+    // 检查 protection 是否为 100%
+    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+        player_stats.protection >= 100
+    } else {
+        false
+    };
+
+    if can_break_steel {
+        // protection = 100%，可以撞碎铁块，不扣血
+        // 生成火花效果
+        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+            spawn_spark(&mut commands, asset_server, tank_transform.translation);
+        }
+        // 铁块被撞碎的效果（可以在这里添加更多效果）
+    } else {
+        // protection < 100%，玩家死亡
+        // 获取玩家坦克位置用于生成爆炸效果
+        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+            // 生成爆炸效果
+            spawn_explosion(&mut commands, asset_server, texture_atlas_layouts, tank_transform.translation);
+        }
+
+        // 销毁玩家坦克
+        commands.entity(player_entity).despawn();
+
+        // 标记对应玩家的头像为死亡状态
+        for (avatar_entity, player_index) in player_avatars.iter() {
+            if player_index.0 == player_tank.index {
+                commands.entity(avatar_entity).insert(PlayerDead);
+            }
+        }
+
+        // 启动 Game Over 延迟计时器（1.2秒）
+        commands.spawn((
+            GameOverTimer,
+            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+        ));
+    }
+}
+
+fn handle_steel_break(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    steels: &Query<(Entity, &Transform), With<Steel>>,
+    steel_entity: Entity,
+) {
+    // 获取 steel 位置用于生成效果
+    if let Ok((_, steel_transform)) = steels.get(steel_entity) {
+        // 生成火花效果
+        spawn_spark(commands, asset_server, steel_transform.translation);
+
+        // 销毁 steel
+        commands.entity(steel_entity).despawn();
     }
 }
 
@@ -3095,8 +3274,14 @@ fn handle_dash_enemy_tank_collision(
             stat_type: StatType::Score,
         });
 
-        // 扣除1/3血条
-        let health_cost = 1; // 1/3血条（最大3格）
+        // 根据 protection 百分比决定扣血量
+        let health_cost = if player_stats.protection < 40 {
+            2 // 2/3血条
+        } else if player_stats.protection < 80 {
+            1 // 1/3血条
+        } else {
+            0 // 不扣血
+        };
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
 
         // 检查玩家是否死亡
@@ -3157,8 +3342,8 @@ fn handle_barrier_collision(
             // 计算距离
             let distance = (player_transform.translation - barrier_transform.translation).length();
 
-            // 如果距离小于阈值（坦克和 barrier 的半径之和），则认为碰撞
-            const COLLISION_THRESHOLD: f32 = (TANK_WIDTH + BARRIER_WIDTH) / 2.0;
+            // 如果距离小于阈值，则认为碰撞
+            const COLLISION_THRESHOLD: f32 = 70.0;
 
             if distance < COLLISION_THRESHOLD {
                 // 检查冷却是否结束
@@ -3167,20 +3352,37 @@ fn handle_barrier_collision(
                     .map_or(true, |timer| timer.is_finished());
 
                 if can_take_damage {
+                    // 检查玩家是否有 track_chain，如果有则免疫伤害
+                    let has_track_chain = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                        player_stats.track_chain
+                    } else {
+                        false
+                    };
+
+                    if has_track_chain {
+                        // 拥有 track_chain，免疫伤害，直接跳过
+                        continue;
+                    }
+
                     // 设置 2 秒冷却
                     barrier_damage_tracker.cooldowns.insert(
                         player_entity,
                         Timer::from_seconds(2.0, TimerMode::Once)
                     );
 
-                    // 永久减少 speed 20（固定值）
+                    // 永久减少 speed 20 和 protection 20（固定值）
                     if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
                         player_stats.speed = player_stats.speed.saturating_sub(20);
+                        player_stats.protection = player_stats.protection.saturating_sub(20);
 
-                        // 发送 speed 变更事件
+                        // 发送 speed 和 protection 变更事件
                         stat_changed_events.write(PlayerStatChanged {
                             player_index: player_tank.index,
                             stat_type: StatType::Speed,
+                        });
+                        stat_changed_events.write(PlayerStatChanged {
+                            player_index: player_tank.index,
+                            stat_type: StatType::Protection,
                         });
                     }
                 }
