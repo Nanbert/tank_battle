@@ -82,6 +82,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<BlueBarRegenTimer>()
         .init_resource::<CommanderLife>()
         .init_resource::<BulletOwners>()
+        .init_resource::<GameEntitiesSpawned>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -92,7 +93,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(OnEnter(GameState::StageIntro), (reset_for_next_stage, spawn_stage_intro).chain())
         .add_systems(Update, handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)))
         .add_systems(OnExit(GameState::StageIntro), despawn_stage_intro)
-        .add_systems(OnEnter(GameState::Playing), spawn_game_entities)
+        .add_systems(OnEnter(GameState::Playing), spawn_game_entities_if_needed)
         .add_systems(OnEnter(GameState::Paused), spawn_pause_ui)
         .add_systems(OnExit(GameState::Paused), ( despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), spawn_game_over_ui)
@@ -109,6 +110,8 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest_fire.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_sea.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, play_sea_ambience.run_if(in_state(GameState::Playing)))
         .add_systems(Update, play_tree_ambience.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
@@ -386,6 +389,121 @@ fn spawn_walls(commands: &mut Commands) {
             scale: Vec3::new(MAP_WIDTH, 10.0 , 1.0),
             ..default()
         }
+    ));
+}
+
+fn spawn_brick(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+) {
+    // 加载砖块纹理
+    let brick_texture: Handle<Image> = asset_server.load("brick.png");
+
+    // 在地图中随机生成一块砖块
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+
+    commands.spawn((
+        Brick,
+        PlayingEntity,
+        Sprite {
+            image: brick_texture,
+            custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, 0.0),
+        RigidBody::Fixed,
+        Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+}
+
+fn spawn_steel(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+) {
+    // 加载钢铁纹理
+    let steel_texture: Handle<Image> = asset_server.load("steel.png");
+
+    // 在地图中随机生成一块钢铁
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+
+    commands.spawn((
+        Steel,
+        PlayingEntity,
+        Sprite {
+            image: steel_texture,
+            custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, 0.0),
+        RigidBody::Fixed,
+        Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+}
+
+fn spawn_sea(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+) {
+    // 加载海精灵图（3帧，每帧100x100）
+    let sea_texture: Handle<Image> = asset_server.load("sea_sheet.png");
+    let sea_tile_size = UVec2::new(100, 100);
+    let sea_texture_atlas = TextureAtlasLayout::from_grid(sea_tile_size, 3, 1, None, None);
+    let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas);
+    let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    // 在地图中随机生成一块海
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+
+    commands.spawn((
+        Sea,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            sea_texture,
+            TextureAtlas {
+                layout: sea_texture_atlas_layout,
+                index: sea_animation_indices.first,
+            }
+        ),
+        Transform::from_xyz(x, y, 0.5), // z=0.5 使海在坦克和树林之间渲染
+        sea_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)), // 每0.2秒切换一帧
+        CurrentAnimationFrame(0),
+        RigidBody::Fixed,
+        Collider::cuboid(SEA_WIDTH / 2.0, SEA_HEIGHT / 2.0),
+        ActiveEvents::COLLISION_EVENTS,
+    ));
+}
+
+fn spawn_barrier(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+) {
+    // 加载屏障纹理
+    let barrier_texture: Handle<Image> = asset_server.load("barrier.png");
+
+    // 在地图中随机生成一块屏障
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+
+    commands.spawn((
+        Barrier,
+        PlayingEntity,
+        Sprite {
+            image: barrier_texture,
+            custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, -1.0), // z=-1.0 使屏障在最底层渲染，不遮挡坦克
     ));
 }
 
@@ -713,8 +831,8 @@ fn spawn_ui_element_from_config(
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
     let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 fire_shell 道具用于测试
-        PowerUp::FireShell
+        // 第一关强制生成 penetrate 道具
+        PowerUp::Penetrate
     } else {
         // 其他关卡随机选择一个道具类型
         let powerup_types = [
@@ -786,7 +904,7 @@ fn spawn_powerup_batch(
     }
 }
 
-fn spawn_game_entities(
+fn spawn_game_entities_if_needed(
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
@@ -796,12 +914,33 @@ fn spawn_game_entities(
     mut player_info: ResMut<PlayerInfo>,
     stage_level: Res<StageLevel>,
     game_mode: Res<GameMode>,
+    mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
+    // 如果游戏实体已经生成，则跳过
+    if entities_spawned.0 {
+        return;
+    }
+
+    // 标记游戏实体已生成
+    entities_spawned.0 = true;
+
     // 设置背景色为黑色
     clear_color.0 = BACKGROUND_COLOR;
 
     // 生成墙壁
     spawn_walls(&mut commands);
+
+    // 生成砖块
+    spawn_brick(&mut commands, &asset_server);
+
+    // 生成屏障
+    spawn_barrier(&mut commands, &asset_server);
+
+    // 生成钢铁
+    spawn_steel(&mut commands, &asset_server);
+
+    // 生成海
+    spawn_sea(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
     // 生成树林
     spawn_forest(&mut commands, &asset_server, &mut texture_atlas_layouts);
@@ -1507,6 +1646,8 @@ fn handle_bullet_collisions(
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerIndex)>,
+    bricks: Query<(Entity, &Transform), With<Brick>>,
+    steels: Query<(Entity, &Transform), With<Steel>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
@@ -1535,9 +1676,74 @@ fn handle_bullet_collisions(
             }
         }
     }
+
+    // 检查子弹与砖块的碰撞
+    let mut bricks_to_despawn: Vec<Entity> = Vec::new();
+    
+    for (brick_entity, brick_transform) in bricks.iter() {
+        for (bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
+            let distance = (bullet_transform.translation - brick_transform.translation).length();
+            if distance < BRICK_WIDTH / 2.0 {
+                // 播放砖块击中音效
+                let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
+                commands.spawn(AudioPlayer::new(brick_hit_sound));
+
+                // 生成火花效果
+                spawn_spark(&mut commands, &asset_server, brick_transform.translation);
+
+                // 标记需要销毁的实体（砖块和子弹）
+                bricks_to_despawn.push(brick_entity);
+                bullets_to_despawn.push(bullet_entity);
+            }
+        }
+    }
+
+    // 检查子弹与钢铁的碰撞
+    let mut steels_to_despawn: Vec<Entity> = Vec::new();
+
+    for (steel_entity, steel_transform) in steels.iter() {
+        for (bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
+            let distance = (bullet_transform.translation - steel_transform.translation).length();
+            if distance < STEEL_WIDTH / 2.0 {
+                // 检查子弹所有者是否具有 penetrate 效果
+                if let Ok(player_tank) = player_tanks.get(bullet_owner.owner) {
+                    if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                        if player_stats.penetrate {
+                            // 播放金属破碎音效
+                            let metal_crash_sound: Handle<AudioSource> = asset_server.load("metal_crash.ogg");
+                            commands.spawn(AudioPlayer::new(metal_crash_sound));
+
+                            // 生成火花效果
+                            spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+
+                            // 标记需要销毁的实体（钢铁和子弹）
+                            steels_to_despawn.push(steel_entity);
+                            bullets_to_despawn.push(bullet_entity);
+                        } else {
+                            // 没有 penetrate 效果，只播放击中音效
+                            let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
+                            commands.spawn(AudioPlayer::new(hit_sound));
+
+                            // 生成火花效果
+                            spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+
+                            // 只销毁子弹，不销毁钢铁
+                            bullets_to_despawn.push(bullet_entity);
+                        }
+                    }
+                }
+            }
+        }
+    }
     
     // 销毁标记的实体
     for entity in forests_to_despawn {
+        commands.entity(entity).despawn();
+    }
+    for entity in bricks_to_despawn {
+        commands.entity(entity).despawn();
+    }
+    for entity in steels_to_despawn {
         commands.entity(entity).despawn();
     }
     for entity in bullets_to_despawn {
@@ -3412,6 +3618,7 @@ fn reset_for_next_stage(
     mut commands: Commands,
     playing_entities: Query<Entity, With<PlayingEntity>>,
     mut enemy_count: ResMut<EnemyCount>,
+    mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
     // 清理所有游戏实体
     for entity in playing_entities.iter() {
@@ -3421,4 +3628,71 @@ fn reset_for_next_stage(
     // 重置敌方坦克计数
     enemy_count.total_spawned = 0;
     enemy_count.current_enemies = 0;
+
+    // 重置游戏实体生成标志
+    entities_spawned.0 = false;
+}
+
+fn animate_sea(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Sea>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+fn play_sea_ambience(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    seas: Query<&Transform, With<Sea>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<SeaAmbiencePlayer>>,
+) {
+    // 检查是否有玩家坦克在海附近
+    let mut is_near_sea = false;
+    const DETECTION_RADIUS: f32 = 150.0; // 海检测半径
+
+    for player_transform in player_tanks.iter() {
+        for sea_transform in seas.iter() {
+            let distance = player_transform.translation.distance(sea_transform.translation);
+            if distance < DETECTION_RADIUS {
+                is_near_sea = true;
+                break;
+            }
+        }
+        if is_near_sea {
+            break;
+        }
+    }
+
+    if is_near_sea {
+        // 如果在海附近但没有播放音效，则播放
+        if ambience_players.is_empty() {
+            let sea_ambience_sound: Handle<AudioSource> = asset_server.load("sea_ambience.ogg");
+            commands.spawn((
+                AudioPlayer::new(sea_ambience_sound),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                SeaAmbiencePlayer,
+            ));
+        }
+    } else {
+        // 如果不在海附近但有播放音效，则停止
+        for (entity, _) in ambience_players.iter() {
+            commands.entity(entity).despawn();
+        }
+    }
 }

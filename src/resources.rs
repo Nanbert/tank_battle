@@ -182,3 +182,7 @@ pub enum StatType {
     TrackChain,
     Penetrate,
 }
+
+// 标记游戏实体是否已生成
+#[derive(Resource, Default)]
+pub struct GameEntitiesSpawned(pub bool);

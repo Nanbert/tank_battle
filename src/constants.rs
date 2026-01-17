@@ -459,6 +459,24 @@ pub struct Sea;
 pub struct SeaAmbiencePlayer;
 
 #[derive(Component)]
+pub struct Barrier;
+
+pub const BARRIER_WIDTH: f32 = 100.0;
+pub const BARRIER_HEIGHT: f32 = 100.0;
+
+#[derive(Component)]
+pub struct Brick;
+
+pub const BRICK_WIDTH: f32 = 50.0;
+pub const BRICK_HEIGHT: f32 = 50.0;
+
+#[derive(Component)]
+pub struct Steel;
+
+pub const STEEL_WIDTH: f32 = 50.0;
+pub const STEEL_HEIGHT: f32 = 50.0;
+
+#[derive(Component)]
 pub struct Commander;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
