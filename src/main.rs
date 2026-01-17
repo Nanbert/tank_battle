@@ -2447,12 +2447,18 @@ fn check_game_over(
     }
 
     // 检测所有玩家生命值是否都为 0
-    let all_players_dead = match *game_mode {
-        GameMode::OnePlayer => {
-            player_info.players[0].life_red_bar == 0
-        }
-        GameMode::TwoPlayers => {
-            player_info.players[0].life_red_bar == 0 && player_info.players[1].life_red_bar == 0
+    let all_players_dead = if player_info.players.is_empty() {
+        false
+    } else {
+        match *game_mode {
+            GameMode::OnePlayer => {
+                player_info.players[0].life_red_bar == 0
+            }
+            GameMode::TwoPlayers => {
+                player_info.players.len() > 1
+                    && player_info.players[0].life_red_bar == 0
+                    && player_info.players[1].life_red_bar == 0
+            }
         }
     };
 
@@ -2468,6 +2474,7 @@ fn check_game_over(
 fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    player_info: Res<PlayerInfo>,
     mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
 ) {
     for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation, player_tank, is_dashing) in &mut query {
@@ -2528,8 +2535,14 @@ fn move_player_tank(
         };
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
+        // 获取玩家的 speed 百分比加成
+        let speed_bonus = player_info.players.get(player_tank.index)
+            .map(|p| p.speed as f32 / 100.0)
+            .unwrap_or(0.0);
+        // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
-        let speed = if needs_rotation { PLAYER_TANK_SPEED * 0.5 } else { PLAYER_TANK_SPEED };
+        let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
+        let speed = if needs_rotation { base_speed * 0.5 } else { base_speed };
         if direction.length() > 0.0 {
             character_controller.translation = Some(direction * speed * time.delta_secs());
         } else {
@@ -2564,6 +2577,7 @@ fn move_player_tank(
 fn player_shoot_bullet(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
+    player_info: Res<PlayerInfo>,
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     mut can_fire: ResMut<CanFire>,
     mut bullet_owners: ResMut<BulletOwners>,
@@ -2589,6 +2603,13 @@ fn player_shoot_bullet(
             // 计算子弹初始位置（坦克前方）
             let bullet_pos = transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
 
+            // 获取玩家的 fire_speed 百分比加成
+            let fire_speed_bonus = player_info.players.get(player_tank.index)
+                .map(|p| p.fire_speed as f32 / 100.0)
+                .unwrap_or(0.0);
+            // 玩家子弹速度 = PLAYER_BULLET_SPEED × (1 + fire_speed百分比/100)
+            let bullet_speed = PLAYER_BULLET_SPEED * (1.0 + fire_speed_bonus);
+
             // 生成子弹
             let bullet_entity = commands.spawn((
                 Bullet,
@@ -2601,7 +2622,7 @@ fn player_shoot_bullet(
                 },
                 Transform::from_translation(bullet_pos),
                 Velocity {
-                    linvel: direction * BULLET_SPEED,
+                    linvel: direction * bullet_speed,
                     angvel: 0.0,
                 },
                 RigidBody::KinematicVelocityBased,
@@ -3581,6 +3602,7 @@ fn cleanup_playing_entities(
     mut enemy_count: ResMut<EnemyCount>,
     mut stage_level: ResMut<StageLevel>,
     mut commander_life: ResMut<CommanderLife>,
+    mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
     // 清理所有游戏实体
     for entity in playing_entities.iter() {
@@ -3599,6 +3621,9 @@ fn cleanup_playing_entities(
 
     // 重置 Commander 生命值
     commander_life.life_red_bar = 3;
+
+    // 重置游戏实体生成标志
+    entities_spawned.0 = false;
 }
 
 fn check_stage_complete(
