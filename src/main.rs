@@ -901,7 +901,7 @@ fn spawn_powerup_batch(
                     index: animation_indices.first,
                 }
             ),
-            Transform::from_translation(*pos),
+            Transform::from_xyz(pos.x, pos.y, 0.8), // z=0.8 使道具高于除了树之外的所有图层
             animation_indices,
             AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
             CurrentAnimationFrame(0),

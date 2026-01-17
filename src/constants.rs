@@ -47,8 +47,8 @@ pub const COMMANDER_HEIGHT: f32 = 120.0;
 pub const FOREST_WIDTH: f32 = 87.0 * 1.5;
 pub const FOREST_HEIGHT: f32 = 87.0 * 1.5;
 
-pub const SEA_WIDTH: f32 = 87.0 * 1.5 * 0.8;
-pub const SEA_HEIGHT: f32 = 87.0 * 1.5 * 0.8;
+pub const SEA_WIDTH: f32 = 100.0;
+pub const SEA_HEIGHT: f32 = 100.0;
 
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
