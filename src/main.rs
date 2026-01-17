@@ -107,6 +107,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_player_info_text.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest_fire.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_forest.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
@@ -389,23 +390,34 @@ fn spawn_walls(commands: &mut Commands) {
 fn spawn_forest(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
+    // 加载树林精灵图（10帧，每帧131x131）
     let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
-    
+    let forest_tile_size = UVec2::new(131, 131);
+    let forest_texture_atlas = TextureAtlasLayout::from_grid(forest_tile_size, 10, 1, None, None);
+    let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas);
+    let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
+
     // 在地图中随机生成一块树林
     let mut rng = rand::rng();
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
     let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
-    
+
     commands.spawn((
         Forest,
         PlayingEntity,
-        Sprite {
-            image: forest_texture,
-            custom_size: Some(Vec2::new(FOREST_WIDTH, FOREST_HEIGHT)),
-            ..default()
-        },
+        Sprite::from_atlas_image(
+            forest_texture,
+            TextureAtlas {
+                layout: forest_texture_atlas_layout,
+                index: forest_animation_indices.first,
+            }
+        ),
         Transform::from_xyz(x, y, 1.0), // z=1.0 使树林在坦克上方渲染
+        forest_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)), // 每0.2秒切换一帧
+        CurrentAnimationFrame(0),
         Sensor, // 树林是传感器，坦克可以穿过但会触发碰撞事件
         RigidBody::Fixed,
         Collider::cuboid(FOREST_WIDTH / 2.0, FOREST_HEIGHT / 2.0),
@@ -720,10 +732,16 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
         powerup_types[rng.random_range(0..powerup_types.len())]
     };
 
-    // 在随机位置生成道具（在地图范围内）
+    // 定义禁止区域
+    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
+    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
+    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
+    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
+
+    // 在随机位置生成道具（在地图范围内），避开禁止区域
     let mut rng = rand::rng();
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
+    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, 0.0);
 
     spawn_powerup_batch(commands, asset_server, texture_atlas_layouts, powerup_type, powerup_type.texture_path(), &[position]);
@@ -784,7 +802,7 @@ fn spawn_game_entities(
     spawn_walls(&mut commands);
 
     // 生成树林
-    spawn_forest(&mut commands, &asset_server);
+    spawn_forest(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
     // 生成司令官
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
@@ -1427,12 +1445,12 @@ fn spawn_forest_fire(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) {
-    // 加载树林燃烧精灵图（4帧，每帧130.5x130.5，1.5秒播完）
+    // 加载树林燃烧精灵图（10帧，每帧131x131，1.5秒播完）
     let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
-    let forest_fire_tile_size = UVec2::new(131, 131); // 使用整数近似值
-    let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 4, 1, None, None);
+    let forest_fire_tile_size = UVec2::new(131, 131);
+    let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
     let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas);
-    let forest_fire_animation_indices = AnimationIndices { first: 0, last: 3 };
+    let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((
         ForestFire,
@@ -1446,7 +1464,7 @@ fn spawn_forest_fire(
         ),
         Transform::from_translation(position),
         forest_fire_animation_indices,
-        AnimationTimer(Timer::from_seconds(1.5 / 4.0, TimerMode::Repeating)), // 1.5秒播完4帧
+        AnimationTimer(Timer::from_seconds(1.5 / 10.0, TimerMode::Repeating)), // 1.5秒播完10帧
         CurrentAnimationFrame(0),
     ));
 
@@ -2099,6 +2117,28 @@ fn animate_forest_fire(
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+fn animate_forest(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Forest>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
                 atlas.index = next_index;
             }
         }
