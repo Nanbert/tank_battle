@@ -46,6 +46,9 @@ pub const COMMANDER_HEIGHT: f32 = 120.0;
 pub const FOREST_WIDTH: f32 = 87.0 * 1.5;
 pub const FOREST_HEIGHT: f32 = 87.0 * 1.5;
 
+pub const SEA_WIDTH: f32 = 87.0 * 1.5 * 0.8;
+pub const SEA_HEIGHT: f32 = 87.0 * 1.5 * 0.8;
+
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
     Vec2::new(0.0, -1.0),  // 下
@@ -445,6 +448,15 @@ pub struct Forest;
 
 #[derive(Component)]
 pub struct ForestFire;
+
+#[derive(Component)]
+pub struct TreeAmbiencePlayer;
+
+#[derive(Component)]
+pub struct Sea;
+
+#[derive(Component)]
+pub struct SeaAmbiencePlayer;
 
 #[derive(Component)]
 pub struct Commander;

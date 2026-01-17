@@ -16,6 +16,7 @@ mod constants;
 mod resources;
 
 use bevy::{
+    audio::{AudioPlayer, Volume},
     prelude::*,
     window::{
         PresentMode,
@@ -108,6 +109,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest_fire.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, play_tree_ambience.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
@@ -2141,6 +2143,48 @@ fn animate_forest(
             if let Some(atlas) = &mut sprite.texture_atlas {
                 atlas.index = next_index;
             }
+        }
+    }
+}
+
+fn play_tree_ambience(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    forests: Query<&Transform, With<Forest>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
+) {
+    // 检查是否有玩家坦克在树林附近
+    let mut is_near_forest = false;
+    const DETECTION_RADIUS: f32 = 150.0; // 树林检测半径
+
+    for player_transform in player_tanks.iter() {
+        for forest_transform in forests.iter() {
+            let distance = player_transform.translation.distance(forest_transform.translation);
+            if distance < DETECTION_RADIUS {
+                is_near_forest = true;
+                break;
+            }
+        }
+        if is_near_forest {
+            break;
+        }
+    }
+
+    if is_near_forest {
+        // 如果在树林附近但没有播放音效，则播放
+        if ambience_players.is_empty() {
+            let tree_ambience_sound: Handle<AudioSource> = asset_server.load("tree_ambience.ogg");
+            commands.spawn((
+                AudioPlayer::new(tree_ambience_sound),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                TreeAmbiencePlayer,
+            ));
+        }
+    } else {
+        // 如果不在树林附近，停止播放所有树林音效
+        for (entity, _) in ambience_players.iter() {
+            commands.entity(entity).despawn();
         }
     }
 }
