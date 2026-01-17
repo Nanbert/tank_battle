@@ -83,6 +83,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<CommanderLife>()
         .init_resource::<BulletOwners>()
         .init_resource::<GameEntitiesSpawned>()
+        .init_resource::<BarrierDamageTracker>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -147,6 +148,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, handle_dash_input.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_dash_movement.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_dash_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_barrier_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_recall_progress_bars.run_if(in_state(GameState::Playing)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
@@ -2869,6 +2871,7 @@ fn handle_dash_collision(
     player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
+    bricks: Query<(Entity, &Transform), With<Brick>>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
     player_avatars: Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
@@ -2876,91 +2879,314 @@ fn handle_dash_collision(
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
-            // 检查是否是玩家坦克与敌方坦克的碰撞
-            let (player_entity, enemy_entity) = if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e1) {
-                if is_dashing.is_some() && enemy_tanks.get(*e2).is_ok() {
-                    (player_entity, *e2)
+            // 检查是否是玩家坦克与 brick 的碰撞
+            let (player_entity, brick_entity, enemy_entity) = if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e1) {
+                if is_dashing.is_some() && bricks.get(*e2).is_ok() {
+                    (player_entity, Some(*e2), None)
+                } else if let Some(enemy) = check_enemy_collision(player_entity, *e1, *e2, &player_tanks, &enemy_tanks) {
+                    (player_entity, None, Some(enemy))
                 } else {
                     continue;
                 }
             } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(*e2) {
-                if is_dashing.is_some() && enemy_tanks.get(*e1).is_ok() {
-                    (player_entity, *e1)
+                if is_dashing.is_some() && bricks.get(*e1).is_ok() {
+                    (player_entity, Some(*e1), None)
+                } else if let Some(enemy) = check_enemy_collision(player_entity, *e2, *e1, &player_tanks, &enemy_tanks) {
+                    (player_entity, None, Some(enemy))
                 } else {
                     continue;
                 }
+            } else if let Some((pe, ee)) = check_enemy_collision_none(*e1, *e2, &player_tanks, &enemy_tanks) {
+                (pe, None, Some(ee))
             } else {
                 continue;
             };
 
-        // 获取玩家坦克信息
-        let (_, player_tank, _) = player_tanks.get(player_entity).unwrap();
-
-        // 获取敌方坦克位置用于生成爆炸效果
-        if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
-            // 生成爆炸效果
-            spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, enemy_transform.translation);
-        }
-
-        // 销毁敌方坦克
-        commands.entity(enemy_entity).despawn();
-
-        // 减少当前敌方坦克计数
-        enemy_count.current_enemies -= 1;
-
-        // 增加分数
-        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
-            player_stats.score += 100;
-
-            // 发送分数变更事件
-            stat_changed_events.write(PlayerStatChanged {
-                player_index: player_tank.index,
-                stat_type: StatType::Score,
-            });
-
-            // 扣除1/3血条
-            let health_cost = 1; // 1/3血条（最大3格）
-            player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
-
-            // 检查玩家是否死亡
-            if player_stats.life_red_bar == 0 {
-                // 获取玩家坦克位置用于生成爆炸效果
-                if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-                    // 生成爆炸效果
-                    spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
-                }
-
-                // 销毁玩家坦克
-                commands.entity(player_entity).despawn();
-
-                // 标记对应玩家的头像为死亡状态
-                for (avatar_entity, player_index) in player_avatars.iter() {
-                    if player_index.0 == player_tank.index {
-                        commands.entity(avatar_entity).insert(PlayerDead);
-                    }
-                }
-
-                // 启动 Game Over 延迟计时器（1.2秒）
-                commands.spawn((
-                    GameOverTimer,
-                    AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-                ));
+            // 处理 brick 碰撞
+            if let Some(b_entity) = brick_entity {
+                handle_brick_collision(
+                    &mut commands,
+                    &asset_server,
+                    &mut texture_atlas_layouts,
+                    &player_tanks,
+                    &player_tanks_with_transform,
+                    &bricks,
+                    &mut player_info,
+                    &player_avatars,
+                    &mut stat_changed_events,
+                    player_entity,
+                    b_entity,
+                );
+                continue;
             }
-        }
 
-        // 检查是否需要重新生成敌方坦克
-        if enemy_count.total_spawned < enemy_count.max_count {
-            // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
-            let mut rng = rand::rng();
-            let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
-            let position = ENEMY_BORN_PLACES[random_index];
-            spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
-
-            // 增加已生成计数
-            enemy_count.total_spawned += 1;
+            // 处理敌方坦克碰撞
+            if let Some(e_entity) = enemy_entity {
+                handle_dash_enemy_tank_collision(
+                    &mut commands,
+                    &asset_server,
+                    &mut texture_atlas_layouts,
+                    &player_tanks,
+                    &player_tanks_with_transform,
+                    &enemy_tanks,
+                    &mut enemy_count,
+                    &mut player_info,
+                    &player_avatars,
+                    &mut stat_changed_events,
+                    player_entity,
+                    e_entity,
+                );
+            }
         }
     }
 }
+
+fn check_enemy_collision(
+    player_entity: Entity,
+    e1: Entity,
+    e2: Entity,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+) -> Option<Entity> {
+    if let Ok((_, _, is_dashing)) = player_tanks.get(e1) {
+        if is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
+            return Some(e2);
+        }
+    }
+    None
+}
+
+fn check_enemy_collision_none(
+
+    e1: Entity,
+
+    e2: Entity,
+
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+
+) -> Option<(Entity, Entity)> {
+
+    if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e1) {
+
+        if is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
+
+            return Some((player_entity, e2));
+
+        }
+
+    } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e2) {
+
+        if is_dashing.is_some() && enemy_tanks.get(e1).is_ok() {
+
+            return Some((player_entity, e1));
+
+        }
+
+    }
+
+    None
+
+}
+
+fn handle_brick_collision(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    _texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    bricks: &Query<(Entity, &Transform), With<Brick>>,
+    player_info: &mut ResMut<PlayerInfo>,
+    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+    _player_entity: Entity,
+    brick_entity: Entity,
+) {
+    // 获取玩家坦克信息
+    let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
+        if e == _player_entity { Some(pt) } else { None }
+    }).unwrap();
+
+    // 获取 brick 位置用于生成效果
+    if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
+        // 播放砖块被击中的音效
+        let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
+        commands.spawn((
+            AudioPlayer::new(brick_hit_sound),
+            PlaybackSettings::ONCE,
+        ));
+
+        // 生成火花效果
+        spawn_spark(commands, asset_server, brick_transform.translation);
+
+        // 销毁 brick
+        commands.entity(brick_entity).despawn();
+    }
+
+    // 扣除1/3血条
+    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+        let health_cost = 1; // 1/3血条（最大3格）
+        player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+
+        // 检查玩家是否死亡
+        if player_stats.life_red_bar == 0 {
+            // 获取玩家坦克位置用于生成爆炸效果
+            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(_player_entity) {
+                // 生成爆炸效果
+                spawn_explosion(commands, asset_server, _texture_atlas_layouts, tank_transform.translation);
+            }
+
+            // 销毁玩家坦克
+            commands.entity(_player_entity).despawn();
+
+            // 标记对应玩家的头像为死亡状态
+            for (avatar_entity, player_index) in player_avatars.iter() {
+                if player_index.0 == player_tank.index {
+                    commands.entity(avatar_entity).insert(PlayerDead);
+                }
+            }
+
+            // 启动 Game Over 延迟计时器（1.2秒）
+            commands.spawn((
+                GameOverTimer,
+                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+            ));
+        }
+    }
+}
+
+fn handle_dash_enemy_tank_collision(
+    mut commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    mut texture_atlas_layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+    enemy_count: &mut ResMut<EnemyCount>,
+    player_info: &mut ResMut<PlayerInfo>,
+    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+    player_entity: Entity,
+    enemy_entity: Entity,
+) {
+    // 获取玩家坦克信息
+    let (_, player_tank, _) = player_tanks.get(player_entity).unwrap();
+
+    // 获取敌方坦克位置用于生成爆炸效果
+    if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
+        // 生成爆炸效果
+        spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, enemy_transform.translation);
+    }
+
+    // 销毁敌方坦克
+    commands.entity(enemy_entity).despawn();
+
+    // 减少当前敌方坦克计数
+    enemy_count.current_enemies -= 1;
+
+    // 增加分数
+    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+        player_stats.score += 100;
+
+        // 发送分数变更事件
+        stat_changed_events.write(PlayerStatChanged {
+            player_index: player_tank.index,
+            stat_type: StatType::Score,
+        });
+
+        // 扣除1/3血条
+        let health_cost = 1; // 1/3血条（最大3格）
+        player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+
+        // 检查玩家是否死亡
+        if player_stats.life_red_bar == 0 {
+            // 获取玩家坦克位置用于生成爆炸效果
+            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+                // 生成爆炸效果
+                spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+            }
+
+            // 销毁玩家坦克
+            commands.entity(player_entity).despawn();
+
+            // 标记对应玩家的头像为死亡状态
+            for (avatar_entity, player_index) in player_avatars.iter() {
+                if player_index.0 == player_tank.index {
+                    commands.entity(avatar_entity).insert(PlayerDead);
+                }
+            }
+
+            // 启动 Game Over 延迟计时器（1.2秒）
+            commands.spawn((
+                GameOverTimer,
+                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+            ));
+        }
+    }
+
+    // 检查是否需要重新生成敌方坦克
+    if enemy_count.total_spawned < enemy_count.max_count {
+        // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
+        let mut rng = rand::rng();
+        let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
+        let position = ENEMY_BORN_PLACES[random_index];
+        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
+
+        // 增加已生成计数
+        enemy_count.total_spawned += 1;
+    }
+}
+
+fn handle_barrier_collision(
+    time: Res<Time>,
+    player_tanks: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
+    barriers: Query<(&Transform, Entity), With<Barrier>>,
+    mut player_info: ResMut<PlayerInfo>,
+    mut barrier_damage_tracker: ResMut<BarrierDamageTracker>,
+    mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+) {
+    // 更新所有冷却计时器
+    for (_, timer) in barrier_damage_tracker.cooldowns.iter_mut() {
+        timer.tick(time.delta());
+    }
+
+    // 检测玩家坦克与 barrier 的距离
+    for (player_entity, player_transform, player_tank) in player_tanks.iter() {
+        for (barrier_transform, _barrier_entity) in barriers.iter() {
+            // 计算距离
+            let distance = (player_transform.translation - barrier_transform.translation).length();
+
+            // 如果距离小于阈值（坦克和 barrier 的半径之和），则认为碰撞
+            const COLLISION_THRESHOLD: f32 = (TANK_WIDTH + BARRIER_WIDTH) / 2.0;
+
+            if distance < COLLISION_THRESHOLD {
+                // 检查冷却是否结束
+                let can_take_damage = barrier_damage_tracker.cooldowns
+                    .get(&player_entity)
+                    .map_or(true, |timer| timer.is_finished());
+
+                if can_take_damage {
+                    // 设置 2 秒冷却
+                    barrier_damage_tracker.cooldowns.insert(
+                        player_entity,
+                        Timer::from_seconds(2.0, TimerMode::Once)
+                    );
+
+                    // 永久减少 speed 20（固定值）
+                    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                        player_stats.speed = player_stats.speed.saturating_sub(20);
+
+                        // 发送 speed 变更事件
+                        stat_changed_events.write(PlayerStatChanged {
+                            player_index: player_tank.index,
+                            stat_type: StatType::Speed,
+                        });
+                    }
+                }
+            }
+        }
+    }
 }
 
 fn setup_fade_out(

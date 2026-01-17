@@ -183,6 +183,12 @@ pub enum StatType {
     Penetrate,
 }
 
+// Barrier 伤害追踪器，使用冷却机制防止玩家坦克频繁受伤
+#[derive(Resource, Default)]
+pub struct BarrierDamageTracker {
+    pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的受伤冷却计时器
+}
+
 // 标记游戏实体是否已生成
 #[derive(Resource, Default)]
 pub struct GameEntitiesSpawned(pub bool);
