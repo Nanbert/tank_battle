@@ -774,14 +774,6 @@ fn spawn_ui_element_from_config(
                 Color::srgb(1.0, 1.0, 1.0) // 白色
             };
 
-            // 检查是否是 air_cushion 或 shells，如果是则设置透明
-            let is_air_cushion_or_shells = text.starts_with("Air Cushion") || text.starts_with("Shells");
-            let final_color = if is_air_cushion_or_shells {
-                Color::srgba(1.0, 1.0, 1.0, 0.0) // 完全透明
-            } else {
-                text_color
-            };
-
             commands.spawn((
                 PlayerUI { player_type: tank_type },
                 PlayingEntity,
@@ -791,7 +783,7 @@ fn spawn_ui_element_from_config(
                     font: font.clone(),
                     ..default()
                 },
-                TextColor(final_color),
+                TextColor(text_color),
                 Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
             ));
         }
@@ -3430,28 +3422,39 @@ fn update_menu_blink(
     menu_selection: Res<CurrentMenuSelection>,
     mut blink_timer: ResMut<MenuBlinkTimer>,
     mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+    game_state: Res<State<GameState>>,
 ) {
-    blink_timer.0.tick(time.delta());
+    // 在 FadingOut 状态下闪烁 + 淡出
+    if *game_state.get() == GameState::FadingOut {
+        blink_timer.0.tick(time.delta());
 
-    // 初始化计时器（0.2秒闪烁）
-    if blink_timer.0.duration().is_zero() {
-        blink_timer.0 = Timer::from_seconds(0.2, TimerMode::Repeating);
-    }
+        // 初始化计时器（0.2秒闪烁）
+        if blink_timer.0.duration().is_zero() {
+            blink_timer.0 = Timer::from_seconds(0.2, TimerMode::Repeating);
+        }
 
-    if blink_timer.0.just_finished() {
+        if blink_timer.0.just_finished() {
+            for (option, mut text_color) in &mut text_query {
+                if option.index == menu_selection.selected_index {
+                    // 当前选中的选项闪烁
+                    // 出现时使用当前淡出透明度，消失时完全透明
+                    let linear = text_color.0.to_linear();
+                    let alpha = if linear.alpha < 0.5 {
+                        // 当前不可见，切换到可见（使用当前淡出透明度）
+                        fading_out.alpha
+                    } else {
+                        // 当前可见，切换到不可见（完全透明）
+                        0.0
+                    };
+                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(alpha);
+                }
+            }
+        }
+    } else {
+        // 在 StartScreen 状态下，选中的选项保持黄色常亮
         for (option, mut text_color) in &mut text_query {
             if option.index == menu_selection.selected_index {
-                // 当前选中的选项闪烁
-                // 出现时使用当前淡出透明度，消失时完全透明
-                let linear = text_color.0.to_linear();
-                let alpha = if linear.alpha < 0.5 {
-                    // 当前不可见，切换到可见（使用当前淡出透明度）
-                    fading_out.alpha
-                } else {
-                    // 当前可见，切换到不可见（完全透明）
-                    0.0
-                };
-                text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(alpha);
+                text_color.0 = Color::srgb(1.0, 1.0, 0.0);
             }
         }
     }
