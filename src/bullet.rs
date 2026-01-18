@@ -311,9 +311,6 @@ pub fn bullet_terrain_collision_system(
     steels: Query<(), With<Steel>>,
     player_info: Res<PlayerInfo>,
 ) {
-    // 跟踪已标记销毁的子弹，避免重复处理
-    let mut despawned_bullets: std::collections::HashSet<Entity> = std::collections::HashSet::new();
-
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 判断是否是子弹与地形的碰撞
@@ -324,11 +321,6 @@ pub fn bullet_terrain_collision_system(
             } else {
                 continue;
             };
-
-            // 检查子弹是否已经被标记销毁
-            if despawned_bullets.contains(&bullet_entity) {
-                continue;
-            }
 
             // 获取子弹信息
             let (bullet_owner, bullet_transform) = match bullets.get(bullet_entity) {
@@ -368,7 +360,6 @@ pub fn bullet_terrain_collision_system(
                 commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
                     reason: BulletDespawnReason::HitTerrain,
                 });
-                despawned_bullets.insert(bullet_entity); // 标记为已处理
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
@@ -420,7 +411,6 @@ pub fn bullet_terrain_collision_system(
                         reason: BulletDespawnReason::HitTerrain,
                     });
                 }
-                despawned_bullets.insert(bullet_entity); // 标记为已处理
             }
         }
     }
