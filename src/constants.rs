@@ -425,14 +425,6 @@ pub struct PlayerDead;
 pub struct IsDashing;
 
 #[derive(Component)]
-pub struct Bullet;
-
-#[derive(Component)]
-pub struct BulletOwner {
-    pub owner: Entity,
-}
-
-#[derive(Component)]
 pub struct Explosion;
 
 #[derive(Component)]
