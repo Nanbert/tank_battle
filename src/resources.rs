@@ -181,6 +181,7 @@ pub enum StatType {
     FireShell,
     TrackChain,
     Penetrate,
+    AirCushion,
 }
 
 // Barrier 伤害追踪器，使用冷却机制防止玩家坦克频繁受伤

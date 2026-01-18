@@ -1,7 +1,11 @@
 //! Game constants for the Tank Battle game
 
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use crate::resources::PlayerStats;
+
+// 碰撞分组常量
+pub const SEA_GROUP: Group = Group::GROUP_2;
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -497,6 +501,7 @@ pub enum PowerUp {
     Penetrate,
     Repair,
     Hamburger,
+    AirCushion,
 }
 
 impl PowerUp {
@@ -510,6 +515,7 @@ impl PowerUp {
             Self::Penetrate => "power_up/penetrate.png",
             Self::Repair => "power_up/repair.png",
             Self::Hamburger => "power_up/hamburger.png",
+            Self::AirCushion => "power_up/air_cushion.png",
         }
     }
 }

@@ -443,8 +443,11 @@ fn spawn_map_terrain(
                         forest_animation_indices,
                         AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
                         CurrentAnimationFrame(0),
+                        Collider::cuboid(131.0 / 2.0, 131.0 / 2.0),
+                        RigidBody::Fixed,
+                        Sensor,
                         ActiveEvents::COLLISION_EVENTS,
-                        ActiveCollisionTypes::all(),
+                        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
                     ));
                 }
                 TerrainType::Sea => {
@@ -464,12 +467,13 @@ fn spawn_map_terrain(
                                 index: sea_animation_indices.first,
                             }
                         ),
-                        Transform::from_xyz(pos.x, pos.y, 0.5),
+                        Transform::from_xyz(pos.x, pos.y, -0.5),
                         sea_animation_indices,
                         AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
                         CurrentAnimationFrame(0),
                         RigidBody::Fixed,
                         Collider::cuboid(100.0 / 2.0, 100.0 / 2.0),
+                        CollisionGroups::new(SEA_GROUP, Group::all()),
                     ));
                 }
                 TerrainType::Brick => {
@@ -539,8 +543,9 @@ fn spawn_map_terrain(
                         Transform::from_xyz(pos.x, pos.y, 0.0),
                         RigidBody::Fixed,
                         Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
+                        Sensor,
                         ActiveEvents::COLLISION_EVENTS,
-                        ActiveCollisionTypes::all(),
+                        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
                     ));
                 }
                 TerrainType::Empty => {}
@@ -623,6 +628,7 @@ fn spawn_player1_tank(
         .insert(LockedAxes::ROTATION_LOCKED)
         .insert(KinematicCharacterController {
             offset: CharacterLength::Absolute(0.01),
+            filter_groups: None,
             ..default()
         })
         .id()
@@ -847,8 +853,8 @@ fn spawn_ui_element_from_config(
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
     let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 penetrate 道具
-        PowerUp::Penetrate
+        // 第一关强制生成 air_cushion 道具
+        PowerUp::AirCushion
     } else {
         // 其他关卡随机选择一个道具类型
         let powerup_types = [
@@ -860,6 +866,7 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
             PowerUp::Penetrate,
             PowerUp::Repair,
             PowerUp::Hamburger,
+            PowerUp::AirCushion,
         ];
 
         let mut rng = rand::rng();
@@ -1069,23 +1076,25 @@ fn spawn_game_entities_if_needed(
 
                     .insert(RigidBody::KinematicPositionBased)
 
-                    .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+                                        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
 
-                    .insert(ActiveEvents::COLLISION_EVENTS)
+                                        .insert(ActiveEvents::COLLISION_EVENTS)
 
-                    .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
+                                        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
 
-                    .insert(LockedAxes::ROTATION_LOCKED)
+                                        .insert(LockedAxes::ROTATION_LOCKED)
 
-                    .insert(KinematicCharacterController {
+                                        .insert(KinematicCharacterController {
 
-                        offset: CharacterLength::Absolute(0.01),
+                                            offset: CharacterLength::Absolute(0.01),
 
-                        ..default()
+                                            filter_groups: None,
 
-                    })
+                                            ..default()
 
-                    .id();
+                                        })
+
+                                        .id();
 
     
 
@@ -1523,12 +1532,13 @@ fn handle_powerup_collision(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     powerups: Query<(Entity, &Transform, &PowerUp)>,
-    player_tanks: Query<(&Transform, &PlayerTank), With<PlayerTank>>,
+    player_tanks: Query<(&Transform, &PlayerTank, Entity), With<PlayerTank>>,
+    mut controllers: Query<&mut KinematicCharacterController>,
     mut player_info: ResMut<PlayerInfo>,
     mut commander_life: ResMut<CommanderLife>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
-    for (tank_transform, player_tank) in player_tanks{
+    for (tank_transform, player_tank, tank_entity) in player_tanks{
         let mut picked_powerup: Option<PowerUp> = None;
         let mut powerup_entity_to_despawn: Option<Entity> = None;
 
@@ -1594,6 +1604,15 @@ fn handle_powerup_collision(
                         }
                         None // 汉堡道具不影响玩家属性，不发送事件
                     }
+                    PowerUp::AirCushion => {
+                        player_stats.air_cushion = true;
+                        // 更新 filter_groups，排除海（GROUP_2）
+                        // 玩家坦克不设置 memberships（默认所有组），filters 设置为不包含 GROUP_2
+                        if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                            controller.filter_groups = Some(CollisionGroups::new(Group::all(), Group::all() & !SEA_GROUP));
+                        }
+                        Some(StatType::AirCushion)
+                    }
                 };
 
                 // 发送属性变更事件
@@ -1617,6 +1636,7 @@ const fn get_stat_prefix(stat_type: StatType) -> &'static str {
         StatType::FireShell => "Fire Shell:",
         StatType::TrackChain => "Track Chain:",
         StatType::Penetrate => "Penetrate:",
+        StatType::AirCushion => "Air Cushion:",
         StatType::Score => "Scores",
     }
 }

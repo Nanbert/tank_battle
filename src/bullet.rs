@@ -89,7 +89,7 @@ pub fn spawn_bullet(
         LockedAxes::ROTATION_LOCKED,
         Sensor,
         ActiveEvents::COLLISION_EVENTS,
-        ActiveCollisionTypes::all(),
+        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC | ActiveCollisionTypes::KINEMATIC_STATIC,
     ))
     .id()
 }
@@ -425,6 +425,7 @@ pub fn bullet_tank_collision_system(
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+    mut controllers: Query<&mut KinematicCharacterController>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -510,12 +511,13 @@ pub fn bullet_tank_collision_system(
 
                         // 扣除对应玩家的生命值
                         if let Some(player_stats) = player_info.players.get_mut(&player_index) {
-                            // 检查玩家是否有 fire_shell、track_chain 或 penetrate 特效
+                            // 检查玩家是否有 fire_shell、track_chain、penetrate 或 air_cushion 特效
                             let has_fire_shell = player_stats.fire_shell;
                             let has_track_chain = player_stats.track_chain;
                             let has_penetrate = player_stats.penetrate;
+                            let has_air_cushion = player_stats.air_cushion;
 
-                            if has_fire_shell || has_track_chain || has_penetrate {
+                            if has_fire_shell || has_track_chain || has_penetrate || has_air_cushion {
                                 // 有特效，移除其中一个特效（优先级任意）
                                 if has_fire_shell {
                                     player_stats.fire_shell = false;
@@ -534,6 +536,16 @@ pub fn bullet_tank_collision_system(
                                     stat_changed_events.write(PlayerStatChanged {
                                         player_type: player_index,
                                         stat_type: StatType::Penetrate,
+                                    });
+                                } else if has_air_cushion {
+                                    player_stats.air_cushion = false;
+                                    // 恢复 filter_groups，与海（GROUP_2）碰撞
+                                    if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                                        controller.filter_groups = None;
+                                    }
+                                    stat_changed_events.write(PlayerStatChanged {
+                                        player_type: player_index,
+                                        stat_type: StatType::AirCushion,
                                     });
                                 }
                             } else {
