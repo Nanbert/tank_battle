@@ -3,6 +3,8 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
+use crate::constants::TankType;
+
 #[derive(Resource, Default)]
 pub struct CanFire(pub HashSet<Entity>);
 
@@ -77,7 +79,7 @@ pub struct StageIntroTimer {
 
 #[derive(Resource, Default)]
 pub struct PlayerInfo {
-    pub players: Vec<PlayerStats>,
+    pub players: HashMap<TankType, PlayerStats>,
 }
 
 #[derive(Clone)]
@@ -165,7 +167,7 @@ impl Default for CommanderLife {
 // 玩家属性变更事件
 #[derive(Message, Clone, Copy)]
 pub struct PlayerStatChanged {
-    pub player_index: usize,
+    pub player_type: TankType,
     pub stat_type: StatType,
 }
 

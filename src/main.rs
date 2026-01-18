@@ -737,7 +737,7 @@ fn spawn_player1_tank(
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
 ) -> Entity {
-    let player_tank = PlayerTank { index: 0 };
+    let player_tank = PlayerTank { tank_type: TankType::Player1 };
 
     
 
@@ -806,7 +806,7 @@ pub struct BornPosition(pub Vec3);
 // 回城进度条组件
 #[derive(Component)]
 pub struct RecallProgressBar {
-    pub player_index: usize,
+    pub player_type: TankType,
     pub player_entity: Entity,
 }
 
@@ -823,11 +823,11 @@ fn spawn_player_info(
 ) {
     // 生成玩家1 UI 元素
     for config in PLAYER1_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info);
+        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info, TankType::Player1);
     }
     // 生成玩家2 UI 元素
     for config in PLAYER2_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info);
+        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info, TankType::Player2);
     }
 }
 
@@ -896,11 +896,9 @@ fn spawn_ui_element_from_config(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     config: &UIElementConfig,
     player_info: &PlayerInfo,
+    tank_type: TankType,
 ) {
-    // 根据 x_pos 判断是哪个玩家（左侧是玩家1，右侧是玩家2）
-    let player_index = usize::from(config.x_pos >= 0.0);
-    let player_stats = &player_info.players[player_index];
-
+    let player_stats = &player_info.players[&tank_type];
     match config.element_type {
         UIElementType::NormalText(f) => {
             let text = f(player_stats);
@@ -920,7 +918,7 @@ fn spawn_ui_element_from_config(
             };
 
             commands.spawn((
-                PlayerIndex(player_index),
+                PlayerUI { player_type: tank_type },
                 PlayingEntity,
                 Text2d(text),
                 TextFont {
@@ -939,7 +937,7 @@ fn spawn_ui_element_from_config(
             let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
             let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
             commands.spawn((
-                PlayerIndex(player_index),
+                PlayerUI { player_type: tank_type },
                 PlayerAvatar,
                 PlayingEntity,
                 Sprite {
@@ -959,7 +957,7 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::HealthBar => {
             commands.spawn((
-                PlayerIndex(player_index),
+                PlayerUI { player_type: tank_type },
                 HealthBar,
                 HealthBarOriginalPosition(config.x_pos),
                 PlayingEntity,
@@ -973,7 +971,7 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::BlueBar => {
             commands.spawn((
-                PlayerIndex(player_index),
+                PlayerUI { player_type: tank_type },
                 BlueBar,
                 BlueBarOriginalPosition(config.x_pos),
                 PlayingEntity,
@@ -1124,7 +1122,7 @@ fn spawn_game_entities_if_needed(
 
                 // 初始化玩家1信息
 
-                player_info.players.push(PlayerStats {
+                player_info.players.insert(TankType::Player1, PlayerStats {
 
                     name: "Li Yun Long".to_string(),
 
@@ -1180,7 +1178,7 @@ fn spawn_game_entities_if_needed(
 
                 let player2_tank_entity = commands.spawn_empty()
 
-                    .insert(PlayerTank { index: 1 })
+                    .insert(PlayerTank { tank_type: TankType::Player2 })
 
                     .insert(PlayingEntity)
 
@@ -1234,7 +1232,7 @@ fn spawn_game_entities_if_needed(
 
                 // 初始化玩家1信息
 
-                player_info.players.push(PlayerStats {
+                player_info.players.insert(TankType::Player1, PlayerStats {
 
                     name: "Li Yun Long".to_string(),
 
@@ -1266,7 +1264,7 @@ fn spawn_game_entities_if_needed(
 
                 // 初始化玩家2信息
 
-                player_info.players.push(PlayerStats {
+                player_info.players.insert(TankType::Player2, PlayerStats {
 
                     name: "Chu Yun Fei".to_string(),
 
@@ -1308,7 +1306,7 @@ fn spawn_game_entities_if_needed(
         GameMode::OnePlayer => {
             // 单人模式：只生成玩家1的UI
             for config in PLAYER1_UI_ELEMENTS {
-                spawn_ui_element_from_config(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, config, &player_info);
+                spawn_ui_element_from_config(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, config, &player_info, TankType::Player1);
             }
         }
         GameMode::TwoPlayers => {
@@ -1693,7 +1691,7 @@ fn handle_powerup_collision(
             commands.entity(powerup_entity).despawn();
 
             // 根据道具类型应用效果并发送事件
-            if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+            if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                 let stat_type = match powerup_type {
                     PowerUp::Shell => {
                         if player_stats.shells < 2 {
@@ -1752,7 +1750,7 @@ fn handle_powerup_collision(
                 // 发送属性变更事件
                 if let Some(stat_type) = stat_type {
                     stat_changed_events.write(PlayerStatChanged {
-                        player_index: player_tank.index,
+                        player_type: player_tank.tank_type,
                         stat_type,
                     });
                 }
@@ -1780,12 +1778,12 @@ const fn get_stat_prefix(stat_type: StatType) -> &'static str {
 fn handle_stat_changed_for_blink(
     mut events: MessageReader<PlayerStatChanged>,
     mut commands: Commands,
-    player_info_texts: Query<(Entity, &Text2d, &PlayerIndex)>,
+    player_info_texts: Query<(Entity, &Text2d, &PlayerUI)>,
 ) {
     for event in events.read() {
         let prefix = get_stat_prefix(event.stat_type);
         for (entity, text, player_index) in &player_info_texts {
-            if player_index.0 == event.player_index && text.0.starts_with(prefix) {
+            if player_index.player_type == event.player_type && text.0.starts_with(prefix) {
                 commands.entity(entity).insert(PlayerInfoBlinkTimer(
                     Timer::from_seconds(1.2, TimerMode::Once)
                 ));
@@ -1798,14 +1796,14 @@ fn handle_stat_changed_for_blink(
 fn animate_player_info_text(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor, &Text2d, &PlayerIndex), With<Text2d>>,
+    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor, &Text2d, &PlayerUI), With<Text2d>>,
     player_info: Res<PlayerInfo>,
 ) {
     for (entity, mut timer, mut color, text, player_index) in &mut query {
         timer.tick(time.delta());
 
         // 判断是否达到最大值或On状态
-        let is_max = player_info.players.get(player_index.0).is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
+        let is_max = player_info.players.get(&player_index.player_type).is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
 
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
@@ -2266,12 +2264,11 @@ fn check_game_over(
     } else {
         match *game_mode {
             GameMode::OnePlayer => {
-                player_info.players[0].life_red_bar == 0
+                player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
             }
             GameMode::TwoPlayers => {
-                player_info.players.len() > 1
-                    && player_info.players[0].life_red_bar == 0
-                    && player_info.players[1].life_red_bar == 0
+                player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
+                    && player_info.players.get(&TankType::Player2).map_or(false, |p| p.life_red_bar == 0)
             }
         }
     };
@@ -2297,7 +2294,7 @@ fn move_player_tank(
             continue;
         }
         // 根据玩家索引选择不同的控制键
-        let direction = if player_tank.index == 0 {
+        let direction = if player_tank.tank_type == TankType::Player1 {
             // 玩家1使用 WASD
             let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
             let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
@@ -2350,7 +2347,7 @@ fn move_player_tank(
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 获取玩家的 speed 百分比加成
-        let speed_bonus = player_info.players.get(player_tank.index)
+        let speed_bonus = player_info.players.get(&player_tank.tank_type)
             .map(|p| p.speed as f32 / 100.0)
             .unwrap_or(0.0);
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
@@ -2399,7 +2396,7 @@ fn handle_recall_input(
         let is_recalling = recall_timers.timers.contains_key(&entity);
 
         // 根据玩家索引选择不同的回城键
-        let is_recall_key_pressed = if player_tank.index == 0 {
+        let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
             // 玩家1使用 B 键回城
             keyboard_input.pressed(KeyCode::KeyB)
         } else {
@@ -2409,7 +2406,7 @@ fn handle_recall_input(
 
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
-            let initial_position = if player_tank.index == 0 {
+            let initial_position = if player_tank.tank_type == TankType::Player1 {
                 Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
             } else {
                 Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
@@ -2425,7 +2422,7 @@ fn handle_recall_input(
             // 创建回城进度条（在坦克正上方，初始满格）
             commands.spawn((
                 PlayingEntity,
-                RecallProgressBar { player_index: player_tank.index, player_entity: entity },
+                RecallProgressBar { player_type: player_tank.tank_type, player_entity: entity },
                 Sprite {
                     color: Color::srgb(0.0, 1.0, 0.0), // 绿色
                     custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
@@ -2449,7 +2446,7 @@ fn update_recall_timers(
         if matches!(is_recalling, Some(IsRecalling))
             && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
                 // 检查是否被打断（移动或射击）
-                let is_interrupted = if player_tank.index == 0 {
+                let is_interrupted = if player_tank.tank_type == TankType::Player1 {
                     // 玩家1：检查WASD或J键
                     keyboard_input.pressed(KeyCode::KeyW) ||
                     keyboard_input.pressed(KeyCode::KeyS) ||
@@ -2547,7 +2544,7 @@ fn handle_dash_input(
         let is_dashing = dash_timers.timers.contains_key(&entity);
 
         // 根据玩家索引选择不同的冲刺键
-        let is_dash_key_pressed = if player_tank.index == 0 {
+        let is_dash_key_pressed = if player_tank.tank_type == TankType::Player1 {
             // 玩家1使用 K 键冲刺
             keyboard_input.just_pressed(KeyCode::KeyK)
         } else {
@@ -2557,7 +2554,7 @@ fn handle_dash_input(
 
         if is_dash_key_pressed && !is_dashing {
             // 检查蓝条是否足够（需要至少1/3蓝条）
-            if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+            if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                 let energy_cost = 100 / 3; // 1/3蓝条
                 if player_stats.energy_blue_bar >= energy_cost {
                     // 立即扣除蓝条
@@ -2621,7 +2618,7 @@ fn handle_dash_collision(
     steels: Query<(Entity, &Transform), With<Steel>>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
-    player_avatars: Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    player_avatars: Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
     for event in collision_events.read() {
@@ -2630,7 +2627,7 @@ fn handle_dash_collision(
             let (player_entity, brick_entity, steel_entity, enemy_entity): (Entity, Option<Entity>, Option<Entity>, Option<Entity>) = if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e1) {
                 if is_dashing.is_some() && steels.get(*e2).is_ok() {
                     // 撞到 steel，检查 protection
-                    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
                         player_stats.protection >= 100
                     } else {
                         false
@@ -2664,7 +2661,7 @@ fn handle_dash_collision(
             } else if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e2) {
                 if is_dashing.is_some() && steels.get(*e1).is_ok() {
                     // 撞到 steel，检查 protection
-                    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
                         player_stats.protection >= 100
                     } else {
                         false
@@ -2808,7 +2805,7 @@ fn handle_brick_collision(
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     player_info: &mut ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     brick_entity: Entity,
@@ -2835,7 +2832,7 @@ fn handle_brick_collision(
     }
 
     // 根据 protection 百分比决定扣血量
-    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
         let health_cost = if player_stats.protection < 40 {
             2 // 2/3血条
         } else if player_stats.protection < 80 {
@@ -2859,7 +2856,7 @@ fn handle_brick_collision(
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
-                if player_index.0 == player_tank.index {
+                if player_index.player_type == player_tank.tank_type {
                     commands.entity(avatar_entity).insert(PlayerDead);
                 }
             }
@@ -2880,7 +2877,7 @@ fn handle_steel_collision(
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &mut ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
 ) {
@@ -2890,7 +2887,7 @@ fn handle_steel_collision(
     }).unwrap();
 
     // 检查 protection 是否为 100%
-    let can_break_steel = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
         player_stats.protection >= 100
     } else {
         false
@@ -2916,7 +2913,7 @@ fn handle_steel_collision(
 
         // 标记对应玩家的头像为死亡状态
         for (avatar_entity, player_index) in player_avatars.iter() {
-            if player_index.0 == player_tank.index {
+            if player_index.player_type == player_tank.tank_type {
                 commands.entity(avatar_entity).insert(PlayerDead);
             }
         }
@@ -2954,7 +2951,7 @@ fn handle_dash_enemy_tank_collision(
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     enemy_count: &mut ResMut<EnemyCount>,
     player_info: &mut ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerIndex), With<PlayerAvatar>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     enemy_entity: Entity,
@@ -2975,12 +2972,12 @@ fn handle_dash_enemy_tank_collision(
     enemy_count.current_enemies -= 1;
 
     // 增加分数
-    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
         player_stats.score += 100;
 
         // 发送分数变更事件
         stat_changed_events.write(PlayerStatChanged {
-            player_index: player_tank.index,
+            player_type: player_tank.tank_type,
             stat_type: StatType::Score,
         });
 
@@ -3007,7 +3004,7 @@ fn handle_dash_enemy_tank_collision(
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
-                if player_index.0 == player_tank.index {
+                if player_index.player_type == player_tank.tank_type {
                     commands.entity(avatar_entity).insert(PlayerDead);
                 }
             }
@@ -3063,7 +3060,7 @@ fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let has_track_chain = if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                    let has_track_chain = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
                         player_stats.track_chain
                     } else {
                         false
@@ -3081,17 +3078,17 @@ fn handle_barrier_collision(
                     );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                         player_stats.speed = player_stats.speed.saturating_sub(20);
                         player_stats.protection = player_stats.protection.saturating_sub(20);
 
                         // 发送 speed 和 protection 变更事件
                         stat_changed_events.write(PlayerStatChanged {
-                            player_index: player_tank.index,
+                            player_type: player_tank.tank_type,
                             stat_type: StatType::Speed,
                         });
                         stat_changed_events.write(PlayerStatChanged {
-                            player_index: player_tank.index,
+                            player_type: player_tank.tank_type,
                             stat_type: StatType::Protection,
                         });
                     }
@@ -3278,7 +3275,7 @@ fn update_option_colors(
 }
 
 // 文本更新函数类型
-type TextUpdateFn = fn(&PlayerStats, usize) -> Option<String>;
+type TextUpdateFn = fn(&PlayerStats, TankType) -> Option<String>;
 
 // 获取文本更新函数
 fn get_text_update_fn(prefix: &str) -> TextUpdateFn {
@@ -3344,29 +3341,29 @@ fn get_text_update_fn(prefix: &str) -> TextUpdateFn {
 
 fn update_player_info_display(
     changed_player_info: Res<PlayerInfo>,
-    mut text2ds: Query<(&PlayerIndex, &mut Text2d), With<Text2d>>,
+    mut text2ds: Query<(&PlayerUI, &mut Text2d), With<Text2d>>,
     mut bar_queries: ParamSet<(
-        Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform, &PlayerIndex), With<HealthBar>>,
-        Query<(&mut Sprite, &BlueBarOriginalPosition, &mut Transform, &PlayerIndex), With<BlueBar>>,
+        Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform, &PlayerUI), With<HealthBar>>,
+        Query<(&mut Sprite, &BlueBarOriginalPosition, &mut Transform, &PlayerUI), With<BlueBar>>,
     )>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
 ) {
     for player_tank in player_tanks {
-        if let Some(player_stats) = changed_player_info.players.get(player_tank.index) {
+        if let Some(player_stats) = changed_player_info.players.get(&player_tank.tank_type) {
             // 更新文本信息
             for (player_index, mut text) in &mut text2ds {
-                if player_tank.index != player_index.0 {
+                if player_tank.tank_type != player_index.player_type {
                     continue;
                 }
                 let update_fn = get_text_update_fn(&text.0);
-                if let Some(new_text) = update_fn(player_stats, player_index.0) {
+                if let Some(new_text) = update_fn(player_stats, player_index.player_type) {
                     text.0 = new_text;
                 }
             }
 
             // 更新血条
             for (mut sprite, original_pos, mut transform, player_index) in &mut bar_queries.p0() {
-                if player_tank.index != player_index.0 {
+                if player_tank.tank_type != player_index.player_type {
                     continue;
                 }
                 // 血条总宽度 160，生命值 3，每条代表 1/3
@@ -3381,7 +3378,7 @@ fn update_player_info_display(
 
             // 更新蓝条
             for (mut sprite, original_pos, mut transform, player_index) in &mut bar_queries.p1() {
-                if player_tank.index != player_index.0 {
+                if player_tank.tank_type != player_index.player_type {
                     continue;
                 }
                 // 蓝条总宽度 160，能量值 100
@@ -3414,7 +3411,7 @@ fn update_blue_bar_regen(
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 检查是否有玩家蓝条不满
-    let any_player_needs_regen = player_info.players.iter().any(|p| p.energy_blue_bar < 100);
+    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_blue_bar < 100);
 
     // 只有当有玩家蓝条不满时才更新计时器
     if any_player_needs_regen {
@@ -3423,7 +3420,7 @@ fn update_blue_bar_regen(
         // 当计时器触发时，恢复1/3蓝条
         if regen_timer.timer.just_finished() {
             let regen_amount = 100 / 3; // 1/3蓝条
-            for player_stats in &mut player_info.players {
+            for player_stats in player_info.players.values_mut() {
                 if player_stats.energy_blue_bar < 100 {
                     player_stats.energy_blue_bar = (player_stats.energy_blue_bar + regen_amount).min(100);
                 }

@@ -13,17 +13,18 @@ use crate::resources::*;
 #[derive(Component)]
 pub struct Bullet;
 
-/// 子弹所有者组件，记录子弹是由哪个坦克发射的
-#[derive(Component)]
-pub struct BulletOwner {
-    pub owner: Entity,
-}
-
-/// 子弹类型枚举
+/// 子弹类型枚举（用于 BulletSpawnParams）
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum BulletType {
     Player,
     Enemy,
+}
+
+/// 子弹所有者组件
+#[derive(Component)]
+pub struct BulletOwner {
+    pub owner: Entity,
+    pub owner_type: TankType,
 }
 
 /// 子弹生成参数
@@ -32,6 +33,7 @@ pub struct BulletSpawnParams {
     pub direction: Vec2,
     pub speed: f32,
     pub owner: Entity,
+    pub owner_type: TankType,
     pub bullet_type: BulletType,
 }
 
@@ -43,7 +45,10 @@ pub fn spawn_bullet(
     commands.spawn((
         Bullet,
         PlayingEntity,
-        BulletOwner { owner: params.owner },
+        BulletOwner {
+            owner: params.owner,
+            owner_type: params.owner_type,
+        },
         Sprite {
             color: Color::srgb(1.0, 1.0, 1.0),
             custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
@@ -94,6 +99,7 @@ pub fn enemy_shoot_system(
                         direction,
                         speed: BULLET_SPEED,
                         owner: entity,
+                        owner_type: TankType::Enemy,
                         bullet_type: BulletType::Enemy,
                     },
                 );
@@ -123,10 +129,10 @@ pub fn player_shoot_system(
         }
 
         // 检查是否按下射击键
-        let shoot_key = match player_tank.index {
-            0 => KeyCode::KeyJ,
-            1 => KeyCode::Numpad1,
-            _ => continue,
+        let shoot_key = match player_tank.tank_type {
+            TankType::Player1 => KeyCode::KeyJ,
+            TankType::Player2 => KeyCode::Numpad1,
+            TankType::Enemy => continue,
         };
 
         if !keyboard.pressed(shoot_key) {
@@ -139,7 +145,7 @@ pub fn player_shoot_system(
         }
 
         // 获取玩家属性
-        let Some(player_stats) = player_info.players.get(player_tank.index) else {
+        let Some(player_stats) = player_info.players.get(&player_tank.tank_type) else {
             continue;
         };
 
@@ -165,6 +171,7 @@ pub fn player_shoot_system(
                 direction,
                 speed: bullet_speed,
                 owner: entity,
+                owner_type: player_tank.tank_type,
                 bullet_type: BulletType::Player,
             },
         );
@@ -223,15 +230,16 @@ pub fn find_bullet_and_tank_in_collision(
 
 /// 判断子弹是否应该销毁
 pub fn should_bullet_destroy(
-    bullet_owner: Entity,
+    bullet_owner_type: TankType,
     tank_entity: Entity,
     enemy_tanks: &Query<(), With<EnemyTank>>,
     player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
 ) -> bool {
-    let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
-    let is_enemy_bullet = enemy_tanks.get(bullet_owner).is_ok();
     let is_player_tank = player_tanks.get(tank_entity).is_ok();
     let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
+
+    let is_player_bullet = matches!(bullet_owner_type, TankType::Player1 | TankType::Player2);
+    let is_enemy_bullet = matches!(bullet_owner_type, TankType::Enemy);
 
     // 规则：
     // 1. 玩家子弹打到敌方坦克 -> 子弹消失
@@ -247,8 +255,6 @@ pub fn bullet_terrain_collision_system(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
-    player_tanks: Query<&PlayerTank, With<PlayerTank>>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
@@ -260,13 +266,21 @@ pub fn bullet_terrain_collision_system(
     let mut steels_to_despawn: Vec<Entity> = Vec::new();
 
     // 检查子弹与树林的碰撞
-    for (forest_entity, forest_transform) in forests.iter() {
-        for (bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
-            let distance = (bullet_transform.translation - forest_transform.translation).length();
-            if distance < FOREST_WIDTH / 2.0 {
+
+        for (forest_entity, forest_transform) in forests.iter() {
+
+            for (_bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
+
+                let distance = (bullet_transform.translation - forest_transform.translation).length();
+
+    
+
+                if distance < FOREST_WIDTH / 2.0 {
                 // 检查子弹所有者是否具有 fire_shell 效果
-                if let Ok(player_tank) = player_tanks.get(bullet_owner.owner) {
-                    if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                let player_index = bullet_owner.owner_type;
+
+                if player_index != TankType::Enemy {
+                    if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.fire_shell {
                             // 生成树林燃烧动画
                             crate::spawn_forest_fire(
@@ -309,8 +323,10 @@ pub fn bullet_terrain_collision_system(
             let distance = (bullet_transform.translation - steel_transform.translation).length();
             if distance < STEEL_WIDTH / 2.0 {
                 // 检查子弹所有者是否具有 penetrate 效果
-                if let Ok(player_tank) = player_tanks.get(bullet_owner.owner) {
-                    if let Some(player_stats) = player_info.players.get(player_tank.index) {
+                let player_index = bullet_owner.owner_type;
+
+                if player_index != TankType::Enemy {
+                    if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.penetrate {
                             // 播放金属破碎音效
                             let metal_crash_sound: Handle<AudioSource> =
@@ -335,7 +351,7 @@ pub fn bullet_terrain_collision_system(
                             bullets_to_despawn.push(bullet_entity);
                         }
                     }
-                } else if enemy_tanks.get(bullet_owner.owner).is_ok() {
+                } else if matches!(bullet_owner.owner_type, TankType::Enemy) {
                     // 敌方子弹，只播放击中音效并销毁子弹
                     let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                     commands.spawn(AudioPlayer::new(hit_sound));
@@ -376,7 +392,7 @@ pub fn bullet_tank_collision_system(
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: Query<(Entity, &PlayerIndex)>,
+    player_avatars: Query<(Entity, &PlayerUI)>,
     mut enemy_count: ResMut<EnemyCount>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
@@ -391,11 +407,11 @@ pub fn bullet_tank_collision_system(
                 &enemy_tanks,
                 &player_tanks,
             ) {
-                let bullet_owner = bullets.get(bullet_entity).unwrap().1.owner;
+                let bullet_owner_info = bullets.get(bullet_entity).unwrap().1;
 
-                if should_bullet_destroy(bullet_owner, tank_entity, &enemy_tanks, &player_tanks) {
+                if should_bullet_destroy(bullet_owner_info.owner_type, tank_entity, &enemy_tanks, &player_tanks) {
                     // 检查是否是玩家子弹击中敌方坦克
-                    let is_player_bullet = player_tanks.get(bullet_owner).is_ok();
+                    let is_player_bullet = matches!(bullet_owner_info.owner_type, TankType::Player1 | TankType::Player2);
                     let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
                     let is_player_tank = player_tanks.get(tank_entity).is_ok();
 
@@ -418,13 +434,16 @@ pub fn bullet_tank_collision_system(
                         enemy_count.current_enemies -= 1;
 
                         // 增加分数
-                        let player_tank = player_tanks.get(bullet_owner).expect("无法获取玩家坦克!");
-                        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                        let player_type = bullet_owner_info.owner_type;
+                        if player_type == TankType::Enemy {
+                            continue; // 敌方坦克不应该有这个分支
+                        }
+                        if let Some(player_stats) = player_info.players.get_mut(&player_type) {
                             player_stats.score += 100;
 
                             // 发送分数变更事件
                             stat_changed_events.write(PlayerStatChanged {
-                                player_index: player_tank.index,
+                                player_type: player_type,
                                 stat_type: StatType::Score,
                             });
                         }
@@ -446,7 +465,11 @@ pub fn bullet_tank_collision_system(
                             enemy_count.total_spawned += 1;
                         }
                     } else if !is_player_bullet && is_player_tank {
-                        let player_tank = player_tanks.get(tank_entity).expect("无法获取玩家坦克!");
+                        let player_index = match player_tanks.get(tank_entity) {
+                            Ok(pt) => pt.tank_type,
+                            Err(_) => continue,
+                        };
+
                         // 敌方子弹击中玩家坦克
                         // 播放中弹音效
                         let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
@@ -458,7 +481,7 @@ pub fn bullet_tank_collision_system(
                         }
 
                         // 扣除对应玩家的生命值
-                        if let Some(player_stats) = player_info.players.get_mut(player_tank.index) {
+                        if let Some(player_stats) = player_info.players.get_mut(&player_index) {
                             // 检查玩家是否有 fire_shell、track_chain 或 penetrate 特效
                             let has_fire_shell = player_stats.fire_shell;
                             let has_track_chain = player_stats.track_chain;
@@ -469,19 +492,19 @@ pub fn bullet_tank_collision_system(
                                 if has_fire_shell {
                                     player_stats.fire_shell = false;
                                     stat_changed_events.write(PlayerStatChanged {
-                                        player_index: player_tank.index,
+                                        player_type: player_index,
                                         stat_type: StatType::FireShell,
                                     });
                                 } else if has_track_chain {
                                     player_stats.track_chain = false;
                                     stat_changed_events.write(PlayerStatChanged {
-                                        player_index: player_tank.index,
+                                        player_type: player_index,
                                         stat_type: StatType::TrackChain,
                                     });
                                 } else if has_penetrate {
                                     player_stats.penetrate = false;
                                     stat_changed_events.write(PlayerStatChanged {
-                                        player_index: player_tank.index,
+                                        player_type: player_index,
                                         stat_type: StatType::Penetrate,
                                     });
                                 }
@@ -508,8 +531,8 @@ pub fn bullet_tank_collision_system(
                                     commands.entity(tank_entity).despawn();
 
                                     // 标记对应玩家的头像为死亡状态
-                                    for (avatar_entity, player_index) in player_avatars.iter() {
-                                        if player_index.0 == player_tank.index {
+                                    for (avatar_entity, player_idx) in player_avatars.iter() {
+                                        if player_idx.player_type == player_index {
                                             commands.entity(avatar_entity).insert(PlayerDead);
                                         }
                                     }

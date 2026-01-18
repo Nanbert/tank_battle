@@ -405,9 +405,17 @@ pub struct EnemyTank {
 #[derive(Component)]
 pub struct EnemyBornAnimation;
 
+/// 坦克类型枚举
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TankType {
+    Player1,
+    Player2,
+    Enemy,
+}
+
 #[derive(Component)]
 pub struct PlayerTank {
-    pub index: usize, // 0 = 玩家1, 1 = 玩家2
+    pub tank_type: TankType, // TankType::Player1 或 TankType::Player2
 }
 
 #[derive(Component)]
@@ -415,7 +423,9 @@ pub struct PlayerAvatar;
 
 //用来标记，文字，头像等信息属于哪个玩家
 #[derive(Component)]
-pub struct PlayerIndex(pub usize);// 0->Player 1, 1-> Player 2
+pub struct PlayerUI {
+    pub player_type: TankType,
+}
 
 #[derive(Component)]
 pub struct PlayerDead;
