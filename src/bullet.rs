@@ -61,8 +61,21 @@ pub struct BulletSpawnParams {
 /// 生成子弹实体
 pub fn spawn_bullet(
     commands: &mut Commands,
+    asset_server: &AssetServer,
     params: BulletSpawnParams,
 ) -> Entity {
+    // 根据坦克类型选择子弹纹理
+    let bullet_texture = match params.owner_type {
+        TankType::Player1 => asset_server.load("texture/bullets/bullet_player1.png"),
+        TankType::Player2 => asset_server.load("texture/bullets/bullet_player2.png"),
+        TankType::Enemy => asset_server.load("texture/bullets/bullet_enemy.png"),
+    };
+
+    // 计算子弹旋转角度（纹理是横向的，需要根据射击方向旋转）
+    // 假设纹理默认向右（0度），需要根据方向计算旋转角度
+    let angle = params.direction.y.atan2(params.direction.x);
+    let rotation = Quat::from_rotation_z(angle);
+
     commands.spawn((
         Bullet,
         PlayingEntity,
@@ -71,17 +84,21 @@ pub fn spawn_bullet(
             owner_type: params.owner_type,
         },
         Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(BULLET_SIZE, BULLET_SIZE)),
+            image: bullet_texture,
+            custom_size: Some(Vec2::new(60.0, 40.0)), // 子弹尺寸：长60像素，宽40像素
             ..default()
         },
-        Transform::from_translation(params.position),
+        Transform {
+            translation: params.position,
+            rotation,
+            ..default()
+        },
         Velocity {
             linvel: params.direction * params.speed,
             angvel: 0.0,
         },
         RigidBody::KinematicVelocityBased,
-        Collider::ball(BULLET_SIZE / 200.0),
+        Collider::cuboid(60.0 / 2.0, 40.0 / 2.0), // 使用矩形碰撞体匹配子弹尺寸
         LockedAxes::ROTATION_LOCKED,
         Sensor,
         ActiveEvents::COLLISION_EVENTS,
@@ -93,6 +110,7 @@ pub fn spawn_bullet(
 /// 敌方坦克射击系统
 pub fn enemy_shoot_system(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut query: Query<(Entity, &Transform, &Velocity), With<EnemyTank>>,
     mut can_fire: ResMut<CanFire>,
     mut bullet_owners: ResMut<BulletOwners>,
@@ -116,6 +134,7 @@ pub fn enemy_shoot_system(
                 // 生成子弹
                 let bullet_entity = spawn_bullet(
                     &mut commands,
+                    &asset_server,
                     BulletSpawnParams {
                         position: bullet_pos,
                         direction,
@@ -138,6 +157,7 @@ pub fn enemy_shoot_system(
 /// 玩家坦克射击系统
 pub fn player_shoot_system(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
     mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank), With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
     player_info: Res<PlayerInfo>,
@@ -187,6 +207,7 @@ pub fn player_shoot_system(
         // 生成子弹
         let bullet_entity = spawn_bullet(
             &mut commands,
+            &asset_server,
             BulletSpawnParams {
                 position: bullet_pos,
                 direction,
@@ -290,6 +311,9 @@ pub fn bullet_terrain_collision_system(
     steels: Query<(), With<Steel>>,
     player_info: Res<PlayerInfo>,
 ) {
+    // 跟踪已标记销毁的子弹，避免重复处理
+    let mut despawned_bullets: std::collections::HashSet<Entity> = std::collections::HashSet::new();
+
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
             // 判断是否是子弹与地形的碰撞
@@ -300,6 +324,11 @@ pub fn bullet_terrain_collision_system(
             } else {
                 continue;
             };
+
+            // 检查子弹是否已经被标记销毁
+            if despawned_bullets.contains(&bullet_entity) {
+                continue;
+            }
 
             // 获取子弹信息
             let (bullet_owner, bullet_transform) = match bullets.get(bullet_entity) {
@@ -336,9 +365,10 @@ pub fn bullet_terrain_collision_system(
 
                 // 销毁砖块和标记子弹销毁
                 commands.entity(terrain_entity).despawn();
-                commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
                     reason: BulletDespawnReason::HitTerrain,
                 });
+                despawned_bullets.insert(bullet_entity); // 标记为已处理
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
@@ -356,7 +386,7 @@ pub fn bullet_terrain_collision_system(
 
                             // 销毁钢铁和标记子弹销毁
                             commands.entity(terrain_entity).despawn();
-                            commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
                                 reason: BulletDespawnReason::HitTerrain,
                             });
                         } else {
@@ -370,7 +400,7 @@ pub fn bullet_terrain_collision_system(
                             });
 
                             // 只标记子弹销毁
-                            commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
                                 reason: BulletDespawnReason::HitTerrain,
                             });
                         }
@@ -386,10 +416,11 @@ pub fn bullet_terrain_collision_system(
                     });
 
                     // 只标记子弹销毁
-                    commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
                         reason: BulletDespawnReason::HitTerrain,
                     });
                 }
+                despawned_bullets.insert(bullet_entity); // 标记为已处理
             }
         }
     }
