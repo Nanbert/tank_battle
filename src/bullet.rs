@@ -13,13 +13,6 @@ use crate::resources::*;
 #[derive(Component)]
 pub struct Bullet;
 
-/// 子弹类型枚举（用于 BulletSpawnParams）
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum BulletType {
-    Player,
-    Enemy,
-}
-
 /// 子弹所有者组件
 #[derive(Component)]
 pub struct BulletOwner {
@@ -34,7 +27,6 @@ pub struct BulletSpawnParams {
     pub speed: f32,
     pub owner: Entity,
     pub owner_type: TankType,
-    pub bullet_type: BulletType,
 }
 
 /// 生成子弹实体
@@ -100,7 +92,6 @@ pub fn enemy_shoot_system(
                         speed: BULLET_SPEED,
                         owner: entity,
                         owner_type: TankType::Enemy,
-                        bullet_type: BulletType::Enemy,
                     },
                 );
 
@@ -172,7 +163,6 @@ pub fn player_shoot_system(
                 speed: bullet_speed,
                 owner: entity,
                 owner_type: player_tank.tank_type,
-                bullet_type: BulletType::Player,
             },
         );
 
