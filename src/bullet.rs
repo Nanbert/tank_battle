@@ -56,6 +56,7 @@ pub fn spawn_bullet(
         LockedAxes::ROTATION_LOCKED,
         Sensor,
         ActiveEvents::COLLISION_EVENTS,
+        ActiveCollisionTypes::all(),
     ))
     .id()
 }
@@ -240,35 +241,39 @@ pub fn should_bullet_destroy(
 }
 
 /// 子弹与地形碰撞检测系统
+/// 使用 Rapier 碰撞事件替代手动距离判断，性能从 O(n²) 提升到 O(n log n)
 pub fn bullet_terrain_collision_system(
     mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
-    bricks: Query<(Entity, &Transform), With<Brick>>,
-    steels: Query<(Entity, &Transform), With<Steel>>,
+    bricks: Query<(), With<Brick>>,
+    steels: Query<(), With<Steel>>,
     player_info: Res<PlayerInfo>,
 ) {
-    let mut bullets_to_despawn: Vec<Entity> = Vec::new();
-    let mut forests_to_despawn: Vec<Entity> = Vec::new();
-    let mut bricks_to_despawn: Vec<Entity> = Vec::new();
-    let mut steels_to_despawn: Vec<Entity> = Vec::new();
+    for event in collision_events.read() {
+        if let CollisionEvent::Started(e1, e2, _) = event {
+            // 判断是否是子弹与地形的碰撞
+            let (bullet_entity, terrain_entity) = if bullets.get(*e1).is_ok() {
+                (*e1, *e2)
+            } else if bullets.get(*e2).is_ok() {
+                (*e2, *e1)
+            } else {
+                continue;
+            };
 
-    // 检查子弹与树林的碰撞
+            // 获取子弹信息
+            let (bullet_owner, bullet_transform) = match bullets.get(bullet_entity) {
+                Ok((_, owner, transform)) => (owner, transform),
+                Err(_) => continue,
+            };
 
-        for (forest_entity, forest_transform) in forests.iter() {
-
-            for (_bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
-
-                let distance = (bullet_transform.translation - forest_transform.translation).length();
-
-    
-
-                if distance < FOREST_WIDTH / 2.0 {
-                // 检查子弹所有者是否具有 fire_shell 效果
+            // 判断地形类型并处理碰撞
+            if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
+                // 子弹与树林碰撞
                 let player_index = bullet_owner.owner_type;
-
                 if player_index != TankType::Enemy {
                     if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.fire_shell {
@@ -279,95 +284,64 @@ pub fn bullet_terrain_collision_system(
                                 &mut texture_atlas_layouts,
                                 forest_transform.translation,
                             );
-
-                            // 标记需要销毁的实体（只销毁树林，不销毁子弹，让子弹穿过）
-                            forests_to_despawn.push(forest_entity);
+                            // 销毁树林，不销毁子弹
+                            commands.entity(forest_entity).despawn();
                         }
                     }
                 }
-            }
-        }
-    }
-
-    // 检查子弹与砖块的碰撞
-    for (brick_entity, brick_transform) in bricks.iter() {
-        for (bullet_entity, _bullet_owner, bullet_transform) in bullets.iter() {
-            let distance = (bullet_transform.translation - brick_transform.translation).length();
-            if distance < BRICK_WIDTH / 2.0 {
+            } else if bricks.get(terrain_entity).is_ok() {
+                // 子弹与砖块碰撞
                 // 播放砖块击中音效
                 let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
                 commands.spawn(AudioPlayer::new(brick_hit_sound));
 
                 // 生成火花效果
-                                            crate::spawn_spark(&mut commands, &asset_server, brick_transform.translation);
-                // 标记需要销毁的实体（砖块和子弹）
-                bricks_to_despawn.push(brick_entity);
-                bullets_to_despawn.push(bullet_entity);
-            }
-        }
-    }
+                crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
 
-    // 检查子弹与钢铁的碰撞
-    for (steel_entity, steel_transform) in steels.iter() {
-        for (bullet_entity, bullet_owner, bullet_transform) in bullets.iter() {
-            let distance = (bullet_transform.translation - steel_transform.translation).length();
-            if distance < STEEL_WIDTH / 2.0 {
-                // 检查子弹所有者是否具有 penetrate 效果
+                // 销毁砖块和子弹
+                commands.entity(terrain_entity).despawn();
+                commands.entity(bullet_entity).despawn();
+            } else if steels.get(terrain_entity).is_ok() {
+                // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
-
                 if player_index != TankType::Enemy {
                     if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.penetrate {
                             // 播放金属破碎音效
-                            let metal_crash_sound: Handle<AudioSource> =
-                                asset_server.load("metal_crash.ogg");
+                            let metal_crash_sound: Handle<AudioSource> = asset_server.load("metal_crash.ogg");
                             commands.spawn(AudioPlayer::new(metal_crash_sound));
 
                             // 生成火花效果
-                            crate::spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+                            crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
 
-                            // 标记需要销毁的实体（钢铁和子弹）
-                            steels_to_despawn.push(steel_entity);
-                            bullets_to_despawn.push(bullet_entity);
+                            // 销毁钢铁和子弹
+                            commands.entity(terrain_entity).despawn();
+                            commands.entity(bullet_entity).despawn();
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
                             let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                             commands.spawn(AudioPlayer::new(hit_sound));
 
                             // 生成火花效果
-                            crate::spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+                            crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
 
-                            // 只销毁子弹，不销毁钢铁
-                            bullets_to_despawn.push(bullet_entity);
+                            // 只销毁子弹
+                            commands.entity(bullet_entity).despawn();
                         }
                     }
-                } else if matches!(bullet_owner.owner_type, TankType::Enemy) {
+                } else {
                     // 敌方子弹，只播放击中音效并销毁子弹
                     let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                     commands.spawn(AudioPlayer::new(hit_sound));
 
                     // 生成火花效果
-                    crate::spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+                    crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
 
-                    // 只销毁子弹，不销毁钢铁
-                    bullets_to_despawn.push(bullet_entity);
+                    // 只销毁子弹
+                    commands.entity(bullet_entity).despawn();
                 }
             }
         }
-    }
-
-    // 销毁标记的实体
-    for entity in forests_to_despawn {
-        commands.entity(entity).despawn();
-    }
-    for entity in bricks_to_despawn {
-        commands.entity(entity).despawn();
-    }
-    for entity in steels_to_despawn {
-        commands.entity(entity).despawn();
-    }
-    for entity in bullets_to_despawn {
-        commands.entity(entity).despawn();
     }
 }
 

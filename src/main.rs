@@ -441,6 +441,8 @@ fn spawn_map_terrain(
                         forest_animation_indices,
                         AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
                         CurrentAnimationFrame(0),
+                        ActiveEvents::COLLISION_EVENTS,
+                        ActiveCollisionTypes::all(),
                     ));
                 }
                 TerrainType::Sea => {
@@ -491,6 +493,7 @@ fn spawn_map_terrain(
                             RigidBody::Fixed,
                             Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
                             ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
                         ));
                     }
                 }
@@ -517,6 +520,7 @@ fn spawn_map_terrain(
                             RigidBody::Fixed,
                             Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
                             ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
                         ));
                     }
                 }
@@ -534,6 +538,7 @@ fn spawn_map_terrain(
                         RigidBody::Fixed,
                         Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
                         ActiveEvents::COLLISION_EVENTS,
+                        ActiveCollisionTypes::all(),
                     ));
                 }
                 TerrainType::Empty => {}
