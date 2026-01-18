@@ -176,11 +176,9 @@ pub struct PlayerStatChanged {
 pub enum StatType {
     Score,
     Speed,
-    Shells,
     Protection,
     FireSpeed,
     FireShell,
-    AirCushion,
     TrackChain,
     Penetrate,
 }

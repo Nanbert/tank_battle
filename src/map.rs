@@ -32,18 +32,6 @@ impl TerrainType {
             _ => Self::Empty,
         }
     }
-
-    /// 获取地形的纹理路径
-    pub const fn texture_path(self) -> &'static str {
-        match self {
-            Self::Empty => "",
-            Self::Forest => "maps/tree.png",
-            Self::Sea => "sea_sheet.png",
-            Self::Brick => "brick.png",
-            Self::Steel => "steel.png",
-            Self::Barrier => "barrier.png",
-        }
-    }
 }
 
 /// 地图配置常量
@@ -56,11 +44,4 @@ pub fn grid_to_world(row: usize, col: usize) -> Vec2 {
     let x = crate::constants::MAP_LEFT_X + col as f32 * GRID_SIZE + GRID_SIZE / 2.0;
     let y = crate::constants::MAP_TOP_Y - row as f32 * GRID_SIZE - GRID_SIZE / 2.0;
     Vec2::new(x, y)
-}
-
-/// 将世界坐标转换为网格坐标
-pub fn world_to_grid(pos: Vec2) -> (usize, usize) {
-    let col = ((pos.x - crate::constants::MAP_LEFT_X) / GRID_SIZE) as usize;
-    let row = ((crate::constants::MAP_TOP_Y - pos.y) / GRID_SIZE) as usize;
-    (row, col)
 }

@@ -31,30 +31,18 @@ pub struct Bullet;
 /// 子弹所有者组件
 #[derive(Component)]
 pub struct BulletOwner {
-    pub owner: Entity,
     pub owner_type: TankType,
-}
-
-/// 子弹销毁原因
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum BulletDespawnReason {
-    OutOfBounds,
-    HitTerrain,
-    HitTank,
 }
 
 /// 子弹销毁标记组件
 #[derive(Component)]
-pub struct BulletDespawnMarker {
-    pub reason: BulletDespawnReason,
-}
+pub struct BulletDespawnMarker;
 
 /// 子弹生成参数
 pub struct BulletSpawnParams {
     pub position: Vec3,
     pub direction: Vec2,
     pub speed: f32,
-    pub owner: Entity,
     pub owner_type: TankType,
 }
 
@@ -80,7 +68,6 @@ pub fn spawn_bullet(
         Bullet,
         PlayingEntity,
         BulletOwner {
-            owner: params.owner,
             owner_type: params.owner_type,
         },
         Sprite {
@@ -139,7 +126,6 @@ pub fn enemy_shoot_system(
                         position: bullet_pos,
                         direction,
                         speed: BULLET_SPEED,
-                        owner: entity,
                         owner_type: TankType::Enemy,
                     },
                 );
@@ -158,15 +144,24 @@ pub fn enemy_shoot_system(
 pub fn player_shoot_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank), With<PlayerTank>>,
+    time: Res<Time>,
+    mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank, Option<&mut PlayerShootCooldown>), With<PlayerTank>>,
     mut bullet_owners: ResMut<BulletOwners>,
     player_info: Res<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    for (entity, transform, rotation_timer, player_tank) in &mut query {
+    for (entity, transform, rotation_timer, player_tank, mut shoot_cooldown) in &mut query {
         // 检查是否正在旋转
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
+        }
+
+        // 更新射击冷却时间
+        if let Some(ref mut cooldown) = shoot_cooldown {
+            cooldown.timer.tick(time.delta());
+            if !cooldown.timer.is_finished() {
+                continue;
+            }
         }
 
         // 检查是否按下射击键
@@ -212,13 +207,21 @@ pub fn player_shoot_system(
                 position: bullet_pos,
                 direction,
                 speed: bullet_speed,
-                owner: entity,
                 owner_type: player_tank.tank_type,
             },
         );
 
         // 记录子弹的所有者
         bullet_owners.owners.insert(bullet_entity, entity);
+
+        // 设置射击冷却时间（如果没有冷却组件则添加）
+        if shoot_cooldown.is_none() {
+            commands.entity(entity).insert(PlayerShootCooldown {
+                timer: Timer::from_seconds(0.2, TimerMode::Once),
+            });
+        } else if let Some(ref mut cooldown) = shoot_cooldown {
+            cooldown.timer.reset();
+        }
     }
 }
 
@@ -232,9 +235,7 @@ pub fn bullet_bounds_check_system(mut commands: Commands, mut query: Query<(Enti
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x)
             || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y)
         {
-            commands.entity(entity).insert(BulletDespawnMarker {
-                reason: BulletDespawnReason::OutOfBounds,
-            });
+            commands.entity(entity).insert(BulletDespawnMarker);
         }
     }
 }
@@ -304,7 +305,7 @@ pub fn bullet_terrain_collision_system(
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
     asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    _texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
     bricks: Query<(), With<Brick>>,
@@ -357,9 +358,7 @@ pub fn bullet_terrain_collision_system(
 
                 // 销毁砖块和标记子弹销毁
                 commands.entity(terrain_entity).despawn();
-                commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
-                    reason: BulletDespawnReason::HitTerrain,
-                });
+                commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
@@ -377,9 +376,7 @@ pub fn bullet_terrain_collision_system(
 
                             // 销毁钢铁和标记子弹销毁
                             commands.entity(terrain_entity).despawn();
-                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
-                                reason: BulletDespawnReason::HitTerrain,
-                            });
+                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
                             let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
@@ -391,9 +388,7 @@ pub fn bullet_terrain_collision_system(
                             });
 
                             // 只标记子弹销毁
-                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
-                                reason: BulletDespawnReason::HitTerrain,
-                            });
+                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         }
                     }
                 } else {
@@ -407,9 +402,7 @@ pub fn bullet_terrain_collision_system(
                     });
 
                     // 只标记子弹销毁
-                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker {
-                        reason: BulletDespawnReason::HitTerrain,
-                    });
+                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                 }
             }
         }
@@ -573,9 +566,7 @@ pub fn bullet_tank_collision_system(
                         }
                     }
                     // 标记子弹销毁
-                    commands.entity(bullet_entity).insert(BulletDespawnMarker {
-                        reason: BulletDespawnReason::HitTank,
-                    });
+                    commands.entity(bullet_entity).insert(BulletDespawnMarker);
                 }
             }
         }

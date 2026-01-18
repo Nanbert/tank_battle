@@ -44,12 +44,6 @@ pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/25
 pub const COMMANDER_WIDTH: f32 = 140.0;
 pub const COMMANDER_HEIGHT: f32 = 120.0;
 
-pub const FOREST_WIDTH: f32 = 87.0 * 1.5;
-pub const FOREST_HEIGHT: f32 = 87.0 * 1.5;
-
-pub const SEA_WIDTH: f32 = 100.0;
-pub const SEA_HEIGHT: f32 = 100.0;
-
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
     Vec2::new(0.0, -1.0),  // 下
@@ -419,6 +413,11 @@ pub struct PlayerTank {
 }
 
 #[derive(Component)]
+pub struct PlayerShootCooldown {
+    pub timer: Timer,
+}
+
+#[derive(Component)]
 pub struct PlayerAvatar;
 
 //用来标记，文字，头像等信息属于哪个玩家
@@ -462,6 +461,12 @@ pub struct Sea;
 pub struct SeaAmbiencePlayer;
 
 #[derive(Component)]
+pub struct CommanderAmbiencePlayer;
+
+#[derive(Component)]
+pub struct CommanderMusicAnimation;
+
+#[derive(Component)]
 pub struct Barrier;
 
 pub const BARRIER_WIDTH: f32 = 100.0;
@@ -485,11 +490,9 @@ pub struct Commander;
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
 pub enum PowerUp {
     SpeedUp,
-    Shell,
     Protection,
     FireSpeed,
     FireShell,
-    AirCushion,
     TrackChain,
     Penetrate,
     Repair,
@@ -500,11 +503,9 @@ impl PowerUp {
     pub const fn texture_path(self) -> &'static str {
         match self {
             Self::SpeedUp => "power_up/speed_up.png",
-            Self::Shell => "power_up/shell.png",
             Self::Protection => "power_up/protection.png",
             Self::FireSpeed => "power_up/fire_speed.png",
             Self::FireShell => "power_up/fire_shell.png",
-            Self::AirCushion => "power_up/air_cushion.png",
             Self::TrackChain => "power_up/track_chain.png",
             Self::Penetrate => "power_up/penetrate.png",
             Self::Repair => "power_up/repair.png",

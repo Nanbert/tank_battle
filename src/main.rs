@@ -18,8 +18,6 @@ mod map;
 mod levels;
 mod bullet;
 
-use bullet::Bullet;
-
 use bevy::{
     audio::{AudioPlayer, Volume},
     prelude::*,
@@ -120,6 +118,8 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_sea.run_if(in_state(GameState::Playing)))
         .add_systems(Update, play_sea_ambience.run_if(in_state(GameState::Playing)))
         .add_systems(Update, play_tree_ambience.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, play_commander_music.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_commander_music.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_spark.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_game_over_delay.run_if(in_state(GameState::Playing)))
@@ -549,158 +549,10 @@ fn spawn_map_terrain(
     }
 }
 
-fn spawn_brick(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-) {
-    // 加载砖块纹理
-    let brick_texture: Handle<Image> = asset_server.load("brick.png");
 
-    // 在地图中随机生成一块砖块
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
 
-    commands.spawn((
-        Brick,
-        PlayingEntity,
-        Sprite {
-            image: brick_texture,
-            custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(x, y, 0.0),
-        RigidBody::Fixed,
-        Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
-    ));
-}
 
-fn spawn_steel(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-) {
-    // 加载钢铁纹理
-    let steel_texture: Handle<Image> = asset_server.load("steel.png");
 
-    // 在地图中随机生成一块钢铁
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
-
-    commands.spawn((
-        Steel,
-        PlayingEntity,
-        Sprite {
-            image: steel_texture,
-            custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(x, y, 0.0),
-        RigidBody::Fixed,
-        Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
-    ));
-}
-
-fn spawn_sea(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-) {
-    // 加载海精灵图（3帧，每帧100x100）
-    let sea_texture: Handle<Image> = asset_server.load("sea_sheet.png");
-    let sea_tile_size = UVec2::new(100, 100);
-    let sea_texture_atlas = TextureAtlasLayout::from_grid(sea_tile_size, 3, 1, None, None);
-    let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas);
-    let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
-
-    // 在地图中随机生成一块海
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
-
-    commands.spawn((
-        Sea,
-        PlayingEntity,
-        Sprite::from_atlas_image(
-            sea_texture,
-            TextureAtlas {
-                layout: sea_texture_atlas_layout,
-                index: sea_animation_indices.first,
-            }
-        ),
-        Transform::from_xyz(x, y, 0.5), // z=0.5 使海在坦克和树林之间渲染
-        sea_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)), // 每0.2秒切换一帧
-        CurrentAnimationFrame(0),
-        RigidBody::Fixed,
-        Collider::cuboid(SEA_WIDTH / 2.0, SEA_HEIGHT / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
-    ));
-}
-
-fn spawn_barrier(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-) {
-    // 加载屏障纹理
-    let barrier_texture: Handle<Image> = asset_server.load("barrier.png");
-
-    // 在地图中随机生成一块屏障
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
-
-    commands.spawn((
-        Barrier,
-        PlayingEntity,
-        Sprite {
-            image: barrier_texture,
-            custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(x, y, -1.0), // z=-1.0 使屏障在最底层渲染，不遮挡坦克
-    ));
-}
-
-fn spawn_forest(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-) {
-    // 加载树林精灵图（10帧，每帧131x131）
-    let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
-    let forest_tile_size = UVec2::new(131, 131);
-    let forest_texture_atlas = TextureAtlasLayout::from_grid(forest_tile_size, 10, 1, None, None);
-    let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas);
-    let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
-
-    // 在地图中随机生成一块树林
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(MAP_BOTTOM_Y + 100.0..MAP_TOP_Y - 100.0);
-
-    commands.spawn((
-        Forest,
-        PlayingEntity,
-        Sprite::from_atlas_image(
-            forest_texture,
-            TextureAtlas {
-                layout: forest_texture_atlas_layout,
-                index: forest_animation_indices.first,
-            }
-        ),
-        Transform::from_xyz(x, y, 1.0), // z=1.0 使树林在坦克上方渲染
-        forest_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)), // 每0.2秒切换一帧
-        CurrentAnimationFrame(0),
-        Sensor, // 树林是传感器，坦克可以穿过但会触发碰撞事件
-        RigidBody::Fixed,
-        Collider::cuboid(FOREST_WIDTH / 2.0, FOREST_HEIGHT / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
-    ));
-}
 
 fn spawn_commander(
     commands: &mut Commands,
@@ -765,7 +617,7 @@ fn spawn_player1_tank(
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
         .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+        .insert(Collider::cuboid(35.0, 35.0))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
         .insert(LockedAxes::ROTATION_LOCKED)
@@ -1700,12 +1552,6 @@ fn handle_powerup_collision(
             // 根据道具类型应用效果并发送事件
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                 let stat_type = match powerup_type {
-                    PowerUp::Shell => {
-                        if player_stats.shells < 2 {
-                            player_stats.shells += 1;
-                        }
-                        Some(StatType::Shells)
-                    }
                     PowerUp::SpeedUp => {
                         if player_stats.speed < 100 {
                             player_stats.speed += 20;
@@ -1727,10 +1573,6 @@ fn handle_powerup_collision(
                     PowerUp::FireShell => {
                         player_stats.fire_shell = true;
                         Some(StatType::FireShell)
-                    }
-                    PowerUp::AirCushion => {
-                        player_stats.air_cushion = true;
-                        Some(StatType::AirCushion)
                     }
                     PowerUp::TrackChain => {
                         player_stats.track_chain = true;
@@ -1769,12 +1611,10 @@ fn handle_powerup_collision(
 // 获取属性类型对应的前缀
 const fn get_stat_prefix(stat_type: StatType) -> &'static str {
     match stat_type {
-        StatType::Shells => "Shells:",
         StatType::Speed => "Speed:",
         StatType::Protection => "Protection:",
         StatType::FireSpeed => "Fire Speed:",
         StatType::FireShell => "Fire Shell:",
-        StatType::AirCushion => "Air Cushion:",
         StatType::TrackChain => "Track Chain:",
         StatType::Penetrate => "Penetrate:",
         StatType::Score => "Scores",
@@ -2002,7 +1842,7 @@ fn animate_enemy_born_animation(
                                 angvel: 0.0,
                             })
                             .insert(RigidBody::Dynamic)
-                            .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
+                            .insert(Collider::cuboid(35.0, 35.0))
                             .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
                             .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
                             .insert(LockedAxes::ROTATION_LOCKED)
@@ -2105,6 +1945,33 @@ fn animate_commander(
                 current_frame.0 = next_index;
                 atlas.index = next_index;
             }
+}
+}
+
+fn animate_commander_music(
+    time: Res<Time>,
+    mut query: Query<(
+        &mut AnimationTimer,
+        &mut Sprite,
+        &AnimationIndices,
+        &mut CurrentAnimationFrame,
+    ), With<CommanderMusicAnimation>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished()
+            && let Some(atlas) = &mut sprite.texture_atlas {
+                let current = current_frame.0;
+                let next_index = if current == indices.last {
+                    indices.first
+                } else {
+                    current + 1
+                };
+
+                atlas.index = next_index;
+                current_frame.0 = next_index;
+            }
     }
 }
 
@@ -2202,7 +2069,7 @@ fn play_tree_ambience(
             let tree_ambience_sound: Handle<AudioSource> = asset_server.load("tree_ambience.ogg");
             commands.spawn((
                 AudioPlayer::new(tree_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.8)),
                 TreeAmbiencePlayer,
             ));
         }
@@ -2223,6 +2090,85 @@ fn animate_spark(
         timer.tick(time.delta());
         if timer.is_finished() {
             // 0.5秒后销毁火花实体
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn play_commander_music(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    commander: Query<&Transform, With<Commander>>,
+    ambience_players: Query<Entity, With<CommanderAmbiencePlayer>>,
+    music_animations: Query<Entity, With<CommanderMusicAnimation>>,
+) {
+    // 获取 Commander 位置
+    let commander_transform = match commander.single() {
+        Ok(t) => t,
+        Err(_) => return,
+    };
+
+    // 计算最近的玩家坦克距离
+    let mut min_distance = f32::MAX;
+    for player_transform in player_tanks.iter() {
+        let distance = player_transform.translation.distance(commander_transform.translation);
+        min_distance = min_distance.min(distance);
+    }
+
+    // 根据距离判断是否播放音乐
+    const MAX_DISTANCE: f32 = 200.0; // 最大检测距离
+    
+    if min_distance < MAX_DISTANCE {
+        // 如果在检测范围内但没有播放音效，则播放
+        if ambience_players.is_empty() {
+            // 随机选择一段音乐
+            let music_files = [
+                "commander_music_000.ogg",
+                "commander_music_001.ogg",
+                "commander_music_002.ogg",
+                "commander_music_003.ogg",
+            ];
+            let mut rng = rand::rng();
+            let selected_music = music_files[rng.random_range(0..music_files.len())];
+            
+            let commander_music: Handle<AudioSource> = asset_server.load(selected_music);
+            commands.spawn((
+                AudioPlayer::new(commander_music),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.6)),
+                CommanderAmbiencePlayer,
+            ));
+
+            // 创建音乐动画精灵
+            let music_texture: Handle<Image> = asset_server.load("music_note_sheet.png");
+            let music_tile_size = UVec2::new(140, 120);
+            let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
+            let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
+            let music_animation_indices = AnimationIndices { first: 0, last: 9 };
+
+            commands.spawn((
+                CommanderMusicAnimation,
+                PlayingEntity,
+                Sprite::from_atlas_image(
+                    music_texture,
+                    TextureAtlas {
+                        layout: music_texture_atlas_layout,
+                        index: music_animation_indices.first,
+                    }
+                ),
+                Transform::from_translation(commander_transform.translation + Vec3::new(0.0, 0.0, 1.0)), // z=1.0 使动画在 Commander 上方
+                music_animation_indices,
+                AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)), // 每0.1秒切换一帧
+                CurrentAnimationFrame(0),
+            ));
+        }
+    } else {
+        // 如果不在检测范围内，停止播放和动画
+        for entity in ambience_players.iter() {
+            commands.entity(entity).despawn();
+        }
+        for entity in music_animations.iter() {
             commands.entity(entity).despawn();
         }
     }
@@ -2762,7 +2708,7 @@ fn handle_dash_collision(
 }
 
 fn check_enemy_collision(
-    player_entity: Entity,
+    _player_entity: Entity,
     e1: Entity,
     e2: Entity,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
@@ -2887,10 +2833,10 @@ fn handle_brick_collision(
 }
 
 fn handle_steel_collision(
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    _asset_server: &Res<AssetServer>,
+    _texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &mut ResMut<PlayerInfo>,
@@ -2949,7 +2895,7 @@ fn handle_steel_collision(
 fn handle_steel_break(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    asset_server: &Res<AssetServer>,
+    _asset_server: &Res<AssetServer>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
     steel_entity: Entity,
 ) {
@@ -3458,66 +3404,6 @@ fn update_blue_bar_regen(
     }
 }
 
-fn check_bullet_commander_collision(
-    mut commands: Commands,
-    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-    commander_query: Query<&Transform, With<Commander>>,
-    health_bar_query: Query<Entity, With<CommanderHealthBar>>,
-    asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut commander_life: ResMut<CommanderLife>,
-) {
-    for (bullet_entity, bullet_transform) in bullet_query.iter() {
-        for commander_transform in commander_query.iter() {
-            // 检测子弹是否在Commander的矩形范围内
-            let bullet_x = bullet_transform.translation.x;
-            let bullet_y = bullet_transform.translation.y;
-            let commander_x = commander_transform.translation.x;
-            let commander_y = commander_transform.translation.y;
-
-            let half_width = COMMANDER_WIDTH / 2.0;
-            let half_height = COMMANDER_HEIGHT / 2.0;
-
-            let in_x_range = bullet_x >= commander_x - half_width && bullet_x <= commander_x + half_width;
-            let in_y_range = bullet_y >= commander_y - half_height && bullet_y <= commander_y + half_height;
-
-            if in_x_range && in_y_range {
-                // 子弹在Commander范围内，销毁子弹
-                commands.entity(bullet_entity).despawn();
-
-                // 发送爆炸特效事件
-                effect_events.write(crate::bullet::EffectEvent::Explosion {
-                    position: commander_transform.translation,
-                });
-
-                // 扣除1/3血量
-                if commander_life.life_red_bar > 0 {
-                    commander_life.life_red_bar -= 1;
-                    // 如果血量为0，播放死亡音效并销毁血条
-                    if commander_life.life_red_bar == 0 {
-                        // 播放 commander 死亡音效
-                        let commander_death_sound: Handle<AudioSource> = asset_server.load("commander_death.ogg");
-                        commands.spawn(AudioPlayer::new(commander_death_sound));
-                        // 销毁 Commander 血条
-                        for health_bar_entity in health_bar_query.iter() {
-                            commands.entity(health_bar_entity).despawn();
-                        }
-                    } else {
-                        // 非致命伤，播放受伤音效
-                        let commander_get_shot_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
-                        commands.spawn(AudioPlayer::new(commander_get_shot_sound));
-                        let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
-                        commands.spawn(AudioPlayer::new(explosion_sound));
-                    }
-                }
-                break; // 子弹已经销毁，不需要检查其他Commander
-            }
-        }
-    }
-}
-
-
 fn update_menu_blink(
     time: Res<Time>,
     fading_out: Res<FadingOut>,
@@ -3874,7 +3760,7 @@ fn play_sea_ambience(
             let sea_ambience_sound: Handle<AudioSource> = asset_server.load("sea_ambience.ogg");
             commands.spawn((
                 AudioPlayer::new(sea_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.3)),
                 SeaAmbiencePlayer,
             ));
         }
