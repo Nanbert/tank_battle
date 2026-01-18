@@ -72,6 +72,7 @@ fn configure_asset_plugin() -> AssetPlugin {
 fn configure_game_resources(app: &mut App) {
     app.init_state::<GameState>()
         .add_message::<PlayerStatChanged>()
+        .add_message::<crate::bullet::EffectEvent>()
         .init_resource::<CanFire>()
         .init_resource::<StartAnimationFrames>()
         .init_resource::<FadingOut>()
@@ -126,9 +127,10 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::player_shoot_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_bounds_check_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_cleanup_system.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, bullet::bullet_despawn_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, bullet::handle_effect_events.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_player_info_display.run_if(in_state(GameState::Playing)))
@@ -2614,6 +2616,7 @@ fn update_dash_movement(
 fn handle_dash_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
+    mut effect_events: MessageWriter<crate::bullet::EffectEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
@@ -2645,6 +2648,7 @@ fn handle_dash_collision(
                         // protection < 100%，玩家死亡
                         handle_steel_collision(
                             &mut commands,
+                            &mut effect_events,
                             &asset_server,
                             &mut texture_atlas_layouts,
                             &player_tanks,
@@ -2679,6 +2683,7 @@ fn handle_dash_collision(
                         // protection < 100%，玩家死亡
                         handle_steel_collision(
                             &mut commands,
+                            &mut effect_events,
                             &asset_server,
                             &mut texture_atlas_layouts,
                             &player_tanks,
@@ -2707,6 +2712,7 @@ fn handle_dash_collision(
             if let Some(b_entity) = brick_entity {
                 handle_brick_collision(
                     &mut commands,
+                    &mut effect_events,
                     &asset_server,
                     &mut texture_atlas_layouts,
                     &player_tanks,
@@ -2725,6 +2731,7 @@ fn handle_dash_collision(
             if let Some(s_entity) = steel_entity {
                 handle_steel_break(
                     &mut commands,
+                    &mut effect_events,
                     &asset_server,
                     &steels,
                     s_entity,
@@ -2736,6 +2743,7 @@ fn handle_dash_collision(
             if let Some(e_entity) = enemy_entity {
                 handle_dash_enemy_tank_collision(
                     &mut commands,
+                    &mut effect_events,
                     &asset_server,
                     &mut texture_atlas_layouts,
                     &player_tanks,
@@ -2804,6 +2812,7 @@ fn check_enemy_collision_none(
 
 fn handle_brick_collision(
     commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
@@ -2829,8 +2838,10 @@ fn handle_brick_collision(
             PlaybackSettings::ONCE,
         ));
 
-        // 生成火花效果
-        spawn_spark(commands, asset_server, brick_transform.translation);
+        // 发送火花特效事件
+        effect_events.write(crate::bullet::EffectEvent::Spark {
+            position: brick_transform.translation,
+        });
 
         // 销毁 brick
         commands.entity(brick_entity).despawn();
@@ -2877,6 +2888,7 @@ fn handle_brick_collision(
 
 fn handle_steel_collision(
     mut commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
@@ -2900,17 +2912,20 @@ fn handle_steel_collision(
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
-        // 生成火花效果
+        // 发送火花特效事件
         if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            spawn_spark(&mut commands, asset_server, tank_transform.translation);
+            effect_events.write(crate::bullet::EffectEvent::Spark {
+                position: tank_transform.translation,
+            });
         }
         // 铁块被撞碎的效果（可以在这里添加更多效果）
     } else {
         // protection < 100%，玩家死亡
-        // 获取玩家坦克位置用于生成爆炸效果
+        // 发送爆炸特效事件
         if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            // 生成爆炸效果
-            spawn_explosion(&mut commands, asset_server, texture_atlas_layouts, tank_transform.translation);
+            effect_events.write(crate::bullet::EffectEvent::Explosion {
+                position: tank_transform.translation,
+            });
         }
 
         // 销毁玩家坦克
@@ -2933,14 +2948,17 @@ fn handle_steel_collision(
 
 fn handle_steel_break(
     commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     asset_server: &Res<AssetServer>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
     steel_entity: Entity,
 ) {
     // 获取 steel 位置用于生成效果
     if let Ok((_, steel_transform)) = steels.get(steel_entity) {
-        // 生成火花效果
-        spawn_spark(commands, asset_server, steel_transform.translation);
+        // 发送火花特效事件
+        effect_events.write(crate::bullet::EffectEvent::Spark {
+            position: steel_transform.translation,
+        });
 
         // 销毁 steel
         commands.entity(steel_entity).despawn();
@@ -2949,8 +2967,9 @@ fn handle_steel_break(
 
 fn handle_dash_enemy_tank_collision(
     mut commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     asset_server: &Res<AssetServer>,
-    mut texture_atlas_layouts: &mut ResMut<Assets<TextureAtlasLayout>>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
@@ -2966,8 +2985,10 @@ fn handle_dash_enemy_tank_collision(
 
     // 获取敌方坦克位置用于生成爆炸效果
     if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
-        // 生成爆炸效果
-        spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, enemy_transform.translation);
+        // 发送爆炸特效事件
+        effect_events.write(crate::bullet::EffectEvent::Explosion {
+            position: enemy_transform.translation,
+        });
     }
 
     // 销毁敌方坦克
@@ -3439,6 +3460,7 @@ fn update_blue_bar_regen(
 
 fn check_bullet_commander_collision(
     mut commands: Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     commander_query: Query<&Transform, With<Commander>>,
     health_bar_query: Query<Entity, With<CommanderHealthBar>>,
@@ -3464,8 +3486,10 @@ fn check_bullet_commander_collision(
                 // 子弹在Commander范围内，销毁子弹
                 commands.entity(bullet_entity).despawn();
 
-                // 生成爆炸效果
-                spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, commander_transform.translation);
+                // 发送爆炸特效事件
+                effect_events.write(crate::bullet::EffectEvent::Explosion {
+                    position: commander_transform.translation,
+                });
 
                 // 扣除1/3血量
                 if commander_life.life_red_bar > 0 {

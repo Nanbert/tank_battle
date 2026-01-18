@@ -9,6 +9,21 @@ use rand::Rng;
 use crate::constants::*;
 use crate::resources::*;
 
+/// 特效事件枚举
+/// 用于解耦碰撞逻辑和特效生成
+#[derive(Event, Clone, Copy, Message)]
+pub enum EffectEvent {
+    Explosion {
+        position: Vec3,
+    },
+    Spark {
+        position: Vec3,
+    },
+    ForestFire {
+        position: Vec3,
+    },
+}
+
 /// 子弹实体标记组件
 #[derive(Component)]
 pub struct Bullet;
@@ -18,6 +33,20 @@ pub struct Bullet;
 pub struct BulletOwner {
     pub owner: Entity,
     pub owner_type: TankType,
+}
+
+/// 子弹销毁原因
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum BulletDespawnReason {
+    OutOfBounds,
+    HitTerrain,
+    HitTank,
+}
+
+/// 子弹销毁标记组件
+#[derive(Component)]
+pub struct BulletDespawnMarker {
+    pub reason: BulletDespawnReason,
 }
 
 /// 子弹生成参数
@@ -182,22 +211,29 @@ pub fn bullet_bounds_check_system(mut commands: Commands, mut query: Query<(Enti
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x)
             || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y)
         {
-            commands.entity(entity).despawn();
+            commands.entity(entity).insert(BulletDespawnMarker {
+                reason: BulletDespawnReason::OutOfBounds,
+            });
         }
     }
 }
 
-/// 子弹销毁清理系统
-pub fn bullet_cleanup_system(
-    mut removed_bullets: RemovedComponents<Bullet>,
+/// 子弹统一销毁系统
+/// 处理所有子弹的销毁逻辑，包括清理所有者引用和实际销毁
+pub fn bullet_despawn_system(
+    mut commands: Commands,
+    mut query: Query<(Entity, &BulletDespawnMarker, &BulletOwner), With<Bullet>>,
     mut can_fire: ResMut<CanFire>,
     mut bullet_owners: ResMut<BulletOwners>,
 ) {
-    // 当子弹被销毁时，只允许该子弹所属的坦克可以再次射击
-    for bullet_entity in removed_bullets.read() {
-        if let Some(tank_entity) = bullet_owners.owners.remove(&bullet_entity) {
+    for (entity, _marker, _owner) in &mut query {
+        // 清理所有者引用，允许坦克再次射击
+        if let Some(tank_entity) = bullet_owners.owners.remove(&entity) {
             can_fire.0.insert(tank_entity);
         }
+
+        // 销毁子弹实体
+        commands.entity(entity).despawn();
     }
 }
 
@@ -245,6 +281,7 @@ pub fn should_bullet_destroy(
 pub fn bullet_terrain_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
+    mut effect_events: MessageWriter<EffectEvent>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
@@ -277,13 +314,10 @@ pub fn bullet_terrain_collision_system(
                 if player_index != TankType::Enemy {
                     if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.fire_shell {
-                            // 生成树林燃烧动画
-                            crate::spawn_forest_fire(
-                                &mut commands,
-                                &asset_server,
-                                &mut texture_atlas_layouts,
-                                forest_transform.translation,
-                            );
+                            // 发送树林燃烧特效事件
+                            effect_events.write(EffectEvent::ForestFire {
+                                position: forest_transform.translation,
+                            });
                             // 销毁树林，不销毁子弹
                             commands.entity(forest_entity).despawn();
                         }
@@ -295,12 +329,16 @@ pub fn bullet_terrain_collision_system(
                 let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
                 commands.spawn(AudioPlayer::new(brick_hit_sound));
 
-                // 生成火花效果
-                crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
+                // 发送火花特效事件
+                effect_events.write(EffectEvent::Spark {
+                    position: bullet_transform.translation,
+                });
 
-                // 销毁砖块和子弹
+                // 销毁砖块和标记子弹销毁
                 commands.entity(terrain_entity).despawn();
-                commands.entity(bullet_entity).despawn();
+                commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                    reason: BulletDespawnReason::HitTerrain,
+                });
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
@@ -311,34 +349,46 @@ pub fn bullet_terrain_collision_system(
                             let metal_crash_sound: Handle<AudioSource> = asset_server.load("metal_crash.ogg");
                             commands.spawn(AudioPlayer::new(metal_crash_sound));
 
-                            // 生成火花效果
-                            crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
+                            // 发送火花特效事件
+                            effect_events.write(EffectEvent::Spark {
+                                position: bullet_transform.translation,
+                            });
 
-                            // 销毁钢铁和子弹
+                            // 销毁钢铁和标记子弹销毁
                             commands.entity(terrain_entity).despawn();
-                            commands.entity(bullet_entity).despawn();
+                            commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                                reason: BulletDespawnReason::HitTerrain,
+                            });
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
                             let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                             commands.spawn(AudioPlayer::new(hit_sound));
 
-                            // 生成火花效果
-                            crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
+                            // 发送火花特效事件
+                            effect_events.write(EffectEvent::Spark {
+                                position: bullet_transform.translation,
+                            });
 
-                            // 只销毁子弹
-                            commands.entity(bullet_entity).despawn();
+                            // 只标记子弹销毁
+                            commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                                reason: BulletDespawnReason::HitTerrain,
+                            });
                         }
                     }
                 } else {
-                    // 敌方子弹，只播放击中音效并销毁子弹
+                    // 敌方子弹，只播放击中音效并标记子弹销毁
                     let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                     commands.spawn(AudioPlayer::new(hit_sound));
 
-                    // 生成火花效果
-                    crate::spawn_spark(&mut commands, &asset_server, bullet_transform.translation);
+                    // 发送火花特效事件
+                    effect_events.write(EffectEvent::Spark {
+                        position: bullet_transform.translation,
+                    });
 
-                    // 只销毁子弹
-                    commands.entity(bullet_entity).despawn();
+                    // 只标记子弹销毁
+                    commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                        reason: BulletDespawnReason::HitTerrain,
+                    });
                 }
             }
         }
@@ -349,6 +399,7 @@ pub fn bullet_terrain_collision_system(
 pub fn bullet_tank_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
+    mut effect_events: MessageWriter<EffectEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
@@ -382,13 +433,10 @@ pub fn bullet_tank_collision_system(
                     if is_player_bullet && is_enemy_tank {
                         // 获取敌方坦克的位置
                         if let Ok((_, tank_transform)) = enemy_tanks_with_transform.get(tank_entity) {
-                            // 生成爆炸效果
-                            crate::spawn_explosion(
-                                &mut commands,
-                                &asset_server,
-                                &mut texture_atlas_layouts,
-                                tank_transform.translation,
-                            );
+                            // 发送爆炸特效事件
+                            effect_events.write(EffectEvent::Explosion {
+                                position: tank_transform.translation,
+                            });
                         }
 
                         // 销毁敌方坦克
@@ -439,9 +487,11 @@ pub fn bullet_tank_collision_system(
                         let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
                         commands.spawn(AudioPlayer::new(hit_sound));
 
-                        // 生成火花效果
+                        // 发送火花特效事件
                         if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
-                            crate::spawn_spark(&mut commands, &asset_server, tank_transform.translation);
+                            effect_events.write(EffectEvent::Spark {
+                                position: tank_transform.translation,
+                            });
                         }
 
                         // 扣除对应玩家的生命值
@@ -482,13 +532,10 @@ pub fn bullet_tank_collision_system(
                                     if let Ok((_, tank_transform)) =
                                         player_tanks_with_transform.get(tank_entity)
                                     {
-                                        // 生成爆炸效果
-                                        crate::spawn_explosion(
-                                            &mut commands,
-                                            &asset_server,
-                                            &mut texture_atlas_layouts,
-                                            tank_transform.translation,
-                                        );
+                                        // 发送爆炸特效事件
+                                        effect_events.write(EffectEvent::Explosion {
+                                            position: tank_transform.translation,
+                                        });
                                     }
 
                                     // 销毁玩家坦克
@@ -504,9 +551,34 @@ pub fn bullet_tank_collision_system(
                             }
                         }
                     }
-                    // 销毁子弹
-                    commands.entity(bullet_entity).despawn();
+                    // 标记子弹销毁
+                    commands.entity(bullet_entity).insert(BulletDespawnMarker {
+                        reason: BulletDespawnReason::HitTank,
+                    });
                 }
+            }
+        }
+    }
+}
+
+/// 特效处理系统
+/// 监听特效事件并生成对应的视觉效果
+pub fn handle_effect_events(
+    mut events: MessageReader<EffectEvent>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    for event in events.read() {
+        match event {
+            EffectEvent::Explosion { position } => {
+                crate::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
+            }
+            EffectEvent::Spark { position } => {
+                crate::spawn_spark(&mut commands, &asset_server, *position);
+            }
+            EffectEvent::ForestFire { position } => {
+                crate::spawn_forest_fire(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
         }
     }
