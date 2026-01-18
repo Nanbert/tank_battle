@@ -14,6 +14,8 @@
 
 mod constants;
 mod resources;
+mod map;
+mod levels;
 
 use bevy::{
     audio::{AudioPlayer, Volume},
@@ -392,6 +394,148 @@ fn spawn_walls(commands: &mut Commands) {
             ..default()
         }
     ));
+}
+
+fn spawn_map_terrain(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    stage_level: usize,
+) {
+    use crate::map::{TerrainType, grid_to_world, MAP_ROWS, MAP_COLS};
+
+    let level_map = crate::levels::get_level(stage_level);
+
+    for row in 0..MAP_ROWS {
+        for col in 0..MAP_COLS {
+            let terrain = level_map[row][col];
+            if terrain == TerrainType::Empty {
+                continue;
+            }
+
+            let pos = grid_to_world(row, col);
+
+            match terrain {
+                TerrainType::Forest => {
+                    let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
+                    let forest_tile_size = UVec2::new(131, 131);
+                    let forest_texture_atlas = TextureAtlasLayout::from_grid(forest_tile_size, 10, 1, None, None);
+                    let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas);
+                    let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
+
+                    commands.spawn((
+                        Forest,
+                        PlayingEntity,
+                        Sprite::from_atlas_image(
+                            forest_texture,
+                            TextureAtlas {
+                                layout: forest_texture_atlas_layout,
+                                index: forest_animation_indices.first,
+                            }
+                        ),
+                        Transform::from_xyz(pos.x, pos.y, 1.0),
+                        forest_animation_indices,
+                        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                        CurrentAnimationFrame(0),
+                    ));
+                }
+                TerrainType::Sea => {
+                    let sea_texture: Handle<Image> = asset_server.load("sea_sheet.png");
+                    let sea_tile_size = UVec2::new(100, 100);
+                    let sea_texture_atlas = TextureAtlasLayout::from_grid(sea_tile_size, 3, 1, None, None);
+                    let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas);
+                    let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
+
+                    commands.spawn((
+                        Sea,
+                        PlayingEntity,
+                        Sprite::from_atlas_image(
+                            sea_texture,
+                            TextureAtlas {
+                                layout: sea_texture_atlas_layout,
+                                index: sea_animation_indices.first,
+                            }
+                        ),
+                        Transform::from_xyz(pos.x, pos.y, 0.5),
+                        sea_animation_indices,
+                        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                        CurrentAnimationFrame(0),
+                        RigidBody::Fixed,
+                        Collider::cuboid(100.0 / 2.0, 100.0 / 2.0),
+                    ));
+                }
+                TerrainType::Brick => {
+                    let brick_texture: Handle<Image> = asset_server.load("brick.png");
+                    // 生成4块砖块组成100x100的网格
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(offset, offset),
+                        Vec2::new(-offset, -offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for brick_pos in positions {
+                        commands.spawn((
+                            Brick,
+                            PlayingEntity,
+                            Sprite {
+                                image: brick_texture.clone(),
+                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                        ));
+                    }
+                }
+                TerrainType::Steel => {
+                    let steel_texture: Handle<Image> = asset_server.load("steel.png");
+                    // 生成4块钢铁组成100x100的网格
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(offset, offset),
+                        Vec2::new(-offset, -offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for steel_pos in positions {
+                        commands.spawn((
+                            Steel,
+                            PlayingEntity,
+                            Sprite {
+                                image: steel_texture.clone(),
+                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                        ));
+                    }
+                }
+                TerrainType::Barrier => {
+                    let barrier_texture: Handle<Image> = asset_server.load("barrier.png");
+                    commands.spawn((
+                        Barrier,
+                        PlayingEntity,
+                        Sprite {
+                            image: barrier_texture,
+                            custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
+                            ..default()
+                        },
+                        Transform::from_xyz(pos.x, pos.y, 0.0),
+                        RigidBody::Fixed,
+                        Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
+                        ActiveEvents::COLLISION_EVENTS,
+                    ));
+                }
+                TerrainType::Empty => {}
+            }
+        }
+    }
 }
 
 fn spawn_brick(
@@ -939,20 +1083,8 @@ fn spawn_game_entities_if_needed(
     // 生成墙壁
     spawn_walls(&mut commands);
 
-    // 生成砖块
-    spawn_brick(&mut commands, &asset_server);
-
-    // 生成屏障
-    spawn_barrier(&mut commands, &asset_server);
-
-    // 生成钢铁
-    spawn_steel(&mut commands, &asset_server);
-
-    // 生成海
-    spawn_sea(&mut commands, &asset_server, &mut texture_atlas_layouts);
-
-    // 生成树林
-    spawn_forest(&mut commands, &asset_server, &mut texture_atlas_layouts);
+    // 根据地图数组生成地形
+    spawn_map_terrain(&mut commands, &asset_server, &mut texture_atlas_layouts, stage_level.0);
 
     // 生成司令官
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
@@ -1740,6 +1872,16 @@ fn handle_bullet_collisions(
                             bullets_to_despawn.push(bullet_entity);
                         }
                     }
+                } else if enemy_tanks.get(bullet_owner.owner).is_ok() {
+                    // 敌方子弹，只播放击中音效并销毁子弹
+                    let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
+                    commands.spawn(AudioPlayer::new(hit_sound));
+
+                    // 生成火花效果
+                    spawn_spark(&mut commands, &asset_server, steel_transform.translation);
+
+                    // 只销毁子弹，不销毁钢铁
+                    bullets_to_despawn.push(bullet_entity);
                 }
             }
         }
