@@ -17,6 +17,7 @@ mod resources;
 mod map;
 mod levels;
 mod bullet;
+mod laser;
 
 use bevy::{
     audio::{AudioPlayer, Volume},
@@ -29,10 +30,13 @@ use bevy::{
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
+use crate::constants::RecoilForce;
+
 #[allow(clippy::wildcard_imports)]
 use constants::*;
 #[allow(clippy::wildcard_imports)]
 use resources::*;
+use crate::bullet::BulletOwner;
 
 
 
@@ -115,6 +119,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, animate_powerup_texture.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_player_info_text.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_explosion.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_laser.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest_fire.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_forest.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_sea.run_if(in_state(GameState::Playing)))
@@ -133,6 +138,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::handle_effect_events.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, laser::player_laser_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_air_cushion_effect.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)))
@@ -161,6 +167,9 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, handle_dash_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_barrier_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_recall_progress_bars.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, handle_recoil_force.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_laser.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, laser_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
 
@@ -982,31 +991,55 @@ fn spawn_game_entities_if_needed(
 
     
 
-                // 初始化玩家1信息
+                                // 初始化玩家1信息
 
-                player_info.players.insert(TankType::Player1, PlayerStats {
+    
 
-                    name: "Li Yun Long".to_string(),
+                                player_info.players.insert(TankType::Player1, PlayerStats {
 
-                    speed: 40,
+    
 
-                    fire_speed: 40,
+                                    name: "Li Yun Long".to_string(),
 
-                    protection: 40,
+    
 
-                    shells: 1,
+                                    speed: 40,
 
-                    penetrate: false,
+    
 
-                    track_chain: false,
+                                    fire_speed: 40,
 
-                    air_cushion: false,
+    
 
-                    fire_shell: false,
+                                    protection: 40,
 
-                    life_red_bar: 3,
+    
 
-                    energy_blue_bar: 100,
+                                    shells: 1,
+
+    
+
+                                    penetrate: false,
+
+    
+
+                                    track_chain: false,
+
+    
+
+                                    air_cushion: false,
+
+    
+
+                                    fire_shell: false,
+
+    
+
+                                    life_red_bar: 3,
+
+    
+
+                                    energy_blue_bar: 3,
 
                     score: 0,
 
@@ -1114,7 +1147,7 @@ fn spawn_game_entities_if_needed(
 
                     life_red_bar: 3,
 
-                    energy_blue_bar: 100,
+                    energy_blue_bar: 3,
 
                     score: 0,
 
@@ -1146,7 +1179,7 @@ fn spawn_game_entities_if_needed(
 
                     life_red_bar: 3,
 
-                    energy_blue_bar: 100,
+                    energy_blue_bar: 3,
 
                     score: 0,
 
@@ -1797,7 +1830,6 @@ fn animate_enemy_born_animation(
     mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame, &BornPosition), With<EnemyBornAnimation>>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
         timer.tick(time.delta());
@@ -1860,9 +1892,6 @@ fn animate_enemy_born_animation(
                             .insert(Friction::new(0.0))
                             .insert(Restitution::new(0.0))
                             .id();
-
-                        // 增加当前敌方坦克计数
-                        enemy_spawn_state.active_count += 1;
                     }
                 }
             }
@@ -1998,6 +2027,211 @@ fn animate_explosion(
                 let next_index = current + 1;
                 current_frame.0 = next_index;
                 atlas.index = next_index;
+            }
+        }
+    }
+}
+
+fn animate_laser(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Laser>>,
+    despawn_entities: Query<Entity, With<DespawnMarker>>,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，销毁激光实体和所有标记的实体
+                for despawn_entity in despawn_entities.iter() {
+                    commands.entity(despawn_entity).despawn();
+                }
+                commands.entity(entity).despawn();
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+/// 处理后坐力效果
+fn handle_recoil_force(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &mut RecoilForce)>,
+) {
+    for (entity, mut transform, mut recoil) in &mut query {
+        recoil.timer.tick(time.delta());
+        
+        // 使用平滑插值应用后坐力位移
+        let progress = recoil.timer.elapsed_secs() / recoil.timer.duration().as_secs_f32();
+        let current_offset = recoil.target_offset * (1.0 - progress);
+        
+        // 从原始位置插值到当前位置
+        transform.translation.x = recoil.original_pos.x + current_offset.x;
+        transform.translation.y = recoil.original_pos.y + current_offset.y;
+        
+        // 后坐力时间结束，移除组件
+        if recoil.timer.just_finished() {
+            commands.entity(entity).remove::<RecoilForce>();
+        }
+    }
+}
+
+/// 激光碰撞检测系统（只收集实体，不立即销毁）
+fn laser_collision_system(
+    mut commands: Commands,
+    mut frame_count: Local<u32>,
+    lasers: Query<(Entity, &Transform, &CurrentAnimationFrame, &AnimationIndices), With<Laser>>,
+    enemies: Query<(Entity, &Transform), With<EnemyTank>>,
+    bullets: Query<(Entity, &Transform), With<BulletOwner>>,
+    bricks: Query<(Entity, &Transform), With<Brick>>,
+    steels: Query<(Entity, &Transform), With<Steel>>,
+    forests: Query<(Entity, &Transform), With<Forest>>,
+    barriers: Query<(Entity, &Transform), With<Barrier>>,
+    seas: Query<(Entity, &Transform), With<Sea>>,
+) {
+    // 每5帧执行一次碰撞检测
+    *frame_count += 1;
+    if *frame_count % 5 != 0 {
+        return;
+    }
+    
+    for (_laser_entity, laser_transform, _, _) in &lasers {
+        // 激光原始尺寸（未旋转）
+        let laser_half_width = 40.0; // 80 / 2
+        let laser_half_height = 683.0; // 1366 / 2 (1倍)
+        
+        // 获取激光的旋转角度
+        let rotation = laser_transform.rotation;
+        
+        // 激光的四个角点（未旋转）
+        let corners = [
+            Vec2::new(-laser_half_width, -laser_half_height),
+            Vec2::new(laser_half_width, -laser_half_height),
+            Vec2::new(laser_half_width, laser_half_height),
+            Vec2::new(-laser_half_width, laser_half_height),
+        ];
+        
+        // 旋转每个角点并加上位置
+        let rotated_corners: Vec<Vec2> = corners.iter()
+            .map(|corner| {
+                let rotated = rotation.mul_vec3(corner.extend(0.0));
+                Vec2::new(rotated.x, rotated.y) + Vec2::new(laser_transform.translation.x, laser_transform.translation.y)
+            })
+            .collect();
+        
+        // 计算旋转后的边界框
+        let laser_left = rotated_corners.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
+        let laser_right = rotated_corners.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
+        let laser_bottom = rotated_corners.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+        let laser_top = rotated_corners.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
+
+        // 检测与敌方坦克的碰撞
+        for (enemy_entity, enemy_transform) in &enemies {
+            let enemy_left = enemy_transform.translation.x - TANK_WIDTH / 2.0;
+            let enemy_right = enemy_transform.translation.x + TANK_WIDTH / 2.0;
+            let enemy_top = enemy_transform.translation.y + TANK_HEIGHT / 2.0;
+            let enemy_bottom = enemy_transform.translation.y - TANK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < enemy_right && laser_right > enemy_left &&
+               laser_bottom < enemy_top && laser_top > enemy_bottom {
+                // 标记敌方坦克为待销毁
+                commands.entity(enemy_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与子弹的碰撞
+        for (bullet_entity, bullet_transform) in &bullets {
+            let bullet_left = bullet_transform.translation.x - BULLET_SIZE / 2.0;
+            let bullet_right = bullet_transform.translation.x + BULLET_SIZE / 2.0;
+            let bullet_top = bullet_transform.translation.y + BULLET_SIZE / 2.0;
+            let bullet_bottom = bullet_transform.translation.y - BULLET_SIZE / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < bullet_right && laser_right > bullet_left &&
+               laser_bottom < bullet_top && laser_top > bullet_bottom {
+                // 标记子弹为待销毁
+                commands.entity(bullet_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与砖块的碰撞
+        for (brick_entity, brick_transform) in &bricks {
+            let brick_left = brick_transform.translation.x - BRICK_WIDTH / 2.0;
+            let brick_right = brick_transform.translation.x + BRICK_WIDTH / 2.0;
+            let brick_top = brick_transform.translation.y + BRICK_HEIGHT / 2.0;
+            let brick_bottom = brick_transform.translation.y - BRICK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < brick_right && laser_right > brick_left &&
+               laser_bottom < brick_top && laser_top > brick_bottom {
+                // 标记砖块为待销毁
+                commands.entity(brick_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与钢块的碰撞
+        for (steel_entity, steel_transform) in &steels {
+            let steel_left = steel_transform.translation.x - BRICK_WIDTH / 2.0;
+            let steel_right = steel_transform.translation.x + BRICK_WIDTH / 2.0;
+            let steel_top = steel_transform.translation.y + BRICK_HEIGHT / 2.0;
+            let steel_bottom = steel_transform.translation.y - BRICK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < steel_right && laser_right > steel_left &&
+               laser_bottom < steel_top && laser_top > steel_bottom {
+                // 标记钢块为待销毁
+                commands.entity(steel_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与森林的碰撞
+        for (forest_entity, forest_transform) in &forests {
+            let forest_left = forest_transform.translation.x - BRICK_WIDTH / 2.0;
+            let forest_right = forest_transform.translation.x + BRICK_WIDTH / 2.0;
+            let forest_top = forest_transform.translation.y + BRICK_HEIGHT / 2.0;
+            let forest_bottom = forest_transform.translation.y - BRICK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < forest_right && laser_right > forest_left &&
+               laser_bottom < forest_top && laser_top > forest_bottom {
+                // 标记森林为待销毁
+                commands.entity(forest_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与障碍的碰撞
+        for (barrier_entity, barrier_transform) in &barriers {
+            let barrier_left = barrier_transform.translation.x - BRICK_WIDTH / 2.0;
+            let barrier_right = barrier_transform.translation.x + BRICK_WIDTH / 2.0;
+            let barrier_top = barrier_transform.translation.y + BRICK_HEIGHT / 2.0;
+            let barrier_bottom = barrier_transform.translation.y - BRICK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < barrier_right && laser_right > barrier_left &&
+               laser_bottom < barrier_top && laser_top > barrier_bottom {
+                // 标记障碍为待销毁
+                commands.entity(barrier_entity).insert(DespawnMarker);
+            }
+        }
+
+        // 检测与sea的碰撞
+        for (sea_entity, sea_transform) in &seas {
+            let sea_left = sea_transform.translation.x - BRICK_WIDTH / 2.0;
+            let sea_right = sea_transform.translation.x + BRICK_WIDTH / 2.0;
+            let sea_top = sea_transform.translation.y + BRICK_HEIGHT / 2.0;
+            let sea_bottom = sea_transform.translation.y - BRICK_HEIGHT / 2.0;
+
+            // 简单的AABB碰撞检测
+            if laser_left < sea_right && laser_right > sea_left &&
+               laser_bottom < sea_top && laser_top > sea_bottom {
+                // 标记sea为待销毁
+                commands.entity(sea_entity).insert(DespawnMarker);
             }
         }
     }
@@ -2513,9 +2747,9 @@ fn handle_dash_input(
         };
 
         if is_dash_key_pressed && !is_dashing {
-            // 检查蓝条是否足够（需要至少1/3蓝条）
+            // 检查蓝条是否足够（需要至少1点蓝条）
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-                let energy_cost = 100 / 3; // 1/3蓝条
+                let energy_cost = 1; // 1点蓝条（1/3蓝条）
                 if player_stats.energy_blue_bar >= energy_cost {
                     // 立即扣除蓝条
                     player_stats.energy_blue_bar -= energy_cost;
@@ -2581,7 +2815,6 @@ fn handle_dash_collision(
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
     player_avatars: Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
@@ -2708,7 +2941,6 @@ fn handle_dash_collision(
                     &player_tanks,
                     &player_tanks_with_transform,
                     &enemy_tanks,
-                    &mut enemy_spawn_state,
                     &mut player_info,
                     &player_avatars,
                     &mut stat_changed_events,
@@ -2944,7 +3176,6 @@ fn handle_dash_enemy_tank_collision(
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
-    enemy_spawn_state: &mut ResMut<EnemySpawnState>,
     player_info: &mut ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
@@ -2965,9 +3196,6 @@ fn handle_dash_enemy_tank_collision(
 
     // 销毁敌方坦克
     commands.entity(enemy_entity).despawn();
-
-    // 减少当前敌方坦克计数
-    enemy_spawn_state.active_count -= 1;
 
     // 检查本次 dash 是否已经扣过血
     if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
@@ -3378,7 +3606,7 @@ fn update_player_info_display(
                     continue;
                 }
                 // 蓝条总宽度 160，能量值 100
-                let blue_width = (player_stats.energy_blue_bar as f32 / 100.0) * 160.0;
+                let blue_width = (player_stats.energy_blue_bar as f32 / 3.0) * 160.0;
                 sprite.custom_size = Some(Vec2::new(blue_width, 10.0));
 
                 // 左对齐：将蓝条向左移动，使其从左边界开始
@@ -3407,18 +3635,17 @@ fn update_blue_bar_regen(
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 检查是否有玩家蓝条不满
-    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_blue_bar < 100);
+    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_blue_bar < 3);
 
     // 只有当有玩家蓝条不满时才更新计时器
     if any_player_needs_regen {
         regen_timer.timer.tick(time.delta());
 
-        // 当计时器触发时，恢复1/3蓝条
+        // 当计时器触发时，恢复1点蓝条
         if regen_timer.timer.just_finished() {
-            let regen_amount = 100 / 3; // 1/3蓝条
             for player_stats in player_info.players.values_mut() {
-                if player_stats.energy_blue_bar < 100 {
-                    player_stats.energy_blue_bar = (player_stats.energy_blue_bar + regen_amount).min(100);
+                if player_stats.energy_blue_bar < 3 {
+                    player_stats.energy_blue_bar = (player_stats.energy_blue_bar + 1).min(3);
                 }
             }
         }
@@ -3699,7 +3926,6 @@ fn cleanup_playing_entities(
 
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
-    enemy_spawn_state.active_count = 0;
     enemy_spawn_state.spawn_cooldown.reset();
 
     // 重置关卡数
@@ -3714,11 +3940,13 @@ fn cleanup_playing_entities(
 
 fn check_stage_complete(
     enemy_spawn_state: Res<EnemySpawnState>,
+    enemies: Query<(), With<EnemyTank>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
 ) {
     // 检查是否完成关卡：已生成所有敌方坦克且当前没有存活的敌方坦克
-    if enemy_spawn_state.has_spawned >= enemy_spawn_state.max_count && enemy_spawn_state.active_count == 0 {
+    let current_enemy_count = enemies.iter().count();
+    if enemy_spawn_state.has_spawned >= enemy_spawn_state.max_count && current_enemy_count == 0 {
         // 进入下一关
         stage_level.0 += 1;
         next_state.set(GameState::StageIntro);
@@ -3738,7 +3966,6 @@ fn reset_for_next_stage(
 
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
-    enemy_spawn_state.active_count = 0;
     enemy_spawn_state.spawn_cooldown.reset();
 
     // 重置游戏实体生成标志
@@ -3815,15 +4042,18 @@ fn enemy_spawn_system(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
-    _enemy_tanks: Query<(), With<EnemyTank>>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
 ) {
     // 更新生成冷却时间
     enemy_spawn_state.spawn_cooldown.tick(time.delta());
 
+    // 动态获取当前场上敌方坦克数量
+    let current_enemy_count = enemy_tanks.iter().count();
+
     // 检查是否需要生成新敌人
     // 条件：未达到总数上限 + 场上敌人数量少于4个 + 冷却时间已结束
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count
-        && enemy_spawn_state.active_count < 4
+        && current_enemy_count < 4
         && enemy_spawn_state.spawn_cooldown.is_finished()
     {
         // 生成敌方坦克出生动画
@@ -3838,8 +4068,7 @@ fn enemy_spawn_system(
         // 重置冷却时间
         enemy_spawn_state.spawn_cooldown.reset();
     }
-    }
-    
+}    
     fn update_air_cushion_effect(
     
         mut commands: Commands,

@@ -409,7 +409,6 @@ pub fn bullet_tank_collision_system(
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerUI)>,
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -443,9 +442,6 @@ pub fn bullet_tank_collision_system(
 
                         // 销毁敌方坦克
                         commands.entity(tank_entity).despawn();
-
-                        // 减少当前敌方坦克计数
-                        enemy_spawn_state.active_count -= 1;
 
                         // 增加分数
                         let player_type = bullet_owner_info.owner_type;

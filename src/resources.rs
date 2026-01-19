@@ -73,7 +73,6 @@ pub enum GameMode {
 pub struct EnemySpawnState {
     pub has_spawned: usize,    // 已生成数量
     pub max_count: usize,      // 总数量（每关固定20个）
-    pub active_count: usize,   // 场上存活数
     pub spawn_cooldown: Timer, // 生成冷却时间
 }
 
@@ -82,7 +81,6 @@ impl Default for EnemySpawnState {
         Self {
             has_spawned: 0,
             max_count: 20,
-            active_count: 0,
             spawn_cooldown: Timer::from_seconds(0.8, TimerMode::Once),
         }
     }
@@ -123,8 +121,8 @@ pub struct PlayerStats {
     pub track_chain: bool,
     pub air_cushion: bool,
     pub fire_shell: bool,
-    pub life_red_bar: usize,
-    pub energy_blue_bar: usize,
+    pub life_red_bar: usize, // max 3
+    pub energy_blue_bar: usize, // max 3
     pub score: usize,
 }
 

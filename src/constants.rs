@@ -381,6 +381,10 @@ pub struct AnimationTimer(pub Timer);
 #[derive(Component, Deref, DerefMut)]
 pub struct CurrentAnimationFrame(pub usize);
 
+/// 待销毁标记
+#[derive(Component, Clone, Copy, Debug, Default)]
+pub struct DespawnMarker;
+
 #[derive(Component, Deref, DerefMut)]
 pub struct DirectionChangeTimer(pub Timer);
 
@@ -438,6 +442,9 @@ pub struct BubbleEffect;
 
 #[derive(Component)]
 pub struct Explosion;
+
+#[derive(Component)]
+pub struct Laser;
 
 #[derive(Component)]
 pub struct Spark;
@@ -546,6 +553,32 @@ pub struct EnemyCountText;
 #[derive(Component)]
 pub struct PlayingEntity;
 
+/// 后坐力组件
+#[derive(Component)]
+pub struct RecoilForce {
+    pub original_pos: Vec3,  // 原始位置
+    pub target_offset: Vec2, // 目标偏移量
+    pub timer: Timer,        // 后坐力持续时间
+}
+
+/// 激光蓄力组件
+#[derive(Component)]
+pub struct LaserCharge {
+    pub timer: Timer,  // 蓄力计时器
+    pub tank_type: TankType,  // 坦克类型
+}
+
+/// 激光蓄力进度条组件
+#[derive(Component)]
+pub struct LaserChargeProgressBar {
+    pub tank_type: TankType,
+    pub player_entity: Entity,
+}
+
+/// 激光蓄力音效组件
+#[derive(Component)]
+pub struct LaserChargeSound;
+
 #[derive(Component, Deref, DerefMut)]
 pub struct PlayerInfoBlinkTimer(pub Timer);
 
@@ -557,6 +590,7 @@ pub struct PlayerRespawnTimer(pub Timer);
 pub struct TankFireConfig {
     pub max_bullets: usize,  // 最大同时子弹数
     pub cooldown: Timer,     // 射击冷却时间
+    pub laser_cooldown: Timer,  // 激光冷却时间
 }
 
 impl Default for TankFireConfig {
@@ -564,6 +598,7 @@ impl Default for TankFireConfig {
         Self {
             max_bullets: 1,
             cooldown: Timer::from_seconds(0.2, TimerMode::Once),
+            laser_cooldown: Timer::from_seconds(0.5, TimerMode::Once),
         }
     }
 }
