@@ -235,7 +235,7 @@ pub fn bullet_bounds_check_system(mut commands: Commands, mut query: Query<(Enti
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x)
             || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y)
         {
-            commands.entity(entity).insert(BulletDespawnMarker);
+            commands.entity(entity).try_insert(BulletDespawnMarker);
         }
     }
 }
@@ -414,7 +414,7 @@ pub fn bullet_tank_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    _texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks: Query<(), With<EnemyTank>>,
@@ -422,7 +422,7 @@ pub fn bullet_tank_collision_system(
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: Query<(Entity, &PlayerUI)>,
-    mut enemy_count: ResMut<EnemyCount>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -458,7 +458,7 @@ pub fn bullet_tank_collision_system(
                         commands.entity(tank_entity).despawn();
 
                         // 减少当前敌方坦克计数
-                        enemy_count.current_enemies -= 1;
+                        enemy_spawn_state.active_count -= 1;
 
                         // 增加分数
                         let player_type = bullet_owner_info.owner_type;
@@ -473,23 +473,6 @@ pub fn bullet_tank_collision_system(
                                 player_type: player_type,
                                 stat_type: StatType::Score,
                             });
-                        }
-
-                        // 检查是否需要重新生成敌方坦克
-                        if enemy_count.total_spawned < enemy_count.max_count {
-                            // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
-                            let mut rng = rand::rng();
-                            let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
-                            let position = ENEMY_BORN_PLACES[random_index];
-                            crate::spawn_enemy_born_animation(
-                                &mut commands,
-                                &asset_server,
-                                &mut texture_atlas_layouts,
-                                position,
-                            );
-
-                            // 增加已生成计数
-                            enemy_count.total_spawned += 1;
                         }
                     } else if !is_player_bullet && is_player_tank {
                         let player_index = match player_tanks.get(tank_entity) {

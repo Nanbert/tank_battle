@@ -78,7 +78,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<GameMode>()
         .init_resource::<MenuBlinkTimer>()
         .init_resource::<StageIntroTimer>()
-        .init_resource::<EnemyCount>()
+        .init_resource::<EnemySpawnState>()
         .init_resource::<StageLevel>()
         .init_resource::<PlayerInfo>()
         .init_resource::<RecallTimers>()
@@ -105,6 +105,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(OnExit(GameState::GameOver), (despawn_game_over_ui, cleanup_playing_entities))
         .add_systems(Startup, setup)
         .add_systems(Update, (move_enemy_tanks).chain().run_if(in_state(GameState::Playing)))
+        .add_systems(Update, enemy_spawn_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, move_player_tank.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_player_tank_texture.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_enemy_tank_texture.run_if(in_state(GameState::Playing)))
@@ -923,7 +924,7 @@ fn spawn_game_entities_if_needed(
     asset_server: Res<AssetServer>,
     mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
-    mut enemy_count: ResMut<EnemyCount>,
+    _enemy_spawn_state: Res<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
     stage_level: Res<StageLevel>,
     game_mode: Res<GameMode>,
@@ -1177,15 +1178,6 @@ fn spawn_game_entities_if_needed(
     
     spawn_top_text_info(&mut commands, &font, stage_level.0);
 
-    // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
-    for &pos in &ENEMY_BORN_PLACES {
-        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, pos);
-    }
-
-    // 初始化敌方坦克计数（初始生成3个）
-    enemy_count.total_spawned = 3;
-    enemy_count.current_enemies = 0;
-    
     // 生成道具
     spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
 }
@@ -1713,15 +1705,15 @@ fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
 }
 
 fn update_enemy_count_display(
-    enemy_count: Res<EnemyCount>,
+    enemy_spawn_state: Res<EnemySpawnState>,
     enemy_tanks: Query<(), With<EnemyTank>>,
     mut query: Query<&mut Text2d, With<EnemyCountText>>,
 ) {
     let current_enemy_count = enemy_tanks.iter().count();
-    let remaining = enemy_count.max_count - enemy_count.total_spawned + current_enemy_count;
+    let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned + current_enemy_count;
 
     for mut text in &mut query {
-        text.0 = format!("Enemy Left: {}/{}", remaining, enemy_count.max_count);
+        text.0 = format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count);
     }
 }
 
@@ -1800,7 +1792,7 @@ fn animate_enemy_born_animation(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut can_fire: ResMut<CanFire>,
-    mut enemy_count: ResMut<EnemyCount>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
         timer.tick(time.delta());
@@ -1867,7 +1859,7 @@ fn animate_enemy_born_animation(
                         can_fire.0.insert(enemy_entity);
 
                         // 增加当前敌方坦克计数
-                        enemy_count.current_enemies += 1;
+                        enemy_spawn_state.active_count += 1;
                     }
                 }
             }
@@ -2582,7 +2574,7 @@ fn handle_dash_collision(
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
-    mut enemy_count: ResMut<EnemyCount>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
     player_avatars: Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
@@ -2707,7 +2699,7 @@ fn handle_dash_collision(
                     &player_tanks,
                     &player_tanks_with_transform,
                     &enemy_tanks,
-                    &mut enemy_count,
+                    &mut enemy_spawn_state,
                     &mut player_info,
                     &player_avatars,
                     &mut stat_changed_events,
@@ -2931,7 +2923,7 @@ fn handle_dash_enemy_tank_collision(
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
-    enemy_count: &mut ResMut<EnemyCount>,
+    enemy_spawn_state: &mut ResMut<EnemySpawnState>,
     player_info: &mut ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
@@ -2953,7 +2945,7 @@ fn handle_dash_enemy_tank_collision(
     commands.entity(enemy_entity).despawn();
 
     // 减少当前敌方坦克计数
-    enemy_count.current_enemies -= 1;
+    enemy_spawn_state.active_count -= 1;
 
     // 增加分数
     if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
@@ -2999,18 +2991,6 @@ fn handle_dash_enemy_tank_collision(
                 AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
             ));
         }
-    }
-
-    // 检查是否需要重新生成敌方坦克
-    if enemy_count.total_spawned < enemy_count.max_count {
-        // 生成敌方坦克出生动画（动画完成后会自动生成敌方坦克）
-        let mut rng = rand::rng();
-        let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
-        let position = ENEMY_BORN_PLACES[random_index];
-        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
-
-        // 增加已生成计数
-        enemy_count.total_spawned += 1;
     }
 }
 
@@ -3672,7 +3652,7 @@ fn cleanup_playing_entities(
     mut commands: Commands,
     playing_entities: Query<Entity, With<PlayingEntity>>,
     mut player_info: ResMut<PlayerInfo>,
-    mut enemy_count: ResMut<EnemyCount>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut stage_level: ResMut<StageLevel>,
     mut commander_life: ResMut<CommanderLife>,
     mut entities_spawned: ResMut<GameEntitiesSpawned>,
@@ -3686,8 +3666,9 @@ fn cleanup_playing_entities(
     player_info.players.clear();
 
     // 重置敌方坦克计数
-    enemy_count.total_spawned = 0;
-    enemy_count.current_enemies = 0;
+    enemy_spawn_state.has_spawned = 0;
+    enemy_spawn_state.active_count = 0;
+    enemy_spawn_state.spawn_cooldown.reset();
 
     // 重置关卡数
     stage_level.0 = 1;
@@ -3700,12 +3681,12 @@ fn cleanup_playing_entities(
 }
 
 fn check_stage_complete(
-    enemy_count: Res<EnemyCount>,
+    enemy_spawn_state: Res<EnemySpawnState>,
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
 ) {
     // 检查是否完成关卡：已生成所有敌方坦克且当前没有存活的敌方坦克
-    if enemy_count.total_spawned >= enemy_count.max_count && enemy_count.current_enemies == 0 {
+    if enemy_spawn_state.has_spawned >= enemy_spawn_state.max_count && enemy_spawn_state.active_count == 0 {
         // 进入下一关
         stage_level.0 += 1;
         next_state.set(GameState::StageIntro);
@@ -3715,7 +3696,7 @@ fn check_stage_complete(
 fn reset_for_next_stage(
     mut commands: Commands,
     playing_entities: Query<Entity, With<PlayingEntity>>,
-    mut enemy_count: ResMut<EnemyCount>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
     // 清理所有游戏实体
@@ -3724,8 +3705,9 @@ fn reset_for_next_stage(
     }
 
     // 重置敌方坦克计数
-    enemy_count.total_spawned = 0;
-    enemy_count.current_enemies = 0;
+    enemy_spawn_state.has_spawned = 0;
+    enemy_spawn_state.active_count = 0;
+    enemy_spawn_state.spawn_cooldown.reset();
 
     // 重置游戏实体生成标志
     entities_spawned.0 = false;
@@ -3792,5 +3774,36 @@ fn play_sea_ambience(
         for (entity, _) in ambience_players.iter() {
             commands.entity(entity).despawn();
         }
+    }
+}
+
+fn enemy_spawn_system(
+    time: Res<Time>,
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
+    _enemy_tanks: Query<(), With<EnemyTank>>,
+) {
+    // 更新生成冷却时间
+    enemy_spawn_state.spawn_cooldown.tick(time.delta());
+
+    // 检查是否需要生成新敌人
+    // 条件：未达到总数上限 + 场上敌人数量少于4个 + 冷却时间已结束
+    if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count
+        && enemy_spawn_state.active_count < 4
+        && enemy_spawn_state.spawn_cooldown.is_finished()
+    {
+        // 生成敌方坦克出生动画
+        let mut rng = rand::rng();
+        let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
+        let position = ENEMY_BORN_PLACES[random_index];
+        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
+
+        // 更新计数
+        enemy_spawn_state.has_spawned += 1;
+
+        // 重置冷却时间
+        enemy_spawn_state.spawn_cooldown.reset();
     }
 }

@@ -42,18 +42,20 @@ pub enum GameMode {
 }
 
 #[derive(Resource)]
-pub struct EnemyCount {
-    pub total_spawned: usize, // 已生成的敌方坦克总数
-    pub max_count: usize,     // 最大敌方坦克数量
-    pub current_enemies: usize, // 当前存活的敌方坦克数量
+pub struct EnemySpawnState {
+    pub has_spawned: usize,    // 已生成数量
+    pub max_count: usize,      // 总数量（每关固定20个）
+    pub active_count: usize,   // 场上存活数
+    pub spawn_cooldown: Timer, // 生成冷却时间
 }
 
-impl Default for EnemyCount {
+impl Default for EnemySpawnState {
     fn default() -> Self {
         Self {
-            total_spawned: 0,
+            has_spawned: 0,
             max_count: 20,
-            current_enemies: 0,
+            active_count: 0,
+            spawn_cooldown: Timer::from_seconds(0.8, TimerMode::Once),
         }
     }
 }
