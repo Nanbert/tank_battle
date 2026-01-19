@@ -432,6 +432,10 @@ pub struct PlayerDead;
 #[derive(Component)]
 pub struct IsDashing;
 
+// 玩家气垫船特效标记
+#[derive(Component)]
+pub struct BubbleEffect;
+
 #[derive(Component)]
 pub struct Explosion;
 

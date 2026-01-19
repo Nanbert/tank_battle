@@ -134,6 +134,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::handle_effect_events.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, update_air_cushion_effect.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_player_info_display.run_if(in_state(GameState::Playing)))
         .add_systems(Update, update_blue_bar_regen.run_if(in_state(GameState::Playing)))
@@ -848,8 +849,8 @@ fn spawn_ui_element_from_config(
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
     let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 shell 道具
-        PowerUp::Shell
+        // 第一关强制生成 air_cushion 道具
+        PowerUp::AirCushion
     } else {
         // 其他关卡随机选择一个道具类型
         let powerup_types = [
@@ -3835,4 +3836,102 @@ fn enemy_spawn_system(
         // 重置冷却时间
         enemy_spawn_state.spawn_cooldown.reset();
     }
-}
+    }
+    
+    fn update_air_cushion_effect(
+    
+        mut commands: Commands,
+    
+        asset_server: Res<AssetServer>,
+    
+        player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
+    
+        player_info: Res<crate::resources::PlayerInfo>,
+    
+        bubble_effects: Query<&crate::constants::BubbleEffect>,
+    
+    ) {
+    
+        for (entity, children, player_tank) in player_tanks.iter() {
+    
+            let has_air_cushion = player_info.players.get(&player_tank.tank_type)
+    
+                .map(|s| s.air_cushion)
+    
+                .unwrap_or(false);
+    
+            
+    
+            if has_air_cushion {
+    
+                // 检查是否已经有气泡特效子实体
+    
+                let has_bubble = if let Some(children) = children {
+    
+                    children.iter().any(|child| bubble_effects.contains(child))
+    
+                } else {
+    
+                    false
+    
+                };
+    
+        
+    
+                if !has_bubble {
+    
+                    // 加载气泡纹理并缩放到 100x100
+    
+                                    let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
+    
+                                    
+    
+                                    // 创建气泡特效实体
+    
+                                    commands.entity(entity).with_children(|parent| {
+    
+                                        parent.spawn((
+    
+                                            Sprite {
+    
+                                                image: bubble_texture,
+    
+                                                custom_size: Some(Vec2::new(100.0, 100.0)),
+    
+                                                ..default()
+    
+                                            },
+    
+                                            Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
+    
+                                            crate::constants::BubbleEffect,
+    
+                                        ));
+    
+                                    });
+    
+                }
+    
+            } else {
+    
+                // 移除所有气泡特效子实体
+    
+                if let Some(children) = children {
+    
+                    for child in children.iter() {
+    
+                        if bubble_effects.contains(child) {
+    
+                            commands.entity(child).despawn();
+    
+                        }
+    
+                    }
+    
+                }
+    
+            }
+    
+        }
+    
+    }
