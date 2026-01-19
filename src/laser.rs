@@ -88,12 +88,6 @@ pub fn player_laser_system(
             continue;
         }
 
-        // 更新激光冷却时间
-        fire_config.laser_cooldown.tick(time.delta());
-        if !fire_config.laser_cooldown.is_finished() {
-            continue;
-        }
-
         // 检查激光键
         let laser_key = match player_tank.tank_type {
             TankType::Player1 => KeyCode::KeyL,
@@ -230,9 +224,7 @@ pub fn player_laser_system(
                                     timer: Timer::from_seconds(0.3, TimerMode::Once),
                                 });
 
-                                // 重置激光冷却时间
-                                fire_config.laser_cooldown.reset();
-                            }
+                                }
                             
                             // 移除蓄力组件
                             commands.entity(_entity).remove::<LaserCharge>();

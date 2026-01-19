@@ -450,6 +450,9 @@ pub struct Laser;
 pub struct Spark;
 
 #[derive(Component)]
+pub struct Smoke;
+
+#[derive(Component)]
 pub struct GameOverTimer;
 
 #[derive(Component)]
@@ -590,7 +593,6 @@ pub struct PlayerRespawnTimer(pub Timer);
 pub struct TankFireConfig {
     pub max_bullets: usize,  // 最大同时子弹数
     pub cooldown: Timer,     // 射击冷却时间
-    pub laser_cooldown: Timer,  // 激光冷却时间
 }
 
 impl Default for TankFireConfig {
@@ -598,7 +600,6 @@ impl Default for TankFireConfig {
         Self {
             max_bullets: 1,
             cooldown: Timer::from_seconds(0.2, TimerMode::Once),
-            laser_cooldown: Timer::from_seconds(0.5, TimerMode::Once),
         }
     }
 }

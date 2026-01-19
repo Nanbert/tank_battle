@@ -169,6 +169,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, update_recall_progress_bars.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_recoil_force.run_if(in_state(GameState::Playing)))
         .add_systems(Update, animate_laser.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, animate_smoke.run_if(in_state(GameState::Playing)))
         .add_systems(Update, laser_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
@@ -308,7 +309,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家2操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall | Numpad2 to dash".to_string()),
+        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall | Numpad2 to dash | Numpad3 to laser".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -327,6 +328,18 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
         },
         TextColor(Color::srgb(0.8, 0.8, 0.8)), // 灰色
         Transform::from_xyz(0.0, -510.0, 1.0),
+    ));
+
+    // NumLock提示
+    commands.spawn((
+        StartScreenUI,
+        Text2d("Note: Player 2 requires NumLock ON for Numpad keys (1-4)".to_string()),
+        TextFont {
+            font_size: 18.0,
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        Transform::from_xyz(0.0, -540.0, 1.0),
     ));
 }
 
@@ -1072,6 +1085,8 @@ fn spawn_game_entities_if_needed(
                     .insert(PlayerTank { tank_type: TankType::Player2 })
 
                     .insert(PlayingEntity)
+
+                    .insert(TankFireConfig::default())
 
                     .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
 
@@ -2035,8 +2050,10 @@ fn animate_explosion(
 fn animate_laser(
     time: Res<Time>,
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Laser>>,
-    despawn_entities: Query<Entity, With<DespawnMarker>>,
+    despawn_entities: Query<(Entity, &Transform), With<DespawnMarker>>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -2044,9 +2061,56 @@ fn animate_laser(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁激光实体和所有标记的实体
-                for despawn_entity in despawn_entities.iter() {
+                for (despawn_entity, transform) in despawn_entities.iter() {
+                    // 在被销毁实体的位置播放烟雾效果
+                    let smoke_texture: Handle<Image> = asset_server.load("smoke_sprite.png");
+                    let smoke_tile_size = UVec2::new(100, 100);
+                    let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
+                    let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);
+                    let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
+                    
+                    commands.spawn((
+                        PlayingEntity,
+                        Smoke,
+                        Sprite {
+                            image: smoke_texture,
+                            texture_atlas: Some(TextureAtlas {
+                                layout: smoke_texture_atlas_layout,
+                                index: smoke_animation_indices.first,
+                            }),
+                            custom_size: Some(Vec2::new(100.0, 100.0)),
+                            ..default()
+                        },
+                        Transform::from_xyz(transform.translation.x, transform.translation.y, 1.0),
+                        smoke_animation_indices,
+                        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+                        CurrentAnimationFrame(0),
+                    ));
+                    
                     commands.entity(despawn_entity).despawn();
                 }
+                commands.entity(entity).despawn();
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+/// 处理烟雾动画
+fn animate_smoke(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Smoke>>,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，销毁烟雾实体
                 commands.entity(entity).despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
@@ -2102,7 +2166,7 @@ fn laser_collision_system(
     
     for (_laser_entity, laser_transform, _, _) in &lasers {
         // 激光原始尺寸（未旋转）
-        let laser_half_width = 40.0; // 80 / 2
+        let laser_half_width = 35.0; // 70 / 2
         let laser_half_height = 683.0; // 1366 / 2 (1倍)
         
         // 获取激光的旋转角度
@@ -4103,25 +4167,55 @@ fn enemy_spawn_system(
     
                     // 加载气泡纹理并缩放到 100x100
     
-                    let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
+                                        let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
     
-                    
+                                        
     
-                    // 创建气泡特效实体
+                                        
     
-                    commands.entity(entity).with_children(|parent| {
+                                        // 创建气泡特效实体
     
-                        parent.spawn((
+                                        
     
-                            Sprite {
+                                        
     
-                                image: bubble_texture,
+                                                                                commands.entity(entity).with_children(|parent| {
     
-                                custom_size: Some(Vec2::new(100.0, 100.0)),
+                                        
     
-                                ..default()
+                                        
     
-                            },
+                                                                                    parent.spawn((
+    
+                                        
+    
+                                        
+    
+                                                                                        Sprite {
+    
+                                        
+    
+                                        
+    
+                                                                                            image: bubble_texture,
+    
+                                        
+    
+                                        
+    
+                                                                                            custom_size: Some(Vec2::new(100.0, 100.0)),
+    
+                                        
+    
+                                        
+    
+                                                                                            ..default()
+    
+                                        
+    
+                                        
+    
+                                                                                        },
     
                             Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
     
@@ -4138,21 +4232,21 @@ fn enemy_spawn_system(
                 // 移除所有气泡特效子实体
     
                 if let Some(children) = children {
-    
+
                     for child in children.iter() {
-    
+
                         if bubble_effects.contains(child) {
-    
+
                             commands.entity(child).despawn();
-    
+
                         }
-    
+
                     }
-    
+
                 }
-    
+
             }
-    
+
         }
-    
+
     }
