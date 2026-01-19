@@ -578,8 +578,9 @@ fn spawn_commander(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
     let commander_texture: Handle<Image> = asset_server.load("commander.png");
-    let commander_tile_size = UVec2::new(COMMANDER_WIDTH as u32, COMMANDER_HEIGHT as u32);
-    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 14, 12, None, None);
+    // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
+    let commander_tile_size = UVec2::new(140, 120);
+    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
     let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
@@ -684,13 +685,15 @@ fn spawn_commander(
     commands.spawn((
         CommanderMusicAnimation,
         PlayingEntity,
-        Sprite::from_atlas_image(
-            music_texture,
-            TextureAtlas {
+        Sprite {
+            image: music_texture,
+            texture_atlas: Some(TextureAtlas {
                 layout: music_texture_atlas_layout,
                 index: music_animation_indices.first,
-            }
-        ),
+            }),
+            custom_size: Some(Vec2::new(70.0, 60.0)),
+            ..default()
+        },
         Transform::from_translation(Vec3::new(commander_x, commander_y, 1.0)), // z=1.0 使动画在 Commander 上方
         music_animation_indices,
         AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)), // 每0.1秒切换一帧

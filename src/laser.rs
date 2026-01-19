@@ -23,8 +23,12 @@ pub fn spawn_laser(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     params: LaserSpawnParams,
 ) -> Entity {
-    // 加载激光纹理图（12帧，3行4列布局，每帧512x683）
-    let laser_texture: Handle<Image> = asset_server.load("texture_laser.png");
+    // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
+    let laser_texture: Handle<Image> = match params.owner_type {
+        TankType::Player1 => asset_server.load("texture_laser_blue.png"),
+        TankType::Player2 => asset_server.load("texture_laser_red.png"),
+        TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
+    };
     let laser_tile_size = UVec2::new(512, 683);
     let laser_texture_atlas = TextureAtlasLayout::from_grid(laser_tile_size, 4, 3, None, None);
     let laser_texture_atlas_layout = texture_atlas_layouts.add(laser_texture_atlas);
