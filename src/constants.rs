@@ -45,8 +45,8 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
-pub const COMMANDER_WIDTH: f32 = 140.0;
-pub const COMMANDER_HEIGHT: f32 = 120.0;
+pub const COMMANDER_WIDTH: f32 = 100.0;
+pub const COMMANDER_HEIGHT: f32 = 100.0;
 
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),   // 上
@@ -60,7 +60,7 @@ pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
 pub const DASH_DISTANCE: f32 = TANK_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
 
 // 关卡俏皮话，根据关卡序号选择（索引从0开始）
-pub const STAGE_QUOTES: [&str; 16] = [
+pub const STAGE_QUOTES: [&str; 17] = [
     "The brave commander will not retreat even when hit. He will stand firm in place,\nwaiting for his soldiers to rescue him.",
     "When you fire while turning, your bullet might not go straight!\nThough controlling bullet trajectory is quite difficult.",
     "Beware, enemy tanks aren't fools either - they can shoot diagonally too.",
@@ -77,6 +77,7 @@ pub const STAGE_QUOTES: [&str; 16] = [
     "When you're alone, you can request an extra tank from the commander.\nYou can tell the commander that the extra tank can help block some shells for you.",
     "When dashing, you must strike from the front or side. When attacking from behind,\nyou're moving in the same direction, so the impact force may not be enough.",
     "When dashing, if there are obstacles or enemies, make sure to maintain a certain distance\nto more successfully trigger the dash destruction effect.",
+    "Enemies destroyed by laser do not count towards your score.\nThe commander's reason is that laser damages the flowers and grass.\nThis is truly ridiculous.",
 ];
 
 /// UI 元素类型枚举

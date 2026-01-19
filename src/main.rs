@@ -297,12 +297,12 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall | K to dash".to_string()),
+        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall | K to dash | L to laser".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        TextColor(Color::srgb(0.0, 1.0, 0.8)), // 蓝绿色
         Transform::from_xyz(0.0, -450.0, 1.0),
     ));
 
@@ -314,7 +314,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
             font_size: 24.0,
             ..default()
         },
-        TextColor(Color::srgb(0.0, 1.0, 1.0)), // 青色
+        TextColor(Color::srgb(1.0, 0.0, 0.0)), // 红色
         Transform::from_xyz(0.0, -480.0, 1.0),
     ));
 
@@ -326,20 +326,8 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
             font_size: 20.0,
             ..default()
         },
-        TextColor(Color::srgb(0.8, 0.8, 0.8)), // 灰色
-        Transform::from_xyz(0.0, -510.0, 1.0),
-    ));
-
-    // NumLock提示
-    commands.spawn((
-        StartScreenUI,
-        Text2d("Note: Player 2 requires NumLock ON for Numpad keys (1-4)".to_string()),
-        TextFont {
-            font_size: 18.0,
-            ..default()
-        },
         TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
-        Transform::from_xyz(0.0, -540.0, 1.0),
+        Transform::from_xyz(0.0, -510.0, 1.0),
     ));
 }
 
@@ -591,12 +579,79 @@ fn spawn_commander(
 ) {
     let commander_texture: Handle<Image> = asset_server.load("commander.png");
     let commander_tile_size = UVec2::new(COMMANDER_WIDTH as u32, COMMANDER_HEIGHT as u32);
-    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
+    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 14, 12, None, None);
     let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
     let commander_x = 0.0;
+
+    // 创建包围司令官的砖块堡垒墙
+    let brick_texture: Handle<Image> = asset_server.load("brick.png");
+    let brick_size = 50.0; // 每块砖的大小
+
+    // 司令官边界
+    let commander_left = -COMMANDER_WIDTH / 2.0;
+    let commander_right = COMMANDER_WIDTH / 2.0;
+    let commander_top = commander_y + COMMANDER_HEIGHT / 2.0;
+    let commander_bottom = commander_y - COMMANDER_HEIGHT / 2.0;
+
+    // 左墙：3块砖，紧贴司令官左侧
+    for i in 0..3 {
+        let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
+        commands.spawn((
+            Brick,
+            PlayingEntity,
+            Sprite {
+                image: brick_texture.clone(),
+                custom_size: Some(Vec2::new(brick_size, brick_size)),
+                ..default()
+            },
+            Transform::from_xyz(commander_left - brick_size / 2.0, y, 0.0),
+            RigidBody::Fixed,
+            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
+            ActiveEvents::COLLISION_EVENTS,
+            ActiveCollisionTypes::all(),
+        ));
+    }
+
+    // 右墙：3块砖，紧贴司令官右侧
+    for i in 0..3 {
+        let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
+        commands.spawn((
+            Brick,
+            PlayingEntity,
+            Sprite {
+                image: brick_texture.clone(),
+                custom_size: Some(Vec2::new(brick_size, brick_size)),
+                ..default()
+            },
+            Transform::from_xyz(commander_right + brick_size / 2.0, y, 0.0),
+            RigidBody::Fixed,
+            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
+            ActiveEvents::COLLISION_EVENTS,
+            ActiveCollisionTypes::all(),
+        ));
+    }
+
+    // 上墙：2块砖封顶，紧贴司令官顶部
+    for i in 0..2 {
+        let x = -brick_size / 2.0 + i as f32 * brick_size;
+        commands.spawn((
+            Brick,
+            PlayingEntity,
+            Sprite {
+                image: brick_texture.clone(),
+                custom_size: Some(Vec2::new(brick_size, brick_size)),
+                ..default()
+            },
+            Transform::from_xyz(x, commander_top + brick_size / 2.0, 0.0),
+            RigidBody::Fixed,
+            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
+            ActiveEvents::COLLISION_EVENTS,
+            ActiveCollisionTypes::all(),
+        ));
+    }
 
     commands.spawn((
         Commander,
@@ -617,6 +672,29 @@ fn spawn_commander(
         RigidBody::Fixed,
         Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
         ActiveEvents::COLLISION_EVENTS,
+    ));
+
+    // 创建音乐动画精灵（一直播放）
+    let music_texture: Handle<Image> = asset_server.load("music_note_sheet.png");
+    let music_tile_size = UVec2::new(140, 120);
+    let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
+    let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
+    let music_animation_indices = AnimationIndices { first: 0, last: 9 };
+
+    commands.spawn((
+        CommanderMusicAnimation,
+        PlayingEntity,
+        Sprite::from_atlas_image(
+            music_texture,
+            TextureAtlas {
+                layout: music_texture_atlas_layout,
+                index: music_animation_indices.first,
+            }
+        ),
+        Transform::from_translation(Vec3::new(commander_x, commander_y, 1.0)), // z=1.0 使动画在 Commander 上方
+        music_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)), // 每0.1秒切换一帧
+        CurrentAnimationFrame(0),
     ));
 }
 
@@ -643,7 +721,7 @@ fn spawn_player1_tank(
                 index: animation_indices.first,
             }
         ))
-        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
         .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
@@ -1106,7 +1184,7 @@ fn spawn_game_entities_if_needed(
 
                     ))
 
-                    .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+                    .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
 
                     .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
 
@@ -2403,11 +2481,9 @@ fn animate_spark(
 fn play_commander_music(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     commander: Query<&Transform, With<Commander>>,
     ambience_players: Query<Entity, With<CommanderAmbiencePlayer>>,
-    music_animations: Query<Entity, With<CommanderMusicAnimation>>,
 ) {
     // 获取 Commander 位置
     let commander_transform = match commander.single() {
@@ -2423,8 +2499,8 @@ fn play_commander_music(
     }
 
     // 根据距离判断是否播放音乐
-    const MAX_DISTANCE: f32 = 200.0; // 最大检测距离
-    
+    const MAX_DISTANCE: f32 = 130.0; // 最大检测距离（再缩小10像素）
+
     if min_distance < MAX_DISTANCE {
         // 如果在检测范围内但没有播放音效，则播放
         if ambience_players.is_empty() {
@@ -2437,43 +2513,17 @@ fn play_commander_music(
             ];
             let mut rng = rand::rng();
             let selected_music = music_files[rng.random_range(0..music_files.len())];
-            
+
             let commander_music: Handle<AudioSource> = asset_server.load(selected_music);
             commands.spawn((
                 AudioPlayer::new(commander_music),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(0.6)),
                 CommanderAmbiencePlayer,
             ));
-
-            // 创建音乐动画精灵
-            let music_texture: Handle<Image> = asset_server.load("music_note_sheet.png");
-            let music_tile_size = UVec2::new(140, 120);
-            let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
-            let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
-            let music_animation_indices = AnimationIndices { first: 0, last: 9 };
-
-            commands.spawn((
-                CommanderMusicAnimation,
-                PlayingEntity,
-                Sprite::from_atlas_image(
-                    music_texture,
-                    TextureAtlas {
-                        layout: music_texture_atlas_layout,
-                        index: music_animation_indices.first,
-                    }
-                ),
-                Transform::from_translation(commander_transform.translation + Vec3::new(0.0, 0.0, 1.0)), // z=1.0 使动画在 Commander 上方
-                music_animation_indices,
-                AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)), // 每0.1秒切换一帧
-                CurrentAnimationFrame(0),
-            ));
         }
     } else {
-        // 如果不在检测范围内，停止播放和动画
+        // 如果不在检测范围内，停止播放音乐
         for entity in ambience_players.iter() {
-            commands.entity(entity).despawn();
-        }
-        for entity in music_animations.iter() {
             commands.entity(entity).despawn();
         }
     }
@@ -2665,9 +2715,9 @@ fn handle_recall_input(
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
             let initial_position = if player_tank.tank_type == TankType::Player1 {
-                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
             } else {
-                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
             };
 
             // 开始回城
