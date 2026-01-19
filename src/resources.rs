@@ -1,7 +1,7 @@
 //! Game resources for the Tank Battle game
 
 use bevy::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::constants::TankType;
 
@@ -212,12 +212,19 @@ pub enum StatType {
     TrackChain,
     Penetrate,
     AirCushion,
+    Shell,
 }
 
 // Barrier 伤害追踪器，使用冷却机制防止玩家坦克频繁受伤
 #[derive(Resource, Default)]
 pub struct BarrierDamageTracker {
     pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的受伤冷却计时器
+}
+
+// Dash 扣血追踪器，防止一次 dash 多次扣血
+#[derive(Resource, Default)]
+pub struct DashDamageTracker {
+    pub has_taken_damage: HashSet<Entity>, // 记录本次 dash 已经扣血的玩家坦克
 }
 
 // 标记游戏实体是否已生成

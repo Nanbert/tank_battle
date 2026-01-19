@@ -107,9 +107,9 @@ pub fn enemy_shoot_system(
             continue;
         }
 
-        // 随机射击，每帧有 0.5% 的概率射击
+        // 随机射击，每帧有 1.0% 的概率射击
         let mut rng = rand::rng();
-        if rng.random::<f32>() < 0.005 {
+        if rng.random::<f32>() < 0.01 {
             // 计算子弹发射方向（基于坦克当前移动方向）
             let direction = if velocity.linvel.length() > 0.0 {
                 velocity.linvel.normalize()
@@ -171,15 +171,15 @@ pub fn player_shoot_system(
             continue;
         }
 
-        // 检查是否可以射击
-        if !bullet_tracker.can_fire(entity, fire_config.max_bullets) {
-            continue;
-        }
-
         // 获取玩家属性
         let Some(player_stats) = player_info.players.get(&player_tank.tank_type) else {
             continue;
         };
+
+        // 检查是否可以射击（使用 player_stats.shells 作为最大子弹数）
+        if !bullet_tracker.can_fire(entity, player_stats.shells) {
+            continue;
+        }
 
         // 计算子弹发射方向（基于坦克当前的旋转角度）
         // 坦克旋转时使用：angle - 270.0_f32.to_radians()
@@ -486,9 +486,10 @@ pub fn bullet_tank_collision_system(
                             let has_track_chain = player_stats.track_chain;
                             let has_penetrate = player_stats.penetrate;
                             let has_air_cushion = player_stats.air_cushion;
+                            let has_shells = player_stats.shells > 1;
 
-                            if has_fire_shell || has_track_chain || has_penetrate || has_air_cushion {
-                                // 有特效，移除其中一个特效（优先级任意）
+                            if has_fire_shell || has_track_chain || has_penetrate || has_air_cushion || has_shells {
+                                // 有特效或额外子弹，移除其中一个（优先级任意）
                                 if has_fire_shell {
                                     player_stats.fire_shell = false;
                                     stat_changed_events.write(PlayerStatChanged {
@@ -516,6 +517,13 @@ pub fn bullet_tank_collision_system(
                                     stat_changed_events.write(PlayerStatChanged {
                                         player_type: player_index,
                                         stat_type: StatType::AirCushion,
+                                    });
+                                } else if has_shells {
+                                    // 扣减 1 颗子弹
+                                    player_stats.shells -= 1;
+                                    stat_changed_events.write(PlayerStatChanged {
+                                        player_type: player_index,
+                                        stat_type: StatType::Shell,
                                     });
                                 }
                             } else {

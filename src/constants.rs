@@ -497,6 +497,7 @@ pub enum PowerUp {
     Repair,
     Hamburger,
     AirCushion,
+    Shell,
 }
 
 impl PowerUp {
@@ -511,6 +512,7 @@ impl PowerUp {
             Self::Repair => "power_up/repair.png",
             Self::Hamburger => "power_up/hamburger.png",
             Self::AirCushion => "power_up/air_cushion.png",
+            Self::Shell => "power_up/shell.png",
         }
     }
 }
@@ -557,7 +559,7 @@ impl Default for TankFireConfig {
     fn default() -> Self {
         Self {
             max_bullets: 1,
-            cooldown: Timer::from_seconds(0.3, TimerMode::Once),
+            cooldown: Timer::from_seconds(0.2, TimerMode::Once),
         }
     }
 }

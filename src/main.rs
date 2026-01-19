@@ -88,6 +88,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<BulletTracker>()
         .init_resource::<GameEntitiesSpawned>()
         .init_resource::<BarrierDamageTracker>()
+        .init_resource::<DashDamageTracker>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
         .insert_resource(ClearColor(BACKGROUND_COLOR));
 }
@@ -847,8 +848,8 @@ fn spawn_ui_element_from_config(
 
 fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
     let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 air_cushion 道具
-        PowerUp::AirCushion
+        // 第一关强制生成 shell 道具
+        PowerUp::Shell
     } else {
         // 其他关卡随机选择一个道具类型
         let powerup_types = [
@@ -861,6 +862,7 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
             PowerUp::Repair,
             PowerUp::Hamburger,
             PowerUp::AirCushion,
+            PowerUp::Shell,
         ];
 
         let mut rng = rand::rng();
@@ -1590,6 +1592,13 @@ fn handle_powerup_collision(
                         }
                         Some(StatType::AirCushion)
                     }
+                    PowerUp::Shell => {
+                        // 增加 1 颗子弹，最多 2 颗
+                        if player_stats.shells < 2 {
+                            player_stats.shells += 1;
+                        }
+                        Some(StatType::Shell)
+                    }
                 };
 
                 // 发送属性变更事件
@@ -1614,6 +1623,7 @@ const fn get_stat_prefix(stat_type: StatType) -> &'static str {
         StatType::TrackChain => "Track Chain:",
         StatType::Penetrate => "Penetrate:",
         StatType::AirCushion => "Air Cushion:",
+        StatType::Shell => "Shells:",
         StatType::Score => "Scores",
     }
 }
@@ -2529,6 +2539,7 @@ fn update_dash_movement(
     mut commands: Commands,
     mut player_query: Query<(Entity, &mut KinematicCharacterController, Option<&IsDashing>), With<PlayerTank>>,
     mut dash_timers: ResMut<DashTimers>,
+    mut dash_damage_tracker: ResMut<DashDamageTracker>,
 ) {
     for (entity, mut character_controller, is_dashing) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
@@ -2548,6 +2559,9 @@ fn update_dash_movement(
                     // 移除冲刺标记和计时器
                     commands.entity(entity).remove::<IsDashing>();
                     dash_timers.timers.remove(&entity);
+                    
+                    // 清理扣血追踪
+                    dash_damage_tracker.has_taken_damage.remove(&entity);
                 }
             }
     }
@@ -2568,6 +2582,7 @@ fn handle_dash_collision(
     mut player_info: ResMut<PlayerInfo>,
     player_avatars: Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+    mut dash_damage_tracker: ResMut<DashDamageTracker>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -2663,6 +2678,7 @@ fn handle_dash_collision(
                     &mut stat_changed_events,
                     player_entity,
                     b_entity,
+                    &mut dash_damage_tracker,
                 );
                 continue;
             }
@@ -2695,6 +2711,7 @@ fn handle_dash_collision(
                     &mut stat_changed_events,
                     player_entity,
                     e_entity,
+                    &mut dash_damage_tracker,
                 );
             }
         }
@@ -2763,6 +2780,7 @@ fn handle_brick_collision(
     _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     brick_entity: Entity,
+    dash_damage_tracker: &mut DashDamageTracker,
 ) {
     // 获取玩家坦克信息
     let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
@@ -2787,6 +2805,11 @@ fn handle_brick_collision(
         commands.entity(brick_entity).despawn();
     }
 
+    // 检查本次 dash 是否已经扣过血
+    if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
+        return; // 已经扣过血，不再重复扣血
+    }
+
     // 根据 protection 百分比决定扣血量
     if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
         let health_cost = if player_stats.protection < 40 {
@@ -2798,6 +2821,11 @@ fn handle_brick_collision(
         };
 
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+
+        // 标记本次 dash 已经扣过血
+        if health_cost > 0 {
+            dash_damage_tracker.has_taken_damage.insert(player_entity);
+        }
 
         // 检查玩家是否死亡
         if player_stats.life_red_bar == 0 {
@@ -2919,6 +2947,7 @@ fn handle_dash_enemy_tank_collision(
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     enemy_entity: Entity,
+    dash_damage_tracker: &mut DashDamageTracker,
 ) {
     // 获取玩家坦克信息
     let (_, player_tank, _) = player_tanks.get(player_entity).unwrap();
@@ -2936,6 +2965,11 @@ fn handle_dash_enemy_tank_collision(
 
     // 减少当前敌方坦克计数
     enemy_spawn_state.active_count -= 1;
+
+    // 检查本次 dash 是否已经扣过血
+    if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
+        return; // 已经扣过血，不再重复扣血
+    }
 
     // 增加分数
     if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
@@ -2956,6 +2990,11 @@ fn handle_dash_enemy_tank_collision(
             0 // 不扣血
         };
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+
+        // 标记本次 dash 已经扣过血
+        if health_cost > 0 {
+            dash_damage_tracker.has_taken_damage.insert(player_entity);
+        }
 
         // 检查玩家是否死亡
         if player_stats.life_red_bar == 0 {
