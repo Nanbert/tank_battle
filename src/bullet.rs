@@ -514,6 +514,8 @@ pub fn bullet_tank_collision_system(
                                     if let Ok(mut controller) = controllers.get_mut(tank_entity) {
                                         controller.filter_groups = None;
                                     }
+                                    // 移除气泡特效标记
+                                    commands.entity(tank_entity).remove::<crate::constants::BubbleEffect>();
                                     stat_changed_events.write(PlayerStatChanged {
                                         player_type: player_index,
                                         stat_type: StatType::AirCushion,

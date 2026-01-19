@@ -1591,6 +1591,8 @@ fn handle_powerup_collision(
                         if let Ok(mut controller) = controllers.get_mut(tank_entity) {
                             controller.filter_groups = Some(CollisionGroups::new(Group::all(), Group::all() & !SEA_GROUP));
                         }
+                        // 添加气泡特效标记
+                        commands.entity(tank_entity).insert(crate::constants::BubbleEffect);
                         Some(StatType::AirCushion)
                     }
                     PowerUp::Shell => {
@@ -3844,29 +3846,19 @@ fn enemy_spawn_system(
     
         asset_server: Res<AssetServer>,
     
-        player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
-    
-        player_info: Res<crate::resources::PlayerInfo>,
+        player_tanks: Query<(Entity, Option<&Children>, Has<crate::constants::BubbleEffect>), With<PlayerTank>>,
     
         bubble_effects: Query<&crate::constants::BubbleEffect>,
     
     ) {
     
-        for (entity, children, player_tank) in player_tanks.iter() {
+        for (entity, children, has_bubble_effect) in player_tanks.iter() {
     
-            let has_air_cushion = player_info.players.get(&player_tank.tank_type)
-    
-                .map(|s| s.air_cushion)
-    
-                .unwrap_or(false);
-    
-            
-    
-            if has_air_cushion {
+            if has_bubble_effect {
     
                 // 检查是否已经有气泡特效子实体
     
-                let has_bubble = if let Some(children) = children {
+                let has_bubble_sprite = if let Some(children) = children {
     
                     children.iter().any(|child| bubble_effects.contains(child))
     
@@ -3878,37 +3870,37 @@ fn enemy_spawn_system(
     
         
     
-                if !has_bubble {
+                if !has_bubble_sprite {
     
                     // 加载气泡纹理并缩放到 100x100
     
-                                    let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
+                    let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
     
-                                    
+                    
     
-                                    // 创建气泡特效实体
+                    // 创建气泡特效实体
     
-                                    commands.entity(entity).with_children(|parent| {
+                    commands.entity(entity).with_children(|parent| {
     
-                                        parent.spawn((
+                        parent.spawn((
     
-                                            Sprite {
+                            Sprite {
     
-                                                image: bubble_texture,
+                                image: bubble_texture,
     
-                                                custom_size: Some(Vec2::new(100.0, 100.0)),
+                                custom_size: Some(Vec2::new(100.0, 100.0)),
     
-                                                ..default()
+                                ..default()
     
-                                            },
+                            },
     
-                                            Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
+                            Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
     
-                                            crate::constants::BubbleEffect,
+                            crate::constants::BubbleEffect,
     
-                                        ));
+                        ));
     
-                                    });
+                    });
     
                 }
     
