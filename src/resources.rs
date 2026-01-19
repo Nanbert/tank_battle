@@ -1,16 +1,44 @@
 //! Game resources for the Tank Battle game
 
 use bevy::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use crate::constants::TankType;
 
 #[derive(Resource, Default)]
-pub struct CanFire(pub HashSet<Entity>);
+pub struct BulletTracker {
+    /// 坦克实体 -> 场上子弹数量
+    pub active_bullets: HashMap<Entity, usize>,
+    /// 子弹实体 -> 坦克实体
+    pub bullet_to_tank: HashMap<Entity, Entity>,
+}
 
-#[derive(Resource, Default)]
-pub struct BulletOwners {
-    pub owners: HashMap<Entity, Entity>, // 子弹实体 -> 坦克实体
+impl BulletTracker {
+    /// 检查坦克是否可以射击
+    pub fn can_fire(&self, tank: Entity, max: usize) -> bool {
+        self.active_bullets.get(&tank).copied().unwrap_or(0) < max
+    }
+
+    /// 添加子弹
+    pub fn add_bullet(&mut self, bullet: Entity, tank: Entity) {
+        *self.active_bullets.entry(tank).or_insert(0) += 1;
+        self.bullet_to_tank.insert(bullet, tank);
+    }
+
+    /// 移除子弹，返回所属坦克
+    pub fn remove_bullet(&mut self, bullet: Entity) -> Option<Entity> {
+        if let Some(tank) = self.bullet_to_tank.remove(&bullet) {
+            if let Some(count) = self.active_bullets.get_mut(&tank) {
+                *count -= 1;
+                if *count == 0 {
+                    self.active_bullets.remove(&tank);
+                }
+            }
+            Some(tank)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Resource, Default)]

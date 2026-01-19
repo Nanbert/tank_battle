@@ -98,44 +98,42 @@ pub fn spawn_bullet(
 pub fn enemy_shoot_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut query: Query<(Entity, &Transform, &Velocity), With<EnemyTank>>,
-    mut can_fire: ResMut<CanFire>,
-    mut bullet_owners: ResMut<BulletOwners>,
+    mut query: Query<(Entity, &Transform, &Velocity, &TankFireConfig), With<EnemyTank>>,
+    mut bullet_tracker: ResMut<BulletTracker>,
 ) {
-    for (entity, transform, velocity) in &mut query {
-        // 检查是否可以射击（当前没有子弹）
-        if can_fire.0.contains(&entity) {
-            // 随机射击，每帧有 0.5% 的概率射击
-            let mut rng = rand::rng();
-            if rng.random::<f32>() < 0.005 {
-                // 计算子弹发射方向（基于坦克当前移动方向）
-                let direction = if velocity.linvel.length() > 0.0 {
-                    velocity.linvel.normalize()
-                } else {
-                    Vec2::new(0.0, -1.0) // 默认向下
-                };
+    for (entity, transform, velocity, fire_config) in &mut query {
+        // 检查是否可以射击
+        if !bullet_tracker.can_fire(entity, fire_config.max_bullets) {
+            continue;
+        }
 
-                // 计算子弹初始位置（坦克前方）
-                let bullet_pos = transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
+        // 随机射击，每帧有 0.5% 的概率射击
+        let mut rng = rand::rng();
+        if rng.random::<f32>() < 0.005 {
+            // 计算子弹发射方向（基于坦克当前移动方向）
+            let direction = if velocity.linvel.length() > 0.0 {
+                velocity.linvel.normalize()
+            } else {
+                Vec2::new(0.0, -1.0) // 默认向下
+            };
 
-                // 生成子弹
-                let bullet_entity = spawn_bullet(
-                    &mut commands,
-                    &asset_server,
-                    BulletSpawnParams {
-                        position: bullet_pos,
-                        direction,
-                        speed: BULLET_SPEED,
-                        owner_type: TankType::Enemy,
-                    },
-                );
+            // 计算子弹初始位置（坦克前方）
+            let bullet_pos = transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
 
-                // 记录子弹的所有者
-                bullet_owners.owners.insert(bullet_entity, entity);
+            // 生成子弹
+            let bullet_entity = spawn_bullet(
+                &mut commands,
+                &asset_server,
+                BulletSpawnParams {
+                    position: bullet_pos,
+                    direction,
+                    speed: BULLET_SPEED,
+                    owner_type: TankType::Enemy,
+                },
+            );
 
-                // 标记该坦克暂时不能射击
-                can_fire.0.remove(&entity);
-            }
+            // 记录子弹的所有者
+            bullet_tracker.add_bullet(bullet_entity, entity);
         }
     }
 }
@@ -145,23 +143,21 @@ pub fn player_shoot_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     time: Res<Time>,
-    mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank, Option<&mut PlayerShootCooldown>), With<PlayerTank>>,
-    mut bullet_owners: ResMut<BulletOwners>,
+    mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank, &mut TankFireConfig), With<PlayerTank>>,
+    mut bullet_tracker: ResMut<BulletTracker>,
     player_info: Res<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    for (entity, transform, rotation_timer, player_tank, mut shoot_cooldown) in &mut query {
+    for (entity, transform, rotation_timer, player_tank, mut fire_config) in &mut query {
         // 检查是否正在旋转
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
         }
 
         // 更新射击冷却时间
-        if let Some(ref mut cooldown) = shoot_cooldown {
-            cooldown.timer.tick(time.delta());
-            if !cooldown.timer.is_finished() {
-                continue;
-            }
+        fire_config.cooldown.tick(time.delta());
+        if !fire_config.cooldown.is_finished() {
+            continue;
         }
 
         // 检查是否按下射击键
@@ -175,8 +171,8 @@ pub fn player_shoot_system(
             continue;
         }
 
-        // 检查是否可以射击（当前没有子弹）
-        if bullet_owners.owners.values().any(|&owner| owner == entity) {
+        // 检查是否可以射击
+        if !bullet_tracker.can_fire(entity, fire_config.max_bullets) {
             continue;
         }
 
@@ -212,16 +208,10 @@ pub fn player_shoot_system(
         );
 
         // 记录子弹的所有者
-        bullet_owners.owners.insert(bullet_entity, entity);
+        bullet_tracker.add_bullet(bullet_entity, entity);
 
-        // 设置射击冷却时间（如果没有冷却组件则添加）
-        if shoot_cooldown.is_none() {
-            commands.entity(entity).insert(PlayerShootCooldown {
-                timer: Timer::from_seconds(0.2, TimerMode::Once),
-            });
-        } else if let Some(ref mut cooldown) = shoot_cooldown {
-            cooldown.timer.reset();
-        }
+        // 重置冷却时间
+        fire_config.cooldown.reset();
     }
 }
 
@@ -245,14 +235,11 @@ pub fn bullet_bounds_check_system(mut commands: Commands, mut query: Query<(Enti
 pub fn bullet_despawn_system(
     mut commands: Commands,
     mut query: Query<(Entity, &BulletDespawnMarker, &BulletOwner), With<Bullet>>,
-    mut can_fire: ResMut<CanFire>,
-    mut bullet_owners: ResMut<BulletOwners>,
+    mut bullet_tracker: ResMut<BulletTracker>,
 ) {
     for (entity, _marker, _owner) in &mut query {
         // 清理所有者引用，允许坦克再次射击
-        if let Some(tank_entity) = bullet_owners.owners.remove(&entity) {
-            can_fire.0.insert(tank_entity);
-        }
+        bullet_tracker.remove_bullet(entity);
 
         // 销毁子弹实体
         commands.entity(entity).despawn();
@@ -561,7 +548,7 @@ pub fn bullet_tank_collision_system(
                         }
                     }
                     // 标记子弹销毁
-                    commands.entity(bullet_entity).insert(BulletDespawnMarker);
+                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                 }
             }
         }

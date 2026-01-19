@@ -71,7 +71,7 @@ fn configure_game_resources(app: &mut App) {
     app.init_state::<GameState>()
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
-        .init_resource::<CanFire>()
+        .init_resource::<BulletTracker>()
         .init_resource::<StartAnimationFrames>()
         .init_resource::<FadingOut>()
         .init_resource::<CurrentMenuSelection>()
@@ -85,7 +85,7 @@ fn configure_game_resources(app: &mut App) {
         .init_resource::<DashTimers>()
         .init_resource::<BlueBarRegenTimer>()
         .init_resource::<CommanderLife>()
-        .init_resource::<BulletOwners>()
+        .init_resource::<BulletTracker>()
         .init_resource::<GameEntitiesSpawned>()
         .init_resource::<BarrierDamageTracker>()
         .insert_resource(PlayerRespawnTimer(Timer::from_seconds(3.0, TimerMode::Once)))
@@ -609,6 +609,7 @@ fn spawn_player1_tank(
     commands.spawn_empty()
         .insert(player_tank)
         .insert(PlayingEntity)
+        .insert(TankFireConfig::default())
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
         .insert(TargetRotation { angle: 180.0_f32.to_radians() })
         .insert(Sprite::from_atlas_image(
@@ -922,7 +923,6 @@ fn spawn_game_entities_if_needed(
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
-    mut can_fire: ResMut<CanFire>,
     mut clear_color: ResMut<ClearColor>,
     _enemy_spawn_state: Res<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
@@ -965,7 +965,7 @@ fn spawn_game_entities_if_needed(
 
                 // 单人模式：只生成玩家1
 
-                let player1_tank_entity = spawn_player1_tank(
+                let _player1_tank_entity = spawn_player1_tank(
 
                     &mut commands,
 
@@ -1011,17 +1011,13 @@ fn spawn_game_entities_if_needed(
 
     
 
-                // 初始化玩家坦克可以射击
-
-                can_fire.0.insert(player1_tank_entity);
-
-            }
+                }
 
             GameMode::TwoPlayers => {
 
                 // 双人模式：生成玩家1和玩家2
 
-                let player1_tank_entity = spawn_player1_tank(
+                let _player1_tank_entity = spawn_player1_tank(
 
                     &mut commands,
 
@@ -1035,7 +1031,7 @@ fn spawn_game_entities_if_needed(
 
     
 
-                let player2_tank_entity = commands.spawn_empty()
+                let _player2_tank_entity = commands.spawn_empty()
 
                     .insert(PlayerTank { tank_type: TankType::Player2 })
 
@@ -1153,10 +1149,7 @@ fn spawn_game_entities_if_needed(
 
                 });
 
-            // 初始化玩家坦克可以射击
-            can_fire.0.insert(player1_tank_entity);
-            can_fire.0.insert(player2_tank_entity);
-        }
+            }
     }
 
     // 加载字体
@@ -1791,7 +1784,6 @@ fn animate_enemy_born_animation(
     mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame, &BornPosition), With<EnemyBornAnimation>>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut can_fire: ResMut<CanFire>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
@@ -1822,11 +1814,12 @@ fn animate_enemy_born_animation(
                         let enemy_animation_indices = AnimationIndices { first: 0, last: 2 };
 
                         // 生成敌方坦克
-                        let enemy_entity = commands.spawn_empty()
+                        let _enemy_entity = commands.spawn_empty()
                             .insert(EnemyTank {
                                 direction: Vec2::new(0.0, -1.0),
                             })
                             .insert(PlayingEntity)
+                            .insert(TankFireConfig::default())
                             .insert(DirectionChangeTimer(Timer::from_seconds(2.0, TimerMode::Once)))
                             .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
                             .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
@@ -1854,9 +1847,6 @@ fn animate_enemy_born_animation(
                             .insert(Friction::new(0.0))
                             .insert(Restitution::new(0.0))
                             .id();
-
-                        // 初始化敌方坦克可以射击
-                        can_fire.0.insert(enemy_entity);
 
                         // 增加当前敌方坦克计数
                         enemy_spawn_state.active_count += 1;

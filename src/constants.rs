@@ -417,11 +417,6 @@ pub struct PlayerTank {
 }
 
 #[derive(Component)]
-pub struct PlayerShootCooldown {
-    pub timer: Timer,
-}
-
-#[derive(Component)]
 pub struct PlayerAvatar;
 
 //用来标记，文字，头像等信息属于哪个玩家
@@ -550,3 +545,19 @@ pub struct PlayerInfoBlinkTimer(pub Timer);
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct PlayerRespawnTimer(pub Timer);
+
+/// 坦克射击配置
+#[derive(Component)]
+pub struct TankFireConfig {
+    pub max_bullets: usize,  // 最大同时子弹数
+    pub cooldown: Timer,     // 射击冷却时间
+}
+
+impl Default for TankFireConfig {
+    fn default() -> Self {
+        Self {
+            max_bullets: 1,
+            cooldown: Timer::from_seconds(0.3, TimerMode::Once),
+        }
+    }
+}
