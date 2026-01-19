@@ -7,6 +7,21 @@
 - **作者**: OpenGameArt 社区
 - **说明**: 8种颜色的气泡素材，本游戏使用蓝色版本
 
+## Explosion Effect (爆炸效果)
+- **文件**: assets/explosion_new.png
+- **来源**: https://opengameart.org/content/explode-effect
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: knik1985
+- **发布日期**: 2019年8月3日
+- **说明**: 9帧爆炸动画效果，3x3布局，每帧341x341像素
+
+## Laser Effect (激光特效)
+- **文件**: assets/texture_laser.png
+- **来源**: https://opengameart.org/content/laser-effect-sheet
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: OpenGameArt 社区
+- **说明**: 激光特效精灵图，3行4列布局，每帧512x683像素，共12帧
+
 ## 许可说明
 CC-BY 3.0 许可证要求：
 1. **署名** - 必须提供原作者的署名
