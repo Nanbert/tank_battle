@@ -716,7 +716,7 @@ fn spawn_player1_tank(
         .insert(PlayingEntity)
         .insert(TankFireConfig::default())
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation { angle: 180.0_f32.to_radians() })
+        .insert(TargetRotation { angle: 0.0_f32.to_radians() })
         .insert(Sprite {
             image: texture,
             texture_atlas: Some(TextureAtlas {
@@ -2882,7 +2882,7 @@ fn handle_dash_input(
 
                     // 计算坦克当前朝向
                     let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-                    let actual_angle = euler_angle + 270.0_f32.to_radians();
+                    let actual_angle = euler_angle + 90.0_f32.to_radians();
                     let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
                     // 开始冲刺
