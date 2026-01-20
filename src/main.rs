@@ -2750,11 +2750,11 @@ fn update_recall_timers(
     time: Res<Time>,
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<(Entity, &mut Transform, &PlayerTank, Option<&IsRecalling>), With<PlayerTank>>,
+    mut player_query: Query<(Entity, &mut Transform, &PlayerTank, Option<&IsRecalling>, Option<&Children>), With<PlayerTank>>,
     mut recall_timers: ResMut<RecallTimers>,
     mut progress_bar_query: Query<(Entity, &mut Sprite, &RecallProgressBar)>,
 ) {
-    for (entity, mut transform, player_tank, is_recalling) in &mut player_query {
+    for (entity, mut transform, player_tank, is_recalling, children) in &mut player_query {
         if matches!(is_recalling, Some(IsRecalling))
             && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
             // 检查是否按住回城键
@@ -2811,6 +2811,14 @@ fn update_recall_timers(
                 if recall_timer.timer.just_finished() {
                     // 完成回城，传送到初始位置
                     let initial_position = recall_timer.start_position;
+
+                    // 先删除所有子实体（包括气泡），防止Transform传播干扰传送
+                    if let Some(children) = children {
+                        for child in children.iter() {
+                            commands.entity(child).despawn();
+                        }
+                    }
+
                     transform.translation = initial_position;
 
                     // 移除回城标记和计时器
