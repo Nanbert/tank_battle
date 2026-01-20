@@ -2756,25 +2756,63 @@ fn update_recall_timers(
     for (entity, mut transform, player_tank, is_recalling) in &mut player_query {
         if matches!(is_recalling, Some(IsRecalling))
             && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
-                // 检查是否被打断（移动或射击）
-                let is_interrupted = if player_tank.tank_type == TankType::Player1 {
-                    // 玩家1：检查WASD或J键
-                    keyboard_input.pressed(KeyCode::KeyW) ||
-                    keyboard_input.pressed(KeyCode::KeyS) ||
-                    keyboard_input.pressed(KeyCode::KeyA) ||
-                    keyboard_input.pressed(KeyCode::KeyD) ||
-                    keyboard_input.pressed(KeyCode::KeyJ)
-                } else {
-                    // 玩家2：检查方向键或小键盘1键
-                    keyboard_input.pressed(KeyCode::ArrowUp) ||
-                    keyboard_input.pressed(KeyCode::ArrowDown) ||
-                    keyboard_input.pressed(KeyCode::ArrowLeft) ||
-                    keyboard_input.pressed(KeyCode::ArrowRight) ||
-                    keyboard_input.pressed(KeyCode::Numpad1)
-                };
+            // 检查是否按住回城键
+            let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
+                keyboard_input.pressed(KeyCode::KeyB)
+            } else {
+                keyboard_input.pressed(KeyCode::Numpad4)
+            };
 
-                if is_interrupted {
-                    // 打断回城
+            // 检查是否被打断（移动或射击）
+            let is_interrupted = if player_tank.tank_type == TankType::Player1 {
+                // 玩家1：检查WASD或J键
+                keyboard_input.pressed(KeyCode::KeyW) ||
+                keyboard_input.pressed(KeyCode::KeyS) ||
+                keyboard_input.pressed(KeyCode::KeyA) ||
+                keyboard_input.pressed(KeyCode::KeyD) ||
+                keyboard_input.pressed(KeyCode::KeyJ)
+            } else {
+                // 玩家2：检查方向键或小键盘1键
+                keyboard_input.pressed(KeyCode::ArrowUp) ||
+                keyboard_input.pressed(KeyCode::ArrowDown) ||
+                keyboard_input.pressed(KeyCode::ArrowLeft) ||
+                keyboard_input.pressed(KeyCode::ArrowRight) ||
+                keyboard_input.pressed(KeyCode::Numpad1)
+            };
+
+            // 如果没有按住回城键，或者被打断，则取消回城
+            if !is_recall_key_pressed || is_interrupted {
+                // 打断回城
+                commands.entity(entity).remove::<IsRecalling>();
+                recall_timers.timers.remove(&entity);
+
+                // 删除进度条
+                for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+                    if progress_bar.player_entity == entity {
+                        commands.entity(progress_entity).despawn();
+                    }
+                }
+            } else {
+                // 更新计时器
+                recall_timer.timer.tick(time.delta());
+
+                // 更新进度条（从满格递减）
+                let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
+                let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
+
+                for (_, mut sprite, progress_bar) in &mut progress_bar_query {
+                    if progress_bar.player_entity == entity {
+                        sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
+                    }
+                }
+
+                // 检查是否完成
+                if recall_timer.timer.just_finished() {
+                    // 完成回城，传送到初始位置
+                    let initial_position = recall_timer.start_position;
+                    transform.translation = initial_position;
+
+                    // 移除回城标记和计时器
                     commands.entity(entity).remove::<IsRecalling>();
                     recall_timers.timers.remove(&entity);
 
@@ -2784,39 +2822,9 @@ fn update_recall_timers(
                             commands.entity(progress_entity).despawn();
                         }
                     }
-                } else {
-                    // 更新计时器
-                    recall_timer.timer.tick(time.delta());
-
-                    // 更新进度条（从满格递减）
-                    let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
-                    let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
-
-                    for (_, mut sprite, progress_bar) in &mut progress_bar_query {
-                        if progress_bar.player_entity == entity {
-                            sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
-                        }
-                    }
-
-                    // 检查是否完成
-                    if recall_timer.timer.just_finished() {
-                        // 完成回城，传送到初始位置
-                        let initial_position = recall_timer.start_position;
-                        transform.translation = initial_position;
-
-                        // 移除回城标记和计时器
-                        commands.entity(entity).remove::<IsRecalling>();
-                        recall_timers.timers.remove(&entity);
-
-                        // 删除进度条
-                        for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                            if progress_bar.player_entity == entity {
-                                commands.entity(progress_entity).despawn();
-                            }
-                        }
-                    }
                 }
             }
+        }
     }
 }
 
