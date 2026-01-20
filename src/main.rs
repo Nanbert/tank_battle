@@ -717,17 +717,19 @@ fn spawn_player1_tank(
         .insert(TankFireConfig::default())
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
         .insert(TargetRotation { angle: 180.0_f32.to_radians() })
-        .insert(Sprite::from_atlas_image(
-            texture,
-            TextureAtlas{
+        .insert(Sprite {
+            image: texture,
+            texture_atlas: Some(TextureAtlas {
                 layout: texture_atlas_layout,
                 index: animation_indices.first,
-            }
-        ))
+            }),
+            custom_size: Some(Vec2::new(80.0, 90.0)),
+            ..default()
+        })
         .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
+        .insert(AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)))
         .insert(RigidBody::KinematicPositionBased)
         .insert(Collider::cuboid(35.0, 35.0))
         .insert(ActiveEvents::COLLISION_EVENTS)
@@ -747,22 +749,24 @@ pub fn spawn_enemy_born_animation(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) -> Entity {
-    let enemy_born_texture: Handle<Image> = asset_server.load("enemy_born_sheet.png");
-    let enemy_born_tile_size = UVec2::new(87, 87);
-    let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 4, 4, None, None);
+    let enemy_born_texture: Handle<Image> = asset_server.load("enemy_born.png");
+    let enemy_born_tile_size = UVec2::new(192, 192);
+    let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
     let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
     let enemy_born_animation_indices = AnimationIndices { first: 0, last: 12 };
 
     commands.spawn((
         EnemyBornAnimation,
         PlayingEntity,
-        Sprite::from_atlas_image(
-            enemy_born_texture,
-            TextureAtlas {
+        Sprite {
+            image: enemy_born_texture,
+            texture_atlas: Some(TextureAtlas {
                 layout: enemy_born_texture_atlas_layout,
                 index: enemy_born_animation_indices.first,
-            }
-        ),
+            }),
+            custom_size: Some(Vec2::new(100.0, 100.0)),
+            ..default()
+        },
         Transform::from_translation(position),
         enemy_born_animation_indices,
         AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
@@ -1057,11 +1061,12 @@ fn spawn_game_entities_if_needed(
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
     // 加载玩家坦克纹理和创建精灵图
-    let player_texture = asset_server.load("texture/player_tank_sprite.png");
-    let player_tile_size = UVec2::new(87, 87);
-    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 3, 1, None, None);
+    let player1_texture = asset_server.load("player_tank1_sprite.png");
+    let player2_texture = asset_server.load("player_tank2_sprite.png");
+    let player_tile_size = UVec2::new(293, 328);
+    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
-    let player_animation_indices = AnimationIndices { first: 0, last: 2 };
+    let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 
     // 根据游戏模式生成玩家
 
@@ -1075,7 +1080,7 @@ fn spawn_game_entities_if_needed(
 
                     &mut commands,
 
-                    player_texture,
+                    player1_texture,
 
                     player_texture_atlas_layout,
 
@@ -1151,7 +1156,7 @@ fn spawn_game_entities_if_needed(
 
                     &mut commands,
 
-                    player_texture.clone(),
+                    player1_texture,
 
                     player_texture_atlas_layout.clone(),
 
@@ -1159,7 +1164,7 @@ fn spawn_game_entities_if_needed(
 
                 );
 
-    
+
 
                 let _player2_tank_entity = commands.spawn_empty()
 
@@ -1173,19 +1178,15 @@ fn spawn_game_entities_if_needed(
 
                     .insert(TargetRotation { angle: 180.0_f32.to_radians() })
 
-                    .insert(Sprite::from_atlas_image(
-
-                        player_texture,
-
-                        TextureAtlas{
-
+                    .insert(Sprite {
+                        image: player2_texture,
+                        texture_atlas: Some(TextureAtlas {
                             layout: player_texture_atlas_layout,
-
                             index: player_animation_indices.first,
-
-                        }
-
-                    ))
+                        }),
+                        custom_size: Some(Vec2::new(80.0, 90.0)),
+                        ..default()
+                    })
 
                     .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
 
@@ -2636,7 +2637,7 @@ fn move_player_tank(
         // 检查是否需要转向
         let needs_rotation = if direction.length() > 0.0 {
             let angle = direction.y.atan2(direction.x);
-            let target_angle = angle - 270.0_f32.to_radians();
+            let target_angle = angle - 90.0_f32.to_radians();
 
             let current_euler = target_rotation.angle;
             let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;

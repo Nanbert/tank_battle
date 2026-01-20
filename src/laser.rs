@@ -197,7 +197,7 @@ pub fn player_laser_system(
                                 
                                 // 计算激光发射方向（基于坦克当前的旋转角度）
                                 let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-                                let actual_angle = euler_angle + 270.0_f32.to_radians();
+                                let actual_angle = euler_angle + 90.0_f32.to_radians();
                                 let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
                                 // 计算激光初始位置（坦克前方）

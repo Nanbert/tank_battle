@@ -22,6 +22,20 @@
 - **作者**: OpenGameArt 社区
 - **说明**: 激光特效精灵图，3行4列布局，每帧512x683像素，共12帧
 
+## Enemy Born Animation (敌方坦克出生动画)
+- **文件**: assets/enemy_born.png
+- **来源**: https://opengameart.org/content/alot-of-particles-flashburst-special-effect-alotofparticles15
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: OpenGameArt 社区
+- **说明**: 粒子特效精灵图，4行5列布局，每帧192x192像素，共13帧
+
+## Player Tank Sprites (玩家坦克纹理)
+- **文件**: assets/player_tank1_sprite.png, assets/player_tank2_sprite.png
+- **来源**: https://opengameart.org/content/mediumtanks
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: OpenGameArt 社区
+- **说明**: 中型坦克纹理，3帧动画，每帧100x88像素
+
 ## 许可说明
 CC-BY 3.0 许可证要求：
 1. **署名** - 必须提供原作者的署名
