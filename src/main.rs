@@ -347,7 +347,7 @@ fn spawn_start_screen(
     spawn_start_screen_background(&mut commands, &animation_frames);
 
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
 
     // 添加标题文字
     spawn_start_screen_title(&mut commands, custom_font);
@@ -729,7 +729,7 @@ fn spawn_player1_tank(
         .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)))
+        .insert(AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)))
         .insert(RigidBody::KinematicPositionBased)
         .insert(Collider::cuboid(35.0, 35.0))
         .insert(ActiveEvents::COLLISION_EVENTS)
@@ -1286,8 +1286,8 @@ fn spawn_game_entities_if_needed(
     }
 
     // 加载字体
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
-    
+    let font: Handle<Font> = asset_server.load(crate::FONT_EN);
+
     // 根据游戏模式生成UI
     match *game_mode {
         GameMode::OnePlayer => {
@@ -1555,31 +1555,33 @@ pub fn spawn_explosion(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) {
-    // 加载爆炸精灵图（40帧，每帧150x119）
+    // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
     let explosion_texture: Handle<Image> = asset_server.load("explosion.png");
-    let explosion_tile_size = UVec2::new(150, 119);
-    let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 40, 1, None, None);
+    let explosion_tile_size = UVec2::new(512, 512);
+    let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
     let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
-    let explosion_animation_indices = AnimationIndices { first: 0, last: 39 };
+    let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
     commands.spawn((
         Explosion,
         PlayingEntity,
-        Sprite::from_atlas_image(
-            explosion_texture,
-            TextureAtlas {
+        Sprite {
+            image: explosion_texture,
+            texture_atlas: Some(TextureAtlas {
                 layout: explosion_texture_atlas_layout,
                 index: explosion_animation_indices.first,
-            }
-        ),
+            }),
+            custom_size: Some(Vec2::new(300.0, 300.0)),
+            ..default()
+        },
         Transform::from_translation(position),
         explosion_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.03, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(0.02, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 
     // 播放爆炸音效
-    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_l.ogg");
+    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_sound.ogg");
     commands.spawn(AudioPlayer::new(explosion_sound));
 }
 
@@ -1620,21 +1622,32 @@ fn spawn_forest_fire(
 pub fn spawn_spark(
     commands: &mut Commands,
     asset_server: &AssetServer,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) {
-    // 加载火花图片（已裁剪到 87x83.6 像素，保持 spark2.png 的宽高比）
-    let spark_texture: Handle<Image> = asset_server.load("spark.png");
+    // 加载打击效果图片（4x4，共16帧，每帧1024x1024）
+    let spark_texture: Handle<Image> = asset_server.load("steel_hit.png");
+    let spark_tile_size = UVec2::new(1024, 1024);
+    let spark_texture_atlas = TextureAtlasLayout::from_grid(spark_tile_size, 4, 4, None, None);
+    let spark_texture_atlas_layout = texture_atlas_layouts.add(spark_texture_atlas);
+    let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
 
     commands.spawn((
         Spark,
         PlayingEntity,
         Sprite {
             image: spark_texture,
-            custom_size: Some(Vec2::new(87.0, 83.6)),
+            texture_atlas: Some(TextureAtlas {
+                layout: spark_texture_atlas_layout,
+                index: spark_animation_indices.first,
+            }),
+            custom_size: Some(Vec2::new(200.0, 200.0)),
             ..default()
         },
         Transform::from_translation(position),
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Once)),
+        spark_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.02, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
     ));
 }
 
@@ -1877,16 +1890,17 @@ fn animate_powerup_texture(
 
 fn animate_player_tank_texture(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &Velocity), With<PlayerTank>>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &KinematicCharacterController), With<PlayerTank>>,
 ) {
     // 玩家坦克：只有移动时才刷新纹理
-    for (mut timer, mut sprite, indices, velocity) in &mut query {
-        let speed = velocity.linvel.length();
+    for (mut timer, mut sprite, indices, character_controller) in &mut query {
+        // 使用 KinematicCharacterController 的 translation 字段判断是否在移动
+        let is_moving = character_controller.translation.is_some();
         if sprite.texture_atlas.is_none() {
             continue;
         }
         let atlas = sprite.texture_atlas.as_mut().expect("玩家坦克没有纹理！");
-        if speed <= 0.0 {
+        if !is_moving {
             atlas.index = indices.last;
             timer.reset();
         } else {
@@ -1949,11 +1963,11 @@ fn animate_enemy_born_animation(
                     // 在动画播放到 2/3 时生成敌方坦克
                     if next_index == spawn_frame {
                         // 加载敌方坦克纹理和创建精灵图
-                        let enemy_texture = asset_server.load("texture/tank_player.png");
-                        let enemy_tile_size = UVec2::new(87, 103);
-                        let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 3, 1, None, None);
+                        let enemy_texture = asset_server.load("enemy_tank/enemy_tank1_sprite.png");
+                        let enemy_tile_size = UVec2::new(137, 183);
+                        let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 2, 1, None, None);
                         let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
-                        let enemy_animation_indices = AnimationIndices { first: 0, last: 2 };
+                        let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 
                         // 生成敌方坦克
                         let _enemy_entity = commands.spawn_empty()
@@ -1967,13 +1981,15 @@ fn animate_enemy_born_animation(
                             .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
                             .insert(TargetRotation { angle: 270.0_f32.to_radians() })
                             .insert(AnimationTimer(Timer::from_seconds(0.25, TimerMode::Repeating)))
-                            .insert(Sprite::from_atlas_image(
-                                enemy_texture,
-                                TextureAtlas {
+                            .insert(Sprite {
+                                image: enemy_texture,
+                                texture_atlas: Some(TextureAtlas {
                                     layout: enemy_texture_atlas_layout,
                                     index: enemy_animation_indices.first,
-                                }
-                            ))
+                                }),
+                                custom_size: Some(Vec2::new(80.0, 90.0)),
+                                ..default()
+                            })
                             .insert(Transform::from_translation(born_position.0))
                             .insert(enemy_animation_indices)
                             .insert(Velocity {
@@ -2471,13 +2487,23 @@ fn play_tree_ambience(
 fn animate_spark(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer), With<Spark>>,
+    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Spark>>,
 ) {
-    for (entity, mut timer) in &mut query {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
-        if timer.is_finished() {
-            // 0.5秒后销毁火花实体
-            commands.entity(entity).despawn();
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，销毁实体
+                commands.entity(entity).despawn();
+            } else {
+                // 继续播放动画
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = next_index;
+                }
+            }
         }
     }
 }
@@ -3501,7 +3527,8 @@ fn spawn_stage_intro(
     stage_intro_timer.fade_out = Timer::from_seconds(1.0, TimerMode::Once);
 
     // 加载字体
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    let font_en: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let font_cn: Handle<Font> = asset_server.load(crate::FONT_CN);
 
     // Stage 标题（显示在屏幕中心）
     commands.spawn((
@@ -3509,7 +3536,7 @@ fn spawn_stage_intro(
         Text2d(format!("Stage {}", stage_level.0)),
         TextFont {
             font_size: 80.0,
-            font: font.clone(),
+            font: font_en.clone(),
             ..default()
         },
         TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
@@ -3518,14 +3545,14 @@ fn spawn_stage_intro(
 
     // 描述文字（随机选择一条俏皮话）
     let mut rng = rand::rng();
-    let quote_index = rng.random_range(0..STAGE_QUOTES.len());
-    let quote_text = STAGE_QUOTES[quote_index];
+    let quote_index = rng.random_range(0..STAGE_QUOTES_CN.len());
+    let quote_text = STAGE_QUOTES_CN[quote_index];
     commands.spawn((
         StageIntroUI,
         Text2d(quote_text.to_string()),
         TextFont {
             font_size: 28.0,
-            font,
+            font: font_cn,
             ..default()
         },
         TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0
@@ -3839,7 +3866,7 @@ fn spawn_pause_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    let font: Handle<Font> = asset_server.load(crate::FONT_EN);
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {
@@ -3919,7 +3946,7 @@ fn spawn_game_over_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load("/home/nanbert/.fonts/SHOWG.TTF");
+    let font: Handle<Font> = asset_server.load(crate::FONT_EN);
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {

@@ -4,6 +4,10 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use crate::resources::PlayerStats;
 
+// 字体路径常量
+pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
+pub const FONT_EN: &str = "font/Matemasie-Regular.ttf";
+
 // 碰撞分组常量
 pub const SEA_GROUP: Group = Group::GROUP_2;
 
@@ -78,6 +82,27 @@ pub const STAGE_QUOTES: [&str; 17] = [
     "When dashing, you must strike from the front or side. When attacking from behind,\nyou're moving in the same direction, so the impact force may not be enough.",
     "When dashing, if there are obstacles or enemies, make sure to maintain a certain distance\nto more successfully trigger the dash destruction effect.",
     "Enemies destroyed by laser do not count towards your score.\nThe commander's reason is that laser damages the flowers and grass.\nThis is truly ridiculous.",
+];
+
+// 关卡俏皮话中文版
+pub const STAGE_QUOTES_CN: [&str; 17] = [
+    "勇敢的司令官即使被击中也不会撤退。他会坚守原地，\n等待士兵们来营救他。",
+    "当你转身射击时，炮弹可能不会直行！\n虽然控制炮弹轨迹确实很困难。",
+    "小心，敌方坦克也不是傻瓜——他们也能斜向射击。",
+    "敌方和我方工厂都限制了我们的坦克只能直射，\n以提高命中率。毕竟，炮弹很贵。",
+    "所有坦克都直线移动，不像螃蟹一样。这是为了纪念\n上个世纪坦克大战中牺牲的无数坦克。",
+    "狡猾的敌方坦克升级了他们的炮弹，\n使我们的炮弹无法拦截他们的炮弹。这真令人沮丧。",
+    "当你的所有属性都达到最大值时，请与你的队友分享道具，\n你这个贪婪的人。",
+    "我们的道具喷了隐形漆——只有你能看到它们，\n敌人看不到，即使它们就在旁边。",
+    "据说在上个世纪的坦克大战中，有一段时间\n敌人也能捡起我们的道具。那真是一场灾难。",
+    "我们的炮弹经过特殊处理——当它们遇到司令官时，\n会穿过去而不伤害他。据说这是司令官强烈要求的，\n因为在上个世纪的坦克大战中，无数司令官死于自己人之手。真可怜。",
+    "我们的司令官已经提前调查了敌人的数量——\n最多只有几百个敌人。战争会有结束的一天。",
+    "在上个世纪的坦克大战中，敌人似乎无穷无尽，\n没有人活着看到战争的结束。",
+    "在上个世纪的坦克大战中，超级炸弹道具会摧毁\n许多敌方坦克，但被摧毁的坦克不计入你的战斗记录。这真的很奇怪。",
+    "当你独自一人时，可以向司令官要求一辆额外的坦克。\n你可以告诉司令官，额外的坦克可以帮你挡一些炮弹。",
+    "冲刺时，你必须从正面或侧面攻击。从后面攻击时，\n你朝同一方向移动，所以冲击力可能不够。",
+    "冲刺时，如果有障碍物或敌人，请确保保持一定距离，\n以更成功地触发冲刺破坏效果。",
+    "被激光摧毁的敌人不计入你的分数。\n司令官的理由是激光会损坏花草树木。这真荒谬。",
 ];
 
 /// UI 元素类型枚举

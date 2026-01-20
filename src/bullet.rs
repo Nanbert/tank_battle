@@ -575,7 +575,7 @@ pub fn handle_effect_events(
                 crate::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
             EffectEvent::Spark { position } => {
-                crate::spawn_spark(&mut commands, &asset_server, *position);
+                crate::spawn_spark(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
             EffectEvent::ForestFire { position } => {
                 crate::spawn_forest_fire(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
