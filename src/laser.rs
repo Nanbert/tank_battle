@@ -161,13 +161,13 @@ pub fn player_laser_system(
                     LaserChargeSound,
                 ));
 
-                // 创建蓄力进度条（在坦克正上方，初始空格）
+                // 创建蓄力进度条（在坦克正上方，初始满格）
                 commands.spawn((
                     PlayingEntity,
                     LaserChargeProgressBar { tank_type: player_tank.tank_type, player_entity: _entity },
                     Sprite {
                         color: Color::srgb(0.0, 1.0, 0.0), // 绿色
-                        custom_size: Some(Vec2::new(0.0, 8.0)), // 初始宽度0（空格）
+                        custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
                         ..default()
                     },
                     Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
@@ -177,10 +177,10 @@ pub fn player_laser_system(
                 for (e, mut charge) in charge_query.iter_mut() {
                     if e == _entity && charge.tank_type == player_tank.tank_type {
                         charge.timer.tick(time.delta());
-                        
-                        // 更新进度条（从空格递增）
+
+                        // 更新进度条（从满格向两边递减）
                         let progress = charge.timer.elapsed_secs() / charge.timer.duration().as_secs_f32();
-                        let bar_width = 100.0 * progress; // 从0递增到100
+                        let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
 
                         for (_, mut sprite, progress_bar) in &mut progress_bar_query {
                             if progress_bar.player_entity == _entity {
