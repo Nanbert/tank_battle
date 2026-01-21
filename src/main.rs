@@ -137,6 +137,7 @@ fn register_game_systems(app: &mut App) {
         .add_systems(Update, bullet::bullet_despawn_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, bullet::bullet_commander_collision_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::handle_effect_events.run_if(in_state(GameState::Playing)))
         .add_systems(Update, laser::player_laser_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, handle_powerup_collision.run_if(in_state(GameState::Playing)))

@@ -583,3 +583,90 @@ pub fn handle_effect_events(
         }
     }
 }
+
+/// 司令官与敌方子弹碰撞检测系统
+/// 使用简单的 AABB 碰撞检测
+pub fn bullet_commander_collision_system(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
+    mut effect_events: MessageWriter<EffectEvent>,
+    asset_server: Res<AssetServer>,
+    bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
+    commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
+    mut commander_life: ResMut<crate::resources::CommanderLife>,
+) {
+    for event in collision_events.read() {
+        if let CollisionEvent::Started(e1, e2, _) = event {
+            // 判断是否是子弹与司令官的碰撞
+            let (bullet_entity, commander_entity) = if bullets.get(*e1).is_ok() && commanders.get(*e2).is_ok() {
+                (*e1, *e2)
+            } else if bullets.get(*e2).is_ok() && commanders.get(*e1).is_ok() {
+                (*e2, *e1)
+            } else {
+                continue;
+            };
+
+            // 获取子弹信息
+            let bullet_owner_info = match bullets.get(bullet_entity) {
+                Ok((_, owner, _)) => owner,
+                Err(_) => continue,
+            };
+
+            // 只处理敌方子弹击中司令官的情况
+            if bullet_owner_info.owner_type != TankType::Enemy {
+                continue;
+            }
+
+            // 获取司令官位置
+            let commander_transform = match commanders.get(commander_entity) {
+                Ok((_, transform)) => transform,
+                Err(_) => continue,
+            };
+
+            // 使用 AABB 碰撞检测验证碰撞
+            let bullet_transform = match bullets.get(bullet_entity) {
+                Ok((_, _, transform)) => transform,
+                Err(_) => continue,
+            };
+
+            // 简单的 AABB 碰撞检测
+            let commander_half_size = Vec2::new(crate::constants::COMMANDER_WIDTH / 2.0, crate::constants::COMMANDER_HEIGHT / 2.0);
+            let bullet_half_size = Vec2::new(30.0, 20.0); // 子弹尺寸的一半
+
+            let commander_min = commander_transform.translation.truncate() - commander_half_size;
+            let commander_max = commander_transform.translation.truncate() + commander_half_size;
+            let bullet_min = bullet_transform.translation.truncate() - bullet_half_size;
+            let bullet_max = bullet_transform.translation.truncate() + bullet_half_size;
+
+            if commander_min.x <= bullet_max.x
+                && commander_max.x >= bullet_min.x
+                && commander_min.y <= bullet_max.y
+                && commander_max.y >= bullet_min.y
+            {
+                // 碰撞确认，播放受击音效
+                let hit_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
+                commands.spawn(AudioPlayer::new(hit_sound));
+
+                // 发送火花特效事件
+                effect_events.write(EffectEvent::Spark {
+                    position: bullet_transform.translation,
+                });
+
+                // 减少司令官生命值
+                if commander_life.life_red_bar > 0 {
+                    commander_life.life_red_bar -= 1;
+                }
+
+                // 检查是否是致命伤（生命值归零）
+                if commander_life.life_red_bar == 0 {
+                    // 播放死亡音效
+                    let death_sound: Handle<AudioSource> = asset_server.load("commander_death.ogg");
+                    commands.spawn(AudioPlayer::new(death_sound));
+                }
+
+                // 标记子弹销毁
+                commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+            }
+        }
+    }
+}
