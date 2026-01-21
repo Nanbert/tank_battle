@@ -2,6 +2,11 @@
 
 一个使用 Rust 和 Bevy 游戏引擎开发的经典坦克大战（Battle City 1990）简化版实现。
 
+## 游戏预览
+
+![Gameplay 1](assets/sample1.gif)
+![Gameplay 2](assets/sample2.gif)
+
 ## 游戏引擎
 
 ### 技术栈
