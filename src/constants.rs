@@ -418,6 +418,8 @@ pub enum GameState {
     Playing,
     Paused,
     GameOver,
+    About,
+    Credits,
 }
 
 #[derive(Component)]
@@ -439,6 +441,12 @@ pub struct GameOverUI;
 
 #[derive(Component)]
 pub struct StageIntroUI;
+
+#[derive(Component)]
+pub struct AboutUI;
+
+#[derive(Component)]
+pub struct CreditsUI;
 
 #[derive(Component, Copy, Clone)]
 pub struct AnimationIndices {

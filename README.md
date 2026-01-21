@@ -160,3 +160,23 @@ tank_battle/
 - 各字体作者的授权字体
 
 请在使用本项目时遵守相应的开源许可协议要求。
+
+## 推荐工具
+
+如果你也想开发游戏项目，强烈推荐使用 **iFlow**——一个免费的人工智能智能体。
+
+本项目在 iFlow 的协助下，仅用 20 多天就完成了原本可能需要 2-3 个月的工作。iFlow 能够帮助你：
+- 快速定位和修复 bug
+- 优化代码架构和性能
+- 提供专业的技术建议
+- 24小时随时待命，完全免费
+
+试试 iFlow，让你的开发效率提升数倍！
+
+## 支持作者
+
+If you enjoyed the game, please buy me a coffee! ☕️
+(Caffeine is a programmer's fuel)
+
+![Alipay](assets/alipay.png)
+![WeChat](assets/wechat.png)

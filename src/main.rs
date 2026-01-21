@@ -108,6 +108,12 @@ fn register_game_systems(app: &mut App) {
         .add_systems(OnExit(GameState::Paused), ( despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), spawn_game_over_ui)
         .add_systems(OnExit(GameState::GameOver), (despawn_game_over_ui, cleanup_playing_entities))
+        .add_systems(OnEnter(GameState::About), (cleanup_start_screen_ui, spawn_about_screen).chain())
+        .add_systems(OnExit(GameState::About), (despawn_about_screen, spawn_start_screen).chain())
+        .add_systems(Update, handle_about_input.run_if(in_state(GameState::About)))
+        .add_systems(OnEnter(GameState::Credits), (cleanup_start_screen_ui, spawn_credits_screen).chain())
+        .add_systems(OnExit(GameState::Credits), (despawn_credits_screen, spawn_start_screen).chain())
+        .add_systems(Update, handle_credits_input.run_if(in_state(GameState::Credits)))
         .add_systems(Startup, setup)
         .add_systems(Update, (move_enemy_tanks).chain().run_if(in_state(GameState::Playing)))
         .add_systems(Update, enemy_spawn_system.run_if(in_state(GameState::Playing)))
@@ -292,6 +298,34 @@ fn spawn_start_screen_title(
         MenuOption { index: 1 },
     ));
 
+    // About 选项
+    commands.spawn((
+        StartScreenUI,
+        Text2d("About".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
+        Transform::from_xyz(0.0, -150.0, 1.0),
+        MenuOption { index: 2 },
+    ));
+
+    // Credits 选项
+    commands.spawn((
+        StartScreenUI,
+        Text2d("Credits".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
+        Transform::from_xyz(0.0, -250.0, 1.0),
+        MenuOption { index: 3 },
+    ));
+
     // EXIT 选项
     commands.spawn((
         StartScreenUI,
@@ -302,8 +336,8 @@ fn spawn_start_screen_title(
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
-        Transform::from_xyz(0.0, -150.0, 1.0),
-        MenuOption { index: 2 },
+        Transform::from_xyz(0.0, -350.0, 1.0),
+        MenuOption { index: 4 },
     ));
 }
 
@@ -371,6 +405,276 @@ fn spawn_start_screen(
 
     // 添加操作说明
     spawn_start_screen_instructions(&mut commands, &custom_font);
+}
+
+fn spawn_about_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    // 加载自定义字体
+    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
+
+    // 添加白色背景覆盖
+    commands.spawn((
+        AboutUI,
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
+
+    // 添加标题
+    commands.spawn((
+        AboutUI,
+        Text2d("About".to_string()),
+        TextFont {
+            font_size: 70.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, 600.0, 1.0),
+    ));
+
+    // 添加个人图片占位符（你可以替换为实际图片路径）
+    // let profile_image: Handle<Image> = asset_server.load("path/to/your/image.png");
+    // commands.spawn((
+    //     AboutUI,
+    //     Sprite {
+    //         image: profile_image,
+    //         custom_size: Some(Vec2::new(200.0, 200.0)),
+    //         ..default()
+    //     },
+    //     Transform::from_xyz(0.0, 200.0, 1.0),
+    // ));
+
+    // 使用多行文本显示所有信息
+    let about_text = "Nanbert\n\n\
+        Email: 2726905171@qq.com\n\n\
+        Copyright © 2025 Nanbert\n\
+        All rights reserved.\n\n\
+        This is a tank battle game inspired by Battle City 1990.\n\
+        Built with Rust and Bevy game engine.\n\n\
+        Special thanks to iFlow for invaluable assistance.\n\n\
+        License: MIT License";
+
+    commands.spawn((
+        AboutUI,
+        Text2d(about_text.to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextLayout::new_with_justify(bevy::text::Justify::Center),
+        Transform::from_xyz(0.0, 350.0, 1.0),
+    ));
+
+    // 添加收款码文案
+    let support_text = "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)";
+
+    commands.spawn((
+        AboutUI,
+        Text2d(support_text.to_string()),
+        TextFont {
+            font_size: 22.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextLayout::new_with_justify(bevy::text::Justify::Center),
+        Transform::from_xyz(0.0, 50.0, 1.0),
+    ));
+
+    // 加载收款码图片
+    let alipay_image: Handle<Image> = asset_server.load("alipay.png");
+    let wechat_image: Handle<Image> = asset_server.load("wechat.png");
+
+    // 图片大小统一为 400x400 像素
+    let qr_size = 400.0;
+
+    // 支付宝收款码
+    commands.spawn((
+        AboutUI,
+        Sprite {
+            image: alipay_image,
+            custom_size: Some(Vec2::new(qr_size, qr_size)),
+            ..default()
+        },
+        Transform::from_xyz(-250.0, -250.0, 1.0),
+    ));
+
+    // 支付宝标签
+    commands.spawn((
+        AboutUI,
+        Text2d("Alipay".to_string()),
+        TextFont {
+            font_size: 18.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(-250.0, -470.0, 1.0),
+    ));
+
+    // 微信收款码
+    commands.spawn((
+        AboutUI,
+        Sprite {
+            image: wechat_image,
+            custom_size: Some(Vec2::new(qr_size, qr_size)),
+            ..default()
+        },
+        Transform::from_xyz(250.0, -250.0, 1.0),
+    ));
+
+    // 微信标签
+    commands.spawn((
+        AboutUI,
+        Text2d("WeChat".to_string()),
+        TextFont {
+            font_size: 18.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(250.0, -470.0, 1.0),
+    ));
+
+    // 添加返回提示
+    commands.spawn((
+        AboutUI,
+        Text2d("Press SPACE to return".to_string()),
+        TextFont {
+            font_size: 22.0,
+            font: custom_font,
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, -550.0, 1.0),
+    ));
+}
+
+fn despawn_about_screen(
+    mut commands: Commands,
+    query: Query<Entity, With<AboutUI>>,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn handle_about_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    // Space 键返回开始界面
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::StartScreen);
+    }
+}
+
+fn spawn_credits_screen(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    // 加载自定义字体
+    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
+
+    // 添加白色背景覆盖
+    commands.spawn((
+        CreditsUI,
+        Sprite {
+            color: Color::srgb(1.0, 1.0, 1.0),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 0.0),
+    ));
+
+    // 添加标题
+    commands.spawn((
+        CreditsUI,
+        Text2d("Credits".to_string()),
+        TextFont {
+            font_size: 80.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, 500.0, 1.0),
+    ));
+
+    // 使用多行文本显示素材来源
+    let credits_text = "Asset Credits\n\n\
+        OpenGameArt.org:\n\
+        • Bubbles by HorrorPen (CC-BY 3.0)\n\
+        • Explosion by Sinestesia (CC0 1.0)\n\
+        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n\
+        • Enemy Born by JoesAlotofthings (CC-BY 4.0)\n\
+        • Player/Enemy Tanks by irmirx (CC-BY 3.0)\n\
+        • Smoke by Skorpio (CC-BY 3.0)\n\
+        • Steel Hit by Sinestesia (CC0 1.0)\n\
+        • Bullets by Wenrexa (CC0 1.0)\n\n\
+        通义千问 (AI Generated):\n\
+        • Background, Music Notes (CC0 1.0)\n\
+        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n\
+        • Power-ups (10 types) (CC0 1.0)\n\
+        • Avatars & Commander (CC0 1.0)\n\n\
+        Fonts:\n\
+        • ChelaOne by Latinotype\n\
+        • Corben\n\
+        • Matemasie\n\
+        • LiuHuanKaTongShouShu by 刘欢\n\n\
+        See COPYRIGHT file for full details.";
+
+    commands.spawn((
+        CreditsUI,
+        Text2d(credits_text.to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: custom_font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextLayout::new_with_justify(bevy::text::Justify::Left),
+        Transform::from_xyz(-400.0, 100.0, 1.0),
+    ));
+
+    // 添加返回提示
+    commands.spawn((
+        CreditsUI,
+        Text2d("Press SPACE to return".to_string()),
+        TextFont {
+            font_size: 30.0,
+            font: custom_font,
+            ..default()
+        },
+        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        Transform::from_xyz(0.0, -500.0, 1.0),
+    ));
+}
+
+fn despawn_credits_screen(
+    mut commands: Commands,
+    query: Query<Entity, With<CreditsUI>>,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
+fn handle_credits_input(
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    // Space 键返回开始界面
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::StartScreen);
+    }
 }
 
 
@@ -1341,12 +1645,12 @@ fn handle_start_screen_input(
         menu_selection.selected_index = if menu_selection.selected_index > 0 {
             menu_selection.selected_index - 1
         } else {
-            2
+            4
         };
     }
     // S 键向下选择
     if keyboard_input.just_pressed(KeyCode::KeyS) {
-        menu_selection.selected_index = (menu_selection.selected_index + 1) % 3;
+        menu_selection.selected_index = (menu_selection.selected_index + 1) % 5;
     }
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -1359,7 +1663,13 @@ fn handle_start_screen_input(
                 *game_mode = GameMode::TwoPlayers;
                 next_state.set(GameState::FadingOut); // 2 Player
             }
-            2 => std::process::exit(0), // EXIT
+            2 => {
+                next_state.set(GameState::About); // About
+            }
+            3 => {
+                next_state.set(GameState::Credits); // Credits
+            }
+            4 => std::process::exit(0), // EXIT
             _ => {}
         }
     }
@@ -4087,6 +4397,17 @@ fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOv
         commands.entity(entity).despawn();
     }
 }
+
+// 清理开始界面的UI元素
+fn cleanup_start_screen_ui(
+    mut commands: Commands,
+    start_screen_ui: Query<Entity, With<StartScreenUI>>,
+) {
+    for entity in start_screen_ui.iter() {
+        commands.entity(entity).despawn();
+    }
+}
+
 // 清理游戏过程中的所有entity
 fn cleanup_playing_entities(
     mut commands: Commands,
