@@ -6,7 +6,7 @@ use crate::resources::PlayerStats;
 
 // 字体路径常量
 pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
-pub const FONT_EN: &str = "font/Matemasie-Regular.ttf";
+pub const FONT_EN: &str = "font/ChelaOne-Regular-2.ttf";
 
 // 碰撞分组常量
 pub const SEA_GROUP: Group = Group::GROUP_2;

@@ -306,14 +306,16 @@ fn spawn_start_screen_title(
     ));
 }
 
-fn spawn_start_screen_instructions(commands: &mut Commands) {
+fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Font>) {
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
         Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall | K to dash | L to laser".to_string()),
         TextFont {
             font_size: 24.0,
-            ..default()
+            font: font.clone(),
+            font_smoothing: default(),
+            line_height: default(),
         },
         TextColor(Color::srgb(0.0, 0.5, 1.0)), // 蓝色
         Transform::from_xyz(0.0, -450.0, 1.0),
@@ -325,7 +327,9 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
         Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser".to_string()),
         TextFont {
             font_size: 24.0,
-            ..default()
+            font: font.clone(),
+            font_smoothing: default(),
+            line_height: default(),
         },
         TextColor(Color::srgb(1.0, 0.0, 0.0)), // 红色
         Transform::from_xyz(0.0, -480.0, 1.0),
@@ -337,7 +341,9 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
         Text2d("W/S to select | SPACE to select/pause | ESC to exit".to_string()),
         TextFont {
             font_size: 20.0,
-            ..default()
+            font: font.clone(),
+            font_smoothing: default(),
+            line_height: default(),
         },
         TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
         Transform::from_xyz(0.0, -510.0, 1.0),
@@ -360,10 +366,10 @@ fn spawn_start_screen(
     let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
 
     // 添加标题文字
-    spawn_start_screen_title(&mut commands, custom_font);
+    spawn_start_screen_title(&mut commands, custom_font.clone());
 
     // 添加操作说明
-    spawn_start_screen_instructions(&mut commands);
+    spawn_start_screen_instructions(&mut commands, &custom_font);
 }
 
 
@@ -1186,7 +1192,7 @@ fn spawn_game_entities_if_needed(
 
                     .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
 
-                    .insert(TargetRotation { angle: 180.0_f32.to_radians() })
+                    .insert(TargetRotation { angle: 0.0_f32.to_radians() })
 
                     .insert(Sprite {
                         image: player2_texture,
@@ -1589,7 +1595,7 @@ pub fn spawn_explosion(
         },
         Transform::from_translation(position),
         explosion_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.02, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(0.01, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 
