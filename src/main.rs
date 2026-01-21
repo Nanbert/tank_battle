@@ -192,13 +192,17 @@ fn main() {
 fn load_animation_frames(
     asset_server: &Res<AssetServer>,
     animation_frames: &mut ResMut<StartAnimationFrames>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    // 预加载所有 70 帧动画，避免播放时按需加载导致闪烁
-    for i in 0..70 {
-        let frame_num = format!("{:04}", i + 1);
-        let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
-        animation_frames.frames.push(texture);
-    }
+    // 使用精灵图方式加载背景动画（15帧，已调整为窗口大小）
+    let background_texture: Handle<Image> = asset_server.load("background/background_sprite_15frames.png");
+    let background_tile_size = UVec2::new(2060, 1300); // 每帧的尺寸（窗口大小）
+    let background_texture_atlas = TextureAtlasLayout::from_grid(background_tile_size, 15, 1, None, None);
+    let background_texture_atlas_layout = texture_atlas_layouts.add(background_texture_atlas);
+
+    // 将 TextureAtlasLayout 存储到资源中
+    animation_frames.texture_atlas_layout = Some(background_texture_atlas_layout);
+    animation_frames.texture = background_texture;
 }
 
 fn get_animation_frame(
@@ -222,12 +226,21 @@ fn spawn_start_screen_background(
     commands: &mut Commands,
     animation_frames: &ResMut<StartAnimationFrames>,
 ) {
-    let animation_indices = AnimationIndices { first: 0, last: 69 };
+    let animation_indices = AnimationIndices { first: 0, last: 14 };
+    let texture_atlas_layout = animation_frames.texture_atlas_layout.as_ref().unwrap();
 
     commands.spawn((
         StartScreenUI,
-        Sprite::from_image(animation_frames.frames[0].clone()),
+        Sprite {
+            image: animation_frames.texture.clone(),
+            texture_atlas: Some(TextureAtlas {
+                layout: texture_atlas_layout.clone(),
+                index: animation_indices.first,
+            }),
+            ..default()
+        },
         Transform::from_xyz(0.0, 0.0, 0.0),
+        GlobalTransform::default(),
         animation_indices,
         AnimationTimer(Timer::from_seconds(0.083, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
@@ -302,14 +315,14 @@ fn spawn_start_screen_instructions(commands: &mut Commands) {
             font_size: 24.0,
             ..default()
         },
-        TextColor(Color::srgb(0.0, 1.0, 0.8)), // 蓝绿色
+        TextColor(Color::srgb(0.0, 0.5, 1.0)), // 蓝色
         Transform::from_xyz(0.0, -450.0, 1.0),
     ));
 
     // 玩家2操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | Numpad1 to shoot | Numpad4 to recall | Numpad2 to dash | Numpad3 to laser".to_string()),
+        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser".to_string()),
         TextFont {
             font_size: 24.0,
             ..default()
@@ -335,13 +348,10 @@ fn spawn_start_screen(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut animation_frames: ResMut<StartAnimationFrames>,
-    mut clear_color: ResMut<ClearColor>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    // 设置背景色为蓝色
-    clear_color.0 = START_SCREEN_BACKGROUND_COLOR;
-
     // 加载所有动画帧
-    load_animation_frames(&asset_server, &mut animation_frames);
+    load_animation_frames(&asset_server, &mut animation_frames, &mut texture_atlas_layouts);
 
     // 添加动画背景
     spawn_start_screen_background(&mut commands, &animation_frames);
@@ -1351,8 +1361,7 @@ fn handle_start_screen_input(
 fn animate_start_screen(
     time: Res<Time>,
     mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, &mut CurrentAnimationFrame), With<StartScreenUI>>,
-    asset_server: Res<AssetServer>,
-    mut animation_frames: ResMut<StartAnimationFrames>,
+    animation_frames: Res<StartAnimationFrames>,
 ) {
     for (indices, mut timer, mut sprite, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -1365,7 +1374,11 @@ fn animate_start_screen(
                 current + 1
             };
             current_frame.0 = next_index;
-            *sprite = Sprite::from_image(get_animation_frame(next_index, &asset_server, &mut animation_frames));
+
+            // 更新 texture_atlas 的 index
+            if let Some(texture_atlas) = &mut sprite.texture_atlas {
+                texture_atlas.index = next_index;
+            }
         }
     }
 }
