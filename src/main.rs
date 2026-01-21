@@ -311,7 +311,7 @@ fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Font>)
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | B to recall | K to dash | L to laser".to_string()),
+        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser".to_string()),
         TextFont {
             font_size: 24.0,
             font: font.clone(),
@@ -481,7 +481,7 @@ fn spawn_map_terrain(
                     ));
                 }
                 TerrainType::Sea => {
-                    let sea_texture: Handle<Image> = asset_server.load("sea_sheet.png");
+                    let sea_texture: Handle<Image> = asset_server.load(TEXTURE_SEA);
                     let sea_tile_size = UVec2::new(100, 100);
                     let sea_texture_atlas = TextureAtlasLayout::from_grid(sea_tile_size, 3, 1, None, None);
                     let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas);
@@ -507,7 +507,7 @@ fn spawn_map_terrain(
                     ));
                 }
                 TerrainType::Brick => {
-                    let brick_texture: Handle<Image> = asset_server.load("brick.png");
+                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
                     // 生成4块砖块组成100x100的网格
                     let offset = 25.0;
                     let positions = [
@@ -534,7 +534,7 @@ fn spawn_map_terrain(
                     }
                 }
                 TerrainType::Steel => {
-                    let steel_texture: Handle<Image> = asset_server.load("steel.png");
+                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
                     // 生成4块钢铁组成100x100的网格
                     let offset = 25.0;
                     let positions = [
@@ -561,7 +561,7 @@ fn spawn_map_terrain(
                     }
                 }
                 TerrainType::Barrier => {
-                    let barrier_texture: Handle<Image> = asset_server.load("barrier.png");
+                    let barrier_texture: Handle<Image> = asset_server.load(TEXTURE_BARRIER);
                     commands.spawn((
                         Barrier,
                         PlayingEntity,
@@ -594,7 +594,7 @@ fn spawn_commander(
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    let commander_texture: Handle<Image> = asset_server.load("commander.png");
+    let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(140, 120);
     let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
@@ -605,7 +605,7 @@ fn spawn_commander(
     let commander_x = 0.0;
 
     // 创建包围司令官的砖块堡垒墙
-    let brick_texture: Handle<Image> = asset_server.load("brick.png");
+    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
     let brick_size = 50.0; // 每块砖的大小
 
     // 司令官边界
@@ -693,7 +693,7 @@ fn spawn_commander(
     ));
 
     // 创建音乐动画精灵（一直播放）
-    let music_texture: Handle<Image> = asset_server.load("music_note_sheet.png");
+    let music_texture: Handle<Image> = asset_server.load(TEXTURE_MUSIC_NOTE);
     let music_tile_size = UVec2::new(140, 120);
     let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
     let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
@@ -766,7 +766,7 @@ pub fn spawn_enemy_born_animation(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) -> Entity {
-    let enemy_born_texture: Handle<Image> = asset_server.load("enemy_born.png");
+    let enemy_born_texture: Handle<Image> = asset_server.load(TEXTURE_ENEMY_BORN);
     let enemy_born_tile_size = UVec2::new(192, 192);
     let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
     let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
@@ -916,7 +916,7 @@ fn spawn_ui_element_from_config(
             ));
         }
         UIElementType::PlayerAvatar => {
-            let player_avatar_texture: Handle<Image> = asset_server.load("player.png");
+            let player_avatar_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR);
             let player_avatar_tile_size = UVec2::new(160, 147);
             let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
             let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
@@ -1078,8 +1078,8 @@ fn spawn_game_entities_if_needed(
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
 
     // 加载玩家坦克纹理和创建精灵图
-    let player1_texture = asset_server.load("player_tank1_sprite.png");
-    let player2_texture = asset_server.load("player_tank2_sprite.png");
+    let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
+    let player2_texture = asset_server.load(TEXTURE_PLAYER_TANK2);
     let player_tile_size = UVec2::new(293, 328);
     let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
@@ -1576,7 +1576,7 @@ pub fn spawn_explosion(
     position: Vec3,
 ) {
     // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
-    let explosion_texture: Handle<Image> = asset_server.load("explosion.png");
+    let explosion_texture: Handle<Image> = asset_server.load(TEXTURE_EXPLOSION);
     let explosion_tile_size = UVec2::new(512, 512);
     let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
     let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
@@ -1601,7 +1601,7 @@ pub fn spawn_explosion(
     ));
 
     // 播放爆炸音效
-    let explosion_sound: Handle<AudioSource> = asset_server.load("explosion_sound.ogg");
+    let explosion_sound: Handle<AudioSource> = asset_server.load(SOUND_EXPLOSION);
     commands.spawn(AudioPlayer::new(explosion_sound));
 }
 
@@ -1635,7 +1635,7 @@ fn spawn_forest_fire(
     ));
 
     // 播放树林燃烧音效
-    let burn_tree_sound: Handle<AudioSource> = asset_server.load("burn_tree.ogg");
+    let burn_tree_sound: Handle<AudioSource> = asset_server.load(SOUND_BURN_TREE);
     commands.spawn(AudioPlayer::new(burn_tree_sound));
 }
 
@@ -1646,7 +1646,7 @@ pub fn spawn_spark(
     position: Vec3,
 ) {
     // 加载打击效果图片（4x4，共16帧，每帧1024x1024）
-    let spark_texture: Handle<Image> = asset_server.load("steel_hit.png");
+    let spark_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL_HIT);
     let spark_tile_size = UVec2::new(1024, 1024);
     let spark_texture_atlas = TextureAtlasLayout::from_grid(spark_tile_size, 4, 4, None, None);
     let spark_texture_atlas_layout = texture_atlas_layouts.add(spark_texture_atlas);
@@ -1698,7 +1698,7 @@ fn handle_powerup_collision(
             let powerup_entity = powerup_entity_to_despawn.unwrap();
 
             // 播放道具音效
-            let powerup_sound: Handle<AudioSource> = asset_server.load("powerup_sound.ogg");
+            let powerup_sound: Handle<AudioSource> = asset_server.load(SOUND_POWERUP);
             commands.spawn(AudioPlayer::new(powerup_sound));
             commands.entity(powerup_entity).despawn();
 
@@ -2048,7 +2048,7 @@ fn animate_player_avatar(
     for (mut timer, mut sprite, indices, mut current_frame, player_dead) in &mut query {
         // 如果玩家已死亡，切换到死亡图片并停止动画
         if player_dead.is_some() {
-            let dead_texture: Handle<Image> = asset_server.load("player1_death.png"); // 暂时使用相同的图片，后续可以添加玩家2的死亡图片
+            let dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_DEATH); // 暂时使用相同的图片，后续可以添加玩家2的死亡图片
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -2057,7 +2057,7 @@ fn animate_player_avatar(
 
         // 如果Commander已死亡，切换到commander死亡图片并停止动画
         if commander_dead {
-            let dead_texture: Handle<Image> = asset_server.load("player1_commander_dead.png"); // 暂时使用相同的图片，后续可以添加玩家2的commander死亡图片
+            let dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD); // 暂时使用相同的图片，后续可以添加玩家2的commander死亡图片
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
@@ -2094,7 +2094,7 @@ fn animate_commander(
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         // 如果Commander已死亡，切换到死亡图片并停止动画
         if commander_life.life_red_bar == 0 {
-            let dead_texture: Handle<Image> = asset_server.load("commander_dead.png");
+            let dead_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER_DEAD);
             sprite.image = dead_texture;
             sprite.texture_atlas = None;
             sprite.custom_size = Some(Vec2::new(COMMANDER_WIDTH, COMMANDER_HEIGHT));
@@ -2181,7 +2181,7 @@ fn animate_laser(
                 // 动画播放完毕，销毁激光实体和所有标记的实体
                 for (despawn_entity, transform) in despawn_entities.iter() {
                     // 在被销毁实体的位置播放烟雾效果
-                    let smoke_texture: Handle<Image> = asset_server.load("smoke_sprite.png");
+                    let smoke_texture: Handle<Image> = asset_server.load(TEXTURE_SMOKE);
                     let smoke_tile_size = UVec2::new(100, 100);
                     let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
                     let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);
@@ -2489,7 +2489,7 @@ fn play_tree_ambience(
     if is_near_forest {
         // 如果在树林附近但没有播放音效，则播放
         if ambience_players.is_empty() {
-            let tree_ambience_sound: Handle<AudioSource> = asset_server.load("tree_ambience.ogg");
+            let tree_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_TREE_AMBIENCE);
             commands.spawn((
                 AudioPlayer::new(tree_ambience_sound),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(0.8)),
@@ -2556,10 +2556,10 @@ fn play_commander_music(
         if ambience_players.is_empty() {
             // 随机选择一段音乐
             let music_files = [
-                "commander_music_000.ogg",
-                "commander_music_001.ogg",
-                "commander_music_002.ogg",
-                "commander_music_003.ogg",
+                SOUND_COMMANDER_MUSIC_000,
+                SOUND_COMMANDER_MUSIC_001,
+                SOUND_COMMANDER_MUSIC_002,
+                SOUND_COMMANDER_MUSIC_003,
             ];
             let mut rng = rand::rng();
             let selected_music = music_files[rng.random_range(0..music_files.len())];
@@ -2755,8 +2755,8 @@ fn handle_recall_input(
 
         // 根据玩家索引选择不同的回城键
         let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
-            // 玩家1使用 B 键回城
-            keyboard_input.pressed(KeyCode::KeyB)
+            // 玩家1使用 I 键回城
+            keyboard_input.pressed(KeyCode::KeyI)
         } else {
             // 玩家2使用小键盘4键回城
             keyboard_input.pressed(KeyCode::Numpad4)
@@ -2805,7 +2805,7 @@ fn update_recall_timers(
             && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
             // 检查是否按住回城键
             let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
-                keyboard_input.pressed(KeyCode::KeyB)
+                keyboard_input.pressed(KeyCode::KeyI)
             } else {
                 keyboard_input.pressed(KeyCode::Numpad4)
             };
@@ -3205,7 +3205,7 @@ fn handle_brick_collision(
     // 获取 brick 位置用于生成效果
     if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
         // 播放砖块被击中的音效
-        let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
+        let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
         commands.spawn((
             AudioPlayer::new(brick_hit_sound),
             PlaybackSettings::ONCE,
@@ -4202,7 +4202,7 @@ fn play_sea_ambience(
     if is_near_sea {
         // 如果在海附近但没有播放音效，则播放
         if ambience_players.is_empty() {
-            let sea_ambience_sound: Handle<AudioSource> = asset_server.load("sea_ambience.ogg");
+            let sea_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_SEA_AMBIENCE);
             commands.spawn((
                 AudioPlayer::new(sea_ambience_sound),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(0.3)),
@@ -4284,7 +4284,7 @@ fn enemy_spawn_system(
     
                     // 加载气泡纹理并缩放到 100x100
     
-                                        let bubble_texture: Handle<Image> = asset_server.load("BubbleBlue.png");
+                                        let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
     
                                         
     

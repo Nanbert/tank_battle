@@ -25,8 +25,8 @@ pub fn spawn_laser(
 ) -> Entity {
     // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
     let laser_texture: Handle<Image> = match params.owner_type {
-        TankType::Player1 => asset_server.load("texture_laser_blue.png"),
-        TankType::Player2 => asset_server.load("texture_laser_red.png"),
+        TankType::Player1 => asset_server.load(TEXTURE_LASER_BLUE),
+        TankType::Player2 => asset_server.load(TEXTURE_LASER_RED),
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(512, 683);
@@ -155,7 +155,7 @@ pub fn player_laser_system(
                 });
 
                 // 播放蓄力音效并添加标记
-                let charge_sound: Handle<AudioSource> = asset_server.load("laser_charge.ogg");
+                let charge_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER_CHARGE);
                 commands.spawn((
                     AudioPlayer::new(charge_sound),
                     LaserChargeSound,
@@ -216,7 +216,7 @@ pub fn player_laser_system(
                                 );
 
                                 // 播放激光音效
-                                let laser_sound: Handle<AudioSource> = asset_server.load("laser.ogg");
+                                let laser_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER);
                                 commands.spawn(AudioPlayer::new(laser_sound));
 
                                 // 立刻应用后坐力：向后移动 0.3 个身位

@@ -335,7 +335,7 @@ pub fn bullet_terrain_collision_system(
             } else if bricks.get(terrain_entity).is_ok() {
                 // 子弹与砖块碰撞
                 // 播放砖块击中音效
-                let brick_hit_sound: Handle<AudioSource> = asset_server.load("brick_hit.ogg");
+                let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
                 commands.spawn(AudioPlayer::new(brick_hit_sound));
 
                 // 发送火花特效事件
@@ -353,7 +353,7 @@ pub fn bullet_terrain_collision_system(
                     if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.penetrate {
                             // 播放金属破碎音效
-                            let metal_crash_sound: Handle<AudioSource> = asset_server.load("metal_crash.ogg");
+                            let metal_crash_sound: Handle<AudioSource> = asset_server.load(SOUND_METAL_CRASH);
                             commands.spawn(AudioPlayer::new(metal_crash_sound));
 
                             // 发送火花特效事件
@@ -366,7 +366,7 @@ pub fn bullet_terrain_collision_system(
                             commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
-                            let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
+                            let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
                             commands.spawn(AudioPlayer::new(hit_sound));
 
                             // 发送火花特效事件
@@ -380,7 +380,7 @@ pub fn bullet_terrain_collision_system(
                     }
                 } else {
                     // 敌方子弹，只播放击中音效并标记子弹销毁
-                    let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
+                    let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
                     commands.spawn(AudioPlayer::new(hit_sound));
 
                     // 发送火花特效事件
@@ -465,7 +465,7 @@ pub fn bullet_tank_collision_system(
 
                         // 敌方子弹击中玩家坦克
                         // 播放中弹音效
-                        let hit_sound: Handle<AudioSource> = asset_server.load("hit_sound.ogg");
+                        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
                         commands.spawn(AudioPlayer::new(hit_sound));
 
                         // 发送火花特效事件
@@ -644,7 +644,7 @@ pub fn bullet_commander_collision_system(
                 && commander_max.y >= bullet_min.y
             {
                 // 碰撞确认，播放受击音效
-                let hit_sound: Handle<AudioSource> = asset_server.load("commander_get_shot.ogg");
+                let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_GET_SHOT);
                 commands.spawn(AudioPlayer::new(hit_sound));
 
                 // 发送火花特效事件
@@ -660,7 +660,7 @@ pub fn bullet_commander_collision_system(
                 // 检查是否是致命伤（生命值归零）
                 if commander_life.life_red_bar == 0 {
                     // 播放死亡音效
-                    let death_sound: Handle<AudioSource> = asset_server.load("commander_death.ogg");
+                    let death_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_DEATH);
                     commands.spawn(AudioPlayer::new(death_sound));
                 }
 

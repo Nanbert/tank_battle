@@ -8,6 +8,51 @@ use crate::resources::PlayerStats;
 pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
 pub const FONT_EN: &str = "font/ChelaOne-Regular-2.ttf";
 
+// 音频文件路径常量
+pub const SOUND_BRICK_HIT: &str = "music/brick_hit.ogg";
+pub const SOUND_BURN_TREE: &str = "music/burn_tree.ogg";
+pub const SOUND_COMMANDER_DEATH: &str = "music/commander_death.ogg";
+pub const SOUND_COMMANDER_GET_SHOT: &str = "music/commander_get_shot.ogg";
+pub const SOUND_COMMANDER_MUSIC: &str = "music/commander_music.ogg";
+pub const SOUND_COMMANDER_MUSIC_000: &str = "music/commander_music_000.ogg";
+pub const SOUND_COMMANDER_MUSIC_001: &str = "music/commander_music_001.ogg";
+pub const SOUND_COMMANDER_MUSIC_002: &str = "music/commander_music_002.ogg";
+pub const SOUND_COMMANDER_MUSIC_003: &str = "music/commander_music_003.ogg";
+pub const SOUND_EXPLOSION: &str = "music/explosion_sound.ogg";
+pub const SOUND_HIT: &str = "music/hit_sound.ogg";
+pub const SOUND_LASER_CHARGE: &str = "music/laser_charge.ogg";
+pub const SOUND_LASER: &str = "music/laser.ogg";
+pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
+pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
+pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
+pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
+
+// 地图纹理路径常量
+pub const TEXTURE_BARRIER: &str = "maps/barrier.png";
+pub const TEXTURE_BRICK: &str = "maps/brick.png";
+pub const TEXTURE_SEA: &str = "maps/sea_sheet.png";
+pub const TEXTURE_STEEL: &str = "maps/steel.png";
+
+// 特效纹理路径常量
+pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
+pub const TEXTURE_ENEMY_BORN: &str = "effect/enemy_born.png";
+pub const TEXTURE_EXPLOSION: &str = "effect/explosion.png";
+pub const TEXTURE_MUSIC_NOTE: &str = "effect/music_note_sheet.png";
+pub const TEXTURE_SMOKE: &str = "effect/smoke_sprite.png";
+pub const TEXTURE_STEEL_HIT: &str = "effect/steel_hit.png";
+pub const TEXTURE_LASER_BLUE: &str = "effect/texture_laser_blue.png";
+pub const TEXTURE_LASER_RED: &str = "effect/texture_laser_red.png";
+pub const TEXTURE_LASER_RED_BACK: &str = "effect/texture_laser_red_back.png";
+
+// 角色纹理路径常量
+pub const TEXTURE_COMMANDER: &str = "texture/commander.png";
+pub const TEXTURE_COMMANDER_DEAD: &str = "texture/commander_dead.png";
+pub const TEXTURE_AVATAR: &str = "texture/avatar.png";
+pub const TEXTURE_PLAYER_TANK1: &str = "texture/player_tank1_sprite.png";
+pub const TEXTURE_PLAYER_TANK2: &str = "texture/player_tank2_sprite.png";
+pub const TEXTURE_AVATAR_DEATH: &str = "texture/avatar_death.png";
+pub const TEXTURE_AVATAR_COMMANDER_DEAD: &str = "texture/avatar_commander_dead.png";
+
 // 碰撞分组常量
 pub const SEA_GROUP: Group = Group::GROUP_2;
 
