@@ -1,46 +1,127 @@
 # 素材版权声明
 
 ## Bubbles (气泡)
-- **文件**: assets/BubbleBlue.png
+- **文件**: assets/effect/BubbleBlue.png
 - **来源**: https://opengameart.org/content/bubbles8-colors
 - **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
-- **作者**: OpenGameArt 社区
+- **作者**: HorrorPen
 - **说明**: 8种颜色的气泡素材，本游戏使用蓝色版本
 
 ## Explosion Effect (爆炸效果)
-- **文件**: assets/explosion_new.png
-- **来源**: https://opengameart.org/content/explode-effect
-- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
-- **作者**: knik1985
-- **发布日期**: 2019年8月3日
-- **说明**: 9帧爆炸动画效果，3x3布局，每帧341x341像素
+- **文件**: assets/effect/explosion.png
+- **来源**: https://opengameart.org/content/2d-explosion-animations-frame-by-frame
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: Sinestesia
+- **说明**: 爆炸动画效果，免费使用，无需署名
 
 ## Laser Effect (激光特效)
-- **文件**: assets/texture_laser.png
+- **文件**: assets/effect/texture_laser_blue.png, assets/effect/texture_laser_red.png, assets/effect/texture_laser_red_back.png
 - **来源**: https://opengameart.org/content/laser-effect-sheet
-- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
-- **作者**: OpenGameArt 社区
-- **说明**: 激光特效精灵图，3行4列布局，每帧512x683像素，共12帧
+- **许可**: CC-BY-SA 3.0/4.0 (Creative Commons Attribution-ShareAlike 3.0/4.0)
+- **作者**: netcake3
+- **说明**: 激光特效精灵图
 
 ## Enemy Born Animation (敌方坦克出生动画)
-- **文件**: assets/enemy_born.png
+- **文件**: assets/effect/enemy_born.png
 - **来源**: https://opengameart.org/content/alot-of-particles-flashburst-special-effect-alotofparticles15
-- **许可**: CC0 1.0 (Public Domain Dedication)
-- **作者**: OpenGameArt 社区
+- **许可**: CC-BY 4.0 (Creative Commons Attribution 4.0 International)
+- **作者**: JoesAlotofthings
 - **说明**: 粒子特效精灵图，4行5列布局，每帧192x192像素，共13帧
 
 ## Player Tank Sprites (玩家坦克纹理)
-- **文件**: assets/player_tank1_sprite.png, assets/player_tank2_sprite.png
-- **来源**: https://opengameart.org/content/mediumtanks
+- **文件**: assets/texture/player_tank1_sprite.png, assets/texture/player_tank2_sprite.png
+- **来源**: https://opengameart.org/content/top-down-vehicle
 - **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
-- **作者**: OpenGameArt 社区
-- **说明**: 中型坦克纹理，3帧动画，每帧100x88像素
+- **作者**: irmirx
+- **说明**: 玩家坦克纹理
+
+## Background (背景图片)
+- **文件**: assets/background/background_sprite_15frames.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 背景动画精灵图，任何人可以自由使用、修改和分发，无需署名
+
+## Music Note Sheet (音符特效)
+- **文件**: assets/effect/music_note_sheet.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 音符精灵图，任何人可以自由使用、修改和分发，无需署名
+
+## Smoke Sprite (烟雾特效)
+- **文件**: assets/effect/smoke_sprite.png
+- **来源**: https://opengameart.org/content/sci-fi-effects
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: Skorpio
+- **说明**: 烟雾精灵图
+
+## Steel Hit (钢铁击中特效)
+- **文件**: assets/effect/steel_hit.png
+- **来源**: https://opengameart.org/content/hit-animation-frame-by-frame
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: Sinestesia
+- **说明**: 击中动画效果，免费使用，无需署名
+
+## Enemy Tank (敌方坦克)
+- **文件**: assets/enemy_tank/enemy_tank1.png, assets/enemy_tank/enemy_tank1_1.png, assets/enemy_tank/enemy_tank1_sprite.png, assets/enemy_tank/enemy_tank2.png, assets/enemy_tank/enemy_tank_3.png, assets/enemy_tank/enemy_tank_4.png
+- **来源**: https://opengameart.org/content/top-down-painted-tanks
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: irmirx
+- **说明**: 敌方坦克纹理
+
+## ChelaOne Font (字体)
+- **文件**: assets/font/ChelaOne-Regular-2.ttf
+- **来源**: https://www.fonts.net.cn/font-36523326236.html
+- **作者**: Latinotype
+- **说明**: ChelaOne 字体
+
+## Corben Font (字体)
+- **文件**: assets/font/Corben-Regular-3.ttf
+- **来源**: https://www.fonts.net.cn/font-37273100087.html
+- **说明**: Corben 字体
+
+## LiuHuanKaTongShouShu Font (字体)
+- **文件**: assets/font/LiuHuanKaTongShouShu1.5-2.ttf
+- **来源**: https://www.hellofont.cn/font-detail?fontid=13481
+- **作者**: 刘欢
+- **说明**: 刘欢卡通手书字体
+
+## Matemasie Font (字体)
+- **文件**: assets/font/Matemasie-Regular.ttf
+- **来源**: http://maoken.com/english/24479.html
+- **说明**: Matemasie 字体
+
+## Maps (地图素材)
+- **文件**: assets/maps/barrier.png, assets/maps/brick.png, assets/maps/sea_sheet.png, assets/maps/steel.png, assets/maps/tree_fire_sheet.png, assets/maps/tree.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 地图元素素材，任何人可以自由使用、修改和分发，无需署名
+
+## Power Up (道具素材)
+- **文件**: assets/power_up/air_cushion.png, assets/power_up/fire_shell.png, assets/power_up/fire_speed.png, assets/power_up/hamburger.png, assets/power_up/penetrate.png, assets/power_up/protection.png, assets/power_up/repair.png, assets/power_up/shell.png, assets/power_up/speed_up.png, assets/power_up/track_chain.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 道具素材，任何人可以自由使用、修改和分发，无需署名
+
+## Avatar & Commander (头像和司令官纹理)
+- **文件**: assets/texture/avatar.png, assets/texture/avatar_death.png, assets/texture/avatar_commander_dead.png, assets/texture/commander.png, assets/texture/commander_dead.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 头像和司令官纹理，任何人可以自由使用、修改和分发，无需署名
+
+## Bullets (子弹素材)
+- **文件**: assets/texture/bullets/bullet_enemy.png, assets/texture/bullets/bullet_player1.png, assets/texture/bullets/bullet_player2.png
+- **来源**: https://opengameart.org/content/assets-free-laser-bullets-pack-2020
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: Wenrexa
+- **说明**: 激光子弹素材包，免费使用，无需署名
 
 ## 许可说明
 CC-BY 3.0 许可证要求：
 1. **署名** - 必须提供原作者的署名
 2. **非商业性使用** - 本素材可用于商业用途
 3. **相同方式共享** - 如果对本素材进行修改，必须以相同的许可协议发布
-
-## 其他素材
-[待补充其他素材的版权信息]

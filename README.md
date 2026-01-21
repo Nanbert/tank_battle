@@ -149,3 +149,14 @@ tank_battle/
 ├── Cargo.toml           # 项目依赖配置
 └── rust-toolchain.toml  # Rust 工具链配置
 ```
+
+## 版权声明
+
+本项目使用的游戏素材均遵循各自的开源许可协议。详细的素材版权信息请参阅 [COPYRIGHT](COPYRIGHT) 文件。
+
+主要素材来源包括：
+- OpenGameArt.org（CC-BY、CC0 等许可）
+- 通义千问生成的原创素材（CC0 公共领域）
+- 各字体作者的授权字体
+
+请在使用本项目时遵守相应的开源许可协议要求。
