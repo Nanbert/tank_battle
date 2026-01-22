@@ -23,6 +23,15 @@ check() {
 }
 
 package() {
+    # 调试信息：检查当前目录和文件
+    echo "=== DEBUG INFO ==="
+    echo "Current directory: $(pwd)"
+    echo "Files in current directory:"
+    ls -la
+    echo "Files in tank_battle directory:"
+    ls -la tank_battle/ 2>/dev/null || echo "tank_battle directory not found!"
+    echo "=================="
+
     # tank_battle 是一个目录，需要将里面的内容复制到正确位置
     install -Dm755 "tank_battle/tank_battle" "$pkgdir/usr/bin/tank_battle"
     install -dm755 "$pkgdir/usr/share/$pkgname"
