@@ -125,12 +125,12 @@ pub fn player_laser_system(
             // 删除进度条
             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                 if progress_bar.player_entity == _entity {
-                    commands.entity(progress_entity).despawn();
+                    let _ = commands.entity(progress_entity).try_despawn();
                 }
             }
             // 停止蓄力音效
             for (sound_entity, _) in sound_query.iter() {
-                commands.entity(sound_entity).despawn();
+                let _ = commands.entity(sound_entity).try_despawn();
             }
             continue;
         }
@@ -236,13 +236,13 @@ pub fn player_laser_system(
                             // 删除进度条
                             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                                 if progress_bar.player_entity == _entity {
-                                    commands.entity(progress_entity).despawn();
+                                    let _ = commands.entity(progress_entity).try_despawn();
                                 }
                             }
                             
                             // 停止蓄力音效
                             for (sound_entity, _) in sound_query.iter() {
-                                commands.entity(sound_entity).despawn();
+                                let _ = commands.entity(sound_entity).try_despawn();
                             }
                         }
                         break;
@@ -257,12 +257,12 @@ pub fn player_laser_system(
                     // 删除进度条
                     for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                         if progress_bar.player_entity == _entity {
-                            commands.entity(progress_entity).despawn();
+                            let _ = commands.entity(progress_entity).try_despawn();
                         }
                     }
                     // 停止蓄力音效
                     for (sound_entity, _) in sound_query.iter() {
-                        commands.entity(sound_entity).despawn();
+                        let _ = commands.entity(sound_entity).try_despawn();
                     }
                     break;
                 }

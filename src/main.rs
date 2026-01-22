@@ -594,7 +594,7 @@ fn despawn_about_screen(
     query: Query<Entity, With<AboutUI>>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -694,7 +694,7 @@ fn despawn_credits_screen(
     query: Query<Entity, With<CreditsUI>>,
 ) {
     for entity in query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -2241,7 +2241,7 @@ fn handle_powerup_collision(
             // 播放道具音效
             let powerup_sound: Handle<AudioSource> = asset_server.load(SOUND_POWERUP);
             commands.spawn(AudioPlayer::new(powerup_sound));
-            commands.entity(powerup_entity).despawn();
+            let _ = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
@@ -2514,7 +2514,7 @@ fn animate_enemy_born_animation(
 
                 if current >= indices.last {
                     // 动画播放完毕，销毁出生动画实体
-                    commands.entity(entity).despawn();
+                    let _ = commands.entity(entity).try_despawn();
                 } else {
                     // 继续播放动画
                     let next_index = current + 1;
@@ -2696,7 +2696,7 @@ fn animate_explosion(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁爆炸实体
-                commands.entity(entity).despawn();
+                let _ = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -2746,9 +2746,9 @@ fn animate_laser(
                         CurrentAnimationFrame(0),
                     ));
                     
-                    commands.entity(despawn_entity).despawn();
+                    let _ = commands.entity(despawn_entity).try_despawn();
                 }
-                commands.entity(entity).despawn();
+                let _ = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -2770,7 +2770,7 @@ fn animate_smoke(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁烟雾实体
-                commands.entity(entity).despawn();
+                let _ = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -2864,7 +2864,7 @@ fn laser_collision_system(
             if laser_left < enemy_right && laser_right > enemy_left &&
                laser_bottom < enemy_top && laser_top > enemy_bottom {
                 // 标记敌方坦克为待销毁
-                commands.entity(enemy_entity).insert(DespawnMarker);
+                let _ = commands.entity(enemy_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2879,7 +2879,7 @@ fn laser_collision_system(
             if laser_left < bullet_right && laser_right > bullet_left &&
                laser_bottom < bullet_top && laser_top > bullet_bottom {
                 // 标记子弹为待销毁
-                commands.entity(bullet_entity).insert(DespawnMarker);
+                let _ = commands.entity(bullet_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2894,7 +2894,7 @@ fn laser_collision_system(
             if laser_left < brick_right && laser_right > brick_left &&
                laser_bottom < brick_top && laser_top > brick_bottom {
                 // 标记砖块为待销毁
-                commands.entity(brick_entity).insert(DespawnMarker);
+                let _ = commands.entity(brick_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2909,7 +2909,7 @@ fn laser_collision_system(
             if laser_left < steel_right && laser_right > steel_left &&
                laser_bottom < steel_top && laser_top > steel_bottom {
                 // 标记钢块为待销毁
-                commands.entity(steel_entity).insert(DespawnMarker);
+                let _ = commands.entity(steel_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2924,7 +2924,7 @@ fn laser_collision_system(
             if laser_left < forest_right && laser_right > forest_left &&
                laser_bottom < forest_top && laser_top > forest_bottom {
                 // 标记森林为待销毁
-                commands.entity(forest_entity).insert(DespawnMarker);
+                let _ = commands.entity(forest_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2939,7 +2939,7 @@ fn laser_collision_system(
             if laser_left < barrier_right && laser_right > barrier_left &&
                laser_bottom < barrier_top && laser_top > barrier_bottom {
                 // 标记障碍为待销毁
-                commands.entity(barrier_entity).insert(DespawnMarker);
+                let _ = commands.entity(barrier_entity).try_insert(DespawnMarker);
             }
         }
 
@@ -2954,7 +2954,7 @@ fn laser_collision_system(
             if laser_left < sea_right && laser_right > sea_left &&
                laser_bottom < sea_top && laser_top > sea_bottom {
                 // 标记sea为待销毁
-                commands.entity(sea_entity).insert(DespawnMarker);
+                let _ = commands.entity(sea_entity).try_insert(DespawnMarker);
             }
         }
     }
@@ -2971,7 +2971,7 @@ fn animate_forest_fire(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁森林燃烧实体
-                commands.entity(entity).despawn();
+                let _ = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -3040,7 +3040,7 @@ fn play_tree_ambience(
     } else {
         // 如果不在树林附近，停止播放所有树林音效
         for (entity, _) in ambience_players.iter() {
-            commands.entity(entity).despawn();
+            let _ = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -3056,7 +3056,7 @@ fn animate_spark(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁实体
-                commands.entity(entity).despawn();
+                let _ = commands.entity(entity).try_despawn();
             } else {
                 // 继续播放动画
                 let next_index = current + 1;
@@ -3115,7 +3115,7 @@ fn play_commander_music(
     } else {
         // 如果不在检测范围内，停止播放音乐
         for entity in ambience_players.iter() {
-            commands.entity(entity).despawn();
+            let _ = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -3129,7 +3129,7 @@ fn handle_game_over_delay(
     for (entity, mut timer) in &mut query {
         timer.tick(time.delta());
         if timer.is_finished() {
-            commands.entity(entity).despawn();
+            let _ = commands.entity(entity).try_despawn();
             next_state.set(GameState::GameOver);
         }
     }
@@ -3377,7 +3377,7 @@ fn update_recall_timers(
                 // 删除进度条
                 for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                     if progress_bar.player_entity == entity {
-                        commands.entity(progress_entity).despawn();
+                        let _ = commands.entity(progress_entity).try_despawn();
                     }
                 }
             } else {
@@ -3402,7 +3402,7 @@ fn update_recall_timers(
                     // 先删除所有子实体（包括气泡），防止Transform传播干扰传送
                     if let Some(children) = children {
                         for child in children.iter() {
-                            commands.entity(child).despawn();
+                            let _ = commands.entity(child).try_despawn();
                         }
                     }
 
@@ -3415,7 +3415,7 @@ fn update_recall_timers(
                     // 删除进度条
                     for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                         if progress_bar.player_entity == entity {
-                            commands.entity(progress_entity).despawn();
+                            let _ = commands.entity(progress_entity).try_despawn();
                         }
                     }
                 }
@@ -3758,7 +3758,7 @@ fn handle_brick_collision(
         });
 
         // 销毁 brick
-        commands.entity(brick_entity).despawn();
+        let _ = commands.entity(brick_entity).try_despawn();
     }
 
     // 检查本次 dash 是否已经扣过血
@@ -3792,7 +3792,7 @@ fn handle_brick_collision(
             }
 
             // 销毁玩家坦克
-            commands.entity(player_entity).despawn();
+            let _ = commands.entity(player_entity).try_despawn();
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
@@ -3853,7 +3853,7 @@ fn handle_steel_collision(
         }
 
         // 销毁玩家坦克
-        commands.entity(player_entity).despawn();
+        let _ = commands.entity(player_entity).try_despawn();
 
         // 标记对应玩家的头像为死亡状态
         for (avatar_entity, player_index) in player_avatars.iter() {
@@ -3885,7 +3885,7 @@ fn handle_steel_break(
         });
 
         // 销毁 steel
-        commands.entity(steel_entity).despawn();
+        let _ = commands.entity(steel_entity).try_despawn();
     }
 }
 
@@ -3916,7 +3916,7 @@ fn handle_dash_enemy_tank_collision(
     }
 
     // 销毁敌方坦克
-    commands.entity(enemy_entity).despawn();
+    let _ = commands.entity(enemy_entity).try_despawn();
 
     // 检查本次 dash 是否已经扣过血
     if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
@@ -3957,7 +3957,7 @@ fn handle_dash_enemy_tank_collision(
             }
 
             // 销毁玩家坦克
-            commands.entity(player_entity).despawn();
+            let _ = commands.entity(player_entity).try_despawn();
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
@@ -4065,10 +4065,10 @@ fn cleanup_start_screen(
     text_query: &Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     for (entity, _) in sprite_query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
     for (entity, _, _) in text_query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -4167,7 +4167,7 @@ fn despawn_stage_intro(
     stage_intro_query: Query<Entity, With<StageIntroUI>>,
 ) {
     for entity in stage_intro_query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -4465,7 +4465,7 @@ fn spawn_pause_ui(
 
 fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseUI>>) {
     for entity in query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -4625,7 +4625,7 @@ fn handle_game_over_input(
 
 fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOverUI>>) {
     for entity in query.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -4635,7 +4635,7 @@ fn cleanup_start_screen_ui(
     start_screen_ui: Query<Entity, With<StartScreenUI>>,
 ) {
     for entity in start_screen_ui.iter() {
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -4764,7 +4764,7 @@ fn play_sea_ambience(
     } else {
         // 如果不在海附近但有播放音效，则停止
         for (entity, _) in ambience_players.iter() {
-            commands.entity(entity).despawn();
+            let _ = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -4906,7 +4906,7 @@ fn enemy_spawn_system(
 
                         if bubble_effects.contains(child) {
 
-                            commands.entity(child).despawn();
+                            let _ = commands.entity(child).try_despawn();
 
                         }
 

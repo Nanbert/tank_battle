@@ -242,7 +242,7 @@ pub fn bullet_despawn_system(
         bullet_tracker.remove_bullet(entity);
 
         // 销毁子弹实体
-        commands.entity(entity).despawn();
+        let _ = commands.entity(entity).try_despawn();
     }
 }
 
@@ -328,7 +328,7 @@ pub fn bullet_terrain_collision_system(
                                 position: forest_transform.translation,
                             });
                             // 销毁树林，不销毁子弹
-                            commands.entity(forest_entity).despawn();
+                            let _ = commands.entity(forest_entity).try_despawn();
                         }
                     }
                 }
@@ -344,7 +344,7 @@ pub fn bullet_terrain_collision_system(
                 });
 
                 // 销毁砖块和标记子弹销毁
-                commands.entity(terrain_entity).despawn();
+                let _ = commands.entity(terrain_entity).try_despawn();
                 commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
@@ -362,7 +362,7 @@ pub fn bullet_terrain_collision_system(
                             });
 
                             // 销毁钢铁和标记子弹销毁
-                            commands.entity(terrain_entity).despawn();
+                            let _ = commands.entity(terrain_entity).try_despawn();
                             commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
@@ -441,7 +441,7 @@ pub fn bullet_tank_collision_system(
                         }
 
                         // 销毁敌方坦克
-                        commands.entity(tank_entity).despawn();
+                        let _ = commands.entity(tank_entity).try_despawn();
 
                         // 增加分数
                         let player_type = bullet_owner_info.owner_type;
@@ -541,7 +541,7 @@ pub fn bullet_tank_collision_system(
                                     }
 
                                     // 销毁玩家坦克
-                                    commands.entity(tank_entity).despawn();
+                                    let _ = commands.entity(tank_entity).try_despawn();
 
                                     // 标记对应玩家的头像为死亡状态
                                     for (avatar_entity, player_idx) in player_avatars.iter() {
