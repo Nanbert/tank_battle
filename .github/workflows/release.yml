@@ -124,6 +124,11 @@ jobs:
         run: |
           pacman -Syu --noconfirm --needed base-devel
 
+      - name: Create build user
+        run: |
+          useradd -m -G wheel builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
       - name: Extract binary
         run: |
           tar xzf tank_battle_linux_x64.tar.gz --strip-components=1
@@ -133,9 +138,13 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           sed -i "s/pkgver=.*/pkgver=$VERSION/" PKGBUILD
 
+      - name: Change ownership
+        run: |
+          chown -R builder:builder .
+
       - name: Build package
         run: |
-          makepkg -s --noconfirm
+          sudo -u builder makepkg -s --noconfirm
 
       - name: Upload Arch package artifact
         uses: actions/upload-artifact@v4
