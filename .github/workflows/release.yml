@@ -35,7 +35,17 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwayland-dev libxkbcommon-dev libudev-dev libxi-dev
+          sudo apt-get install -y \
+            libwayland-dev \
+            libxkbcommon-dev \
+            libudev-dev \
+            libxi-dev \
+            libasound2-dev \
+            libssl-dev \
+            libx11-dev \
+            libxcursor-dev \
+            libxrandr-dev \
+            libxinerama-dev
 
       - name: Cache cargo registry
         uses: actions/cache@v4
