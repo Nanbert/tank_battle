@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Tank Battle
+Name[zh_CN]=坦克大战
+Comment=Classic tank battle game (Battle City 1990 clone)
+Comment[zh_CN]=经典坦克大战游戏（坦克大战 1990 复刻版）
+Icon=tank-battle
+Exec=tank_battle
+Terminal=false
+Categories=Game;ArcadeGame;
+Keywords=tank;battle;game;arcade;
+StartupNotify=true

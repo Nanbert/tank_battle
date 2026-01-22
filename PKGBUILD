@@ -31,4 +31,7 @@ package() {
 
     # Icon
     install -Dm644 "tank_battle/assets/enemy_tank/enemy_tank1.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+
+    # Desktop entry
+    install -Dm644 tank_battle/tank-battle.desktop "$pkgdir/usr/share/applications/$pkgname.desktop"
 }
