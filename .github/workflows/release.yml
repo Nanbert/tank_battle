@@ -159,10 +159,6 @@ jobs:
 
       - name: Build package
         run: |
-          # 确保文件在当前目录
-          if [ -d "tank_battle" ]; then
-            cp -r tank_battle/* .
-          fi
           sudo -u builder makepkg -s --noconfirm
 
       - name: Upload Arch package artifact
