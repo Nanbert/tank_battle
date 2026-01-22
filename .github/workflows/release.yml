@@ -126,7 +126,7 @@ jobs:
 
       - name: Extract binary
         run: |
-          tar xzf tank_battle_linux_x64.tar.gz
+          tar xzf tank_battle_linux_x64.tar.gz --strip-components=1
 
       - name: Update PKGBUILD version
         run: |
@@ -135,8 +135,6 @@ jobs:
 
       - name: Build package
         run: |
-          rm -rf tank_battle
-          cp -r tank_battle/* .
           makepkg -s --noconfirm
 
       - name: Upload Arch package artifact
