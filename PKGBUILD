@@ -23,11 +23,12 @@ check() {
 }
 
 package() {
-    install -Dm755 "tank_battle" "$pkgdir/usr/bin/tank_battle"
+    # tank_battle 是一个目录，需要将里面的内容复制到正确位置
+    install -Dm755 "tank_battle/tank_battle" "$pkgdir/usr/bin/tank_battle"
     install -dm755 "$pkgdir/usr/share/$pkgname"
-    cp -r assets levels "$pkgdir/usr/share/$pkgname/"
-    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    cp -r tank_battle/assets tank_battle/levels "$pkgdir/usr/share/$pkgname/"
+    install -Dm644 tank_battle/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
     # Icon
-    install -Dm644 assets/enemy_tank/enemy_tank1.png "$pkgdir/usr/share/pixmaps/$pkgname.png"
+    install -Dm644 tank_battle/assets/enemy_tank/enemy_tank1.png "$pkgdir/usr/share/pixmaps/$pkgname.png"
 }
