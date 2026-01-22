@@ -69,6 +69,7 @@ jobs:
       - name: Prepare Linux artifacts
         if: matrix.os == 'ubuntu-latest'
         run: |
+          rm -rf release/tank_battle
           mkdir -p release/tank_battle
           cp -r assets release/tank_battle/
           cp target/x86_64-unknown-linux-gnu/release/tank_battle release/tank_battle/
