@@ -52,18 +52,16 @@ jobs:
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
 
       - name: Cache cargo index
         uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-index-
 
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
@@ -96,6 +94,7 @@ jobs:
         with:
           name: tank_battle_linux_x64
           path: tank_battle_linux_x64.tar.gz
+          retention-days: 1
 
       - name: Upload Windows artifact
         if: matrix.os == 'windows-latest'
@@ -103,6 +102,7 @@ jobs:
         with:
           name: tank_battle_windows_x64
           path: tank_battle_windows_x64.zip
+          retention-days: 1
 
   arch-package:
     needs: build
@@ -141,6 +141,7 @@ jobs:
         with:
           name: tank-battle-arch
           path: "*.pkg.tar.zst"
+          retention-days: 1
 
   release:
     needs: [build, arch-package]
