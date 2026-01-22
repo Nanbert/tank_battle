@@ -249,7 +249,7 @@ fn spawn_start_screen_background(
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
         animation_indices,
-        AnimationTimer(Timer::from_seconds(0.083, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 }
@@ -837,6 +837,102 @@ fn spawn_map_terrain(
                         ));
                     }
                 }
+                TerrainType::BrickLeft => {
+                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(-offset, -offset),
+                    ];
+                    for brick_pos in positions {
+                        commands.spawn((
+                            Brick,
+                            PlayingEntity,
+                            Sprite {
+                                image: brick_texture.clone(),
+                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::BrickRight => {
+                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(offset, offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for brick_pos in positions {
+                        commands.spawn((
+                            Brick,
+                            PlayingEntity,
+                            Sprite {
+                                image: brick_texture.clone(),
+                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::BrickTop => {
+                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(offset, offset),
+                    ];
+                    for brick_pos in positions {
+                        commands.spawn((
+                            Brick,
+                            PlayingEntity,
+                            Sprite {
+                                image: brick_texture.clone(),
+                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::BrickBottom => {
+                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, -offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for brick_pos in positions {
+                        commands.spawn((
+                            Brick,
+                            PlayingEntity,
+                            Sprite {
+                                image: brick_texture.clone(),
+                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
                 TerrainType::Steel => {
                     let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
                     // 生成4块钢铁组成100x100的网格
@@ -844,6 +940,102 @@ fn spawn_map_terrain(
                     let positions = [
                         Vec2::new(-offset, offset),
                         Vec2::new(offset, offset),
+                        Vec2::new(-offset, -offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for steel_pos in positions {
+                        commands.spawn((
+                            Steel,
+                            PlayingEntity,
+                            Sprite {
+                                image: steel_texture.clone(),
+                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::SteelLeft => {
+                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(-offset, -offset),
+                    ];
+                    for steel_pos in positions {
+                        commands.spawn((
+                            Steel,
+                            PlayingEntity,
+                            Sprite {
+                                image: steel_texture.clone(),
+                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::SteelRight => {
+                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(offset, offset),
+                        Vec2::new(offset, -offset),
+                    ];
+                    for steel_pos in positions {
+                        commands.spawn((
+                            Steel,
+                            PlayingEntity,
+                            Sprite {
+                                image: steel_texture.clone(),
+                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::SteelTop => {
+                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
+                    let offset = 25.0;
+                    let positions = [
+                        Vec2::new(-offset, offset),
+                        Vec2::new(offset, offset),
+                    ];
+                    for steel_pos in positions {
+                        commands.spawn((
+                            Steel,
+                            PlayingEntity,
+                            Sprite {
+                                image: steel_texture.clone(),
+                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                                ..default()
+                            },
+                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
+                            RigidBody::Fixed,
+                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                            ActiveEvents::COLLISION_EVENTS,
+                            ActiveCollisionTypes::all(),
+                        ));
+                    }
+                }
+                TerrainType::SteelBottom => {
+                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
+                    let offset = 25.0;
+                    let positions = [
                         Vec2::new(-offset, -offset),
                         Vec2::new(offset, -offset),
                     ];
