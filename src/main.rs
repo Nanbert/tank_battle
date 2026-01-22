@@ -64,8 +64,16 @@ fn configure_window_plugin() -> WindowPlugin {
 }
 
 fn configure_asset_plugin() -> AssetPlugin {
+    // 检查是否在系统安装目录运行
+    let is_system_install = std::path::Path::new("/usr/share/tank-battle/assets").exists();
+    let asset_path = if is_system_install {
+        "/usr/share/tank-battle/assets".to_string()
+    } else {
+        "assets".to_string()
+    };
+
     AssetPlugin {
-        processed_file_path: "assets".to_string(),
+        file_path: asset_path,
         unapproved_path_mode: bevy::asset::UnapprovedPathMode::Allow,
         ..default()
     }
@@ -186,7 +194,16 @@ fn main() {
     app.add_plugins((
         DefaultPlugins
             .set(configure_window_plugin())
-            .set(configure_asset_plugin()),
+            .set(configure_asset_plugin())
+            .set(bevy::render::RenderPlugin {
+                render_creation: bevy::render::settings::RenderCreation::Automatic(
+                    bevy::render::settings::WgpuSettings {
+                        backends: Some(bevy::render::settings::Backends::all()),
+                        ..default()
+                    },
+                ),
+                ..default()
+            }),
     ))
     .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
 
@@ -196,20 +213,31 @@ fn main() {
     app.run();
 }
 
-fn load_animation_frames(
+fn load_start_animation_assets(
     asset_server: &Res<AssetServer>,
     animation_frames: &mut ResMut<StartAnimationFrames>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
-    // 使用精灵图方式加载背景动画（15帧，已调整为窗口大小）
-    let background_texture: Handle<Image> = asset_server.load("background/background_sprite_15frames.png");
-    let background_tile_size = UVec2::new(2060, 1300); // 每帧的尺寸（窗口大小）
-    let background_texture_atlas = TextureAtlasLayout::from_grid(background_tile_size, 15, 1, None, None);
-    let background_texture_atlas_layout = texture_atlas_layouts.add(background_texture_atlas);
+    // 使用3个较小的精灵图加载背景动画（15帧，每部分5帧）
+    // 拆分以支持GPU纹理尺寸限制（最大16384）
+    let background_texture1: Handle<Image> = asset_server.load("background/background_sprite_part1.png");
+    let background_texture2: Handle<Image> = asset_server.load("background/background_sprite_part2.png");
+    let background_texture3: Handle<Image> = asset_server.load("background/background_sprite_part3.png");
 
-    // 将 TextureAtlasLayout 存储到资源中
-    animation_frames.texture_atlas_layout = Some(background_texture_atlas_layout);
-    animation_frames.texture = background_texture;
+    let background_tile_size = UVec2::new(2060, 1300); // 每帧的尺寸（窗口大小）
+
+    // 创建3个纹理图集，每个5帧
+    let atlas1 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
+    let atlas2 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
+    let atlas3 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
+
+    let layout1 = texture_atlas_layouts.add(atlas1);
+    let layout2 = texture_atlas_layouts.add(atlas2);
+    let layout3 = texture_atlas_layouts.add(atlas3);
+
+    // 存储到资源中
+    animation_frames.texture_atlas_layouts = vec![layout1, layout2, layout3];
+    animation_frames.textures = vec![background_texture1, background_texture2, background_texture3];
 }
 
 fn get_animation_frame(
@@ -234,15 +262,18 @@ fn spawn_start_screen_background(
     animation_frames: &ResMut<StartAnimationFrames>,
 ) {
     let animation_indices = AnimationIndices { first: 0, last: 14 };
-    let texture_atlas_layout = animation_frames.texture_atlas_layout.as_ref().unwrap();
+
+    // 使用第一个纹理和图集初始化
+    let texture_atlas_layout = animation_frames.texture_atlas_layouts[0].clone();
+    let texture = animation_frames.textures[0].clone();
 
     commands.spawn((
         StartScreenUI,
         Sprite {
-            image: animation_frames.texture.clone(),
+            image: texture,
             texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout.clone(),
-                index: animation_indices.first,
+                layout: texture_atlas_layout,
+                index: 0,
             }),
             ..default()
         },
@@ -392,7 +423,7 @@ fn spawn_start_screen(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // 加载所有动画帧
-    load_animation_frames(&asset_server, &mut animation_frames, &mut texture_atlas_layouts);
+    load_start_animation_assets(&asset_server, &mut animation_frames, &mut texture_atlas_layouts);
 
     // 添加动画背景
     spawn_start_screen_background(&mut commands, &animation_frames);
@@ -1884,9 +1915,17 @@ fn animate_start_screen(
             };
             current_frame.0 = next_index;
 
-            // 更新 texture_atlas 的 index
-            if let Some(texture_atlas) = &mut sprite.texture_atlas {
-                texture_atlas.index = next_index;
+            // 计算使用哪个纹理图集（每个图集5帧）
+            let atlas_index = next_index / 5;
+            let frame_in_atlas = next_index % 5;
+
+            // 更新纹理和图集
+            if atlas_index < animation_frames.textures.len() {
+                sprite.image = animation_frames.textures[atlas_index].clone();
+                if let Some(texture_atlas) = &mut sprite.texture_atlas {
+                    texture_atlas.layout = animation_frames.texture_atlas_layouts[atlas_index].clone();
+                    texture_atlas.index = frame_in_atlas;
+                }
             }
         }
     }

@@ -1,3 +1,7 @@
 /target
 
 *.mp4
+
+/release
+/pkg
+/src/target

@@ -24,7 +24,13 @@ pub type LevelMap = [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 /// ib = 钢铁下半（100×50）
 /// a = 屏障（可破坏，2发子弹）
 fn load_level_from_file(level_num: usize) -> Result<LevelMap, String> {
-    let file_path = format!("levels/{}.txt", level_num);
+    // 检查是否在系统安装目录运行
+    let levels_dir = if Path::new("/usr/share/tank-battle/levels").exists() {
+        "/usr/share/tank-battle/levels"
+    } else {
+        "levels"
+    };
+    let file_path = format!("{}/{}.txt", levels_dir, level_num);
     let path = Path::new(&file_path);
 
     if !path.exists() {
