@@ -37,14 +37,24 @@
 ### Linux (Arch Linux)
 ```bash
 # 直接下载
-wget https://github.com/Nanbert/tank_battle/releases/latest/download/tank-battle-0.2.0-1-x86_64.pkg.tar.zst
+wget https://github.com/Nanbert/tank_battle/releases/latest/download/tank-battle-*-x86_64.pkg.tar.zst
 
 # 使用 pacman 安装
-sudo pacman -U tank-battle-0.2.0-1-x86_64.pkg.tar.zst
+sudo pacman -U tank-battle-*-x86_64.pkg.tar.zst
+```
+
+### Linux (通用)
+下载最新版本：[tank_battle_linux_x64.tar.gz](https://github.com/Nanbert/tank_battle/releases/latest/download/tank_battle_linux_x64.tar.gz)
+
+解压后运行：
+```bash
+tar xzf tank_battle_linux_x64.tar.gz
+cd tank_battle
+./tank_battle
 ```
 
 ### Windows
-下载最新版本：[tank_battle_windows_x64.tar.gz](https://github.com/Nanbert/tank_battle/releases/latest/download/tank_battle_windows_x64.tar.gz)
+下载最新版本：[tank_battle_windows_x64.zip](https://github.com/Nanbert/tank_battle/releases/latest/download/tank_battle_windows_x64.zip)
 
 解压后运行 `tank_battle.exe`
 

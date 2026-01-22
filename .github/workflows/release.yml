@@ -1,0 +1,157 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: linux-x64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            name: windows-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Cache cargo build
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare Linux artifacts
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p release/tank_battle
+          cp -r assets release/tank_battle/
+          cp target/x86_64-unknown-linux-gnu/release/tank_battle release/tank_battle/
+          cp COPYRIGHT LICENSE README.md release/tank_battle/
+          cd release
+          tar czf ../tank_battle_linux_x64.tar.gz tank_battle/
+
+      - name: Prepare Windows artifacts
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          mkdir release\tank_battle
+          Copy-Item -Recurse -Force assets release\tank_battle\
+          Copy-Item target\x86_64-pc-windows-msvc\release\tank_battle.exe release\tank_battle\
+          Copy-Item COPYRIGHT release\tank_battle\
+          Copy-Item LICENSE release\tank_battle\
+          Copy-Item README.md release\tank_battle\
+          Compress-Archive -Path release\tank_battle\* -DestinationPath tank_battle_windows_x64.zip
+
+      - name: Upload Linux artifact
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tank_battle_linux_x64
+          path: tank_battle_linux_x64.tar.gz
+
+      - name: Upload Windows artifact
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tank_battle_windows_x64
+          path: tank_battle_windows_x64.zip
+
+  arch-package:
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tank_battle_linux_x64
+
+      - name: Install build dependencies
+        run: |
+          pacman -Syu --noconfirm --needed base-devel
+
+      - name: Extract binary
+        run: |
+          tar xzf tank_battle_linux_x64.tar.gz
+
+      - name: Update PKGBUILD version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/pkgver=.*/pkgver=$VERSION/" PKGBUILD
+
+      - name: Build package
+        run: |
+          cp -r tank_battle/* .
+          makepkg -s --noconfirm
+
+      - name: Upload Arch package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tank-battle-arch
+          path: "*.pkg.tar.zst"
+
+  release:
+    needs: [build, arch-package]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tank_battle_linux_x64
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tank_battle_windows_x64
+
+      - name: Download Arch package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tank-battle-arch
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            tank_battle_linux_x64.tar.gz
+            tank_battle_windows_x64.zip
+            *.pkg.tar.zst
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,6 +1,6 @@
 # Maintainer: Nanbert <nanbert@example.com>
 pkgname=tank-battle
-pkgver=0.1.0
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="Classic tank battle game (Battle City 1990 clone)"
 arch=('x86_64')
@@ -28,14 +28,11 @@ check() {
 }
 
 package() {
-    install -Dm755 "target/release/tank_battle" "$pkgdir/usr/bin/tank_battle"
+    install -Dm755 "tank_battle" "$pkgdir/usr/bin/tank_battle"
     install -dm755 "$pkgdir/usr/share/$pkgname"
-    cp -r "$startdir"/assets "$startdir"/levels "$pkgdir/usr/share/$pkgname/"
-    install -Dm644 "$startdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-
-    # Desktop file
-    install -Dm644 "$startdir/debian/tank-battle.desktop" "$pkgdir/usr/share/applications/$pkgname.desktop"
+    cp -r assets levels "$pkgdir/usr/share/$pkgname/"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 
     # Icon
-    install -Dm644 "$startdir/assets/enemy_tank/enemy_tank1.png" "$pkgdir/usr/share/pixmaps/$pkgname.png"
+    install -Dm644 assets/enemy_tank/enemy_tank1.png "$pkgdir/usr/share/pixmaps/$pkgname.png"
 }
