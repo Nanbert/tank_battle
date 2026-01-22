@@ -135,6 +135,7 @@ jobs:
 
       - name: Build package
         run: |
+          rm -rf tank_battle
           cp -r tank_battle/* .
           makepkg -s --noconfirm
 
