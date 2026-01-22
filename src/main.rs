@@ -1282,6 +1282,11 @@ fn spawn_player1_tank(
         .insert(KinematicCharacterController {
             offset: CharacterLength::Absolute(0.01),
             filter_groups: None,
+            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
+                max_height: CharacterLength::Absolute(5.0),
+                min_width: CharacterLength::Absolute(0.5),
+                include_dynamic_bodies: false,
+            }),
             ..default()
         })
         .id()
@@ -1755,6 +1760,16 @@ fn spawn_game_entities_if_needed(
                                             offset: CharacterLength::Absolute(0.01),
 
                                             filter_groups: None,
+
+                                            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
+
+                                                max_height: CharacterLength::Absolute(5.0),
+
+                                                min_width: CharacterLength::Absolute(0.5),
+
+                                                include_dynamic_bodies: false,
+
+                                            }),
 
                                             ..default()
 
@@ -4674,12 +4689,35 @@ fn cleanup_playing_entities(
 fn check_stage_complete(
     enemy_spawn_state: Res<EnemySpawnState>,
     enemies: Query<(), With<EnemyTank>>,
+    player_info: Res<PlayerInfo>,
+    commander_life: Res<CommanderLife>,
+    game_mode: Res<GameMode>,
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
 ) {
     // 检查是否完成关卡：已生成所有敌方坦克且当前没有存活的敌方坦克
     let current_enemy_count = enemies.iter().count();
     if enemy_spawn_state.has_spawned >= enemy_spawn_state.max_count && current_enemy_count == 0 {
+        // 检查玩家是否阵亡
+        let all_players_dead = if player_info.players.is_empty() {
+            false
+        } else {
+            match *game_mode {
+                GameMode::OnePlayer => {
+                    player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
+                }
+                GameMode::TwoPlayers => {
+                    player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
+                        && player_info.players.get(&TankType::Player2).map_or(false, |p| p.life_red_bar == 0)
+                }
+            }
+        };
+
+        // 如果玩家或 Commander 已阵亡，不能进入下一关
+        if all_players_dead || commander_life.life_red_bar == 0 {
+            return;
+        }
+
         // 进入下一关
         stage_level.0 += 1;
         next_state.set(GameState::StageIntro);
