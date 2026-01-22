@@ -7,24 +7,19 @@ arch=('x86_64')
 url="https://github.com/Nanbert/tank_battle"
 license=('MIT')
 depends=('gcc-libs' 'glibc')
-makedepends=('cargo')
+makedepends=()
 source=()
 sha256sums=()
 
-prepare() {
-    export RUSTUP_TOOLCHAIN=nightly
-    cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
-}
-
+# 预编译的二进制包，由 CI 提供
 build() {
-    export RUSTUP_TOOLCHAIN=nightly
-    export CARGO_TARGET_DIR=target
-    cargo build --release --frozen
+    # 跳过编译，直接使用已编译的二进制文件
+    echo "Using pre-compiled binary from CI"
 }
 
 check() {
-    export RUSTUP_TOOLCHAIN=nightly
-    cargo test --frozen
+    # 跳过测试
+    echo "Skipping tests for pre-compiled binary"
 }
 
 package() {
