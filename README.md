@@ -85,27 +85,36 @@ cargo run --release
 cargo clean
 ```
 
-## 开发约定
-
-- 使用 Clippy 的 `pedantic` 和 `nursery` lint 级别
-- 基于 Rapier 物理引擎，比例：100 像素 = 1 米
-- 敌方坦克AI：随机移动方向，碰撞时自动转向
-
 ## 项目结构
 
 ```
 tank_battle/
 ├── assets/              # 游戏资源
-│   ├── texture/         # 纹理资源
-│   ├── maps/            # 地图资源
-│   ├── power_up/        # 道具资源
-│   └── start_scene/     # 开始场景动画
-├── src/
+│   ├── background/      # 背景动画
+│   ├── effect/          # 特效（爆炸、激光等）
+│   ├── enemy_tank/      # 敌方坦克纹理
+│   ├── font/            # 字体文件
+│   ├── maps/            # 地图元素
+│   ├── music/           # 音效和背景音乐
+│   ├── power_up/        # 道具图标
+│   └── texture/         # 玩家坦克、子弹等纹理
+├── docs/                # 文档
+│   └── controls.md      # 游戏操作说明
+├── levels/              # 关卡文件
+├── src/                 # 源代码
 │   ├── main.rs          # 主程序入口
-│   ├── constants.rs     # 游戏常量定义
+│   ├── bullet.rs        # 子弹系统
+│   ├── constants.rs     # 游戏常量
+│   ├── laser.rs         # 激光系统
+│   ├── levels.rs        # 关卡加载
+│   ├── map.rs           # 地图系统
 │   └── resources.rs     # 资源定义
+├── .github/workflows/   # GitHub Actions 配置
+│   └── release.yml      # 自动发布工作流
+├── PKGBUILD             # Arch Linux 包配置
 ├── Cargo.toml           # 项目依赖配置
-└── rust-toolchain.toml  # Rust 工具链配置
+├── rust-toolchain.toml  # Rust 工具链配置
+└── README.md            # 项目说明
 ```
 
 ## 版权声明
