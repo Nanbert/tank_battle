@@ -80,6 +80,7 @@ jobs:
           rm -rf release/tank_battle
           mkdir -p release/tank_battle
           cp -r assets release/tank_battle/
+          cp -r levels release/tank_battle/
           cp target/x86_64-unknown-linux-gnu/release/tank_battle release/tank_battle/tank_battle
           cp COPYRIGHT LICENSE README.md release/tank_battle/
           cd release
@@ -92,6 +93,7 @@ jobs:
           Remove-Item -Recurse -Force release\tank_battle -ErrorAction SilentlyContinue
           mkdir release\tank_battle
           Copy-Item -Recurse -Force assets release\tank_battle\
+          Copy-Item -Recurse -Force levels release\tank_battle\
           Copy-Item target\x86_64-pc-windows-msvc\release\tank_battle.exe release\tank_battle\
           Copy-Item COPYRIGHT release\tank_battle\
           Copy-Item LICENSE release\tank_battle\
