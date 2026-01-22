@@ -142,20 +142,21 @@ jobs:
           tar xzf tank_battle_linux_x64.tar.gz
           ls -la
 
+      - name: Move files to src directory
+        run: |
+          # makepkg 在 src/ 目录下运行，将 tank_battle 移动到 src/ 下
+          # 这样 PKGBUILD 中的路径就不需要 ../ 了
+          if [ -d "tank_battle" ]; then
+            mkdir -p src
+            mv tank_battle src/
+            echo "Moved tank_battle to src/"
+          fi
+
       - name: Check files
         run: |
           echo "Checking for tank_battle binary..."
           find . -name "tank_battle" -type f
           find . -name "tank_battle.exe" -type f
-
-      - name: Check PKGBUILD location
-        run: |
-          echo "=== Checking PKGBUILD ==="
-          echo "Current directory: $(pwd)"
-          echo "Files in current directory:"
-          ls -la
-          echo "PKGBUILD exists: $(test -f PKGBUILD && echo 'YES' || echo 'NO')"
-          echo "========================"
 
       - name: Update PKGBUILD version
         run: |
