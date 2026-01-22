@@ -148,6 +148,15 @@ jobs:
           find . -name "tank_battle" -type f
           find . -name "tank_battle.exe" -type f
 
+      - name: Check PKGBUILD location
+        run: |
+          echo "=== Checking PKGBUILD ==="
+          echo "Current directory: $(pwd)"
+          echo "Files in current directory:"
+          ls -la
+          echo "PKGBUILD exists: $(test -f PKGBUILD && echo 'YES' || echo 'NO')"
+          echo "========================"
+
       - name: Update PKGBUILD version
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
