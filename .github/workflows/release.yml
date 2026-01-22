@@ -157,6 +157,11 @@ jobs:
         run: |
           chown -R builder:builder .
 
+      - name: Verify file access
+        run: |
+          sudo -u builder ls -la tank_battle/
+          sudo -u builder test -f tank_battle/tank_battle && echo "File is accessible" || echo "File is NOT accessible"
+
       - name: Build package
         run: |
           sudo -u builder makepkg -s --noconfirm
