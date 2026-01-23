@@ -717,7 +717,6 @@ pub const PROGRESS_BAR_Y_OFFSET: f32 = 20.0;          // 回城进度条Y偏移
 pub const PROGRESS_BAR_INITIAL_WIDTH: f32 = 100.0;    // 回城进度条初始宽度
 
 // 墙壁和地形
-pub const WALL_POSITION_OFFSET_1: f32 = 10.0;         // 墙壁位置偏移
 pub const WALL_POSITION_OFFSET_2: f32 = 5.0;          // 墙壁位置偏移
 pub const WALL_SCALE: f32 = 10.0;                     // 墙壁缩放
 pub const BRICK_GROUP_OFFSET: f32 = 25.0;             // 砖块组偏移
@@ -728,12 +727,10 @@ pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5;  // CharacterController min
 // 激光
 pub const LASER_POSITION_OFFSET: f32 = 30.0;          // 激光位置偏移
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3;          // 后坐力距离系数
-pub const LASER_WIDTH: f32 = 70.0;                    // 激光宽度
 pub const LASER_HEIGHT: f32 = 1366.0;                 // 激光高度
 pub const LASER_COLLIDER_HALF_WIDTH: f32 = 35.0;      // 激光碰撞体半宽
 pub const LASER_COLLIDER_HALF_HEIGHT: f32 = 683.0;    // 激光碰撞体半高
 pub const LASER_CHARGE_PROGRESS_BAR_WIDTH: f32 = 100.0; // 激光蓄力进度条宽度
-pub const LASER_CHARGE_PROGRESS_BAR_HEIGHT: f32 = 100.0; // 激光蓄力进度条高度
 
 // 敌方坦克
 pub const ENEMY_TANK_DISPLAY_WIDTH: f32 = 80.0;       // 敌方坦克显示宽度
@@ -792,10 +789,7 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0;    // 敌方坦克角度偏�
 // ==================== 游戏数值常量 ====================
 pub const MAX_ENEMY_ON_SCREEN: usize = 4;             // 场上最大敌方坦克数
 pub const LASER_COLLISION_FRAME_INTERVAL: u32 = 5;    // 激光碰撞检测帧间隔
-pub const ENEMY_BORN_ANIMATION_FRAMES: usize = 10;    // 敌方出生动画总帧数
 pub const ENEMY_BORN_END_FRAME: usize = 12;           // 敌方出生动画结束帧
-pub const START_ANIMATION_FRAMES: usize = 14;         // 开始动画帧范围
-pub const EXPLOSION_END_FRAME: usize = 63;            // 爆炸动画结束帧
 pub const ENEMIES_PER_LEVEL: usize = 20;              // 每关敌方坦克总数
 pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01;        // 敌方坦克射击概率
 pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4;   // 随机转向概率
@@ -803,13 +797,10 @@ pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;     // 道具属性增加量
 pub const INITIAL_ATTRIBUTE_VALUE: usize = 40;        // 初始属性值
 pub const MAX_ATTRIBUTE_VALUE: usize = 100;           // 最大属性值
 pub const DASH_DAMAGE_COST_HIGH: usize = 2;           // 高扣血量
-pub const DASH_DAMAGE_COST_LOW: usize = 1;            // 低扣血量
 
 // ==================== 比例和音量常量 ====================
 pub const VOLUME_HALF: f32 = 0.5;                     // 音效音量
 pub const VOLUME_COMMANDER_MUSIC: f32 = 0.4;          // 指挥官音乐音量
-pub const DAMAGE_MULTIPLIER_HIGH: f32 = 2.0;          // 高扣血量倍数
-pub const DAMAGE_MULTIPLIER_LOW: f32 = 1.0;           // 低扣血量倍数
 
 // ==================== Z轴层级常量 ====================
 pub const Z_SEA: f32 = -0.5;                          // 海水层级
@@ -828,7 +819,6 @@ pub const FONT_SIZE_MEDIUM: f32 = 22.0;               // 中等字体
 pub const FONT_SIZE_INSTRUCTION: f32 = 24.0;          // 说明文字字体
 pub const FONT_SIZE_SCORE: f32 = 28.0;                // 分数字体
 pub const FONT_SIZE_UI: f32 = 30.0;                   // UI字体
-pub const FONT_SIZE_PLAYER_NAME: f32 = 32.0;          // 玩家名称字体
 pub const FONT_SIZE_OPTION: f32 = 50.0;               // 选项字体
 pub const FONT_SIZE_TITLE: f32 = 60.0;                // 标题字体
 pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0;        // 标题字体

@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
+#[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 use crate::resources::EnemySpawnState;
 
