@@ -139,7 +139,7 @@ fn get_text_update_fn(prefix: &str) -> TextUpdateFn {
     }
 }
 
-fn update_player_info_display(
+pub fn update_player_info_display(
     changed_player_info: Res<PlayerInfo>,
     mut text2ds: Query<(&PlayerUI, &mut Text2d), With<Text2d>>,
     mut bar_queries: ParamSet<(
@@ -194,7 +194,7 @@ fn update_player_info_display(
     }
 }
 
-fn update_commander_health_bar(
+pub fn update_commander_health_bar(
     changed_commander_life: Res<CommanderLife>,
     mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
 ) {
@@ -544,3 +544,112 @@ fn play_sea_ambience(
         }
 
     }
+
+// 获取属性类型对应的前缀
+const fn get_stat_prefix(stat_type: StatType) -> &'static str {
+    match stat_type {
+        StatType::Speed => "Speed:",
+        StatType::Protection => "Protection:",
+        StatType::FireSpeed => "Fire Speed:",
+        StatType::FireShell => "Fire Shell:",
+        StatType::TrackChain => "Track Chain:",
+        StatType::Penetrate => "Penetrate:",
+        StatType::AirCushion => "Air Cushion:",
+        StatType::Shell => "Shells:",
+        StatType::Score => "Scores",
+    }
+}
+
+// 处理属性变更事件，触发文字闪烁
+pub fn handle_stat_changed_for_blink(
+    mut events: MessageReader<PlayerStatChanged>,
+    mut commands: Commands,
+    player_info_texts: Query<(Entity, &Text2d, &PlayerUI)>,
+) {
+    for event in events.read() {
+        let prefix = get_stat_prefix(event.stat_type);
+        for (entity, text, player_index) in &player_info_texts {
+            if player_index.player_type == event.player_type && text.0.starts_with(prefix) {
+                commands.entity(entity).insert(PlayerInfoBlinkTimer(
+                    Timer::from_seconds(1.2, TimerMode::Once)
+                ));
+                break;
+            }
+        }
+    }
+}
+
+pub fn animate_player_info_text(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor, &Text2d, &PlayerUI), With<Text2d>>,
+    player_info: Res<PlayerInfo>,
+) {
+    for (entity, mut timer, mut color, text, player_index) in &mut query {
+        timer.tick(time.delta());
+
+        // 判断是否达到最大值或On状态
+        let is_max = player_info.players.get(&player_index.player_type).is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
+
+        if is_max {
+            // 达到最大值：保持红色，移除闪烁计时器
+            commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
+            color.0 = Color::srgb(1.0, 0.0, 0.0);  // 红色
+        } else if timer.is_finished() {
+            // 闪烁结束，移除计时器组件
+            commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
+            color.0 = Color::srgb(1.0, 1.0, 1.0);
+        } else {
+            // 未达到最大值：闪烁效果
+            // 每0.6秒切换颜色（0.3秒亮，0.3秒灭）
+            let elapsed = timer.elapsed_secs();
+            let cycle = elapsed % 0.6;
+
+            if cycle < 0.3 {
+                // 亮状态：绿色
+                color.0 = Color::srgb(0.0, 1.0, 0.0);
+            } else {
+                // 灭状态：透明
+                color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
+            }
+        }
+    }
+}
+
+// 判断属性是否达到最大值或On状态
+fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
+    if text.starts_with("Shells:") {
+        player_stats.shells >= 2
+    } else if text.starts_with("Speed:") {
+        player_stats.speed >= 100
+    } else if text.starts_with("Protection:") {
+        player_stats.protection >= 100
+    } else if text.starts_with("Fire Speed:") {
+        player_stats.fire_speed >= 100
+    } else if text.starts_with("Fire Shell:") {
+        player_stats.fire_shell
+    } else if text.starts_with("Air Cushion:") {
+        player_stats.air_cushion
+    } else if text.starts_with("Track Chain:") {
+        player_stats.track_chain
+    } else if text.starts_with("Penetrate:") {
+        player_stats.penetrate
+    } else {
+        false  // 分数等其他属性没有最大值
+    }
+}
+
+pub fn update_enemy_count_display(
+    enemy_spawn_state: Res<EnemySpawnState>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
+    mut query: Query<&mut Text2d, With<EnemyCountText>>,
+) {
+    let current_enemy_count = enemy_tanks.iter().count();
+    let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned + current_enemy_count;
+
+    for mut text in &mut query {
+        text.0 = format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count);
+    }
+}
+
+// 文本更新函数类型

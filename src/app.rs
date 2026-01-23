@@ -114,6 +114,11 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(Update, game_state::handle_game_over_delay.run_if(in_state(GameState::Playing)))
         .add_systems(Update, game_state::check_game_over.run_if(in_state(GameState::Playing)))
         .add_systems(Update, game_state::check_stage_complete.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::update_player_info_display.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::animate_player_info_text.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::update_enemy_count_display.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::update_commander_health_bar.run_if(in_state(GameState::Playing)))
         .add_systems(Update, ui::animate_start_screen.run_if(not(in_state(GameState::Playing))))
         .add_systems(Update, (
             ui::handle_start_screen_input,
