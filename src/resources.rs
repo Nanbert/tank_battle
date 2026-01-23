@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-use crate::constants::TankType;
+use crate::constants::{TankType, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, BLUE_BAR_REGEN_INTERVAL};
 
 #[derive(Resource, Default)]
 pub struct BulletTracker {

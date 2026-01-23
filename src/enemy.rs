@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
-use crate::constants::{EnemyTank, ENEMY_BORN_PLACES, TEXTURE_ENEMY_BORN, AnimationIndices, EnemyBornAnimation, PlayingEntity, AnimationTimer, CurrentAnimationFrame, BornPosition, TankFireConfig, DirectionChangeTimer, CollisionCooldownTimer, RotationTimer, TargetRotation, TANK_SPEED, DIRECTIONS};
+use crate::constants::{EnemyTank, ENEMY_BORN_PLACES, TEXTURE_ENEMY_BORN, AnimationIndices, EnemyBornAnimation, PlayingEntity, AnimationTimer, CurrentAnimationFrame, BornPosition, TankFireConfig, DirectionChangeTimer, CollisionCooldownTimer, RotationTimer, TargetRotation, TANK_SPEED, DIRECTIONS, MAX_ENEMY_ON_SCREEN, ENEMY_BORN_TILE_SIZE, ENEMY_BORN_END_FRAME, ENEMY_BORN_ANIMATION_SIZE, ANIMATION_FRAME_ENEMY_BORN, ENEMY_TILE_WIDTH, ENEMY_TILE_HEIGHT, ENEMY_DIRECTION_CHANGE_INTERVAL, ENEMY_SPAWN_COOLDOWN, ENEMY_ROTATION_TIME, ENEMY_ANGLE_OFFSET_DEGREES, ENEMY_TANK_DISPLAY_WIDTH, ENEMY_TANK_DISPLAY_HEIGHT, ENEMY_COLLIDER_HALF_WIDTH, ENEMY_COLLIDER_HALF_HEIGHT, ENEMY_RANDOM_TURN_PROBABILITY, ANGLE_DIFF_THRESHOLD};
 use crate::resources::EnemySpawnState;
 
 /// 敌方坦克出生动画系统
