@@ -885,6 +885,11 @@ pub fn spawn_game_entities_if_needed(
             spawn_player_info(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, &player_info);
         }
     }
+
+    spawn_top_text_info(&mut commands, &font, stage_level.0);
+
+    // 生成道具
+    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
 }
 fn spawn_player_info(
     commands: &mut Commands,
