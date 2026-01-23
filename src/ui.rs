@@ -23,7 +23,7 @@ pub fn load_start_animation_assets(
     let background_texture2: Handle<Image> = asset_server.load("background/background_sprite_part2.png");
     let background_texture3: Handle<Image> = asset_server.load("background/background_sprite_part3.png");
 
-    let background_tile_size = UVec2::new(2060, 1300); // 每帧的尺寸（窗口大小）
+    let background_tile_size = UVec2::new(BACKGROUND_ANIMATION_TILE_WIDTH as u32, BACKGROUND_ANIMATION_TILE_HEIGHT as u32); // 每帧的尺寸（窗口大小）
 
     // 创建3个纹理图集，每个5帧
     let atlas1 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
@@ -63,7 +63,7 @@ pub fn spawn_start_screen_background(
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
         animation_indices,
-        AnimationTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_START_BACKGROUND, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 }
@@ -77,7 +77,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("For Communism!!".to_string()),
         TextFont {
-            font_size: 60.0,
+            font_size: FONT_SIZE_TITLE,
             font: font.clone(),
             ..default()
         },
@@ -90,7 +90,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("1 Player".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: font.clone(),
             ..default()
         },
@@ -104,7 +104,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("2 Player".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: font.clone(),
             ..default()
         },
@@ -118,7 +118,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("About".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: font.clone(),
             ..default()
         },
@@ -132,7 +132,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("Credits".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: font.clone(),
             ..default()
         },
@@ -146,7 +146,7 @@ pub fn spawn_start_screen_title(
         StartScreenUI,
         Text2d("EXIT".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font,
             ..default()
         },
@@ -163,7 +163,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
         StartScreenUI,
         Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser".to_string()),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
             font_smoothing: default(),
             line_height: default(),
@@ -177,7 +177,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
         StartScreenUI,
         Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser".to_string()),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
             font_smoothing: default(),
             line_height: default(),
@@ -191,7 +191,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
         StartScreenUI,
         Text2d("W/S to select | SPACE to select/pause | ESC to exit".to_string()),
         TextFont {
-            font_size: 20.0,
+            font_size: FONT_SIZE_INFO,
             font: font.clone(),
             font_smoothing: default(),
             line_height: default(),
@@ -248,7 +248,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d("About".to_string()),
         TextFont {
-            font_size: 70.0,
+            font_size: FONT_SIZE_CREDITS_TITLE,
             font: custom_font.clone(),
             ..default()
         },
@@ -270,7 +270,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d(about_text.to_string()),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: custom_font.clone(),
             ..default()
         },
@@ -286,7 +286,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d(support_text.to_string()),
         TextFont {
-            font_size: 22.0,
+            font_size: FONT_SIZE_MEDIUM,
             font: custom_font.clone(),
             ..default()
         },
@@ -300,7 +300,7 @@ pub fn spawn_about_screen(
     let wechat_image: Handle<Image> = asset_server.load("wechat.png");
 
     // 图片大小统一为 400x400 像素
-    let qr_size = 400.0;
+    let qr_size = PAYMENT_CODE_SIZE;
 
     // 支付宝收款码
     commands.spawn((
@@ -318,7 +318,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d("Alipay".to_string()),
         TextFont {
-            font_size: 18.0,
+            font_size: FONT_SIZE_SMALL,
             font: custom_font.clone(),
             ..default()
         },
@@ -342,7 +342,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d("WeChat".to_string()),
         TextFont {
-            font_size: 18.0,
+            font_size: FONT_SIZE_SMALL,
             font: custom_font.clone(),
             ..default()
         },
@@ -355,7 +355,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Text2d("Press SPACE to return".to_string()),
         TextFont {
-            font_size: 22.0,
+            font_size: FONT_SIZE_MEDIUM,
             font: custom_font,
             ..default()
         },
@@ -409,7 +409,7 @@ pub fn spawn_credits_screen(
         CreditsUI,
         Text2d("Credits".to_string()),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: custom_font.clone(),
             ..default()
         },
@@ -444,7 +444,7 @@ pub fn spawn_credits_screen(
         CreditsUI,
         Text2d(credits_text.to_string()),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: custom_font.clone(),
             ..default()
         },
@@ -458,7 +458,7 @@ pub fn spawn_credits_screen(
         CreditsUI,
         Text2d("Press SPACE to return".to_string()),
         TextFont {
-            font_size: 30.0,
+            font_size: FONT_SIZE_UI,
             font: custom_font,
             ..default()
         },
@@ -607,24 +607,24 @@ pub fn spawn_pause_ui(
         PauseUI,
         Text2d("PAUSED".to_string()),
         TextFont {
-            font_size: 100.0,
+            font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 0.0)),
-        Transform::from_xyz(0.0, 0.0, 10.0),
+        Transform::from_xyz(0.0, 0.0, Z_UI),
     ));
 
     commands.spawn((
         PauseUI,
         Text2d("Press SPACE to resume | B to menu | ESC to exit".to_string()),
         TextFont {
-            font_size: 30.0,
+            font_size: FONT_SIZE_UI,
             font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -100.0, 10.0),
+        Transform::from_xyz(0.0, -100.0, Z_UI),
     ));
 }
 
@@ -692,12 +692,12 @@ pub fn spawn_game_over_ui(
         GameOverUI,
         Text2d("GAME OVER".to_string()),
         TextFont {
-            font_size: 100.0,
+            font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 0.0, 0.0)),
-        Transform::from_xyz(0.0, 100.0, 10.0),
+        Transform::from_xyz(0.0, 100.0, Z_UI),
     ));
 
     // Restart 选项
@@ -705,12 +705,12 @@ pub fn spawn_game_over_ui(
         GameOverUI,
         Text2d("RESTART".to_string()),
         TextFont {
-            font_size: 50.0,
+            font_size: FONT_SIZE_OPTION,
             font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, 0.0, 10.0),
+        Transform::from_xyz(0.0, 0.0, Z_UI),
         MenuOption { index: 0 },
     ));
 
@@ -719,12 +719,12 @@ pub fn spawn_game_over_ui(
         GameOverUI,
         Text2d("BACK TO MENU".to_string()),
         TextFont {
-            font_size: 50.0,
+            font_size: FONT_SIZE_OPTION,
             font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -60.0, 10.0),
+        Transform::from_xyz(0.0, -60.0, Z_UI),
         MenuOption { index: 1 },
     ));
 
@@ -733,12 +733,12 @@ pub fn spawn_game_over_ui(
         GameOverUI,
         Text2d("EXIT".to_string()),
         TextFont {
-            font_size: 50.0,
+            font_size: FONT_SIZE_OPTION,
             font: font.clone(),
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -120.0, 10.0),
+        Transform::from_xyz(0.0, -120.0, Z_UI),
         MenuOption { index: 2 },
     ));
 
@@ -747,12 +747,12 @@ pub fn spawn_game_over_ui(
         GameOverUI,
         Text2d("W/S to select | SPACE to confirm".to_string()),
         TextFont {
-            font_size: 30.0,
+            font_size: FONT_SIZE_UI,
             font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(0.0, -200.0, 10.0),
+        Transform::from_xyz(0.0, -200.0, Z_UI),
     ));
 }
 
@@ -838,7 +838,7 @@ pub fn fade_out_screen(
     mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     // 减少透明度
-    fading_out.alpha -= time.delta_secs() * (1.0 / 1.5); // 淡出速度，1.5秒完成
+    fading_out.alpha -= time.delta_secs() * (1.0 / FADE_OUT_SPEED); // 淡出速度，1.5秒完成
 
     // 更新所有 Sprite 元素的透明度
     for (_, mut sprite) in &mut sprite_query {
@@ -875,9 +875,9 @@ pub fn spawn_stage_intro(
     clear_color.0 = Color::srgb(1.0, 1.0, 1.0);
 
     // 初始化计时器
-    stage_intro_timer.fade_in = Timer::from_seconds(1.0, TimerMode::Once);
-    stage_intro_timer.stay = Timer::from_seconds(2.0, TimerMode::Once);
-    stage_intro_timer.fade_out = Timer::from_seconds(1.0, TimerMode::Once);
+    stage_intro_timer.fade_in = Timer::from_seconds(STAGE_FADE_IN_DURATION, TimerMode::Once);
+    stage_intro_timer.stay = Timer::from_seconds(STAGE_FADE_HOLD_DURATION, TimerMode::Once);
+    stage_intro_timer.fade_out = Timer::from_seconds(STAGE_FADE_OUT_DURATION, TimerMode::Once);
 
     // 创建全屏白色背景方块，遮挡所有游戏元素
     commands.spawn((
@@ -887,7 +887,7 @@ pub fn spawn_stage_intro(
             custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
-        Transform::from_xyz(0.0, 0.0, 100.0), // z=100.0 确保在所有游戏元素之上
+        Transform::from_xyz(0.0, 0.0, Z_STAGE_INTRO_BG), // z=100.0 确保在所有游戏元素之上
     ));
 
     // 加载字体
@@ -899,12 +899,12 @@ pub fn spawn_stage_intro(
         StageIntroUI,
         Text2d(format!("Stage {}", stage_level.0)),
         TextFont {
-            font_size: 80.0,
+            font_size: FONT_SIZE_MENU,
             font: en_font,
             ..default()
         },
         TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
-        Transform::from_xyz(0.0, 100.0, 101.0), // z=101.0 在白色背景之上
+        Transform::from_xyz(0.0, 100.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
     ));
 
     // 描述文字（随机选择一条俏皮话）
@@ -915,13 +915,13 @@ pub fn spawn_stage_intro(
         StageIntroUI,
         Text2d(quote_text.to_string()),
         TextFont {
-            font_size: 28.0,
+            font_size: FONT_SIZE_SCORE,
             font: zh_font,
             ..default()
         },
         TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0
         TextLayout::new_with_justify(Justify::Center),
-        Transform::from_xyz(0.0, -50.0, 101.0), // z=101.0 在白色背景之上
+        Transform::from_xyz(0.0, -50.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
     ));
 }
 

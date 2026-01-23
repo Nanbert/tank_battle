@@ -21,8 +21,8 @@ pub fn spawn_walls(commands: &mut Commands) {
         RigidBody::Fixed,
         Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
         Transform{
-            translation: Vec3::new(MAP_LEFT_X - 5.0, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(10.0 , MAP_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_LEFT_X - WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(WALL_SCALE , MAP_HEIGHT, 1.0),
             ..default()
         }
     ));
@@ -35,8 +35,8 @@ pub fn spawn_walls(commands: &mut Commands) {
         RigidBody::Fixed,
         Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
         Transform{
-            translation: Vec3::new(MAP_RIGHT_X + 5.0, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(10.0 , MAP_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_RIGHT_X + WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
+            scale: Vec3::new(WALL_SCALE , MAP_HEIGHT, 1.0),
             ..default()
         }
     ));
@@ -49,8 +49,8 @@ pub fn spawn_walls(commands: &mut Commands) {
         RigidBody::Fixed,
         Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, MAP_TOP_Y + 5.0, 0.0),
-            scale: Vec3::new(MAP_WIDTH, 10.0, 1.0),
+            translation: Vec3::new(0.0, MAP_TOP_Y + WALL_POSITION_OFFSET_2, 0.0),
+            scale: Vec3::new(MAP_WIDTH, WALL_SCALE, 1.0),
             ..default()
         }
     ));
@@ -63,8 +63,8 @@ pub fn spawn_walls(commands: &mut Commands) {
         RigidBody::Fixed,
         Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
         Transform{
-            translation: Vec3::new(0.0, MAP_BOTTOM_Y -5.0, 0.0),
-            scale: Vec3::new(MAP_WIDTH, 10.0 , 1.0),
+            translation: Vec3::new(0.0, MAP_BOTTOM_Y - WALL_POSITION_OFFSET_2, 0.0),
+            scale: Vec3::new(MAP_WIDTH, WALL_SCALE , 1.0),
             ..default()
         }
     ));
@@ -168,11 +168,11 @@ pub fn spawn_terrain_tile(
                         index: forest_animation_indices.first,
                     }
                 ),
-                Transform::from_xyz(position.x, position.y, 1.0),
+                Transform::from_xyz(position.x, position.y, Z_FOREST),
                 forest_animation_indices,
-                AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_FOREST, TimerMode::Repeating)),
                 CurrentAnimationFrame(0),
-                Collider::cuboid(131.0 / 2.0, 131.0 / 2.0),
+                Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
                 RigidBody::Fixed,
                 Sensor,
                 ActiveEvents::COLLISION_EVENTS,
@@ -192,12 +192,12 @@ pub fn spawn_terrain_tile(
                         index: sea_animation_indices.first,
                     }
                 ),
-                Transform::from_xyz(position.x, position.y, -0.5),
+                Transform::from_xyz(position.x, position.y, Z_SEA),
                 sea_animation_indices,
-                AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SEA, TimerMode::Repeating)),
                 CurrentAnimationFrame(0),
                 RigidBody::Fixed,
-                Collider::cuboid(100.0 / 2.0, 100.0 / 2.0),
+                Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
                 CollisionGroups::new(SEA_GROUP, Group::all()),
             )).id()
         }
@@ -229,7 +229,7 @@ pub fn spawn_brick_group(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 4] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(offset, offset),
@@ -254,7 +254,7 @@ pub fn spawn_steel_group(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 4] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(offset, offset),
@@ -279,7 +279,7 @@ pub fn spawn_brick_left(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(-offset, -offset),
@@ -302,7 +302,7 @@ pub fn spawn_brick_right(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(offset, offset),
         Vec2::new(offset, -offset),
@@ -325,7 +325,7 @@ pub fn spawn_brick_top(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(offset, offset),
@@ -348,7 +348,7 @@ pub fn spawn_brick_bottom(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, -offset),
         Vec2::new(offset, -offset),
@@ -371,7 +371,7 @@ pub fn spawn_steel_left(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(-offset, -offset),
@@ -394,7 +394,7 @@ pub fn spawn_steel_right(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(offset, offset),
         Vec2::new(offset, -offset),
@@ -417,7 +417,7 @@ pub fn spawn_steel_top(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, offset),
         Vec2::new(offset, offset),
@@ -440,7 +440,7 @@ pub fn spawn_steel_bottom(
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
 ) -> [Entity; 2] {
-    let offset = 25.0;
+    let offset = BRICK_GROUP_OFFSET;
     let positions = [
         Vec2::new(-offset, -offset),
         Vec2::new(offset, -offset),
@@ -546,7 +546,7 @@ fn spawn_commander(
 ) {
     let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
-    let commander_tile_size = UVec2::new(140, 120);
+    let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
     let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
     let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
@@ -561,7 +561,7 @@ fn spawn_commander(
     let commander_bottom = commander_y - COMMANDER_HEIGHT / 2.0;
 
     // 创建包围司令官的砖块堡垒墙
-    let brick_size = 50.0;
+    let brick_size = COMMANDER_BRICK_SIZE;
 
     // 左墙：3块砖，紧贴司令官左侧
     for i in 0..3 {
@@ -613,7 +613,7 @@ fn spawn_commander(
         },
         Transform::from_xyz(commander_x, commander_y, 0.0),
         commander_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.15, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_COMMANDER, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
         RigidBody::Fixed,
         Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
@@ -639,9 +639,9 @@ fn spawn_commander(
             custom_size: Some(Vec2::new(70.0, 60.0)),
             ..default()
         },
-        Transform::from_translation(Vec3::new(commander_x, commander_y, 1.0)), // z=1.0 使动画在 Commander 上方
+        Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)), // z=1.0 使动画在 Commander 上方
         music_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)), // 每0.1秒切换一帧
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_COMMANDER_MUSIC, TimerMode::Repeating)), // 每0.1秒切换一帧
         CurrentAnimationFrame(0),
     ));
 }
@@ -668,24 +668,24 @@ fn spawn_player1_tank(
                 layout: texture_atlas_layout,
                 index: animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(80.0, 90.0)),
+            custom_size: Some(Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT)),
             ..default()
         })
-        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
+        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
         .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
         .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)))
+        .insert(AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_ENEMY_MOVE, TimerMode::Repeating)))
         .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(35.0, 35.0))
+        .insert(Collider::cuboid(PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
         .insert(LockedAxes::ROTATION_LOCKED)
         .insert(KinematicCharacterController {
-            offset: CharacterLength::Absolute(0.01),
+            offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
             filter_groups: None,
             autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                max_height: CharacterLength::Absolute(5.0),
-                min_width: CharacterLength::Absolute(0.5),
+                max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
+                min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
                 include_dynamic_bodies: false,
             }),
             ..default()
@@ -729,7 +729,7 @@ pub fn spawn_game_entities_if_needed(
     // 加载玩家坦克纹理和创建精灵图
     let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
     let player2_texture = asset_server.load(TEXTURE_PLAYER_TANK2);
-    let player_tile_size = UVec2::new(293, 328);
+    let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
     let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
@@ -768,15 +768,15 @@ pub fn spawn_game_entities_if_needed(
 
     
 
-                                    speed: 40,
+                                    speed: INITIAL_ATTRIBUTE_VALUE,
 
     
 
-                                    fire_speed: 40,
+                                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
 
     
 
-                                    protection: 40,
+                                    protection: INITIAL_ATTRIBUTE_VALUE,
 
     
 

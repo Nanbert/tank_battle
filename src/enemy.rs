@@ -27,7 +27,7 @@ pub fn enemy_spawn_system(
     // 检查是否需要生成新敌人
     // 条件：未达到总数上限 + 场上敌人数量少于4个 + 冷却时间已结束
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count
-        && current_enemy_count < 4
+        && current_enemy_count < MAX_ENEMY_ON_SCREEN
         && enemy_spawn_state.spawn_cooldown.is_finished()
     {
         // 生成敌方坦克出生动画
@@ -52,10 +52,10 @@ pub fn spawn_enemy_born_animation(
     position: Vec3,
 ) -> Entity {
     let enemy_born_texture: Handle<Image> = asset_server.load(TEXTURE_ENEMY_BORN);
-    let enemy_born_tile_size = UVec2::new(192, 192);
+    let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
     let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
     let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
-    let enemy_born_animation_indices = AnimationIndices { first: 0, last: 12 };
+    let enemy_born_animation_indices = AnimationIndices { first: 0, last: ENEMY_BORN_END_FRAME };
 
     commands.spawn((
         EnemyBornAnimation,
@@ -66,12 +66,12 @@ pub fn spawn_enemy_born_animation(
                 layout: enemy_born_texture_atlas_layout,
                 index: enemy_born_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(100.0, 100.0)),
+            custom_size: Some(Vec2::new(ENEMY_BORN_ANIMATION_SIZE, ENEMY_BORN_ANIMATION_SIZE)),
             ..default()
         },
         Transform::from_translation(position),
         enemy_born_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_ENEMY_BORN, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
         BornPosition(position), // 记录出生位置
     )).id()
@@ -107,7 +107,7 @@ pub fn animate_enemy_born_animation(
                     if next_index == spawn_frame {
                         // 加载敌方坦克纹理和创建精灵图
                         let enemy_texture = asset_server.load("enemy_tank/enemy_tank1_sprite.png");
-                        let enemy_tile_size = UVec2::new(137, 183);
+                        let enemy_tile_size = UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
                         let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 2, 1, None, None);
                         let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
                         let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
@@ -119,18 +119,18 @@ pub fn animate_enemy_born_animation(
                             })
                             .insert(PlayingEntity)
                             .insert(TankFireConfig::default())
-                            .insert(DirectionChangeTimer(Timer::from_seconds(2.0, TimerMode::Once)))
-                            .insert(CollisionCooldownTimer(Timer::from_seconds(0.5, TimerMode::Once)))
-                            .insert(RotationTimer(Timer::from_seconds(0.6, TimerMode::Once)))
-                            .insert(TargetRotation { angle: 270.0_f32.to_radians() })
-                            .insert(AnimationTimer(Timer::from_seconds(0.25, TimerMode::Repeating)))
+                            .insert(DirectionChangeTimer(Timer::from_seconds(ENEMY_DIRECTION_CHANGE_INTERVAL, TimerMode::Once)))
+                            .insert(CollisionCooldownTimer(Timer::from_seconds(ENEMY_SPAWN_COOLDOWN, TimerMode::Once)))
+                            .insert(RotationTimer(Timer::from_seconds(ENEMY_ROTATION_TIME, TimerMode::Once)))
+                            .insert(TargetRotation { angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians() })
+                            .insert(AnimationTimer(Timer::from_seconds(ENEMY_ROTATION_TIME, TimerMode::Repeating)))
                             .insert(Sprite {
                                 image: enemy_texture,
                                 texture_atlas: Some(TextureAtlas {
                                     layout: enemy_texture_atlas_layout,
                                     index: enemy_animation_indices.first,
                                 }),
-                                custom_size: Some(Vec2::new(80.0, 90.0)),
+                                custom_size: Some(Vec2::new(ENEMY_TANK_DISPLAY_WIDTH, ENEMY_TANK_DISPLAY_HEIGHT)),
                                 ..default()
                             })
                             .insert(Transform::from_translation(born_position.0))
@@ -140,7 +140,7 @@ pub fn animate_enemy_born_animation(
                                 angvel: 0.0,
                             })
                             .insert(RigidBody::Dynamic)
-                            .insert(Collider::cuboid(35.0, 35.0))
+                            .insert(Collider::cuboid(ENEMY_COLLIDER_HALF_WIDTH, ENEMY_COLLIDER_HALF_HEIGHT))
                             .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
                             .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
                             .insert(LockedAxes::ROTATION_LOCKED)
@@ -319,7 +319,7 @@ fn handle_random_direction_change(
     direction_timer: &mut DirectionChangeTimer,
 ) {
     let mut rng = rand::rng();
-    if rng.random::<f32>() < 0.4 {
+    if rng.random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
         let random_index = rng.random_range(0..DIRECTIONS.len());
         enemy_tank.direction = DIRECTIONS[random_index];
     }
@@ -335,13 +335,13 @@ fn update_enemy_tank_movement(
 ) {
     if enemy_tank.direction.length() > 0.0 {
         let angle = enemy_tank.direction.y.atan2(enemy_tank.direction.x);
-        let target_angle = angle - 270.0_f32.to_radians();
+        let target_angle = angle - ENEMY_ANGLE_OFFSET_DEGREES.to_radians();
 
         // 检查是否需要转向
         let current_euler = target_rotation.angle;
         let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
 
-        if angle_diff.abs() > 0.01 {
+        if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
             // 需要转向，设置速度为0实现原地转向
             velocity.linvel = Vec2::ZERO;
             target_rotation.angle = target_angle;

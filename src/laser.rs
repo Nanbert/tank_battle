@@ -40,12 +40,12 @@ pub fn spawn_laser(
     let angle = params.direction.y.atan2(params.direction.x) - std::f32::consts::FRAC_PI_2;
 
     // 激光束高度的一半（原本长度），用于位置偏移
-    let laser_half_height = 1366.0 / 2.0;
+    let laser_half_height = LASER_HEIGHT / 2.0;
 
     // 计算激光位置：从坦克炮口向前延伸
     // 激光束的底部在坦克炮口，激光束向前延伸
     // 向炮口靠近30像素
-    let laser_position = params.position + params.direction.extend(0.0) * (laser_half_height - 30.0);
+    let laser_position = params.position + params.direction.extend(0.0) * (laser_half_height - LASER_POSITION_OFFSET);
 
     commands.spawn((
         Laser,
@@ -59,16 +59,16 @@ pub fn spawn_laser(
                 layout: laser_texture_atlas_layout,
                 index: laser_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(512.0, 1366.0)), // 原本长度
+            custom_size: Some(Vec2::new(512.0, LASER_HEIGHT)), // 原本长度
             ..default()
         },
         Transform {
-            translation: Vec3::new(laser_position.x, laser_position.y, 0.9), // z=0.9置于上层
+            translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER), // z=0.9置于上层
             rotation: Quat::from_rotation_z(angle),
             ..default()
         },
         laser_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_LASER, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ))
     .id()
@@ -146,11 +146,11 @@ pub fn player_laser_system(
 
                         // 更新进度条（从满格向两边递减）
                         let progress = charge.timer.elapsed_secs() / charge.timer.duration().as_secs_f32();
-                        let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
+                        let bar_width = LASER_CHARGE_PROGRESS_BAR_WIDTH * (1.0 - progress); // 从100递减到0
 
                         for (_, mut sprite, progress_bar) in &mut progress_bar_query {
                             if progress_bar.player_entity == entity {
-                                sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
+                                sprite.custom_size = Some(Vec2::new(bar_width, PROGRESS_BAR_HEIGHT));
                             }
                         }
                         
@@ -186,12 +186,12 @@ pub fn player_laser_system(
                                 commands.spawn(AudioPlayer::new(laser_sound));
 
                                 // 立刻应用后坐力：向后移动 0.3 个身位
-                                let recoil_distance = TANK_HEIGHT * 0.3;
+                                let recoil_distance = TANK_HEIGHT * RECOIL_DISTANCE_FACTOR;
                                 let recoil_offset = direction * -recoil_distance;
                                 commands.entity(entity).insert(RecoilForce {
                                     original_pos: transform.translation,
                                     target_offset: recoil_offset,
-                                    timer: Timer::from_seconds(0.3, TimerMode::Once),
+                                    timer: Timer::from_seconds(RECOIL_DURATION, TimerMode::Once),
                                 });
 
                                 }
@@ -227,7 +227,7 @@ pub fn player_laser_system(
 
                 // 创建蓄力组件（4秒蓄力）
                 commands.entity(entity).insert(LaserCharge {
-                    timer: Timer::from_seconds(4.0, TimerMode::Once),
+                    timer: Timer::from_seconds(LASER_CHARGE_TIME, TimerMode::Once),
                     tank_type: player_tank.tank_type,
                 });
 
@@ -244,10 +244,10 @@ pub fn player_laser_system(
                     LaserChargeProgressBar { player_entity: entity },
                     Sprite {
                         color: Color::srgb(0.0, 1.0, 0.0), // 绿色
-                        custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
+                        custom_size: Some(Vec2::new(LASER_CHARGE_PROGRESS_BAR_WIDTH, PROGRESS_BAR_HEIGHT)), // 初始宽度100（满格）
                         ..default()
                     },
-                    Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
+                    Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET, Z_PROGRESS_BAR), // 在坦克上方
                 ));
             }
         } else if has_charge {

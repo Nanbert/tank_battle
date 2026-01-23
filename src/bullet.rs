@@ -77,7 +77,7 @@ pub fn spawn_bullet(
         },
         Sprite {
             image: bullet_texture,
-            custom_size: Some(Vec2::new(60.0, 40.0)), // 子弹尺寸：长60像素，宽40像素
+            custom_size: Some(Vec2::new(BULLET_WIDTH, BULLET_HEIGHT)), // 子弹尺寸：长60像素，宽40像素
             ..default()
         },
         Transform {
@@ -90,7 +90,7 @@ pub fn spawn_bullet(
             angvel: 0.0,
         },
         RigidBody::KinematicVelocityBased,
-        Collider::cuboid(60.0 / 2.0, 40.0 / 2.0), // 使用矩形碰撞体匹配子弹尺寸
+        Collider::cuboid(BULLET_WIDTH / 2.0, BULLET_HEIGHT / 2.0), // 使用矩形碰撞体匹配子弹尺寸
         LockedAxes::ROTATION_LOCKED,
         Sensor,
         ActiveEvents::COLLISION_EVENTS,
@@ -114,7 +114,7 @@ pub fn enemy_shoot_system(
 
         // 随机射击，每帧有 1.0% 的概率射击
         let mut rng = rand::rng();
-        if rng.random::<f32>() < 0.01 {
+        if rng.random::<f32>() < ENEMY_SHOOT_PROBABILITY {
             // 计算子弹发射方向（基于坦克的预期朝向 direction）
             let direction = if enemy_tank.direction.length() > 0.0 {
                 enemy_tank.direction.normalize()
@@ -190,7 +190,7 @@ pub fn player_shoot_system(
         // 坦克旋转时使用：angle - 90.0_f32.to_radians()
         // 因此需要补偿：actual_angle = euler_angle + 90.0_f32.to_radians()
         let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-        let actual_angle = euler_angle + 90.0_f32.to_radians();
+        let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
         let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
         // 计算子弹初始位置（坦克前方）
@@ -338,7 +338,7 @@ pub fn bullet_terrain_collision_system(
                 let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
                 commands.spawn((
                     AudioPlayer::new(brick_hit_sound),
-                    PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
+                    PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
                 ));
 
                 // 发送火花特效事件
@@ -621,7 +621,7 @@ pub fn bullet_commander_collision_system(
 
             // 简单的 AABB 碰撞检测
             let commander_half_size = Vec2::new(crate::constants::COMMANDER_WIDTH / 2.0, crate::constants::COMMANDER_HEIGHT / 2.0);
-            let bullet_half_size = Vec2::new(30.0, 20.0); // 子弹尺寸的一半
+            let bullet_half_size = Vec2::new(BULLET_WIDTH / 2.0, BULLET_HEIGHT / 2.0); // 子弹尺寸的一半
 
             let commander_min = commander_transform.translation.truncate() - commander_half_size;
             let commander_max = commander_transform.translation.truncate() + commander_half_size;

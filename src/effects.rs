@@ -18,7 +18,7 @@ pub fn spawn_explosion(
 ) {
     // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
     let explosion_texture: Handle<Image> = asset_server.load(TEXTURE_EXPLOSION);
-    let explosion_tile_size = UVec2::new(512, 512);
+    let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
     let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
     let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
@@ -37,7 +37,7 @@ pub fn spawn_explosion(
         },
         Transform::from_translation(position),
         explosion_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.01, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_EXPLOSION, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 
@@ -45,7 +45,7 @@ pub fn spawn_explosion(
     let explosion_sound: Handle<AudioSource> = asset_server.load(SOUND_EXPLOSION);
     commands.spawn((
         AudioPlayer::new(explosion_sound),
-        PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
+        PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
     ));
 }
 
@@ -74,7 +74,7 @@ pub fn spawn_forest_fire(
         ),
         Transform::from_translation(position),
         forest_fire_animation_indices,
-        AnimationTimer(Timer::from_seconds(1.5 / 10.0, TimerMode::Repeating)), // 1.5秒播完10帧
+        AnimationTimer(Timer::from_seconds(FOREST_FIRE_DURATION / 10.0, TimerMode::Repeating)), // 1.5秒播完10帧
         CurrentAnimationFrame(0),
     ));
 
@@ -91,7 +91,7 @@ pub fn spawn_spark(
 ) {
     // 加载打击效果图片（4x4，共16帧，每帧1024x1024）
     let spark_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL_HIT);
-    let spark_tile_size = UVec2::new(1024, 1024);
+    let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
     let spark_texture_atlas = TextureAtlasLayout::from_grid(spark_tile_size, 4, 4, None, None);
     let spark_texture_atlas_layout = texture_atlas_layouts.add(spark_texture_atlas);
     let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
@@ -110,7 +110,7 @@ pub fn spawn_spark(
         },
         Transform::from_translation(position),
         spark_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.02, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SPARK, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ));
 }
@@ -167,12 +167,12 @@ pub fn animate_laser(
                                 layout: smoke_texture_atlas_layout,
                                 index: smoke_animation_indices.first,
                             }),
-                            custom_size: Some(Vec2::new(100.0, 100.0)),
+                            custom_size: Some(Vec2::new(SMOKE_SIZE, SMOKE_SIZE)),
                             ..default()
                         },
-                        Transform::from_xyz(transform.translation.x, transform.translation.y, 1.0),
+                        Transform::from_xyz(transform.translation.x, transform.translation.y, Z_DEFAULT),
                         smoke_animation_indices,
-                        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+                        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SMOKE, TimerMode::Repeating)),
                         CurrentAnimationFrame(0),
                     ));
                     
@@ -317,14 +317,14 @@ pub fn laser_collision_system(
 ) {
     // 每5帧执行一次碰撞检测
     *frame_count += 1;
-    if !(*frame_count).is_multiple_of(5) {
+    if !(*frame_count).is_multiple_of(LASER_COLLISION_FRAME_INTERVAL) {
         return;
     }
     
     for (_laser_entity, laser_transform, _, _) in &lasers {
         // 激光原始尺寸（未旋转）
-        let laser_half_width = 35.0; // 70 / 2
-        let laser_half_height = 683.0; // 1366 / 2 (1倍)
+        let laser_half_width = LASER_COLLIDER_HALF_WIDTH; // 70 / 2
+        let laser_half_height = LASER_COLLIDER_HALF_HEIGHT; // 1366 / 2 (1倍)
         
         // 获取激光的旋转角度
         let rotation = laser_transform.rotation;

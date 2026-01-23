@@ -51,7 +51,7 @@ pub fn handle_powerup_collision(
         // 检查道具碰撞
         for (powerup_entity, powerup_transform, powerup_type) in powerups.iter() {
             let distance = (powerup_transform.translation - tank_transform.translation).length();
-            if distance < 81.0 {
+            if distance < POWERUP_COLLISION_DISTANCE {
                 picked_powerup = Some(*powerup_type);
                 powerup_entity_to_despawn = Some(powerup_entity);
             }
@@ -69,20 +69,20 @@ pub fn handle_powerup_collision(
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                 let stat_type = match powerup_type {
                     PowerUp::SpeedUp => {
-                        if player_stats.speed < 100 {
-                            player_stats.speed += 20;
+                        if player_stats.speed < MAX_ATTRIBUTE_VALUE {
+                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::Speed)
                     }
                     PowerUp::Protection => {
-                        if player_stats.protection < 100 {
-                            player_stats.protection += 20;
+                        if player_stats.protection < MAX_ATTRIBUTE_VALUE {
+                            player_stats.protection = (player_stats.protection + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::Protection)
                     }
                     PowerUp::FireSpeed => {
-                        if player_stats.fire_speed < 100 {
-                            player_stats.fire_speed += 20;
+                        if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
+                            player_stats.fire_speed = (player_stats.fire_speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::FireSpeed)
                     }
@@ -99,13 +99,13 @@ pub fn handle_powerup_collision(
                         Some(StatType::Penetrate)
                     }
                     PowerUp::Repair => {
-                        if player_stats.life_red_bar < 3 {
+                        if player_stats.life_red_bar < COMMANDER_LIFE_MAX {
                             player_stats.life_red_bar += 1;
                         }
                         None // 修理道具不需要闪烁文字
                     }
                     PowerUp::Hamburger => {
-                        if commander_life.life_red_bar < 3 {
+                        if commander_life.life_red_bar < COMMANDER_LIFE_MAX {
                             commander_life.life_red_bar += 1;
                         }
                         None // 汉堡道具不影响玩家属性，不发送事件

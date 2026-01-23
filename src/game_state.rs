@@ -42,7 +42,7 @@ pub fn check_game_over(
         // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
         commands.spawn((
             GameOverTimer,
-            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
         ));
         return;
     }
@@ -66,7 +66,7 @@ pub fn check_game_over(
         // 启动 Game Over 延迟计时器（1.2秒）
         commands.spawn((
             GameOverTimer,
-            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
         ));
     }
 }
@@ -168,12 +168,12 @@ pub fn update_player_info_display(
                     continue;
                 }
                 // 血条总宽度 160，生命值 3，每条代表 1/3
-                let health_width = (player_stats.life_red_bar as f32 / 3.0) * 160.0;
-                sprite.custom_size = Some(Vec2::new(health_width, 10.0));
+                let health_width = (player_stats.life_red_bar as f32 / 3.0) * BAR_TOTAL_WIDTH;
+                sprite.custom_size = Some(Vec2::new(health_width, BAR_HEIGHT));
 
                 // 左对齐：将血条向左移动，使其从左边界开始
                 // 原始位置是中心点，需要向左偏移 (160 - health_width) / 2
-                let offset = (160.0 - health_width) / 2.0;
+                let offset = (BAR_TOTAL_WIDTH - health_width) / 2.0;
                 transform.translation.x = original_pos.0 - offset;
             }
 
@@ -183,12 +183,12 @@ pub fn update_player_info_display(
                     continue;
                 }
                 // 蓝条总宽度 160，能量值 100
-                let blue_width = (player_stats.energy_blue_bar as f32 / 3.0) * 160.0;
-                sprite.custom_size = Some(Vec2::new(blue_width, 10.0));
+                let blue_width = (player_stats.energy_blue_bar as f32 / 3.0) * BAR_TOTAL_WIDTH;
+                sprite.custom_size = Some(Vec2::new(blue_width, BAR_HEIGHT));
 
                 // 左对齐：将蓝条向左移动，使其从左边界开始
                 // 原始位置是中心点，需要向左偏移 (160 - blue_width) / 2
-                let offset = (160.0 - blue_width) / 2.0;
+                let offset = (BAR_TOTAL_WIDTH - blue_width) / 2.0;
                 transform.translation.x = original_pos.0 - offset;
             }
         }
@@ -200,9 +200,9 @@ pub fn update_commander_health_bar(
     mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        let health_width = (changed_commander_life.life_red_bar as f32 / 3.0) * 160.0;
-        sprite.custom_size = Some(Vec2::new(health_width, 10.0));
-        transform.translation.x = original_pos.0 - (160.0 - health_width) / 2.0;
+        let health_width = (changed_commander_life.life_red_bar as f32 / 3.0) * COMMANDER_BAR_WIDTH;
+        sprite.custom_size = Some(Vec2::new(health_width, BAR_HEIGHT));
+        transform.translation.x = original_pos.0 - (COMMANDER_BAR_WIDTH - health_width) / 2.0;
     }
 }
 
@@ -241,7 +241,7 @@ pub fn update_menu_blink(
     game_state: Res<State<GameState>>,
 ) {
     // FadingOut 状态下的闪烁周期（秒）
-    const FADE_OUT_BLINK_PERIOD: f32 = 0.5;
+    const FADE_OUT_BLINK_PERIOD: f32 = MENU_BLINK_PERIOD;
     
     // 在 FadingOut 状态下闪烁 + 淡出
     if *game_state.get() == GameState::FadingOut {
@@ -276,7 +276,7 @@ pub fn update_menu_blink(
 
         // 初始化计时器（0.5秒闪烁）
         if blink_timer.0.duration().is_zero() {
-            blink_timer.0 = Timer::from_seconds(0.5, TimerMode::Repeating);
+            blink_timer.0 = Timer::from_seconds(MENU_BLINK_PERIOD, TimerMode::Repeating);
         }
 
         if blink_timer.0.just_finished() {
@@ -373,12 +373,12 @@ pub fn reset_player_positions(
         match player_tank.tank_type {
             TankType::Player1 => {
                 // 玩家1出生位置：左侧
-                transform.translation.x = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - 50.0;
+                transform.translation.x = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
                 transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
             }
             TankType::Player2 => {
                 // 玩家2出生位置：右侧
-                transform.translation.x = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0;
+                transform.translation.x = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
                 transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
             }
             TankType::Enemy => {}
@@ -446,7 +446,7 @@ pub fn play_sea_ambience(
             let sea_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_SEA_AMBIENCE);
             commands.spawn((
                 AudioPlayer::new(sea_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
                 SeaAmbiencePlayer,
             ));
         }
@@ -519,7 +519,7 @@ pub fn play_commander_music(
             let commander_music_sound: Handle<AudioSource> = asset_server.load(random_music);
             commands.spawn((
                 AudioPlayer::new(commander_music_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.4)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_COMMANDER_MUSIC)),
                 CommanderAmbiencePlayer,
             ));
         }
@@ -560,7 +560,7 @@ pub fn play_tree_ambience(
             let tree_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_TREE_AMBIENCE);
             commands.spawn((
                 AudioPlayer::new(tree_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
                 TreeAmbiencePlayer,
             ));
         }
@@ -614,21 +614,37 @@ pub fn play_tree_ambience(
 
                         // 创建气泡特效实体
 
-                        commands.entity(entity).with_children(|parent| {
+    
 
-                            parent.spawn((
+                                                commands.entity(entity).with_children(|parent| {
 
-                                Sprite {
+    
 
-                                    image: bubble_texture,
+                                                    parent.spawn((
 
-                                    custom_size: Some(Vec2::new(100.0, 100.0)),
+    
 
-                                    ..default()
+                                                        Sprite {
 
-                                },
+    
 
-                                Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
+                                                            image: bubble_texture,
+
+    
+
+                                                            custom_size: Some(Vec2::new(POWERUP_BUBBLE_SIZE, POWERUP_BUBBLE_SIZE)),
+
+    
+
+                                                            ..default()
+
+    
+
+                                                        },
+
+    
+
+                                                        Transform::from_xyz(0.0, 0.0, Z_DEFAULT), // 在坦克中心
 
                                 crate::constants::BubbleEffect,
 
@@ -736,7 +752,7 @@ pub fn handle_stat_changed_for_blink(
         for (entity, text, player_index) in &player_info_texts {
             if player_index.player_type == event.player_type && text.0.starts_with(prefix) {
                 commands.entity(entity).insert(PlayerInfoBlinkTimer(
-                    Timer::from_seconds(1.2, TimerMode::Once)
+                    Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)
                 ));
                 break;
             }
@@ -768,9 +784,9 @@ pub fn animate_player_info_text(
             // 未达到最大值：闪烁效果
             // 每0.6秒切换颜色（0.3秒亮，0.3秒灭）
             let elapsed = timer.elapsed_secs();
-            let cycle = elapsed % 0.6;
+            let cycle = elapsed % TEXT_BLINK_CYCLE;
 
-            if cycle < 0.3 {
+            if cycle < TEXT_BLINK_CYCLE / 2.0 {
                 // 亮状态：绿色
                 color.0 = Color::srgb(0.0, 1.0, 0.0);
             } else {

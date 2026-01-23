@@ -58,15 +58,15 @@ pub fn move_player_tank(
         // 检查是否需要转向
         let needs_rotation = if direction.length() > 0.0 {
             let angle = direction.y.atan2(direction.x);
-            let target_angle = angle - 90.0_f32.to_radians();
+            let target_angle = angle - ANGLE_OFFSET_DEGREES.to_radians();
 
             let current_euler = target_rotation.angle;
             let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
 
-            if angle_diff.abs() > 0.01 {
+            if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
                 target_rotation.angle = target_angle;
                 // 只在角度变化较大时才重置计时器，避免频繁重置
-                if angle_diff.abs() > 0.1 {
+                if angle_diff.abs() > ANGLE_DIFF_RESET_THRESHOLD {
                     rotation_timer.reset();
                 }
                 true
@@ -85,7 +85,7 @@ pub fn move_player_tank(
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
-        let speed = if needs_rotation { base_speed * 0.5 } else { base_speed };
+        let speed = if needs_rotation { base_speed * ROTATION_SPEED_FACTOR } else { base_speed };
         
         let is_moving = direction.length() > 0.0;
         if is_moving {
@@ -159,9 +159,9 @@ pub fn handle_recall_input(
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
             let initial_position = if player_tank.tank_type == TankType::Player1 {
-                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
             } else {
-                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
             };
 
             // 开始回城
@@ -177,10 +177,10 @@ pub fn handle_recall_input(
                 RecallProgressBar { player_entity: entity },
                 Sprite {
                     color: Color::srgb(0.0, 1.0, 0.0), // 绿色
-                    custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
+                    custom_size: Some(Vec2::new(PROGRESS_BAR_INITIAL_WIDTH, PROGRESS_BAR_HEIGHT)), // 初始宽度100（满格）
                     ..default()
                 },
-                Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
+                Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET, Z_PROGRESS_BAR), // 在坦克上方
             ));
         }
     }
@@ -240,11 +240,11 @@ pub fn update_recall_timers(
 
                 // 更新进度条（从满格递减）
                 let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
-                let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
+                let bar_width = PROGRESS_BAR_INITIAL_WIDTH * (1.0 - progress); // 从100递减到0
 
                 for (_, mut sprite, progress_bar) in &mut progress_bar_query {
                     if progress_bar.player_entity == entity {
-                        sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
+                        sprite.custom_size = Some(Vec2::new(bar_width, PROGRESS_BAR_HEIGHT));
                     }
                 }
 
@@ -297,7 +297,7 @@ pub fn update_recall_progress_bars(
         if let Some((_, player_pos)) = player_transforms.iter().find(|(e, _)| *e == progress_bar.player_entity) {
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_pos.x;
-            progress_transform.translation.y = player_pos.y + TANK_HEIGHT / 2.0 + 20.0;
+            progress_transform.translation.y = player_pos.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -333,7 +333,7 @@ pub fn handle_dash_input(
 
                     // 计算坦克当前朝向
                     let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-                    let actual_angle = euler_angle + 90.0_f32.to_radians();
+                    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
                     let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
                     // 开始冲刺
@@ -637,7 +637,7 @@ fn handle_brick_collision(
             // 启动 Game Over 延迟计时器（1.2秒）
             commands.spawn((
                 GameOverTimer,
-                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
             ));
         }
     }
@@ -768,7 +768,7 @@ fn handle_dash_enemy_tank_collision(
 
         // 根据 protection 百分比决定扣血量
         let health_cost = if player_stats.protection < 40 {
-            2 // 2/3血条
+            DASH_DAMAGE_COST_HIGH // 2/3血条
         } else {
             usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
         };
@@ -800,7 +800,7 @@ fn handle_dash_enemy_tank_collision(
             // 启动 Game Over 延迟计时器（1.2秒）
             commands.spawn((
                 GameOverTimer,
-                AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
+                AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
             ));
         }
     }
@@ -815,7 +815,7 @@ pub fn handle_barrier_collision(
     mut barrier_damage_tracker: ResMut<BarrierDamageTracker>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
-    const COLLISION_THRESHOLD: f32 = 70.0;
+    const COLLISION_THRESHOLD: f32 = BARRIER_WIDTH;
 
     // 更新所有冷却计时器
     for timer in barrier_damage_tracker.cooldowns.values_mut() {
@@ -853,8 +853,8 @@ pub fn handle_barrier_collision(
 
                     // 永久减少 speed 20 和 protection 20（固定值）
                     if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-                        player_stats.speed = player_stats.speed.saturating_sub(20);
-                        player_stats.protection = player_stats.protection.saturating_sub(20);
+                        player_stats.speed = player_stats.speed.saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
+                        player_stats.protection = player_stats.protection.saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
 
                         // 发送 speed 和 protection 变更事件
                         stat_changed_events.write(PlayerStatChanged {

@@ -81,8 +81,8 @@ impl Default for EnemySpawnState {
     fn default() -> Self {
         Self {
             has_spawned: 0,
-            max_count: 20,
-            spawn_cooldown: Timer::from_seconds(0.8, TimerMode::Once),
+            max_count: ENEMIES_PER_LEVEL,
+            spawn_cooldown: Timer::from_seconds(ENEMY_SPAWN_COOLDOWN, TimerMode::Once),
         }
     }
 }
@@ -176,7 +176,7 @@ pub struct BlueBarRegenTimer {
 impl Default for BlueBarRegenTimer {
     fn default() -> Self {
         Self {
-            timer: Timer::from_seconds(5.0, TimerMode::Repeating),
+            timer: Timer::from_seconds(BLUE_BAR_REGEN_INTERVAL, TimerMode::Repeating),
         }
     }
 }
