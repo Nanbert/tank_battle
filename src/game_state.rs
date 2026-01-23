@@ -264,11 +264,27 @@ pub fn update_menu_blink(
                 }
             }
         }
-    } else {
-        // 在 StartScreen 状态下，选中的选项保持黄色常亮
-        for (option, mut text_color) in &mut text_query {
-            if option.index == menu_selection.selected_index {
-                text_color.0 = Color::srgb(1.0, 1.0, 0.0);
+    } else if *game_state.get() == GameState::StartScreen {
+        // 在 StartScreen 状态下，选中的选项闪烁
+        blink_timer.0.tick(time.delta());
+
+        // 初始化计时器（0.5秒闪烁）
+        if blink_timer.0.duration().is_zero() {
+            blink_timer.0 = Timer::from_seconds(0.5, TimerMode::Repeating);
+        }
+
+        if blink_timer.0.just_finished() {
+            for (option, mut text_color) in &mut text_query {
+                if option.index == menu_selection.selected_index {
+                    // 当前选中的选项在黄色和白色之间闪烁
+                    let linear = text_color.0.to_linear();
+                    let is_yellow = linear.red > 0.9 && linear.green > 0.9 && linear.blue < 0.1;
+                    if is_yellow {
+                        text_color.0 = Color::srgb(1.0, 1.0, 1.0); // 切换到白色
+                    } else {
+                        text_color.0 = Color::srgb(1.0, 1.0, 0.0); // 切换到黄色
+                    }
+                }
             }
         }
     }
