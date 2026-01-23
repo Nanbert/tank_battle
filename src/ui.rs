@@ -3,6 +3,7 @@
 //! 处理所有用户界面相关的功能，包括开始界面、暂停界面、游戏结束界面、关于界面、致谢界面等
 
 use bevy::prelude::*;
+use bevy::app::AppExit;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
@@ -494,10 +495,11 @@ pub fn handle_start_screen_input(
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
     mut game_mode: ResMut<GameMode>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     // Esc 键退出游戏
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        std::process::exit(0);
+        let _ = app_exit.write(AppExit::Success);
     }
 
     // W 键向上选择
@@ -529,7 +531,9 @@ pub fn handle_start_screen_input(
             3 => {
                 next_state.set(GameState::Credits); // Credits
             }
-            4 => std::process::exit(0), // EXIT
+            4 => {
+                let _ = app_exit.write(AppExit::Success);
+            } // EXIT
             _ => {}
         }
     }
@@ -639,6 +643,7 @@ pub fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseU
 pub fn handle_game_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     // Space 键暂停
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -646,7 +651,7 @@ pub fn handle_game_input(
     }
     // Esc 键退出
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        std::process::exit(0);
+        let _ = app_exit.write(AppExit::Success);
     }
 }
 
@@ -654,6 +659,7 @@ pub fn handle_game_input(
 pub fn handle_pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     // Space 键恢复游戏
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -665,7 +671,7 @@ pub fn handle_pause_input(
     }
     // Esc 键退出
     if keyboard_input.just_pressed(KeyCode::Escape) {
-        std::process::exit(0);
+        let _ = app_exit.write(AppExit::Success);
     }
 }
 
@@ -761,6 +767,7 @@ pub fn handle_game_over_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
+    mut app_exit: MessageWriter<AppExit>,
 ) {
     // W 键向上选择
     if keyboard_input.just_pressed(KeyCode::KeyW) {
@@ -787,7 +794,7 @@ pub fn handle_game_over_input(
             }
             2 => {
                 // Exit: 退出游戏
-                std::process::exit(0);
+                let _ = app_exit.write(AppExit::Success);
             }
             _ => {}
         }

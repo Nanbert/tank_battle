@@ -84,15 +84,19 @@ pub fn respawn_terrain_for_next_stage(
     seas: Query<Entity, With<Sea>>,
     commanders: Query<Entity, With<Commander>>,
     barriers: Query<Entity, With<Barrier>>,
+    powerups: Query<Entity, With<PowerUp>>,
 ) {
-    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物）
-    for entity in bricks.iter().chain(steels.iter()).chain(forests.iter()).chain(seas.iter()).chain(commanders.iter()).chain(barriers.iter()) {
+    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物、道具）
+    for entity in bricks.iter().chain(steels.iter()).chain(forests.iter()).chain(seas.iter()).chain(commanders.iter()).chain(barriers.iter()).chain(powerups.iter()) {
         let () = commands.entity(entity).try_despawn();
     }
 
     // 重新生成新关卡的地形和司令官
     spawn_map_terrain(&mut commands, &asset_server, &atlas_layouts, &level_assets, stage_level.0);
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
+
+    // 生成新关卡的道具
+    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
 }
 
 /// 地形瓦片类型（用于 `spawn_terrain_tile`）
@@ -476,7 +480,6 @@ fn spawn_map_terrain(
 
     let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
 
-    let mut spawned_count = 0;
     for (row, row_data) in level_map.iter().enumerate().take(MAP_ROWS) {
         for (col, terrain) in row_data.iter().enumerate().take(MAP_COLS) {
             if *terrain == TerrainType::Empty {
@@ -484,7 +487,6 @@ fn spawn_map_terrain(
             }
 
             let pos = grid_to_world(row, col);
-            spawned_count += 1;
 
             match terrain {
                 TerrainType::Forest => {
@@ -530,7 +532,6 @@ fn spawn_map_terrain(
             }
         }
     }
-    eprintln!("spawn_map_terrain: Spawned {spawned_count} terrain tiles for level {stage_level}");
 }
 
 
