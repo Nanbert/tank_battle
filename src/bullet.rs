@@ -8,6 +8,7 @@ use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::*;
+use bevy::audio::Volume;
 
 /// 特效事件枚举
 /// 用于解耦碰撞逻辑和特效生成
@@ -336,7 +337,10 @@ pub fn bullet_terrain_collision_system(
                 // 子弹与砖块碰撞
                 // 播放砖块击中音效
                 let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
-                commands.spawn(AudioPlayer::new(brick_hit_sound));
+                commands.spawn((
+                    AudioPlayer::new(brick_hit_sound),
+                    PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
+                ));
 
                 // 发送火花特效事件
                 effect_events.write(EffectEvent::Spark {

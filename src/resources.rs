@@ -43,7 +43,6 @@ impl BulletTracker {
 
 #[derive(Resource, Default)]
 pub struct StartAnimationFrames {
-    pub frames: Vec<Handle<Image>>,
     pub textures: Vec<Handle<Image>>,
     pub texture_atlas_layouts: Vec<Handle<TextureAtlasLayout>>,
 }

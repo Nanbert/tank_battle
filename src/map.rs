@@ -56,37 +56,6 @@ impl TerrainType {
             _ => Self::Empty,
         }
     }
-
-    /// 获取地形的基础类型（忽略半块状态）
-    pub fn base_type(&self) -> TerrainType {
-        match self {
-            Self::Brick | Self::BrickLeft | Self::BrickRight | Self::BrickTop | Self::BrickBottom => Self::Brick,
-            Self::Steel | Self::SteelLeft | Self::SteelRight | Self::SteelTop | Self::SteelBottom => Self::Steel,
-            other => *other,
-        }
-    }
-
-    /// 获取地形的碰撞盒尺寸
-    pub fn collider_size(&self) -> Vec2 {
-        match self {
-            Self::BrickLeft | Self::SteelLeft => Vec2::new(50.0, 100.0),
-            Self::BrickRight | Self::SteelRight => Vec2::new(50.0, 100.0),
-            Self::BrickTop | Self::SteelTop => Vec2::new(100.0, 50.0),
-            Self::BrickBottom | Self::SteelBottom => Vec2::new(100.0, 50.0),
-            _ => Vec2::new(100.0, 100.0),
-        }
-    }
-
-    /// 获取地形的偏移量（相对于网格中心）
-    pub fn collider_offset(&self) -> Vec2 {
-        match self {
-            Self::BrickLeft | Self::SteelLeft => Vec2::new(-25.0, 0.0),
-            Self::BrickRight | Self::SteelRight => Vec2::new(25.0, 0.0),
-            Self::BrickTop | Self::SteelTop => Vec2::new(0.0, 25.0),
-            Self::BrickBottom | Self::SteelBottom => Vec2::new(0.0, -25.0),
-            _ => Vec2::new(0.0, 0.0),
-        }
-    }
 }
 
 /// 地图配置常量

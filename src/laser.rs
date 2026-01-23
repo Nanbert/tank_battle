@@ -86,7 +86,7 @@ pub fn player_laser_system(
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    for (_entity, transform, rotation_timer, player_tank, mut fire_config) in &mut query {
+    for (_entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
         // 检查是否正在旋转
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
@@ -164,7 +164,7 @@ pub fn player_laser_system(
                 // 创建蓄力进度条（在坦克正上方，初始满格）
                 commands.spawn((
                     PlayingEntity,
-                    LaserChargeProgressBar { tank_type: player_tank.tank_type, player_entity: _entity },
+                    LaserChargeProgressBar { player_entity: _entity },
                     Sprite {
                         color: Color::srgb(0.0, 1.0, 0.0), // 绿色
                         custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）

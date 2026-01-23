@@ -13,7 +13,6 @@ pub const SOUND_BRICK_HIT: &str = "music/brick_hit.ogg";
 pub const SOUND_BURN_TREE: &str = "music/burn_tree.ogg";
 pub const SOUND_COMMANDER_DEATH: &str = "music/commander_death.ogg";
 pub const SOUND_COMMANDER_GET_SHOT: &str = "music/commander_get_shot.ogg";
-pub const SOUND_COMMANDER_MUSIC: &str = "music/commander_music.ogg";
 pub const SOUND_COMMANDER_MUSIC_000: &str = "music/commander_music_000.ogg";
 pub const SOUND_COMMANDER_MUSIC_001: &str = "music/commander_music_001.ogg";
 pub const SOUND_COMMANDER_MUSIC_002: &str = "music/commander_music_002.ogg";
@@ -42,7 +41,6 @@ pub const TEXTURE_SMOKE: &str = "effect/smoke_sprite.png";
 pub const TEXTURE_STEEL_HIT: &str = "effect/steel_hit.png";
 pub const TEXTURE_LASER_BLUE: &str = "effect/texture_laser_blue.png";
 pub const TEXTURE_LASER_RED: &str = "effect/texture_laser_red.png";
-pub const TEXTURE_LASER_RED_BACK: &str = "effect/texture_laser_red_back.png";
 
 // 角色纹理路径常量
 pub const TEXTURE_COMMANDER: &str = "texture/commander.png";
@@ -92,7 +90,6 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 ];
 
 pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
-pub const START_SCREEN_BACKGROUND_COLOR: Color = Color::srgb(17.0/255.0, 81.0/255.0, 170.0/255.0);
 
 pub const COMMANDER_WIDTH: f32 = 100.0;
 pub const COMMANDER_HEIGHT: f32 = 100.0;
@@ -107,27 +104,6 @@ pub const DIRECTIONS: [Vec2; 4] = [
 // 冲刺相关常量
 pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
 pub const DASH_DISTANCE: f32 = TANK_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
-
-// 关卡俏皮话，根据关卡序号选择（索引从0开始）
-pub const STAGE_QUOTES: [&str; 17] = [
-    "The brave commander will not retreat even when hit. He will stand firm in place,\nwaiting for his soldiers to rescue him.",
-    "When you fire while turning, your bullet might not go straight!\nThough controlling bullet trajectory is quite difficult.",
-    "Beware, enemy tanks aren't fools either - they can shoot diagonally too.",
-    "Both enemy and our factories have constrained our tanks to fire straight,\nincreasing hit rate. After all, a shell is expensive.",
-    "All tanks move in straight lines, not like crabs. This is to commemorate\nthe countless tanks sacrificed in the tank battles of the last century.",
-    "The cunning enemy tanks have upgraded their shells,\nmaking our shells unable to intercept theirs. This is truly frustrating.",
-    "When all your stats reach max, please share the power-ups with your teammates,\nyou greedy person.",
-    "Our power-ups have been sprayed with invisible paint - only you can see them,\nthe enemy cannot, even if they're right next to them.",
-    "It is said that in the tank battles of the last century, there was a period\nwhen enemies could also pick up our power-ups. That was truly a disaster.",
-    "Our shells have been specially treated - when they encounter the commander,\nthey pass through without harming him. It is said this was strongly requested\nby the commander, because in the tank battles of the last century,\ncountless commanders died at the hands of their own troops. Truly pitiful.",
-    "Our commander has investigated the enemy numbers in advance -\nthere are at most a few hundred enemies. The war will have an end.",
-    "In the tank battles of the last century, the enemies seemed endless,\nand no one lived to see the end of the war.",
-    "In the tank battles of the last century, the super bomb power-up would destroy\nmany enemy tanks, yet the destroyed tanks would not count towards your\nbattle record. This is truly strange.",
-    "When you're alone, you can request an extra tank from the commander.\nYou can tell the commander that the extra tank can help block some shells for you.",
-    "When dashing, you must strike from the front or side. When attacking from behind,\nyou're moving in the same direction, so the impact force may not be enough.",
-    "When dashing, if there are obstacles or enemies, make sure to maintain a certain distance\nto more successfully trigger the dash destruction effect.",
-    "Enemies destroyed by laser do not count towards your score.\nThe commander's reason is that laser damages the flowers and grass.\nThis is truly ridiculous.",
-];
 
 // 关卡俏皮话中文版
 pub const STAGE_QUOTES_CN: [&str; 17] = [
@@ -653,7 +629,6 @@ pub struct LaserCharge {
 /// 激光蓄力进度条组件
 #[derive(Component)]
 pub struct LaserChargeProgressBar {
-    pub tank_type: TankType,
     pub player_entity: Entity,
 }
 

@@ -240,23 +240,6 @@ fn load_start_animation_assets(
     animation_frames.textures = vec![background_texture1, background_texture2, background_texture3];
 }
 
-fn get_animation_frame(
-    frame_index: usize,
-    asset_server: &Res<AssetServer>,
-    animation_frames: &mut ResMut<StartAnimationFrames>,
-) -> Handle<Image> {
-    // 如果该帧已加载，直接返回
-    if frame_index < animation_frames.frames.len() {
-        return animation_frames.frames[frame_index].clone();
-    }
-
-    // 否则加载该帧
-    let frame_num = format!("{:04}", frame_index + 1);
-    let texture = asset_server.load(format!("start_scene/frame_{frame_num}.png"));
-    animation_frames.frames.push(texture.clone());
-    texture
-}
-
 fn spawn_start_screen_background(
     commands: &mut Commands,
     animation_frames: &ResMut<StartAnimationFrames>,
@@ -2158,7 +2141,10 @@ pub fn spawn_explosion(
 
     // 播放爆炸音效
     let explosion_sound: Handle<AudioSource> = asset_server.load(SOUND_EXPLOSION);
-    commands.spawn(AudioPlayer::new(explosion_sound));
+    commands.spawn((
+        AudioPlayer::new(explosion_sound),
+        PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
+    ));
 }
 
 fn spawn_forest_fire(
@@ -3764,7 +3750,7 @@ fn handle_brick_collision(
         let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
         commands.spawn((
             AudioPlayer::new(brick_hit_sound),
-            PlaybackSettings::ONCE,
+            PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
         ));
 
         // 发送火花特效事件
