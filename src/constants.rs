@@ -607,6 +607,21 @@ pub struct CommanderHealthBarOriginalPosition(pub f32); // 记录 Commander 血�
 #[derive(Component)]
 pub struct EnemyCountText;
 
+/// 出生位置记录组件
+#[derive(Component)]
+pub struct BornPosition(pub Vec3);
+
+/// 回城进度条组件
+#[derive(Component)]
+pub struct RecallProgressBar {
+    pub player_type: TankType,
+    pub player_entity: Entity,
+}
+
+/// 玩家正在回城标记
+#[derive(Component)]
+pub struct IsRecalling;
+
 // 标记游戏过程中所有的Entity
 #[derive(Component)]
 pub struct PlayingEntity;
