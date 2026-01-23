@@ -6,6 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy::audio::Volume;
 
+use crate::effects;
+
 use crate::constants::*;
 use crate::resources::*;
 
@@ -610,7 +612,7 @@ fn handle_brick_collision(
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                crate::spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
+                effects::spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
             }
 
             // 销毁玩家坦克
@@ -778,7 +780,7 @@ fn handle_dash_enemy_tank_collision(
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                crate::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                effects::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
             }
 
             // 销毁玩家坦克

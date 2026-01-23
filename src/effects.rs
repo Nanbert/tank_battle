@@ -4,10 +4,50 @@
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use bevy::audio::Volume;
 
 use crate::constants::*;
 use crate::resources::*;
 use crate::bullet::BulletOwner;
+
+pub fn spawn_explosion(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    position: Vec3,
+) {
+    // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
+    let explosion_texture: Handle<Image> = asset_server.load(TEXTURE_EXPLOSION);
+    let explosion_tile_size = UVec2::new(512, 512);
+    let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
+    let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
+    let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
+
+    commands.spawn((
+        Explosion,
+        PlayingEntity,
+        Sprite {
+            image: explosion_texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: explosion_texture_atlas_layout,
+                index: explosion_animation_indices.first,
+            }),
+            custom_size: Some(Vec2::new(300.0, 300.0)),
+            ..default()
+        },
+        Transform::from_translation(position),
+        explosion_animation_indices,
+        AnimationTimer(Timer::from_seconds(0.01, TimerMode::Repeating)),
+        CurrentAnimationFrame(0),
+    ));
+
+    // 播放爆炸音效
+    let explosion_sound: Handle<AudioSource> = asset_server.load(SOUND_EXPLOSION);
+    commands.spawn((
+        AudioPlayer::new(explosion_sound),
+        PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
+    ));
+}
 
 pub fn spawn_forest_fire(
     commands: &mut Commands,

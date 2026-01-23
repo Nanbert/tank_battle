@@ -6,6 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
+use crate::effects;
+
 use crate::constants::{TankType, PlayingEntity, TankFireConfig, EnemyTank, TANK_HEIGHT, BULLET_SIZE, BULLET_SPEED, RotationTimer, PlayerTank, PLAYER_BULLET_SPEED, MAP_LEFT_X, MAP_RIGHT_X, MAP_BOTTOM_Y, MAP_TOP_Y, Forest, Brick, Steel, SOUND_BRICK_HIT, SOUND_METAL_CRASH, SOUND_HIT, PlayerUI, PlayerDead, SOUND_COMMANDER_GET_SHOT, SOUND_COMMANDER_DEATH};
 use crate::resources::{BulletTracker, PlayerInfo, PlayerStatChanged, StatType};
 use bevy::audio::Volume;
@@ -574,13 +576,13 @@ pub fn handle_effect_events(
     for event in events.read() {
         match event {
             EffectEvent::Explosion { position } => {
-                crate::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
+                effects::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
             EffectEvent::Spark { position } => {
-                crate::spawn_spark(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
+                effects::spawn_spark(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
             EffectEvent::ForestFire { position } => {
-                crate::spawn_forest_fire(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
+                effects::spawn_forest_fire(&mut commands, &asset_server, &mut texture_atlas_layouts, *position);
             }
         }
     }

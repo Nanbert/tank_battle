@@ -215,7 +215,7 @@ pub fn spawn_start_screen(
     spawn_start_screen_background(&mut commands, &animation_frames);
 
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
 
     // 添加标题文字
     spawn_start_screen_title(&mut commands, custom_font.clone());
@@ -230,7 +230,7 @@ pub fn spawn_about_screen(
     asset_server: Res<AssetServer>,
 ) {
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -391,7 +391,7 @@ pub fn spawn_credits_screen(
     asset_server: Res<AssetServer>,
 ) {
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -591,7 +591,7 @@ pub fn spawn_pause_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let font: Handle<Font> = asset_server.load(FONT_EN);
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {
@@ -676,7 +676,7 @@ pub fn spawn_game_over_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load(crate::FONT_EN);
+    let font: Handle<Font> = asset_server.load(FONT_EN);
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {
@@ -880,8 +880,8 @@ pub fn spawn_stage_intro(
     stage_intro_timer.fade_out = Timer::from_seconds(1.0, TimerMode::Once);
 
     // 加载字体
-    let font_en: Handle<Font> = asset_server.load(crate::FONT_EN);
-    let font_cn: Handle<Font> = asset_server.load(crate::FONT_CN);
+    let font_en: Handle<Font> = asset_server.load(FONT_EN);
+    let font_cn: Handle<Font> = asset_server.load(FONT_CN);
 
     // Stage 标题（显示在屏幕中心）
     commands.spawn((

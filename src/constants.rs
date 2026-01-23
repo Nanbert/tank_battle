@@ -424,7 +424,7 @@ pub struct AboutUI;
 #[derive(Component)]
 pub struct CreditsUI;
 
-#[derive(Component, Copy, Clone)]
+#[derive(Component, Resource, Copy, Clone)]
 pub struct AnimationIndices {
     pub first: usize,
     pub last: usize,
@@ -433,7 +433,7 @@ pub struct AnimationIndices {
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(pub Timer);
 
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component, Resource, Deref, DerefMut)]
 pub struct CurrentAnimationFrame(pub usize);
 
 /// 待销毁标记
@@ -671,3 +671,4 @@ impl Default for TankFireConfig {
         }
     }
 }
+pub const COMMANDER_LIFE_MAX: usize = 3;
