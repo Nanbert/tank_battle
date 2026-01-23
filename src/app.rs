@@ -68,6 +68,7 @@ pub fn register_game_systems(app: &mut App) {
     app.init_state::<GameState>()
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
+        .init_resource::<BulletTracker>()
         .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::StartScreen), (game_state::cleanup_playing_entities, ui::spawn_start_screen).chain())
         .add_systems(OnEnter(GameState::About), (ui::cleanup_start_screen_ui, ui::spawn_about_screen).chain())
@@ -133,6 +134,9 @@ pub fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
+    // 创建全局相机
+    commands.spawn(Camera2d);
+
     // 加载玩家1坦克纹理
     let player1_texture: Handle<Image> = asset_server.load("texture/player_tank1_sprite.png");
     let player_texture_atlas_layout = TextureAtlasLayout::from_grid(UVec2::new(87, 103), 4, 4, None, None);
