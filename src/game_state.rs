@@ -230,7 +230,7 @@ fn update_blue_bar_regen(
     }
 }
 
-fn update_menu_blink(
+pub fn update_menu_blink(
     time: Res<Time>,
     fading_out: Res<FadingOut>,
     menu_selection: Res<CurrentMenuSelection>,

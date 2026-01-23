@@ -24,6 +24,7 @@ mod ui;
 mod effects;
 mod terrain;
 mod game_state;
+mod powerup;
 mod app;
 
 use bevy::prelude::*;

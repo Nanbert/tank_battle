@@ -7,7 +7,7 @@ use bevy::audio::Volume;
 use bevy::window::{WindowResolution, PresentMode};
 
 use crate::constants::*;
-use crate::resources::*;
+use crate::resources::{MenuBlinkTimer, *};
 
 // 导入模块以便使用其函数
 use crate::game_state;
@@ -18,6 +18,7 @@ use crate::player;
 use crate::bullet;
 use crate::effects;
 use crate::laser;
+use crate::powerup;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
@@ -59,6 +60,7 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(CurrentMenuSelection { selected_index: 0 })
         .insert_resource(AnimationIndices { first: 0, last: 14 })
         .insert_resource(CurrentAnimationFrame(0))
+        .insert_resource(MenuBlinkTimer(Timer::default()))
         .init_resource::<GameEntitiesSpawned>()
         .init_resource::<StageIntroTimer>();
 }
@@ -130,6 +132,9 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(Update, effects::handle_recoil_force.run_if(in_state(GameState::Playing)))
         .add_systems(Update, effects::animate_smoke.run_if(in_state(GameState::Playing)))
         .add_systems(Update, effects::laser_collision_system.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, powerup::animate_powerup.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, powerup::handle_powerup_collision.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, game_state::update_menu_blink.run_if(in_state(GameState::StartScreen)))
         .add_systems(Update, ui::fade_out_screen.run_if(in_state(GameState::FadingOut)));
 }
 
