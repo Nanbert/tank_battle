@@ -204,7 +204,7 @@ pub fn update_commander_health_bar(
     }
 }
 
-fn update_blue_bar_regen(
+pub fn update_blue_bar_regen(
     time: Res<Time>,
     mut regen_timer: ResMut<BlueBarRegenTimer>,
     mut player_info: ResMut<PlayerInfo>,
