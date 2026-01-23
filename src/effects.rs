@@ -3,11 +3,8 @@
 //! 处理爆炸、烟雾、火花、激光、森林火焰等特效动画
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
-use bevy::audio::Volume;
 
 use crate::constants::*;
-use crate::resources::*;
 use crate::bullet::BulletOwner;
 
 pub fn spawn_explosion(

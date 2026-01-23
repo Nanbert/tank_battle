@@ -3,22 +3,9 @@
 //! 处理窗口配置、资源配置、游戏初始化等
 
 use bevy::prelude::*;
-use bevy::window::{PresentMode, WindowResolution};
-use bevy::audio::Volume;
-use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::*;
-use crate::enemy;
-use crate::player;
-use crate::ui;
-use crate::effects;
-use crate::terrain;
-use crate::game_state;
-use crate::bullet;
-use crate::laser;
-use crate::map;
-use crate::levels;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {

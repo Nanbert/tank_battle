@@ -3,8 +3,6 @@
 //! 处理游戏关卡、游戏结束、游戏重置等状态管理
 
 use bevy::prelude::*;
-use bevy::audio::Volume;
-use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::*;
