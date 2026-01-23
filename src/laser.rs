@@ -67,7 +67,7 @@ pub fn spawn_laser(
             ..default()
         },
         laser_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
     ))
     .id()

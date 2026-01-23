@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy::audio::Volume;
+use bevy::asset::AssetPath;
 
 use crate::effects;
 
@@ -16,9 +17,9 @@ pub fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     player_info: Res<PlayerInfo>,
-    mut query: Query<(&mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
+    mut query: Query<(Entity, &mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
 ) {
-    for (mut transform, mut character_controller, mut rotation_timer, mut target_rotation, player_tank, is_dashing) in &mut query {
+    for (_entity, mut transform, mut character_controller, mut rotation_timer, mut target_rotation, mut animation_timer, mut sprite, animation_indices, player_tank, is_dashing) in &mut query {
         // 如果正在冲刺，跳过移动处理
         if is_dashing.is_some() {
             continue;
@@ -84,10 +85,29 @@ pub fn move_player_tank(
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
         let speed = if needs_rotation { base_speed * 0.5 } else { base_speed };
-        if direction.length() > 0.0 {
+        
+        let is_moving = direction.length() > 0.0;
+        if is_moving {
             character_controller.translation = Some(direction * speed * time.delta_secs());
         } else {
             character_controller.translation = None;
+        }
+
+        // 处理纹理动画
+        if let Some(atlas) = &mut sprite.texture_atlas {
+            if !is_moving {
+                atlas.index = animation_indices.last;
+                animation_timer.reset();
+            } else {
+                animation_timer.tick(time.delta());
+                if animation_timer.just_finished() {
+                    atlas.index = if atlas.index == animation_indices.last {
+                        animation_indices.first
+                    } else {
+                        atlas.index + 1
+                    }
+                }
+            }
         }
 
         // 只在需要旋转时才更新旋转计时器和计算旋转
@@ -871,32 +891,19 @@ pub fn handle_barrier_collision(
     }
 }
 
-/// 玩家坦克纹理动画系统
-pub fn animate_player_tank_texture(
-    time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &KinematicCharacterController), With<PlayerTank>>,
+/// 处理玩家头像死亡状态
+pub fn handle_player_avatar_death(
+    asset_server: Res<AssetServer>,
+    mut query: Query<(&mut Sprite, Has<PlayerDead>), With<PlayerAvatar>>,
 ) {
-    // 玩家坦克：只有移动时才刷新纹理
-    for (mut timer, mut sprite, indices, character_controller) in &mut query {
-        // 使用 KinematicCharacterController 的 translation 字段判断是否在移动
-        let is_moving = character_controller.translation.is_some();
-        if sprite.texture_atlas.is_none() {
-            continue;
-        }
-        let atlas = sprite.texture_atlas.as_mut().expect("玩家坦克没有纹理！");
-        if !is_moving {
-            atlas.index = indices.last;
-            timer.reset();
-        } else {
-            timer.tick(time.delta());
-            if !timer.just_finished() {
-                continue;
-            }
-            atlas.index = if atlas.index == indices.last {
-                indices.first
-            } else {
-                atlas.index + 1
-            }
+    let avatar_death_path = AssetPath::from("texture/avatar_death.png");
+    for (mut sprite, is_dead) in &mut query {
+        if is_dead && sprite.image.path() != Some(&avatar_death_path) {
+            // 切换到死亡头像纹理
+            let avatar_dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_DEATH);
+            sprite.image = avatar_dead_texture.clone();
+            sprite.texture_atlas = None; // 死亡头像不需要动画
+            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
         }
     }
 }

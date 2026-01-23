@@ -845,11 +845,11 @@ pub fn fade_out_screen(
         update_sprite_alpha(fading_out.alpha, &mut sprite);
     }
 
-    // 更新所有 Text 元素的颜色（跳过当前选中的选项，因为它的闪烁由 update_menu_blink 处理）
+    // 更新所有 Text 元素的颜色（选中的选项由 update_menu_blink 处理闪烁，但需要跟随淡出）
     let selected_index = menu_selection.selected_index;
 
     for (_, mut text_color, menu_option) in &mut text_query {
-        // 如果是当前选中的选项，跳过透明度更新
+        // 如果是当前选中的选项，跳过透明度更新（闪烁由 update_menu_blink 处理）
         if menu_option.is_some_and(|opt| opt.index == selected_index) {
             continue;
         }
@@ -879,6 +879,17 @@ pub fn spawn_stage_intro(
     stage_intro_timer.stay = Timer::from_seconds(2.0, TimerMode::Once);
     stage_intro_timer.fade_out = Timer::from_seconds(1.0, TimerMode::Once);
 
+    // 创建全屏白色背景方块，遮挡所有游戏元素
+    commands.spawn((
+        StageIntroUI,
+        Sprite {
+            color: Color::srgba(1.0, 1.0, 1.0, 1.0), // 白色
+            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, 100.0), // z=100.0 确保在所有游戏元素之上
+    ));
+
     // 加载字体
     let font_en: Handle<Font> = asset_server.load(FONT_EN);
     let font_cn: Handle<Font> = asset_server.load(FONT_CN);
@@ -893,7 +904,7 @@ pub fn spawn_stage_intro(
             ..default()
         },
         TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
-        Transform::from_xyz(0.0, 100.0, 1.0),
+        Transform::from_xyz(0.0, 100.0, 101.0), // z=101.0 在白色背景之上
     ));
 
     // 描述文字（随机选择一条俏皮话）
@@ -910,7 +921,7 @@ pub fn spawn_stage_intro(
         },
         TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0
         TextLayout::new_with_justify(Justify::Center),
-        Transform::from_xyz(0.0, -50.0, 1.0),
+        Transform::from_xyz(0.0, -50.0, 101.0), // z=101.0 在白色背景之上
     ));
 }
 
@@ -958,8 +969,12 @@ pub fn handle_stage_intro_timer(
 /// 销毁关卡介绍界面
 pub fn despawn_stage_intro(
     mut commands: Commands,
+    mut clear_color: ResMut<ClearColor>,
     stage_intro_query: Query<Entity, With<StageIntroUI>>,
 ) {
+    // 重置背景色为游戏背景色
+    clear_color.0 = BACKGROUND_COLOR;
+    
     for entity in stage_intro_query.iter() {
         let () = commands.entity(entity).try_despawn();
     }

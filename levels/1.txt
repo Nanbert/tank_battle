@@ -4,9 +4,9 @@ b . . b . b . . b . . . b . . .
 b b . b . b . b b b . b b b . .
 b . b b . b b . . . b . . . b .
 b . . b b b b . . . b . . . b .
-i . i b . . . . . . . . . b i . i
-t b . b . b b b b . . . b t b t
-t b . b . b . . b . . . b t b t
+i . i b . . . . . . s . . b i .
+t b . b . b b b b . s . b t b t
+t b . b . b . . b . s . b t b t
 t b . b i b . . b . . i b t b t
-t b . b . . . . . . . . . b . b t
+t b . b . . . . . . . . . b . b
 t t t t . . . . . . . . . t t .

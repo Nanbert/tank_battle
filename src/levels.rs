@@ -1,13 +1,18 @@
 //! Level definitions for the game
 
 use crate::map::TerrainType;
-use std::fs;
-use std::path::Path;
+use bevy::prelude::*;
 
 /// 关卡地图数据（使用 `TerrainType` 枚举）
 pub type LevelMap = [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
-/// 从文件加载关卡数据
+/// 关卡资源，用于存储已加载的关卡数据
+#[derive(Resource, Debug, Default)]
+pub struct LevelAssets {
+    levels: Vec<Option<LevelMap>>,
+}
+
+/// 从 AssetServer 加载关卡数据
 /// 地形符号对照：
 /// . = 空地
 /// t = 树林（坦克可穿过，提供掩护）
@@ -23,23 +28,7 @@ pub type LevelMap = [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 /// it = 钢铁上半（100×50）
 /// ib = 钢铁下半（100×50）
 /// a = 屏障（可破坏，2发子弹）
-fn load_level_from_file(level_num: usize) -> Result<LevelMap, String> {
-    // 检查是否在系统安装目录运行
-    let levels_dir = if Path::new("/usr/share/tank-battle/levels").exists() {
-        "/usr/share/tank-battle/levels"
-    } else {
-        "levels"
-    };
-    let file_path = format!("{levels_dir}/{level_num}.txt");
-    let path = Path::new(&file_path);
-
-    if !path.exists() {
-        return Err(format!("Level file not found: {file_path}"));
-    }
-
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read level file: {e}"))?;
-
+pub fn parse_level_content(content: &str) -> Result<LevelMap, String> {
     let mut result: LevelMap = [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
     for (row_idx, line) in content.lines().enumerate() {
@@ -49,6 +38,10 @@ fn load_level_from_file(level_num: usize) -> Result<LevelMap, String> {
 
         // 按空格分割，支持单字符和双字符的符号
         let tokens: Vec<&str> = line.split_whitespace().collect();
+        // 调试第7行
+        if row_idx == 6 {
+            eprintln!("Row 6: line='{}', tokens={:?}", line, tokens);
+        }
         for (col_idx, token) in tokens.iter().enumerate() {
             if col_idx >= crate::map::MAP_COLS {
                 break;
@@ -56,29 +49,75 @@ fn load_level_from_file(level_num: usize) -> Result<LevelMap, String> {
 
             let terrain = TerrainType::from_str(token);
             result[row_idx][col_idx] = terrain;
+            // 调试第7行
+            if row_idx == 6 {
+                eprintln!("Row 6, Col {col_idx}: token='{token}' -> terrain={terrain:?}");
+            }
         }
     }
 
     Ok(result)
 }
 
-/// 获取指定关卡的地图数据
-/// 如果关卡文件不存在，返回第1关作为默认值
-pub fn get_level(level: usize) -> LevelMap {
-    match load_level_from_file(level) {
-        Ok(map) => map,
-        Err(_) => {
-            // 如果加载失败，尝试加载第1关
-            if level == 1 {
-                eprintln!("Error: Failed to load level 1, using empty map");
-                [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
-            } else {
-                eprintln!("Warning: Failed to load level {level}, falling back to level 1");
-                load_level_from_file(1).unwrap_or({
-                    // 如果第1关也加载失败，返回空地图
-                    [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
-                })
+/// 从 LevelAssets 资源获取关卡数据
+pub fn get_level_from_assets(level_assets: &LevelAssets, level: usize) -> LevelMap {
+    let level_idx = level - 1; // 关卡从1开始，数组从0开始
+    if level_idx < level_assets.levels.len() {
+        if let Some(ref map) = level_assets.levels[level_idx] {
+            return map.clone();
+        }
+    }
+    // 如果关卡未加载，返回空地图
+    eprintln!("Warning: Level {level} not loaded, returning empty map");
+    [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
+}
+
+/// 加载所有关卡文件到资源中
+/// 关卡文件从当前工作目录的 levels 子目录加载
+/// 注意：这是同步加载，在生产环境中可以考虑使用 Bevy 的异步资源加载
+pub fn load_level_assets(
+    mut level_assets: ResMut<LevelAssets>,
+) {
+    // 预加载前4个关卡
+    for level in 1..=4 {
+        if let Ok(content) = std::fs::read_to_string(format!("levels/{level}.txt")) {
+            match parse_level_content(&content) {
+                Ok(map) => {
+                    if level_assets.levels.len() < level {
+                        level_assets.levels.resize(level, None);
+                    }
+                    level_assets.levels[level - 1] = Some(map);
+
+                    // 统计地形类型
+                    let mut brick_count = 0;
+                    let mut steel_count = 0;
+                    let mut forest_count = 0;
+                    let mut sea_count = 0;
+                    let mut barrier_count = 0;
+
+                    for row in &map {
+                        for terrain in row {
+                            match terrain {
+                                TerrainType::Brick | TerrainType::BrickLeft | TerrainType::BrickRight |
+                                TerrainType::BrickTop | TerrainType::BrickBottom => brick_count += 1,
+                                TerrainType::Steel | TerrainType::SteelLeft | TerrainType::SteelRight |
+                                TerrainType::SteelTop | TerrainType::SteelBottom => steel_count += 1,
+                                TerrainType::Forest => forest_count += 1,
+                                TerrainType::Sea => sea_count += 1,
+                                TerrainType::Barrier => barrier_count += 1,
+                                _ => {}
+                            }
+                        }
+                    }
+
+                    eprintln!("Level {level} loaded successfully: {brick_count} bricks, {steel_count} steels, {forest_count} forests, {sea_count} seas, {barrier_count} barriers");
+                }
+                Err(e) => {
+                    eprintln!("Error parsing level {level}: {e}");
+                }
             }
+        } else {
+            eprintln!("Warning: Level file levels/{level}.txt not found");
         }
     }
 }

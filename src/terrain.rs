@@ -68,25 +68,413 @@ pub fn spawn_walls(commands: &mut Commands) {
     ));
 }
 
+/// 重新生成下一关的地形（保留四面墙）
+pub fn respawn_terrain_for_next_stage(
+    mut commands: Commands,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    atlas_layouts: Res<TerrainAtlasLayouts>,
+    level_assets: Res<crate::levels::LevelAssets>,
+    stage_level: Res<StageLevel>,
+    bricks: Query<Entity, With<Brick>>,
+    steels: Query<Entity, With<Steel>>,
+    forests: Query<Entity, With<Forest>>,
+    seas: Query<Entity, With<Sea>>,
+    commanders: Query<Entity, With<Commander>>,
+    barriers: Query<Entity, With<Barrier>>,
+) {
+    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物）
+    for entity in bricks.iter().chain(steels.iter()).chain(forests.iter()).chain(seas.iter()).chain(commanders.iter()).chain(barriers.iter()) {
+        let _ = commands.entity(entity).try_despawn();
+    }
+
+    // 重新生成新关卡的地形和司令官
+    spawn_map_terrain(&mut commands, &asset_server, &atlas_layouts, &level_assets, stage_level.0);
+    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
+}
+
+/// 地形瓦片类型（用于 spawn_terrain_tile）
+#[derive(Clone, Copy)]
+pub enum TerrainTileType {
+    Brick,
+    Steel,
+    Forest,
+    Sea,
+    Barrier,
+}
+
+/// 生成单个地形瓦片（优化的4参数版本）
+/// 
+/// 参数：
+/// - commands: 命令队列
+/// - asset_server: 资源服务器
+/// - atlas_layouts: 地形纹理图集布局资源
+/// - position: 生成位置
+/// - tile_type: 地形类型
+pub fn spawn_terrain_tile(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    position: Vec2,
+    tile_type: TerrainTileType,
+) -> Entity {
+    match tile_type {
+        TerrainTileType::Brick => {
+            let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
+            commands.spawn((
+                Brick,
+                PlayingEntity,
+                Sprite {
+                    image: brick_texture,
+                    custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                    ..default()
+                },
+                Transform::from_xyz(position.x, position.y, 0.0),
+                RigidBody::Fixed,
+                Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::all(),
+            )).id()
+        }
+        TerrainTileType::Steel => {
+            let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
+            commands.spawn((
+                Steel,
+                PlayingEntity,
+                Sprite {
+                    image: steel_texture,
+                    custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                    ..default()
+                },
+                Transform::from_xyz(position.x, position.y, 0.0),
+                RigidBody::Fixed,
+                Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::all(),
+            )).id()
+        }
+        TerrainTileType::Forest => {
+            let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
+            let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
+            commands.spawn((
+                Forest,
+                PlayingEntity,
+                Sprite::from_atlas_image(
+                    forest_texture,
+                    TextureAtlas {
+                        layout: atlas_layouts.forest.clone(),
+                        index: forest_animation_indices.first,
+                    }
+                ),
+                Transform::from_xyz(position.x, position.y, 1.0),
+                forest_animation_indices,
+                AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                CurrentAnimationFrame(0),
+                Collider::cuboid(131.0 / 2.0, 131.0 / 2.0),
+                RigidBody::Fixed,
+                Sensor,
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+            )).id()
+        }
+        TerrainTileType::Sea => {
+            let sea_texture: Handle<Image> = asset_server.load(TEXTURE_SEA);
+            let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
+            commands.spawn((
+                Sea,
+                PlayingEntity,
+                Sprite::from_atlas_image(
+                    sea_texture,
+                    TextureAtlas {
+                        layout: atlas_layouts.sea.clone(),
+                        index: sea_animation_indices.first,
+                    }
+                ),
+                Transform::from_xyz(position.x, position.y, -0.5),
+                sea_animation_indices,
+                AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
+                CurrentAnimationFrame(0),
+                RigidBody::Fixed,
+                Collider::cuboid(100.0 / 2.0, 100.0 / 2.0),
+                CollisionGroups::new(SEA_GROUP, Group::all()),
+            )).id()
+        }
+        TerrainTileType::Barrier => {
+            let barrier_texture: Handle<Image> = asset_server.load(TEXTURE_BARRIER);
+            commands.spawn((
+                Barrier,
+                PlayingEntity,
+                Sprite {
+                    image: barrier_texture,
+                    custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
+                    ..default()
+                },
+                Transform::from_xyz(position.x, position.y, 0.0),
+                RigidBody::Fixed,
+                Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
+                Sensor,
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
+            )).id()
+        }
+    }
+}
+
+/// 生成砖块组（2x2网格，100x100）
+pub fn spawn_brick_group(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 4] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(offset, offset),
+        Vec2::new(-offset, -offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Brick,
+        )
+    })
+}
+
+/// 生成钢块组（2x2网格，100x100）
+pub fn spawn_steel_group(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 4] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(offset, offset),
+        Vec2::new(-offset, -offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Steel,
+        )
+    })
+}
+
+/// 生成砖块左半（2x1网格，50x100）
+pub fn spawn_brick_left(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(-offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Brick,
+        )
+    })
+}
+
+/// 生成砖块右半（2x1网格，50x100）
+pub fn spawn_brick_right(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(offset, offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Brick,
+        )
+    })
+}
+
+/// 生成砖块上半（1x2网格，100x50）
+pub fn spawn_brick_top(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(offset, offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Brick,
+        )
+    })
+}
+
+/// 生成砖块下半（1x2网格，100x50）
+pub fn spawn_brick_bottom(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, -offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Brick,
+        )
+    })
+}
+
+/// 生成钢块左半（2x1网格，50x100）
+pub fn spawn_steel_left(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(-offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Steel,
+        )
+    })
+}
+
+/// 生成钢块右半（2x1网格，50x100）
+pub fn spawn_steel_right(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(offset, offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Steel,
+        )
+    })
+}
+
+/// 生成钢块上半（1x2网格，100x50）
+pub fn spawn_steel_top(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, offset),
+        Vec2::new(offset, offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Steel,
+        )
+    })
+}
+
+/// 生成钢块下半（1x2网格，100x50）
+pub fn spawn_steel_bottom(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+) -> [Entity; 2] {
+    let offset = 25.0;
+    let positions = [
+        Vec2::new(-offset, -offset),
+        Vec2::new(offset, -offset),
+    ];
+    positions.map(|pos| {
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            center_position + pos,
+            TerrainTileType::Steel,
+        )
+    })
+}
+
 pub fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
     match text {
-        s if s.starts_with("Speed") => player_stats.speed >= 100,
-        s if s.starts_with("Shells") => player_stats.shells >= 5,
-        s if s.starts_with("Protection") => player_stats.protection >= 100,
-        s if s.starts_with("Fire Speed") => player_stats.fire_speed >= 100,
+        s if s.contains("Speed") => player_stats.speed >= 100,
+        s if s.contains("Shells") => player_stats.shells >= 5,
+        s if s.contains("Protection") => player_stats.protection >= 100,
+        s if s.contains("Fire Speed") => player_stats.fire_speed >= 100,
         _ => false,
     }
 }
 fn spawn_map_terrain(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    level_assets: &crate::levels::LevelAssets,
     stage_level: usize,
 ) {
     use crate::map::{TerrainType, grid_to_world, MAP_ROWS, MAP_COLS};
 
-    let level_map = crate::levels::get_level(stage_level);
+    let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
 
+    let mut spawned_count = 0;
     for row in 0..MAP_ROWS {
         for col in 0..MAP_COLS {
             let terrain = level_map[row][col];
@@ -95,330 +483,53 @@ fn spawn_map_terrain(
             }
 
             let pos = grid_to_world(row, col);
+            spawned_count += 1;
 
             match terrain {
                 TerrainType::Forest => {
-                    let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
-                    let forest_tile_size = UVec2::new(131, 131);
-                    let forest_texture_atlas = TextureAtlasLayout::from_grid(forest_tile_size, 10, 1, None, None);
-                    let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas);
-                    let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
-
-                    commands.spawn((
-                        Forest,
-                        PlayingEntity,
-                        Sprite::from_atlas_image(
-                            forest_texture,
-                            TextureAtlas {
-                                layout: forest_texture_atlas_layout,
-                                index: forest_animation_indices.first,
-                            }
-                        ),
-                        Transform::from_xyz(pos.x, pos.y, 1.0),
-                        forest_animation_indices,
-                        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-                        CurrentAnimationFrame(0),
-                        Collider::cuboid(131.0 / 2.0, 131.0 / 2.0),
-                        RigidBody::Fixed,
-                        Sensor,
-                        ActiveEvents::COLLISION_EVENTS,
-                        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-                    ));
+                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Forest);
                 }
                 TerrainType::Sea => {
-                    let sea_texture: Handle<Image> = asset_server.load(TEXTURE_SEA);
-                    let sea_tile_size = UVec2::new(100, 100);
-                    let sea_texture_atlas = TextureAtlasLayout::from_grid(sea_tile_size, 3, 1, None, None);
-                    let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas);
-                    let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
-
-                    commands.spawn((
-                        Sea,
-                        PlayingEntity,
-                        Sprite::from_atlas_image(
-                            sea_texture,
-                            TextureAtlas {
-                                layout: sea_texture_atlas_layout,
-                                index: sea_animation_indices.first,
-                            }
-                        ),
-                        Transform::from_xyz(pos.x, pos.y, -0.5),
-                        sea_animation_indices,
-                        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-                        CurrentAnimationFrame(0),
-                        RigidBody::Fixed,
-                        Collider::cuboid(100.0 / 2.0, 100.0 / 2.0),
-                        CollisionGroups::new(SEA_GROUP, Group::all()),
-                    ));
+                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Sea);
                 }
                 TerrainType::Brick => {
-                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-                    // 生成4块砖块组成100x100的网格
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(offset, offset),
-                        Vec2::new(-offset, -offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for brick_pos in positions {
-                        commands.spawn((
-                            Brick,
-                            PlayingEntity,
-                            Sprite {
-                                image: brick_texture.clone(),
-                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_brick_group(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::BrickLeft => {
-                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(-offset, -offset),
-                    ];
-                    for brick_pos in positions {
-                        commands.spawn((
-                            Brick,
-                            PlayingEntity,
-                            Sprite {
-                                image: brick_texture.clone(),
-                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_brick_left(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::BrickRight => {
-                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(offset, offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for brick_pos in positions {
-                        commands.spawn((
-                            Brick,
-                            PlayingEntity,
-                            Sprite {
-                                image: brick_texture.clone(),
-                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_brick_right(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::BrickTop => {
-                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(offset, offset),
-                    ];
-                    for brick_pos in positions {
-                        commands.spawn((
-                            Brick,
-                            PlayingEntity,
-                            Sprite {
-                                image: brick_texture.clone(),
-                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_brick_top(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::BrickBottom => {
-                    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, -offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for brick_pos in positions {
-                        commands.spawn((
-                            Brick,
-                            PlayingEntity,
-                            Sprite {
-                                image: brick_texture.clone(),
-                                custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + brick_pos.x, pos.y + brick_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_brick_bottom(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::Steel => {
-                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-                    // 生成4块钢铁组成100x100的网格
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(offset, offset),
-                        Vec2::new(-offset, -offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for steel_pos in positions {
-                        commands.spawn((
-                            Steel,
-                            PlayingEntity,
-                            Sprite {
-                                image: steel_texture.clone(),
-                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_steel_group(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::SteelLeft => {
-                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(-offset, -offset),
-                    ];
-                    for steel_pos in positions {
-                        commands.spawn((
-                            Steel,
-                            PlayingEntity,
-                            Sprite {
-                                image: steel_texture.clone(),
-                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_steel_left(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::SteelRight => {
-                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(offset, offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for steel_pos in positions {
-                        commands.spawn((
-                            Steel,
-                            PlayingEntity,
-                            Sprite {
-                                image: steel_texture.clone(),
-                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_steel_right(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::SteelTop => {
-                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, offset),
-                        Vec2::new(offset, offset),
-                    ];
-                    for steel_pos in positions {
-                        commands.spawn((
-                            Steel,
-                            PlayingEntity,
-                            Sprite {
-                                image: steel_texture.clone(),
-                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_steel_top(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::SteelBottom => {
-                    let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-                    let offset = 25.0;
-                    let positions = [
-                        Vec2::new(-offset, -offset),
-                        Vec2::new(offset, -offset),
-                    ];
-                    for steel_pos in positions {
-                        commands.spawn((
-                            Steel,
-                            PlayingEntity,
-                            Sprite {
-                                image: steel_texture.clone(),
-                                custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
-                                ..default()
-                            },
-                            Transform::from_xyz(pos.x + steel_pos.x, pos.y + steel_pos.y, 0.0),
-                            RigidBody::Fixed,
-                            Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
-                            ActiveEvents::COLLISION_EVENTS,
-                            ActiveCollisionTypes::all(),
-                        ));
-                    }
+                    spawn_steel_bottom(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::Barrier => {
-                    let barrier_texture: Handle<Image> = asset_server.load(TEXTURE_BARRIER);
-                    commands.spawn((
-                        Barrier,
-                        PlayingEntity,
-                        Sprite {
-                            image: barrier_texture,
-                            custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
-                            ..default()
-                        },
-                        Transform::from_xyz(pos.x, pos.y, 0.0),
-                        RigidBody::Fixed,
-                        Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
-                        Sensor,
-                        ActiveEvents::COLLISION_EVENTS,
-                        ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
-                    ));
+                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Barrier);
                 }
                 TerrainType::Empty => {}
             }
         }
     }
+    eprintln!("spawn_map_terrain: Spawned {spawned_count} terrain tiles for level {stage_level}");
 }
 
 
@@ -430,6 +541,7 @@ fn spawn_commander(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
 ) {
     let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
@@ -441,71 +553,49 @@ fn spawn_commander(
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
     let commander_x = 0.0;
 
-    // 创建包围司令官的砖块堡垒墙
-    let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-    let brick_size = 50.0; // 每块砖的大小
-
     // 司令官边界
     let commander_left = -COMMANDER_WIDTH / 2.0;
     let commander_right = COMMANDER_WIDTH / 2.0;
     let commander_top = commander_y + COMMANDER_HEIGHT / 2.0;
     let commander_bottom = commander_y - COMMANDER_HEIGHT / 2.0;
 
+    // 创建包围司令官的砖块堡垒墙
+    let brick_size = 50.0;
+
     // 左墙：3块砖，紧贴司令官左侧
     for i in 0..3 {
         let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
-        commands.spawn((
-            Brick,
-            PlayingEntity,
-            Sprite {
-                image: brick_texture.clone(),
-                custom_size: Some(Vec2::new(brick_size, brick_size)),
-                ..default()
-            },
-            Transform::from_xyz(commander_left - brick_size / 2.0, y, 0.0),
-            RigidBody::Fixed,
-            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
-            ActiveEvents::COLLISION_EVENTS,
-            ActiveCollisionTypes::all(),
-        ));
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            Vec2::new(commander_left - brick_size / 2.0, y),
+            TerrainTileType::Brick,
+        );
     }
 
     // 右墙：3块砖，紧贴司令官右侧
     for i in 0..3 {
         let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
-        commands.spawn((
-            Brick,
-            PlayingEntity,
-            Sprite {
-                image: brick_texture.clone(),
-                custom_size: Some(Vec2::new(brick_size, brick_size)),
-                ..default()
-            },
-            Transform::from_xyz(commander_right + brick_size / 2.0, y, 0.0),
-            RigidBody::Fixed,
-            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
-            ActiveEvents::COLLISION_EVENTS,
-            ActiveCollisionTypes::all(),
-        ));
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            Vec2::new(commander_right + brick_size / 2.0, y),
+            TerrainTileType::Brick,
+        );
     }
 
     // 上墙：2块砖封顶，紧贴司令官顶部
     for i in 0..2 {
         let x = -brick_size / 2.0 + i as f32 * brick_size;
-        commands.spawn((
-            Brick,
-            PlayingEntity,
-            Sprite {
-                image: brick_texture.clone(),
-                custom_size: Some(Vec2::new(brick_size, brick_size)),
-                ..default()
-            },
-            Transform::from_xyz(x, commander_top + brick_size / 2.0, 0.0),
-            RigidBody::Fixed,
-            Collider::cuboid(brick_size / 2.0, brick_size / 2.0),
-            ActiveEvents::COLLISION_EVENTS,
-            ActiveCollisionTypes::all(),
-        ));
+        spawn_terrain_tile(
+            commands,
+            asset_server,
+            atlas_layouts,
+            Vec2::new(x, commander_top + brick_size / 2.0),
+            TerrainTileType::Brick,
+        );
     }
 
     commands.spawn((
@@ -606,6 +696,8 @@ pub fn spawn_game_entities_if_needed(
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
+    atlas_layouts: Res<TerrainAtlasLayouts>,
+    level_assets: Res<crate::levels::LevelAssets>,
     mut clear_color: ResMut<ClearColor>,
     _enemy_spawn_state: Res<EnemySpawnState>,
     mut player_info: ResMut<PlayerInfo>,
@@ -628,10 +720,10 @@ pub fn spawn_game_entities_if_needed(
     spawn_walls(&mut commands);
 
     // 根据地图数组生成地形
-    spawn_map_terrain(&mut commands, &asset_server, &mut texture_atlas_layouts, stage_level.0);
+    spawn_map_terrain(&mut commands, &asset_server, &atlas_layouts, &level_assets, stage_level.0);
 
     // 生成司令官
-    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts);
+    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
 
     // 加载玩家坦克纹理和创建精灵图
     let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);

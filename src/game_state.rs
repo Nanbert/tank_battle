@@ -4,6 +4,7 @@
 
 use bevy::prelude::*;
 use bevy::audio::Volume;
+use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::*;
@@ -68,9 +69,8 @@ pub fn check_game_over(
     }
 }
 
-fn setup_fade_out(
-    mut fading_out: ResMut<FadingOut>,
-) {
+/// 重置 FadingOut 资源的 alpha 值为 1.0
+pub fn reset_fading_out(mut fading_out: ResMut<FadingOut>) {
     fading_out.alpha = 1.0;
 }
 
@@ -238,30 +238,34 @@ pub fn update_menu_blink(
     mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
     game_state: Res<State<GameState>>,
 ) {
+    // FadingOut 状态下的闪烁周期（秒）
+    const FADE_OUT_BLINK_PERIOD: f32 = 0.5;
+    
     // 在 FadingOut 状态下闪烁 + 淡出
     if *game_state.get() == GameState::FadingOut {
-        blink_timer.0.tick(time.delta());
-
-        // 初始化计时器（0.2秒闪烁）
+        // 确保计时器已正确初始化
         if blink_timer.0.duration().is_zero() {
-            blink_timer.0 = Timer::from_seconds(0.2, TimerMode::Repeating);
+            blink_timer.0 = Timer::from_seconds(FADE_OUT_BLINK_PERIOD, TimerMode::Repeating);
         }
 
-        if blink_timer.0.just_finished() {
-            for (option, mut text_color) in &mut text_query {
-                if option.index == menu_selection.selected_index {
-                    // 当前选中的选项闪烁
-                    // 出现时使用当前淡出透明度，消失时完全透明
-                    let linear = text_color.0.to_linear();
-                    let alpha = if linear.alpha < 0.5 {
-                        // 当前不可见，切换到可见（使用当前淡出透明度）
-                        fading_out.alpha
-                    } else {
-                        // 当前可见，切换到不可见（完全透明）
-                        0.0
-                    };
-                    text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(alpha);
-                }
+        blink_timer.0.tick(time.delta());
+
+        for (option, mut text_color) in &mut text_query {
+            if option.index == menu_selection.selected_index {
+                // 使用正弦波实现平滑闪烁
+                // FADE_OUT_BLINK_PERIOD 秒一个完整周期
+                let elapsed = blink_timer.0.elapsed_secs();
+                let cycle = elapsed % FADE_OUT_BLINK_PERIOD;
+                let half_period = FADE_OUT_BLINK_PERIOD / 2.0;
+                
+                // 使用正弦波计算闪烁：half_period 时达到峰值（1.0），0.0 和 FADE_OUT_BLINK_PERIOD 时为 0
+                // 这样闪烁更明显，中间最亮，两端最暗
+                let blink_alpha = (cycle / half_period * std::f32::consts::PI).sin().max(0.0);
+                
+                // 最终透明度 = 闪烁透明度 × 淡出透明度
+                let final_alpha = blink_alpha * fading_out.alpha;
+                
+                text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(final_alpha);
             }
         }
     } else if *game_state.get() == GameState::StartScreen {
@@ -359,26 +363,37 @@ pub fn check_stage_complete(
     }
 }
 
-pub fn reset_for_next_stage(
-    mut commands: Commands,
-    playing_entities: Query<Entity, With<PlayingEntity>>,
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
-    mut entities_spawned: ResMut<GameEntitiesSpawned>,
+/// 重置玩家坦克位置到出生点
+pub fn reset_player_positions(
+    mut player_tanks: Query<(&mut Transform, &PlayerTank), With<PlayerTank>>,
 ) {
-    // 清理所有游戏实体
-    for entity in playing_entities.iter() {
-        commands.entity(entity).try_despawn();
+    for (mut transform, player_tank) in player_tanks.iter_mut() {
+        match player_tank.tank_type {
+            TankType::Player1 => {
+                // 玩家1出生位置：左侧
+                transform.translation.x = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - 50.0;
+                transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
+            }
+            TankType::Player2 => {
+                // 玩家2出生位置：右侧
+                transform.translation.x = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0;
+                transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
+            }
+            _ => {}
+        }
+        transform.rotation = Quat::IDENTITY;
     }
+}
 
+pub fn reset_for_next_stage(
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
+) {
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
-
-    // 重置游戏实体生成标志
-    entities_spawned.0 = false;
 }
 
-fn animate_sea(
+pub fn animate_sea(
     time: Res<Time>,
     mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Sea>>,
 ) {
@@ -400,7 +415,7 @@ fn animate_sea(
     }
 }
 
-fn play_sea_ambience(
+pub fn play_sea_ambience(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
@@ -409,7 +424,7 @@ fn play_sea_ambience(
 ) {
     // 检查是否有玩家坦克在海附近
     let mut is_near_sea = false;
-    const DETECTION_RADIUS: f32 = 150.0; // 海检测半径
+    const DETECTION_RADIUS: f32 = 90.0; // 海检测半径
 
     for player_transform in player_tanks.iter() {
         for sea_transform in seas.iter() {
@@ -430,7 +445,7 @@ fn play_sea_ambience(
             let sea_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_SEA_AMBIENCE);
             commands.spawn((
                 AudioPlayer::new(sea_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.3)),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
                 SeaAmbiencePlayer,
             ));
         }
@@ -442,111 +457,211 @@ fn play_sea_ambience(
     }
 }
 
-    fn update_air_cushion_effect(
-    
-        mut commands: Commands,
-    
-        asset_server: Res<AssetServer>,
-    
-        player_tanks: Query<(Entity, Option<&Children>, Has<crate::constants::BubbleEffect>), With<PlayerTank>>,
-    
-        bubble_effects: Query<&crate::constants::BubbleEffect>,
-    
-    ) {
-    
-        for (entity, children, has_bubble_effect) in player_tanks.iter() {
-    
-            if has_bubble_effect {
-    
-                // 检查是否已经有气泡特效子实体
-    
-                let has_bubble_sprite = if let Some(children) = children {
-    
-                    children.iter().any(|child| bubble_effects.contains(child))
-    
-                } else {
-    
-                    false
-    
-                };
-    
-        
-    
-                if !has_bubble_sprite {
-    
-                    // 加载气泡纹理并缩放到 100x100
-    
-                                        let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
-    
-                                        
-    
-                                        
-    
-                                        // 创建气泡特效实体
-    
-                                        
-    
-                                        
-    
-                                                                                commands.entity(entity).with_children(|parent| {
-    
-                                        
-    
-                                        
-    
-                                                                                    parent.spawn((
-    
-                                        
-    
-                                        
-    
-                                                                                        Sprite {
-    
-                                        
-    
-                                        
-    
-                                                                                            image: bubble_texture,
-    
-                                        
-    
-                                        
-    
-                                                                                            custom_size: Some(Vec2::new(100.0, 100.0)),
-    
-                                        
-    
-                                        
-    
-                                                                                            ..default()
-    
-                                        
-    
-                                        
-    
-                                                                                        },
-    
-                            Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
-    
-                            crate::constants::BubbleEffect,
-    
-                        ));
-    
-                    });
-    
-                }
-    
+pub fn animate_commander_music(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<CommanderMusicAnimation>>,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
             } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+pub fn play_commander_music(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    commander: Query<&Transform, With<Commander>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<CommanderAmbiencePlayer>>,
+) {
+    // 检查是否有玩家坦克在司令官附近
+    let mut is_near_commander = false;
+    const DETECTION_RADIUS: f32 = 90.0; // 司令官检测半径
+
+    for player_transform in player_tanks.iter() {
+        for commander_transform in commander.iter() {
+            let distance = player_transform.translation.distance(commander_transform.translation);
+            if distance < DETECTION_RADIUS {
+                is_near_commander = true;
+                break;
+            }
+        }
+        if is_near_commander {
+            break;
+        }
+    }
+
+    if is_near_commander {
+        // 如果在司令官附近但没有播放音效，则播放
+        if ambience_players.is_empty() {
+            // 从 commander_music_000 到 commander_music_003 中随机选择
+            let music_files = [
+                SOUND_COMMANDER_MUSIC_000,
+                SOUND_COMMANDER_MUSIC_001,
+                SOUND_COMMANDER_MUSIC_002,
+                SOUND_COMMANDER_MUSIC_003,
+            ];
+            let mut rng = rand::rng();
+            let random_music = music_files[rng.random_range(0..music_files.len())];
+            
+            let commander_music_sound: Handle<AudioSource> = asset_server.load(random_music);
+            commands.spawn((
+                AudioPlayer::new(commander_music_sound),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.4)),
+                CommanderAmbiencePlayer,
+            ));
+        }
+    } else {
+        // 如果不在司令官附近但有播放音效，则停止
+        for (entity, _) in ambience_players.iter() {
+            let _ = commands.entity(entity).try_despawn();
+        }
+    }
+}
+
+pub fn play_tree_ambience(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    forests: Query<&Transform, With<Forest>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
+) {
+    // 检查是否有玩家坦克在森林附近
+    let mut is_near_forest = false;
+    const DETECTION_RADIUS: f32 = 90.0; // 森林检测半径
+
+    for player_transform in player_tanks.iter() {
+        for forest_transform in forests.iter() {
+            let distance = player_transform.translation.distance(forest_transform.translation);
+            if distance < DETECTION_RADIUS {
+                is_near_forest = true;
+                break;
+            }
+        }
+        if is_near_forest {
+            break;
+        }
+    }
+
+    if is_near_forest {
+        // 如果在森林附近但没有播放音效，则播放
+        if ambience_players.is_empty() {
+            let tree_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_TREE_AMBIENCE);
+            commands.spawn((
+                AudioPlayer::new(tree_ambience_sound),
+                PlaybackSettings::LOOP.with_volume(Volume::Linear(0.5)),
+                TreeAmbiencePlayer,
+            ));
+        }
+    } else {
+        // 如果不在森林附近但有播放音效，则停止
+        for (entity, _) in ambience_players.iter() {
+            let _ = commands.entity(entity).try_despawn();
+        }
+    }
+}
+
+    pub fn update_air_cushion_effect(
+
+            mut commands: Commands,
+
+            asset_server: Res<AssetServer>,
+
+            player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
+
+            bubble_effects: Query<&crate::constants::BubbleEffect>,
+
+            player_info: Res<PlayerInfo>,
+
+        ) {
+
+            for (entity, children, player_tank) in player_tanks.iter() {
+
+                // 检查玩家是否有 air_cushion 能力
+
+                let has_air_cushion = player_info.players.get(&player_tank.tank_type)
+
+                    .map(|stats| stats.air_cushion)
+
+                    .unwrap_or(false);
+
     
-                // 移除所有气泡特效子实体
+
+                if has_air_cushion {
+
+                    // 检查是否已经有气泡特效子实体
+
+                    let has_bubble_sprite = if let Some(children) = children {
+
+                        children.iter().any(|child| bubble_effects.contains(child))
+
+                    } else {
+
+                        false
+
+                    };
+
     
-                if let Some(children) = children {
 
-                    for child in children.iter() {
+                    if !has_bubble_sprite {
 
-                        if bubble_effects.contains(child) {
+                        // 加载气泡纹理并缩放到 100x100
 
-                            let _ = commands.entity(child).try_despawn();
+                        let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
+
+    
+
+                        // 创建气泡特效实体
+
+                        commands.entity(entity).with_children(|parent| {
+
+                            parent.spawn((
+
+                                Sprite {
+
+                                    image: bubble_texture,
+
+                                    custom_size: Some(Vec2::new(100.0, 100.0)),
+
+                                    ..default()
+
+                                },
+
+                                Transform::from_xyz(0.0, 0.0, 1.0), // 在坦克中心
+
+                                crate::constants::BubbleEffect,
+
+                            ));
+
+                        });
+
+                    }
+
+                } else {
+
+                    // 移除所有气泡特效子实体
+
+                    if let Some(children) = children {
+
+                        for child in children.iter() {
+
+                            if bubble_effects.contains(child) {
+
+                                let _ = commands.entity(child).try_despawn();
+
+                            }
 
                         }
 
@@ -555,12 +670,58 @@ fn play_sea_ambience(
                 }
 
             }
-
-        }
-
-    }
-
-// 获取属性类型对应的前缀
+            }
+            
+            /// 处理司令官阵亡时更换纹理和头像
+            /// 处理司令官阵亡时更换纹理和头像
+            pub fn handle_commander_death(
+                asset_server: Res<AssetServer>,
+                commander_life: Res<CommanderLife>,
+                mut queries: ParamSet<(
+                    Query<&mut Sprite, With<Commander>>,
+                    Query<&mut Sprite, With<PlayerAvatar>>,
+                    Query<&mut AnimationTimer, With<Commander>>,
+                    Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
+                )>,
+                mut has_handled: Local<bool>,
+            ) {
+                // 只在司令官生命值归零时执行一次
+                if commander_life.life_red_bar != 0 {
+                    *has_handled = false;
+                    return;
+                }
+            
+                // 如果已经处理过，跳过
+                if *has_handled {
+                    return;
+                }
+            
+                *has_handled = true;
+            
+                // 更换司令官纹理为死亡纹理
+                for mut sprite in queries.p0().iter_mut() {
+                    sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
+                    // 移除纹理图集，因为死亡纹理是单张图片
+                    sprite.texture_atlas = None;
+                }
+            
+                // 停止司令官动画
+                for mut timer in queries.p2().iter_mut() {
+                    timer.pause();
+                }
+            
+                // 停止司令官音乐动画
+                for mut timer in queries.p3().iter_mut() {
+                    timer.pause();
+                }
+            
+                // 更换所有玩家头像为死亡头像
+                for mut sprite in queries.p1().iter_mut() {
+                    sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
+                    // 移除纹理图集，因为死亡头像纹理是单张图片
+                    sprite.texture_atlas = None;
+                }
+            }// 获取属性类型对应的前缀
 const fn get_stat_prefix(stat_type: StatType) -> &'static str {
     match stat_type {
         StatType::Speed => "Speed:",

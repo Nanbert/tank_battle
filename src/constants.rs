@@ -653,9 +653,6 @@ pub struct LaserChargeSound;
 #[derive(Component, Deref, DerefMut)]
 pub struct PlayerInfoBlinkTimer(pub Timer);
 
-#[derive(Resource, Deref, DerefMut)]
-pub struct PlayerRespawnTimer(pub Timer);
-
 /// 坦克射击配置
 #[derive(Component)]
 pub struct TankFireConfig {

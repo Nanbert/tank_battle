@@ -115,8 +115,6 @@ pub fn handle_powerup_collision(
                         if let Ok(mut controller) = controllers.get_mut(tank_entity) {
                             controller.filter_groups = Some(CollisionGroups::new(Group::all(), Group::all() & !SEA_GROUP));
                         }
-                        // 添加气泡特效标记
-                        commands.entity(tank_entity).insert(BubbleEffect);
                         Some(StatType::AirCushion)
                     }
                     PowerUp::Shell => {

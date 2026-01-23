@@ -3,7 +3,7 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-use crate::constants::{TankType, AnimationIndices};
+use crate::constants::TankType;
 
 #[derive(Resource, Default)]
 pub struct BulletTracker {
@@ -229,127 +229,9 @@ pub struct DashDamageTracker {
 // 标记游戏实体是否已生成
 #[derive(Resource, Default)]
 pub struct GameEntitiesSpawned(pub bool);
-// 纹理资源类型
+// 地形纹理图集布局资源
 #[derive(Resource)]
-pub struct Player1Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct Player2Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct EnemyTank1Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct EnemyTank2Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct EnemyTank3Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct EnemyTank4Texture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct BulletTexture {
-    pub texture: Handle<Image>,
-}
-
-#[derive(Resource)]
-pub struct LaserTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-}
-
-#[derive(Resource)]
-pub struct ExplosionTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct SmokeTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct SparkTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct ForestFireTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct EnemyBornTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct CommanderTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct CommanderDeadTexture {
-    pub texture: Handle<Image>,
-}
-
-#[derive(Resource)]
-pub struct AvatarTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct AvatarDeadTexture {
-    pub texture: Handle<Image>,
-}
-
-#[derive(Resource)]
-pub struct PowerUpTexture {
-    pub texture: Handle<Image>,
-    pub texture_atlas_layout: Handle<TextureAtlasLayout>,
-    pub animation_indices: AnimationIndices,
-}
-
-#[derive(Resource)]
-pub struct CustomFont {
-    pub font: Handle<Font>,
+pub struct TerrainAtlasLayouts {
+    pub sea: Handle<TextureAtlasLayout>,
+    pub forest: Handle<TextureAtlasLayout>,
 }
