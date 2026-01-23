@@ -98,6 +98,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(Update, player::handle_dash_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, player::handle_barrier_collision.run_if(in_state(GameState::Playing)))
         .add_systems(Update, player::update_recall_progress_bars.run_if(in_state(GameState::Playing)))
+        .add_systems(Update, player::animate_player_tank_texture.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::player_shoot_system.run_if(in_state(GameState::Playing)))
         .add_systems(Update, bullet::bullet_bounds_check_system.run_if(in_state(GameState::Playing)))

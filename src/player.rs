@@ -870,3 +870,33 @@ pub fn handle_barrier_collision(
         }
     }
 }
+
+/// 玩家坦克纹理动画系统
+pub fn animate_player_tank_texture(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &KinematicCharacterController), With<PlayerTank>>,
+) {
+    // 玩家坦克：只有移动时才刷新纹理
+    for (mut timer, mut sprite, indices, character_controller) in &mut query {
+        // 使用 KinematicCharacterController 的 translation 字段判断是否在移动
+        let is_moving = character_controller.translation.is_some();
+        if sprite.texture_atlas.is_none() {
+            continue;
+        }
+        let atlas = sprite.texture_atlas.as_mut().expect("玩家坦克没有纹理！");
+        if !is_moving {
+            atlas.index = indices.last;
+            timer.reset();
+        } else {
+            timer.tick(time.delta());
+            if !timer.just_finished() {
+                continue;
+            }
+            atlas.index = if atlas.index == indices.last {
+                indices.first
+            } else {
+                atlas.index + 1
+            }
+        }
+    }
+}
