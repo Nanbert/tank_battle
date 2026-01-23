@@ -12,16 +12,17 @@ pub struct LevelAssets {
     levels: Vec<Option<LevelMap>>,
 }
 
-
-
 /// 从文件内容解析关卡地图
 /// il = 钢铁左半（50×100）
 /// ir = 钢铁右半（50×100）
 /// it = 钢铁上半（100×50）
 /// ib = 钢铁下半（100×50）
 /// a = 屏障（可破坏，2发子弹）
-pub fn parse_level_content(content: &str) -> [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] {
-    let mut result: [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] = [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
+pub fn parse_level_content(
+    content: &str,
+) -> [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] {
+    let mut result: [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] =
+        [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
     for (row_idx, line) in content.lines().enumerate() {
         if row_idx >= crate::map::MAP_ROWS {
@@ -47,8 +48,9 @@ pub fn parse_level_content(content: &str) -> [[TerrainType; crate::map::MAP_COLS
 pub fn get_level_from_assets(level_assets: &LevelAssets, level: usize) -> LevelMap {
     let level_idx = level - 1; // 关卡从1开始，数组从0开始
     if level_idx < level_assets.levels.len()
-        && let Some(ref map_data) = level_assets.levels[level_idx] {
-            return *map_data;
+        && let Some(ref map_data) = level_assets.levels[level_idx]
+    {
+        return *map_data;
     }
     // 如果关卡未加载，返回空地图
     [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
@@ -56,9 +58,7 @@ pub fn get_level_from_assets(level_assets: &LevelAssets, level: usize) -> LevelM
 /// 加载所有关卡文件到资源中
 /// 关卡文件从当前工作目录的 levels 子目录加载
 /// 注意：这是同步加载，在生产环境中可以考虑使用 Bevy 的异步资源加载
-pub fn load_level_assets(
-    mut level_assets: ResMut<LevelAssets>,
-) {
+pub fn load_level_assets(mut level_assets: ResMut<LevelAssets>) {
     // 预加载前4个关卡
     for level in 1..=4 {
         if let Ok(content) = std::fs::read_to_string(format!("levels/{level}.txt")) {

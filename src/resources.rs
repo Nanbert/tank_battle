@@ -3,7 +3,9 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-use crate::constants::{TankType, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, BLUE_BAR_REGEN_INTERVAL};
+use crate::constants::{
+    BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
+};
 
 #[derive(Resource, Default)]
 pub struct BulletTracker {
@@ -122,7 +124,7 @@ pub struct PlayerStats {
     pub track_chain: bool,
     pub air_cushion: bool,
     pub fire_shell: bool,
-    pub life_red_bar: usize, // max 3
+    pub life_red_bar: usize,    // max 3
     pub energy_blue_bar: usize, // max 3
     pub score: usize,
 }

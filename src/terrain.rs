@@ -9,7 +9,10 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{TerrainAtlasLayouts, StageLevel, PlayerStats, EnemySpawnState, PlayerInfo, GameMode, GameEntitiesSpawned};
+use crate::resources::{
+    EnemySpawnState, GameEntitiesSpawned, GameMode, PlayerInfo, PlayerStats, StageLevel,
+    TerrainAtlasLayouts,
+};
 
 /// 生成墙壁
 pub fn spawn_walls(commands: &mut Commands) {
@@ -20,11 +23,11 @@ pub fn spawn_walls(commands: &mut Commands) {
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
-        Transform{
+        Transform {
             translation: Vec3::new(MAP_LEFT_X - WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(WALL_SCALE , MAP_HEIGHT, 1.0),
+            scale: Vec3::new(WALL_SCALE, MAP_HEIGHT, 1.0),
             ..default()
-        }
+        },
     ));
 
     // 右墙（在原游戏区域右边界，向下平移40像素）
@@ -34,11 +37,11 @@ pub fn spawn_walls(commands: &mut Commands) {
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
-        Transform{
+        Transform {
             translation: Vec3::new(MAP_RIGHT_X + WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(WALL_SCALE , MAP_HEIGHT, 1.0),
+            scale: Vec3::new(WALL_SCALE, MAP_HEIGHT, 1.0),
             ..default()
-        }
+        },
     ));
 
     // 上墙（在原游戏区域上边界，向下平移40像素）
@@ -48,11 +51,11 @@ pub fn spawn_walls(commands: &mut Commands) {
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
-        Transform{
+        Transform {
             translation: Vec3::new(0.0, MAP_TOP_Y + WALL_POSITION_OFFSET_2, 0.0),
             scale: Vec3::new(MAP_WIDTH, WALL_SCALE, 1.0),
             ..default()
-        }
+        },
     ));
 
     // 下墙（在原游戏区域下边界，向下平移40像素）
@@ -62,11 +65,11 @@ pub fn spawn_walls(commands: &mut Commands) {
         Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
         RigidBody::Fixed,
         Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
-        Transform{
+        Transform {
             translation: Vec3::new(0.0, MAP_BOTTOM_Y - WALL_POSITION_OFFSET_2, 0.0),
-            scale: Vec3::new(MAP_WIDTH, WALL_SCALE , 1.0),
+            scale: Vec3::new(MAP_WIDTH, WALL_SCALE, 1.0),
             ..default()
-        }
+        },
     ));
 }
 
@@ -87,16 +90,40 @@ pub fn respawn_terrain_for_next_stage(
     powerups: Query<Entity, With<PowerUp>>,
 ) {
     // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物、道具）
-    for entity in bricks.iter().chain(steels.iter()).chain(forests.iter()).chain(seas.iter()).chain(commanders.iter()).chain(barriers.iter()).chain(powerups.iter()) {
+    for entity in bricks
+        .iter()
+        .chain(steels.iter())
+        .chain(forests.iter())
+        .chain(seas.iter())
+        .chain(commanders.iter())
+        .chain(barriers.iter())
+        .chain(powerups.iter())
+    {
         let () = commands.entity(entity).try_despawn();
     }
 
     // 重新生成新关卡的地形和司令官
-    spawn_map_terrain(&mut commands, &asset_server, &atlas_layouts, &level_assets, stage_level.0);
-    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
+    spawn_map_terrain(
+        &mut commands,
+        &asset_server,
+        &atlas_layouts,
+        &level_assets,
+        stage_level.0,
+    );
+    spawn_commander(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        &atlas_layouts,
+    );
 
     // 生成新关卡的道具
-    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
+    spawn_power_ups(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        &stage_level,
+    );
 }
 
 /// 地形瓦片类型（用于 `spawn_terrain_tile`）
@@ -110,7 +137,7 @@ pub enum TerrainTileType {
 }
 
 /// 生成单个地形瓦片（优化的4参数版本）
-/// 
+///
 /// 参数：
 /// - commands: 命令队列
 /// - `asset_server`: 资源服务器
@@ -127,101 +154,117 @@ pub fn spawn_terrain_tile(
     match tile_type {
         TerrainTileType::Brick => {
             let brick_texture: Handle<Image> = asset_server.load(TEXTURE_BRICK);
-            commands.spawn((
-                Brick,
-                PlayingEntity,
-                Sprite {
-                    image: brick_texture,
-                    custom_size: Some(Vec2::new(BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT)),
-                    ..default()
-                },
-                Transform::from_xyz(position.x, position.y, 0.0),
-                RigidBody::Fixed,
-                Collider::cuboid(BRICK_COLLIDER_WIDTH / 2.0, BRICK_COLLIDER_HEIGHT / 2.0),
-                ActiveEvents::COLLISION_EVENTS,
-                ActiveCollisionTypes::all(),
-            )).id()
+            commands
+                .spawn((
+                    Brick,
+                    PlayingEntity,
+                    Sprite {
+                        image: brick_texture,
+                        custom_size: Some(Vec2::new(BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT)),
+                        ..default()
+                    },
+                    Transform::from_xyz(position.x, position.y, 0.0),
+                    RigidBody::Fixed,
+                    Collider::cuboid(BRICK_COLLIDER_WIDTH / 2.0, BRICK_COLLIDER_HEIGHT / 2.0),
+                    ActiveEvents::COLLISION_EVENTS,
+                    ActiveCollisionTypes::all(),
+                ))
+                .id()
         }
         TerrainTileType::Steel => {
             let steel_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL);
-            commands.spawn((
-                Steel,
-                PlayingEntity,
-                Sprite {
-                    image: steel_texture,
-                    custom_size: Some(Vec2::new(STEEL_TEXTURE_WIDTH, STEEL_TEXTURE_HEIGHT)),
-                    ..default()
-                },
-                Transform::from_xyz(position.x, position.y, 0.0),
-                RigidBody::Fixed,
-                Collider::cuboid(STEEL_COLLIDER_WIDTH / 2.0, STEEL_COLLIDER_HEIGHT / 2.0),
-                ActiveEvents::COLLISION_EVENTS,
-                ActiveCollisionTypes::all(),
-            )).id()
+            commands
+                .spawn((
+                    Steel,
+                    PlayingEntity,
+                    Sprite {
+                        image: steel_texture,
+                        custom_size: Some(Vec2::new(STEEL_TEXTURE_WIDTH, STEEL_TEXTURE_HEIGHT)),
+                        ..default()
+                    },
+                    Transform::from_xyz(position.x, position.y, 0.0),
+                    RigidBody::Fixed,
+                    Collider::cuboid(STEEL_COLLIDER_WIDTH / 2.0, STEEL_COLLIDER_HEIGHT / 2.0),
+                    ActiveEvents::COLLISION_EVENTS,
+                    ActiveCollisionTypes::all(),
+                ))
+                .id()
         }
         TerrainTileType::Forest => {
             let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
             let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
-            commands.spawn((
-                Forest,
-                PlayingEntity,
-                Sprite::from_atlas_image(
-                    forest_texture,
-                    TextureAtlas {
-                        layout: atlas_layouts.forest.clone(),
-                        index: forest_animation_indices.first,
-                    }
-                ),
-                Transform::from_xyz(position.x, position.y, Z_FOREST),
-                forest_animation_indices,
-                AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_FOREST, TimerMode::Repeating)),
-                CurrentAnimationFrame(0),
-                Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
-                RigidBody::Fixed,
-                Sensor,
-                ActiveEvents::COLLISION_EVENTS,
-                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-            )).id()
+            commands
+                .spawn((
+                    Forest,
+                    PlayingEntity,
+                    Sprite::from_atlas_image(
+                        forest_texture,
+                        TextureAtlas {
+                            layout: atlas_layouts.forest.clone(),
+                            index: forest_animation_indices.first,
+                        },
+                    ),
+                    Transform::from_xyz(position.x, position.y, Z_FOREST),
+                    forest_animation_indices,
+                    AnimationTimer(Timer::from_seconds(
+                        ANIMATION_FRAME_FOREST,
+                        TimerMode::Repeating,
+                    )),
+                    CurrentAnimationFrame(0),
+                    Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
+                    RigidBody::Fixed,
+                    Sensor,
+                    ActiveEvents::COLLISION_EVENTS,
+                    ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+                ))
+                .id()
         }
         TerrainTileType::Sea => {
             let sea_texture: Handle<Image> = asset_server.load(TEXTURE_SEA);
             let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
-            commands.spawn((
-                Sea,
-                PlayingEntity,
-                Sprite::from_atlas_image(
-                    sea_texture,
-                    TextureAtlas {
-                        layout: atlas_layouts.sea.clone(),
-                        index: sea_animation_indices.first,
-                    }
-                ),
-                Transform::from_xyz(position.x, position.y, Z_SEA),
-                sea_animation_indices,
-                AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SEA, TimerMode::Repeating)),
-                CurrentAnimationFrame(0),
-                RigidBody::Fixed,
-                Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
-                CollisionGroups::new(SEA_GROUP, Group::all()),
-            )).id()
+            commands
+                .spawn((
+                    Sea,
+                    PlayingEntity,
+                    Sprite::from_atlas_image(
+                        sea_texture,
+                        TextureAtlas {
+                            layout: atlas_layouts.sea.clone(),
+                            index: sea_animation_indices.first,
+                        },
+                    ),
+                    Transform::from_xyz(position.x, position.y, Z_SEA),
+                    sea_animation_indices,
+                    AnimationTimer(Timer::from_seconds(
+                        ANIMATION_FRAME_SEA,
+                        TimerMode::Repeating,
+                    )),
+                    CurrentAnimationFrame(0),
+                    RigidBody::Fixed,
+                    Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
+                    CollisionGroups::new(SEA_GROUP, Group::all()),
+                ))
+                .id()
         }
         TerrainTileType::Barrier => {
             let barrier_texture: Handle<Image> = asset_server.load(TEXTURE_BARRIER);
-            commands.spawn((
-                Barrier,
-                PlayingEntity,
-                Sprite {
-                    image: barrier_texture,
-                    custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
-                    ..default()
-                },
-                Transform::from_xyz(position.x, position.y, 0.0),
-                RigidBody::Fixed,
-                Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
-                Sensor,
-                ActiveEvents::COLLISION_EVENTS,
-                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
-            )).id()
+            commands
+                .spawn((
+                    Barrier,
+                    PlayingEntity,
+                    Sprite {
+                        image: barrier_texture,
+                        custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
+                        ..default()
+                    },
+                    Transform::from_xyz(position.x, position.y, 0.0),
+                    RigidBody::Fixed,
+                    Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
+                    Sensor,
+                    ActiveEvents::COLLISION_EVENTS,
+                    ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
+                ))
+                .id()
         }
     }
 }
@@ -284,10 +327,7 @@ pub fn spawn_brick_left(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(-offset, -offset),
-    ];
+    let positions = [Vec2::new(-offset, offset), Vec2::new(-offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -307,10 +347,7 @@ pub fn spawn_brick_right(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(offset, offset),
-        Vec2::new(offset, -offset),
-    ];
+    let positions = [Vec2::new(offset, offset), Vec2::new(offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -330,10 +367,7 @@ pub fn spawn_brick_top(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(offset, offset),
-    ];
+    let positions = [Vec2::new(-offset, offset), Vec2::new(offset, offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -353,10 +387,7 @@ pub fn spawn_brick_bottom(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, -offset),
-        Vec2::new(offset, -offset),
-    ];
+    let positions = [Vec2::new(-offset, -offset), Vec2::new(offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -376,10 +407,7 @@ pub fn spawn_steel_left(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(-offset, -offset),
-    ];
+    let positions = [Vec2::new(-offset, offset), Vec2::new(-offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -399,10 +427,7 @@ pub fn spawn_steel_right(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(offset, offset),
-        Vec2::new(offset, -offset),
-    ];
+    let positions = [Vec2::new(offset, offset), Vec2::new(offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -422,10 +447,7 @@ pub fn spawn_steel_top(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(offset, offset),
-    ];
+    let positions = [Vec2::new(-offset, offset), Vec2::new(offset, offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -445,10 +467,7 @@ pub fn spawn_steel_bottom(
     center_position: Vec2,
 ) -> [Entity; 2] {
     let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, -offset),
-        Vec2::new(offset, -offset),
-    ];
+    let positions = [Vec2::new(-offset, -offset), Vec2::new(offset, -offset)];
     positions.map(|pos| {
         spawn_terrain_tile(
             commands,
@@ -476,7 +495,7 @@ fn spawn_map_terrain(
     level_assets: &crate::levels::LevelAssets,
     stage_level: usize,
 ) {
-    use crate::map::{TerrainType, grid_to_world, MAP_ROWS, MAP_COLS};
+    use crate::map::{MAP_COLS, MAP_ROWS, TerrainType, grid_to_world};
 
     let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
 
@@ -490,10 +509,22 @@ fn spawn_map_terrain(
 
             match terrain {
                 TerrainType::Forest => {
-                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Forest);
+                    spawn_terrain_tile(
+                        commands,
+                        asset_server,
+                        atlas_layouts,
+                        pos,
+                        TerrainTileType::Forest,
+                    );
                 }
                 TerrainType::Sea => {
-                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Sea);
+                    spawn_terrain_tile(
+                        commands,
+                        asset_server,
+                        atlas_layouts,
+                        pos,
+                        TerrainTileType::Sea,
+                    );
                 }
                 TerrainType::Brick => {
                     spawn_brick_group(commands, asset_server, atlas_layouts, pos);
@@ -526,18 +557,19 @@ fn spawn_map_terrain(
                     spawn_steel_bottom(commands, asset_server, atlas_layouts, pos);
                 }
                 TerrainType::Barrier => {
-                    spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, TerrainTileType::Barrier);
+                    spawn_terrain_tile(
+                        commands,
+                        asset_server,
+                        atlas_layouts,
+                        pos,
+                        TerrainTileType::Barrier,
+                    );
                 }
                 TerrainType::Empty => {}
             }
         }
     }
 }
-
-
-
-
-
 
 fn spawn_commander(
     commands: &mut Commands,
@@ -548,7 +580,8 @@ fn spawn_commander(
     let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas = TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
+    let commander_texture_atlas =
+        TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
     let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
@@ -614,7 +647,10 @@ fn spawn_commander(
         },
         Transform::from_xyz(commander_x, commander_y, 0.0),
         commander_animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_COMMANDER, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_COMMANDER,
+            TimerMode::Repeating,
+        )),
         CurrentAnimationFrame(0),
         RigidBody::Fixed,
         Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
@@ -642,7 +678,10 @@ fn spawn_commander(
         },
         Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)), // z=1.0 使动画在 Commander 上方
         music_animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_COMMANDER_MUSIC, TimerMode::Repeating)), // 每0.1秒切换一帧
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_COMMANDER_MUSIC,
+            TimerMode::Repeating,
+        )), // 每0.1秒切换一帧
         CurrentAnimationFrame(0),
     ));
 }
@@ -653,33 +692,53 @@ fn spawn_player1_tank(
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
 ) -> Entity {
-    let player_tank = PlayerTank { tank_type: TankType::Player1 };
+    let player_tank = PlayerTank {
+        tank_type: TankType::Player1,
+    };
 
-    
-
-    commands.spawn_empty()
+    commands
+        .spawn_empty()
         .insert(player_tank)
         .insert(PlayingEntity)
         .insert(TankFireConfig::default())
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation { angle: 0.0_f32.to_radians() })
+        .insert(TargetRotation {
+            angle: 0.0_f32.to_radians(),
+        })
         .insert(Sprite {
             image: texture,
             texture_atlas: Some(TextureAtlas {
                 layout: texture_atlas_layout,
                 index: animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT)),
+            custom_size: Some(Vec2::new(
+                PLAYER_TANK_DISPLAY_WIDTH,
+                PLAYER_TANK_DISPLAY_HEIGHT,
+            )),
             ..default()
         })
-        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
-        .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
+        .insert(Transform::from_xyz(
+            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+            0.0,
+        ))
+        .insert(Velocity {
+            linvel: Vec2::default(),
+            angvel: 0.0,
+        })
         .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_ENEMY_MOVE, TimerMode::Repeating)))
+        .insert(AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_ENEMY_MOVE,
+            TimerMode::Repeating,
+        )))
         .insert(RigidBody::KinematicPositionBased)
         .insert(Collider::cuboid(PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF))
         .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
+        .insert(
+            ActiveCollisionTypes::default()
+                | ActiveCollisionTypes::KINEMATIC_STATIC
+                | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+        )
         .insert(LockedAxes::ROTATION_LOCKED)
         .insert(KinematicCharacterController {
             offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
@@ -722,10 +781,21 @@ pub fn spawn_game_entities_if_needed(
     spawn_walls(&mut commands);
 
     // 根据地图数组生成地形
-    spawn_map_terrain(&mut commands, &asset_server, &atlas_layouts, &level_assets, stage_level.0);
+    spawn_map_terrain(
+        &mut commands,
+        &asset_server,
+        &atlas_layouts,
+        &level_assets,
+        stage_level.0,
+    );
 
     // 生成司令官
-    spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
+    spawn_commander(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        &atlas_layouts,
+    );
 
     // 加载玩家坦克纹理和创建精灵图
     let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
@@ -737,170 +807,124 @@ pub fn spawn_game_entities_if_needed(
 
     // 根据游戏模式生成玩家
 
-        match *game_mode {
+    match *game_mode {
+        GameMode::OnePlayer => {
+            // 单人模式：只生成玩家1
 
-            GameMode::OnePlayer => {
+            let _player1_tank_entity = spawn_player1_tank(
+                &mut commands,
+                player1_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
+            );
 
-                // 单人模式：只生成玩家1
+            // 初始化玩家1信息
 
-                let _player1_tank_entity = spawn_player1_tank(
+            player_info.players.insert(
+                TankType::Player1,
+                PlayerStats {
+                    name: "Li Yun Long".to_string(),
 
-                    &mut commands,
+                    speed: INITIAL_ATTRIBUTE_VALUE,
 
-                    player1_texture,
+                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
 
-                    player_texture_atlas_layout,
+                    protection: INITIAL_ATTRIBUTE_VALUE,
 
-                    player_animation_indices,
+                    shells: 1,
 
-                );
+                    penetrate: false,
 
-    
+                    track_chain: false,
 
-                                // 初始化玩家1信息
+                    air_cushion: false,
 
-    
+                    fire_shell: false,
 
-                                player_info.players.insert(TankType::Player1, PlayerStats {
+                    life_red_bar: 3,
 
-    
-
-                                    name: "Li Yun Long".to_string(),
-
-    
-
-                                    speed: INITIAL_ATTRIBUTE_VALUE,
-
-    
-
-                                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
-
-    
-
-                                    protection: INITIAL_ATTRIBUTE_VALUE,
-
-    
-
-                                    shells: 1,
-
-    
-
-                                    penetrate: false,
-
-    
-
-                                    track_chain: false,
-
-    
-
-                                    air_cushion: false,
-
-    
-
-                                    fire_shell: false,
-
-    
-
-                                    life_red_bar: 3,
-
-    
-
-                                    energy_blue_bar: 3,
+                    energy_blue_bar: 3,
 
                     score: 0,
+                },
+            );
+        }
 
-                });
+        GameMode::TwoPlayers => {
+            // 双人模式：生成玩家1和玩家2
 
-    
+            let _player1_tank_entity = spawn_player1_tank(
+                &mut commands,
+                player1_texture,
+                player_texture_atlas_layout.clone(),
+                player_animation_indices,
+            );
 
-                }
+            let _player2_tank_entity = commands
+                .spawn_empty()
+                .insert(PlayerTank {
+                    tank_type: TankType::Player2,
+                })
+                .insert(PlayingEntity)
+                .insert(TankFireConfig::default())
+                .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
+                .insert(TargetRotation {
+                    angle: 0.0_f32.to_radians(),
+                })
+                .insert(Sprite {
+                    image: player2_texture,
+                    texture_atlas: Some(TextureAtlas {
+                        layout: player_texture_atlas_layout,
+                        index: player_animation_indices.first,
+                    }),
+                    custom_size: Some(Vec2::new(80.0, 90.0)),
+                    ..default()
+                })
+                .insert(Transform::from_xyz(
+                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
+                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+                    0.0,
+                ))
+                .insert(Velocity {
+                    linvel: Vec2::default(),
+                    angvel: 0.0,
+                })
+                .insert(player_animation_indices)
+                .insert(AnimationTimer(Timer::from_seconds(
+                    0.1,
+                    TimerMode::Repeating,
+                )))
+                .insert(RigidBody::KinematicPositionBased)
+                .insert(Collider::cuboid(TANK_WIDTH / 2.0, TANK_HEIGHT / 2.0))
+                .insert(ActiveEvents::COLLISION_EVENTS)
+                .insert(
+                    ActiveCollisionTypes::default()
+                        | ActiveCollisionTypes::KINEMATIC_STATIC
+                        | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+                )
+                .insert(LockedAxes::ROTATION_LOCKED)
+                .insert(KinematicCharacterController {
+                    offset: CharacterLength::Absolute(0.01),
 
-            GameMode::TwoPlayers => {
+                    filter_groups: None,
 
-                // 双人模式：生成玩家1和玩家2
+                    autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
+                        max_height: CharacterLength::Absolute(5.0),
 
-                let _player1_tank_entity = spawn_player1_tank(
+                        min_width: CharacterLength::Absolute(0.5),
 
-                    &mut commands,
+                        include_dynamic_bodies: false,
+                    }),
 
-                    player1_texture,
+                    ..default()
+                })
+                .id();
 
-                    player_texture_atlas_layout.clone(),
+            // 初始化玩家1信息
 
-                    player_animation_indices,
-
-                );
-
-
-
-                let _player2_tank_entity = commands.spawn_empty()
-
-                    .insert(PlayerTank { tank_type: TankType::Player2 })
-
-                    .insert(PlayingEntity)
-
-                    .insert(TankFireConfig::default())
-
-                    .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-
-                    .insert(TargetRotation { angle: 0.0_f32.to_radians() })
-
-                    .insert(Sprite {
-                        image: player2_texture,
-                        texture_atlas: Some(TextureAtlas {
-                            layout: player_texture_atlas_layout,
-                            index: player_animation_indices.first,
-                        }),
-                        custom_size: Some(Vec2::new(80.0, 90.0)),
-                        ..default()
-                    })
-
-                    .insert(Transform::from_xyz(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
-
-                    .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
-
-                    .insert(player_animation_indices)
-
-                    .insert(AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)))
-
-                    .insert(RigidBody::KinematicPositionBased)
-
-                                        .insert(Collider::cuboid(TANK_WIDTH/2.0, TANK_HEIGHT/2.0))
-
-                                        .insert(ActiveEvents::COLLISION_EVENTS)
-
-                                        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
-
-                                        .insert(LockedAxes::ROTATION_LOCKED)
-
-                                        .insert(KinematicCharacterController {
-
-                                            offset: CharacterLength::Absolute(0.01),
-
-                                            filter_groups: None,
-
-                                            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-
-                                                max_height: CharacterLength::Absolute(5.0),
-
-                                                min_width: CharacterLength::Absolute(0.5),
-
-                                                include_dynamic_bodies: false,
-
-                                            }),
-
-                                            ..default()
-
-                                        })
-
-                                        .id();
-
-    
-
-                // 初始化玩家1信息
-
-                player_info.players.insert(TankType::Player1, PlayerStats {
-
+            player_info.players.insert(
+                TankType::Player1,
+                PlayerStats {
                     name: "Li Yun Long".to_string(),
 
                     speed: 40,
@@ -924,15 +948,14 @@ pub fn spawn_game_entities_if_needed(
                     energy_blue_bar: 3,
 
                     score: 0,
+                },
+            );
 
-                });
+            // 初始化玩家2信息
 
-    
-
-                // 初始化玩家2信息
-
-                player_info.players.insert(TankType::Player2, PlayerStats {
-
+            player_info.players.insert(
+                TankType::Player2,
+                PlayerStats {
                     name: "Chu Yun Fei".to_string(),
 
                     speed: 40,
@@ -956,10 +979,9 @@ pub fn spawn_game_entities_if_needed(
                     energy_blue_bar: 3,
 
                     score: 0,
-
-                });
-
-            }
+                },
+            );
+        }
     }
 
     // 加载字体
@@ -970,19 +992,38 @@ pub fn spawn_game_entities_if_needed(
         GameMode::OnePlayer => {
             // 单人模式：只生成玩家1的UI
             for config in PLAYER1_UI_ELEMENTS {
-                spawn_ui_element_from_config(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, config, &player_info, TankType::Player1);
+                spawn_ui_element_from_config(
+                    &mut commands,
+                    &font,
+                    &asset_server,
+                    &mut texture_atlas_layouts,
+                    config,
+                    &player_info,
+                    TankType::Player1,
+                );
             }
         }
         GameMode::TwoPlayers => {
             // 双人模式：生成玩家1和玩家2的UI
-            spawn_player_info(&mut commands, &font, &asset_server, &mut texture_atlas_layouts, &player_info);
+            spawn_player_info(
+                &mut commands,
+                &font,
+                &asset_server,
+                &mut texture_atlas_layouts,
+                &player_info,
+            );
         }
     }
 
     spawn_top_text_info(&mut commands, &font, stage_level.0);
 
     // 生成道具
-    spawn_power_ups(&mut commands, &asset_server, &mut texture_atlas_layouts, &stage_level);
+    spawn_power_ups(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        &stage_level,
+    );
 }
 fn spawn_player_info(
     commands: &mut Commands,
@@ -993,25 +1034,38 @@ fn spawn_player_info(
 ) {
     // 生成玩家1 UI 元素
     for config in PLAYER1_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info, TankType::Player1);
+        spawn_ui_element_from_config(
+            commands,
+            font,
+            asset_server,
+            texture_atlas_layouts,
+            config,
+            player_info,
+            TankType::Player1,
+        );
     }
     // 生成玩家2 UI 元素
     for config in PLAYER2_UI_ELEMENTS {
-        spawn_ui_element_from_config(commands, font, asset_server, texture_atlas_layouts, config, player_info, TankType::Player2);
+        spawn_ui_element_from_config(
+            commands,
+            font,
+            asset_server,
+            texture_atlas_layouts,
+            config,
+            player_info,
+            TankType::Player2,
+        );
     }
 }
 
-fn spawn_top_text_info(
-    commands: &mut Commands,
-    font: &Handle<Font>,
-    stage_level: usize,
-) {
+fn spawn_top_text_info(commands: &mut Commands, font: &Handle<Font>, stage_level: usize) {
     // 其他游戏信息 UI 元素配置
     let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
 
     // 关卡信息显示在顶部中心
     commands.spawn((
         PlayingEntity,
+        StageText,
         Text2d(format!("Stage {stage_level}")),
         TextFont {
             font_size: 28.0,
@@ -1048,7 +1102,7 @@ fn spawn_top_text_info(
     commands.spawn((
         PlayingEntity,
         EnemyCountText,
-        Text2d("Enemy Left: 20/20".to_string()),
+        Text2d("Enemy Left: 5/5".to_string()),
         TextFont {
             font_size: 28.0,
             font: font.clone(),
@@ -1080,7 +1134,9 @@ fn spawn_ui_element_from_config(
             };
 
             commands.spawn((
-                PlayerUI { player_type: tank_type },
+                PlayerUI {
+                    player_type: tank_type,
+                },
                 PlayingEntity,
                 Text2d(text),
                 TextFont {
@@ -1095,11 +1151,15 @@ fn spawn_ui_element_from_config(
         UIElementType::PlayerAvatar => {
             let player_avatar_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR);
             let player_avatar_tile_size = UVec2::new(160, 147);
-            let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
-            let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
+            let player_avatar_texture_atlas =
+                TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
+            let player_avatar_texture_atlas_layout =
+                texture_atlas_layouts.add(player_avatar_texture_atlas);
             let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
             commands.spawn((
-                PlayerUI { player_type: tank_type },
+                PlayerUI {
+                    player_type: tank_type,
+                },
                 PlayerAvatar,
                 PlayingEntity,
                 Sprite {
@@ -1119,7 +1179,9 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::HealthBar => {
             commands.spawn((
-                PlayerUI { player_type: tank_type },
+                PlayerUI {
+                    player_type: tank_type,
+                },
                 HealthBar,
                 HealthBarOriginalPosition(config.x_pos),
                 PlayingEntity,
@@ -1133,7 +1195,9 @@ fn spawn_ui_element_from_config(
         }
         UIElementType::BlueBar => {
             commands.spawn((
-                PlayerUI { player_type: tank_type },
+                PlayerUI {
+                    player_type: tank_type,
+                },
                 BlueBar,
                 BlueBarOriginalPosition(config.x_pos),
                 PlayingEntity,
@@ -1148,7 +1212,12 @@ fn spawn_ui_element_from_config(
     }
 }
 
-fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_atlas_layouts: &mut Assets<TextureAtlasLayout>, stage_level: &StageLevel) {
+fn spawn_power_ups(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    stage_level: &StageLevel,
+) {
     let powerup_type = if stage_level.0 == 1 {
         // 第一关强制生成 air_cushion 道具
         PowerUp::AirCushion
@@ -1183,7 +1252,14 @@ fn spawn_power_ups(commands: &mut Commands, asset_server: &AssetServer, texture_
     let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, 0.0);
 
-    spawn_powerup_batch(commands, asset_server, texture_atlas_layouts, powerup_type, powerup_type.texture_path(), &[position]);
+    spawn_powerup_batch(
+        commands,
+        asset_server,
+        texture_atlas_layouts,
+        powerup_type,
+        powerup_type.texture_path(),
+        &[position],
+    );
 }
 
 fn spawn_powerup_batch(
@@ -1209,7 +1285,7 @@ fn spawn_powerup_batch(
                 TextureAtlas {
                     layout: texture_atlas_layout.clone(),
                     index: animation_indices.first,
-                }
+                },
             ),
             Transform::from_xyz(pos.x, pos.y, 0.8), // z=0.8 使道具高于除了树之外的所有图层
             animation_indices,
@@ -1223,3 +1299,12 @@ fn spawn_powerup_batch(
     }
 }
 
+/// 更新关卡信息文本
+pub fn update_stage_text(
+    stage_level: Res<StageLevel>,
+    mut stage_text_query: Query<&mut Text2d, With<StageText>>,
+) {
+    for mut text in &mut stage_text_query {
+        text.0 = format!("Stage {}", stage_level.0);
+    }
+}

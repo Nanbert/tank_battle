@@ -35,7 +35,12 @@ pub fn enemy_spawn_system(
         let mut rng = rand::rng();
         let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
         let position = ENEMY_BORN_PLACES[random_index];
-        spawn_enemy_born_animation(&mut commands, &asset_server, &mut texture_atlas_layouts, position);
+        spawn_enemy_born_animation(
+            &mut commands,
+            &asset_server,
+            &mut texture_atlas_layouts,
+            position,
+        );
 
         // 更新计数
         enemy_spawn_state.has_spawned += 1;
@@ -54,35 +59,57 @@ pub fn spawn_enemy_born_animation(
 ) -> Entity {
     let enemy_born_texture: Handle<Image> = asset_server.load(TEXTURE_ENEMY_BORN);
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
-    let enemy_born_texture_atlas = TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
+    let enemy_born_texture_atlas =
+        TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
     let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
-    let enemy_born_animation_indices = AnimationIndices { first: 0, last: ENEMY_BORN_END_FRAME };
+    let enemy_born_animation_indices = AnimationIndices {
+        first: 0,
+        last: ENEMY_BORN_END_FRAME,
+    };
 
-    commands.spawn((
-        EnemyBornAnimation,
-        PlayingEntity,
-        Sprite {
-            image: enemy_born_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: enemy_born_texture_atlas_layout,
-                index: enemy_born_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(ENEMY_BORN_ANIMATION_SIZE, ENEMY_BORN_ANIMATION_SIZE)),
-            ..default()
-        },
-        Transform::from_translation(position),
-        enemy_born_animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_ENEMY_BORN, TimerMode::Repeating)),
-        CurrentAnimationFrame(0),
-        BornPosition(position), // 记录出生位置
-    )).id()
+    commands
+        .spawn((
+            EnemyBornAnimation,
+            PlayingEntity,
+            Sprite {
+                image: enemy_born_texture,
+                texture_atlas: Some(TextureAtlas {
+                    layout: enemy_born_texture_atlas_layout,
+                    index: enemy_born_animation_indices.first,
+                }),
+                custom_size: Some(Vec2::new(
+                    ENEMY_BORN_ANIMATION_SIZE,
+                    ENEMY_BORN_ANIMATION_SIZE,
+                )),
+                ..default()
+            },
+            Transform::from_translation(position),
+            enemy_born_animation_indices,
+            AnimationTimer(Timer::from_seconds(
+                ANIMATION_FRAME_ENEMY_BORN,
+                TimerMode::Repeating,
+            )),
+            CurrentAnimationFrame(0),
+            BornPosition(position), // 记录出生位置
+        ))
+        .id()
 }
 
 /// 敌方坦克出生动画系统
 pub fn animate_enemy_born_animation(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame, &BornPosition), With<EnemyBornAnimation>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+            &BornPosition,
+        ),
+        With<EnemyBornAnimation>,
+    >,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
@@ -90,68 +117,96 @@ pub fn animate_enemy_born_animation(
         timer.tick(time.delta());
 
         if timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas {
-                let current = current_frame.0;
-                let total_frames = indices.last - indices.first + 1;
-                let spawn_frame = indices.first + (total_frames / 2); // 1/2 处生成坦克
+            && let Some(atlas) = &mut sprite.texture_atlas
+        {
+            let current = current_frame.0;
+            let total_frames = indices.last - indices.first + 1;
+            let spawn_frame = indices.first + (total_frames / 2); // 1/2 处生成坦克
 
-                if current >= indices.last {
-                    // 动画播放完毕，销毁出生动画实体
-                    let () = commands.entity(entity).try_despawn();
-                } else {
-                    // 继续播放动画
-                    let next_index = current + 1;
-                    current_frame.0 = next_index;
-                    atlas.index = next_index;
+            if current >= indices.last {
+                // 动画播放完毕，销毁出生动画实体
+                let () = commands.entity(entity).try_despawn();
+            } else {
+                // 继续播放动画
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
 
-                    // 在动画播放到 2/3 时生成敌方坦克
-                    if next_index == spawn_frame {
-                        // 加载敌方坦克纹理和创建精灵图
-                        let enemy_texture = asset_server.load("enemy_tank/enemy_tank1_sprite.png");
-                        let enemy_tile_size = UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
-                        let enemy_texture_atlas = TextureAtlasLayout::from_grid(enemy_tile_size, 2, 1, None, None);
-                        let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
-                        let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
+                // 在动画播放到 2/3 时生成敌方坦克
+                if next_index == spawn_frame {
+                    // 加载敌方坦克纹理和创建精灵图
+                    let enemy_texture = asset_server.load("enemy_tank/enemy_tank1_sprite.png");
+                    let enemy_tile_size =
+                        UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
+                    let enemy_texture_atlas =
+                        TextureAtlasLayout::from_grid(enemy_tile_size, 2, 1, None, None);
+                    let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
+                    let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 
-                        // 生成敌方坦克
-                        let _enemy_entity = commands.spawn_empty()
-                            .insert(EnemyTank {
-                                direction: Vec2::new(0.0, -1.0),
-                            })
-                            .insert(PlayingEntity)
-                            .insert(TankFireConfig::default())
-                            .insert(DirectionChangeTimer(Timer::from_seconds(ENEMY_DIRECTION_CHANGE_INTERVAL, TimerMode::Once)))
-                            .insert(CollisionCooldownTimer(Timer::from_seconds(ENEMY_SPAWN_COOLDOWN, TimerMode::Once)))
-                            .insert(RotationTimer(Timer::from_seconds(ENEMY_ROTATION_TIME, TimerMode::Once)))
-                            .insert(TargetRotation { angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians() })
-                            .insert(AnimationTimer(Timer::from_seconds(ENEMY_ROTATION_TIME, TimerMode::Repeating)))
-                            .insert(Sprite {
-                                image: enemy_texture,
-                                texture_atlas: Some(TextureAtlas {
-                                    layout: enemy_texture_atlas_layout,
-                                    index: enemy_animation_indices.first,
-                                }),
-                                custom_size: Some(Vec2::new(ENEMY_TANK_DISPLAY_WIDTH, ENEMY_TANK_DISPLAY_HEIGHT)),
-                                ..default()
-                            })
-                            .insert(Transform::from_translation(born_position.0))
-                            .insert(enemy_animation_indices)
-                            .insert(Velocity {
-                                linvel: Vec2::new(0.0, -TANK_SPEED),
-                                angvel: 0.0,
-                            })
-                            .insert(RigidBody::Dynamic)
-                            .insert(Collider::cuboid(ENEMY_COLLIDER_HALF_WIDTH, ENEMY_COLLIDER_HALF_HEIGHT))
-                            .insert(ActiveEvents::COLLISION_EVENTS|ActiveEvents::CONTACT_FORCE_EVENTS)
-                            .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::DYNAMIC_DYNAMIC | ActiveCollisionTypes::DYNAMIC_STATIC)
-                            .insert(LockedAxes::ROTATION_LOCKED)
-                            .insert(GravityScale(0.0))
-                            .insert(Friction::new(0.0))
-                            .insert(Restitution::new(0.0))
-                            .id();
-                    }
+                    // 生成敌方坦克
+                    let _enemy_entity = commands
+                        .spawn_empty()
+                        .insert(EnemyTank {
+                            direction: Vec2::new(0.0, -1.0),
+                        })
+                        .insert(PlayingEntity)
+                        .insert(TankFireConfig::default())
+                        .insert(DirectionChangeTimer(Timer::from_seconds(
+                            ENEMY_DIRECTION_CHANGE_INTERVAL,
+                            TimerMode::Once,
+                        )))
+                        .insert(CollisionCooldownTimer(Timer::from_seconds(
+                            ENEMY_SPAWN_COOLDOWN,
+                            TimerMode::Once,
+                        )))
+                        .insert(RotationTimer(Timer::from_seconds(
+                            ENEMY_ROTATION_TIME,
+                            TimerMode::Once,
+                        )))
+                        .insert(TargetRotation {
+                            angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
+                        })
+                        .insert(AnimationTimer(Timer::from_seconds(
+                            ANIMATION_FRAME_ENEMY_MOVE,
+                            TimerMode::Repeating,
+                        )))
+                        .insert(Sprite {
+                            image: enemy_texture,
+                            texture_atlas: Some(TextureAtlas {
+                                layout: enemy_texture_atlas_layout,
+                                index: enemy_animation_indices.first,
+                            }),
+                            custom_size: Some(Vec2::new(
+                                ENEMY_TANK_DISPLAY_WIDTH,
+                                ENEMY_TANK_DISPLAY_HEIGHT,
+                            )),
+                            ..default()
+                        })
+                        .insert(Transform::from_translation(born_position.0))
+                        .insert(enemy_animation_indices)
+                        .insert(Velocity {
+                            linvel: Vec2::new(0.0, -TANK_SPEED),
+                            angvel: 0.0,
+                        })
+                        .insert(RigidBody::Dynamic)
+                        .insert(Collider::cuboid(
+                            ENEMY_COLLIDER_HALF_WIDTH,
+                            ENEMY_COLLIDER_HALF_HEIGHT,
+                        ))
+                        .insert(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+                        .insert(
+                            ActiveCollisionTypes::default()
+                                | ActiveCollisionTypes::DYNAMIC_DYNAMIC
+                                | ActiveCollisionTypes::DYNAMIC_STATIC,
+                        )
+                        .insert(LockedAxes::ROTATION_LOCKED)
+                        .insert(GravityScale(0.0))
+                        .insert(Friction::new(0.0))
+                        .insert(Restitution::new(0.0))
+                        .id();
                 }
             }
+        }
     }
 }
 
@@ -164,13 +219,14 @@ pub fn animate_enemy_tank_texture(
     for (mut timer, mut sprite, indices) in &mut query {
         timer.tick(time.delta());
         if timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = if atlas.index == indices.last {
-                    indices.first
-                } else {
-                    atlas.index + 1
-                };
-            }
+            && let Some(atlas) = &mut sprite.texture_atlas
+        {
+            atlas.index = if atlas.index == indices.last {
+                indices.first
+            } else {
+                atlas.index + 1
+            };
+        }
     }
 }
 
@@ -192,7 +248,17 @@ pub fn move_enemy_tanks(
 ) {
     let rapier_context = rapier_context.single().unwrap();
 
-    for (entity, mut velocity, mut enemy_tank, mut direction_timer, mut collision_cooldown, mut transform, mut rotation_timer, mut target_rotation) in &mut query {
+    for (
+        entity,
+        mut velocity,
+        mut enemy_tank,
+        mut direction_timer,
+        mut collision_cooldown,
+        mut transform,
+        mut rotation_timer,
+        mut target_rotation,
+    ) in &mut query
+    {
         // 更新碰撞冷却计时器
         collision_cooldown.tick(time.delta());
 
@@ -216,7 +282,12 @@ pub fn move_enemy_tanks(
         }
 
         // 更新坦克移动
-        update_enemy_tank_movement(*enemy_tank, &mut velocity, &mut target_rotation, &mut rotation_timer);
+        update_enemy_tank_movement(
+            *enemy_tank,
+            &mut velocity,
+            &mut target_rotation,
+            &mut rotation_timer,
+        );
 
         // 更新旋转计时器
         rotation_timer.tick(time.delta());
@@ -238,10 +309,7 @@ pub fn move_enemy_tanks(
 }
 
 /// 检测敌方坦克碰撞
-fn detect_enemy_tank_collision(
-    entity: Entity,
-    rapier_context: &RapierContext,
-) -> Option<Vec2> {
+fn detect_enemy_tank_collision(entity: Entity, rapier_context: &RapierContext) -> Option<Vec2> {
     for contact_pair in rapier_context.contact_pairs_with(entity) {
         if !contact_pair.has_any_active_contact() {
             continue;
@@ -340,7 +408,9 @@ fn update_enemy_tank_movement(
 
         // 检查是否需要转向
         let current_euler = target_rotation.angle;
-        let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+        let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler)
+            % (std::f32::consts::PI * 2.0)
+            - std::f32::consts::PI;
 
         if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
             // 需要转向，设置速度为0实现原地转向

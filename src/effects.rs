@@ -4,11 +4,11 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use bevy::audio::Volume;
+use bevy::prelude::*;
 
-use crate::constants::*;
 use crate::bullet::BulletOwner;
+use crate::constants::*;
 
 pub fn spawn_explosion(
     commands: &mut Commands,
@@ -19,7 +19,8 @@ pub fn spawn_explosion(
     // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
     let explosion_texture: Handle<Image> = asset_server.load(TEXTURE_EXPLOSION);
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_texture_atlas = TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
+    let explosion_texture_atlas =
+        TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
     let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
@@ -37,7 +38,10 @@ pub fn spawn_explosion(
         },
         Transform::from_translation(position),
         explosion_animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_EXPLOSION, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_EXPLOSION,
+            TimerMode::Repeating,
+        )),
         CurrentAnimationFrame(0),
     ));
 
@@ -58,7 +62,8 @@ pub fn spawn_forest_fire(
     // 加载树林燃烧精灵图（10帧，每帧131x131，1.5秒播完）
     let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
     let forest_fire_tile_size = UVec2::new(131, 131);
-    let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
+    let forest_fire_texture_atlas =
+        TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
     let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas);
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
@@ -70,11 +75,14 @@ pub fn spawn_forest_fire(
             TextureAtlas {
                 layout: forest_fire_texture_atlas_layout,
                 index: forest_fire_animation_indices.first,
-            }
+            },
         ),
         Transform::from_translation(position),
         forest_fire_animation_indices,
-        AnimationTimer(Timer::from_seconds(FOREST_FIRE_DURATION / 10.0, TimerMode::Repeating)), // 1.5秒播完10帧
+        AnimationTimer(Timer::from_seconds(
+            FOREST_FIRE_DURATION / 10.0,
+            TimerMode::Repeating,
+        )), // 1.5秒播完10帧
         CurrentAnimationFrame(0),
     ));
 
@@ -110,7 +118,10 @@ pub fn spawn_spark(
         },
         Transform::from_translation(position),
         spark_animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SPARK, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_SPARK,
+            TimerMode::Repeating,
+        )),
         CurrentAnimationFrame(0),
     ));
 }
@@ -118,7 +129,16 @@ pub fn spawn_spark(
 pub fn animate_explosion(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Explosion>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Explosion>,
+    >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -141,7 +161,16 @@ pub fn animate_laser(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Laser>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Laser>,
+    >,
     despawn_entities: Query<(Entity, &Transform), With<DespawnMarker>>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
@@ -154,10 +183,11 @@ pub fn animate_laser(
                     // 在被销毁实体的位置播放烟雾效果
                     let smoke_texture: Handle<Image> = asset_server.load(TEXTURE_SMOKE);
                     let smoke_tile_size = UVec2::new(100, 100);
-                    let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
+                    let smoke_texture_atlas =
+                        TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
                     let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);
                     let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
-                    
+
                     commands.spawn((
                         PlayingEntity,
                         Smoke,
@@ -170,12 +200,19 @@ pub fn animate_laser(
                             custom_size: Some(Vec2::new(SMOKE_SIZE, SMOKE_SIZE)),
                             ..default()
                         },
-                        Transform::from_xyz(transform.translation.x, transform.translation.y, Z_DEFAULT),
+                        Transform::from_xyz(
+                            transform.translation.x,
+                            transform.translation.y,
+                            Z_DEFAULT,
+                        ),
                         smoke_animation_indices,
-                        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_SMOKE, TimerMode::Repeating)),
+                        AnimationTimer(Timer::from_seconds(
+                            ANIMATION_FRAME_SMOKE,
+                            TimerMode::Repeating,
+                        )),
                         CurrentAnimationFrame(0),
                     ));
-                    
+
                     let () = commands.entity(despawn_entity).try_despawn();
                 }
                 let () = commands.entity(entity).try_despawn();
@@ -192,7 +229,16 @@ pub fn animate_laser(
 pub fn animate_smoke(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Smoke>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Smoke>,
+    >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -218,15 +264,15 @@ pub fn handle_recoil_force(
 ) {
     for (entity, mut transform, mut recoil) in &mut query {
         recoil.timer.tick(time.delta());
-        
+
         // 使用平滑插值应用后坐力位移
         let progress = recoil.timer.elapsed_secs() / recoil.timer.duration().as_secs_f32();
         let current_offset = recoil.target_offset * (1.0 - progress);
-        
+
         // 从原始位置插值到当前位置
         transform.translation.x = recoil.original_pos.x + current_offset.x;
         transform.translation.y = recoil.original_pos.y + current_offset.y;
-        
+
         // 后坐力时间结束，移除组件
         if recoil.timer.just_finished() {
             commands.entity(entity).remove::<RecoilForce>();
@@ -238,7 +284,16 @@ pub fn handle_recoil_force(
 pub fn animate_forest_fire(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<ForestFire>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<ForestFire>,
+    >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -258,7 +313,15 @@ pub fn animate_forest_fire(
 
 pub fn animate_forest(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Forest>>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Forest>,
+    >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -281,7 +344,16 @@ pub fn animate_forest(
 pub fn animate_spark(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Spark>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Spark>,
+    >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -306,7 +378,15 @@ pub fn animate_spark(
 pub fn laser_collision_system(
     mut commands: Commands,
     mut frame_count: Local<u32>,
-    lasers: Query<(Entity, &Transform, &CurrentAnimationFrame, &AnimationIndices), With<Laser>>,
+    lasers: Query<
+        (
+            Entity,
+            &Transform,
+            &CurrentAnimationFrame,
+            &AnimationIndices,
+        ),
+        With<Laser>,
+    >,
     enemies: Query<(Entity, &Transform), With<EnemyTank>>,
     bullets: Query<(Entity, &Transform), With<BulletOwner>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
@@ -320,140 +400,81 @@ pub fn laser_collision_system(
     if !(*frame_count).is_multiple_of(LASER_COLLISION_FRAME_INTERVAL) {
         return;
     }
-    
+
     for (_laser_entity, laser_transform, _, _) in &lasers {
-        // 激光原始尺寸（未旋转）
-        let laser_half_width = LASER_COLLIDER_HALF_WIDTH; // 70 / 2
-        let laser_half_height = LASER_COLLIDER_HALF_HEIGHT; // 1366 / 2 (1倍)
-        
-        // 获取激光的旋转角度
-        let rotation = laser_transform.rotation;
-        
-        // 激光的四个角点（未旋转）
-        let corners = [
-            Vec2::new(-laser_half_width, -laser_half_height),
-            Vec2::new(laser_half_width, -laser_half_height),
-            Vec2::new(laser_half_width, laser_half_height),
-            Vec2::new(-laser_half_width, laser_half_height),
-        ];
-        
-        // 旋转每个角点并加上位置
-        let rotated_corners: Vec<Vec2> = corners.iter()
-            .map(|corner| {
-                let rotated = rotation.mul_vec3(corner.extend(0.0));
-                Vec2::new(rotated.x, rotated.y) + Vec2::new(laser_transform.translation.x, laser_transform.translation.y)
-            })
-            .collect();
-        
-        // 计算旋转后的边界框
-        let laser_left = rotated_corners.iter().map(|p| p.x).fold(f32::INFINITY, f32::min);
-        let laser_right = rotated_corners.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max);
-        let laser_bottom = rotated_corners.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
-        let laser_top = rotated_corners.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max);
+        let laser_bounds = calculate_laser_bounds(laser_transform);
 
-        // 检测与敌方坦克的碰撞
-        for (enemy_entity, enemy_transform) in &enemies {
-            let enemy_left = enemy_transform.translation.x - TANK_WIDTH / 2.0;
-            let enemy_right = enemy_transform.translation.x + TANK_WIDTH / 2.0;
-            let enemy_top = enemy_transform.translation.y + TANK_HEIGHT / 2.0;
-            let enemy_bottom = enemy_transform.translation.y - TANK_HEIGHT / 2.0;
+        check_and_mark_collisions(&mut commands, &enemies, laser_bounds, TANK_WIDTH, TANK_HEIGHT);
+        check_and_mark_collisions(&mut commands, &bullets, laser_bounds, BULLET_SIZE, BULLET_SIZE);
+        check_and_mark_collisions(&mut commands, &bricks, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
+        check_and_mark_collisions(&mut commands, &steels, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
+        check_and_mark_collisions(&mut commands, &forests, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
+        check_and_mark_collisions(&mut commands, &barriers, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
+        check_and_mark_collisions(&mut commands, &seas, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
+    }
+}
 
-            // 简单的AABB碰撞检测
-            if laser_left < enemy_right && laser_right > enemy_left &&
-               laser_bottom < enemy_top && laser_top > enemy_bottom {
-                // 标记敌方坦克为待销毁
-                let _ = commands.entity(enemy_entity).try_insert(DespawnMarker);
-            }
-        }
+/// 激光边界框
+#[derive(Clone, Copy)]
+struct LaserBounds {
+    left: f32,
+    right: f32,
+    bottom: f32,
+    top: f32,
+}
 
-        // 检测与子弹的碰撞
-        for (bullet_entity, bullet_transform) in &bullets {
-            let bullet_left = bullet_transform.translation.x - BULLET_SIZE / 2.0;
-            let bullet_right = bullet_transform.translation.x + BULLET_SIZE / 2.0;
-            let bullet_top = bullet_transform.translation.y + BULLET_SIZE / 2.0;
-            let bullet_bottom = bullet_transform.translation.y - BULLET_SIZE / 2.0;
+/// 计算激光旋转后的边界框
+fn calculate_laser_bounds(transform: &Transform) -> LaserBounds {
+    let laser_half_width = LASER_COLLIDER_HALF_WIDTH;
+    let laser_half_height = LASER_COLLIDER_HALF_HEIGHT;
+    let rotation = transform.rotation;
 
-            // 简单的AABB碰撞检测
-            if laser_left < bullet_right && laser_right > bullet_left &&
-               laser_bottom < bullet_top && laser_top > bullet_bottom {
-                // 标记子弹为待销毁
-                let _ = commands.entity(bullet_entity).try_insert(DespawnMarker);
-            }
-        }
+    let corners = [
+        Vec2::new(-laser_half_width, -laser_half_height),
+        Vec2::new(laser_half_width, -laser_half_height),
+        Vec2::new(laser_half_width, laser_half_height),
+        Vec2::new(-laser_half_width, laser_half_height),
+    ];
 
-        // 检测与砖块的碰撞
-        for (brick_entity, brick_transform) in &bricks {
-            let brick_left = brick_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
-            let brick_right = brick_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
-            let brick_top = brick_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
-            let brick_bottom = brick_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
+    let rotated_corners: Vec<Vec2> = corners
+        .iter()
+        .map(|corner| {
+            let rotated = rotation.mul_vec3(corner.extend(0.0));
+            Vec2::new(rotated.x, rotated.y) + Vec2::new(transform.translation.x, transform.translation.y)
+        })
+        .collect();
 
-            // 简单的AABB碰撞检测
-            if laser_left < brick_right && laser_right > brick_left &&
-               laser_bottom < brick_top && laser_top > brick_bottom {
-                // 标记砖块为待销毁
-                let _ = commands.entity(brick_entity).try_insert(DespawnMarker);
-            }
-        }
+    LaserBounds {
+        left: rotated_corners.iter().map(|p| p.x).fold(f32::INFINITY, f32::min),
+        right: rotated_corners.iter().map(|p| p.x).fold(f32::NEG_INFINITY, f32::max),
+        bottom: rotated_corners.iter().map(|p| p.y).fold(f32::INFINITY, f32::min),
+        top: rotated_corners.iter().map(|p| p.y).fold(f32::NEG_INFINITY, f32::max),
+    }
+}
 
-        // 检测与钢块的碰撞
-        for (steel_entity, steel_transform) in &steels {
-            let steel_left = steel_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
-            let steel_right = steel_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
-            let steel_top = steel_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
-            let steel_bottom = steel_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
+/// 检查并标记碰撞实体
+fn check_and_mark_collisions<T: Component>(
+    commands: &mut Commands,
+    entities: &Query<(Entity, &Transform), With<T>>,
+    laser_bounds: LaserBounds,
+    entity_width: f32,
+    entity_height: f32,
+) {
+    let half_width = entity_width / 2.0;
+    let half_height = entity_height / 2.0;
 
-            // 简单的AABB碰撞检测
-            if laser_left < steel_right && laser_right > steel_left &&
-               laser_bottom < steel_top && laser_top > steel_bottom {
-                // 标记钢块为待销毁
-                let _ = commands.entity(steel_entity).try_insert(DespawnMarker);
-            }
-        }
+    for (entity, transform) in entities.iter() {
+        let entity_left = transform.translation.x - half_width;
+        let entity_right = transform.translation.x + half_width;
+        let entity_bottom = transform.translation.y - half_height;
+        let entity_top = transform.translation.y + half_height;
 
-        // 检测与森林的碰撞
-        for (forest_entity, forest_transform) in &forests {
-            let forest_left = forest_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
-            let forest_right = forest_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
-            let forest_top = forest_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
-            let forest_bottom = forest_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
-
-            // 简单的AABB碰撞检测
-            if laser_left < forest_right && laser_right > forest_left &&
-               laser_bottom < forest_top && laser_top > forest_bottom {
-                // 标记森林为待销毁
-                let _ = commands.entity(forest_entity).try_insert(DespawnMarker);
-            }
-        }
-
-        // 检测与障碍的碰撞
-        for (barrier_entity, barrier_transform) in &barriers {
-            let barrier_left = barrier_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
-            let barrier_right = barrier_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
-            let barrier_top = barrier_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
-            let barrier_bottom = barrier_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
-
-            // 简单的AABB碰撞检测
-            if laser_left < barrier_right && laser_right > barrier_left &&
-               laser_bottom < barrier_top && laser_top > barrier_bottom {
-                // 标记障碍为待销毁
-                let _ = commands.entity(barrier_entity).try_insert(DespawnMarker);
-            }
-        }
-
-        // 检测与sea的碰撞
-        for (sea_entity, sea_transform) in &seas {
-            let sea_left = sea_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
-            let sea_right = sea_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
-            let sea_top = sea_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
-            let sea_bottom = sea_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
-
-            // 简单的AABB碰撞检测
-            if laser_left < sea_right && laser_right > sea_left &&
-               laser_bottom < sea_top && laser_top > sea_bottom {
-                // 标记sea为待销毁
-                let _ = commands.entity(sea_entity).try_insert(DespawnMarker);
-            }
+        if laser_bounds.left < entity_right
+            && laser_bounds.right > entity_left
+            && laser_bounds.bottom < entity_top
+            && laser_bounds.top > entity_bottom
+        {
+            let _ = commands.entity(entity).try_insert(DespawnMarker);
         }
     }
 }

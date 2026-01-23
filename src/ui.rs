@@ -2,8 +2,8 @@
 //!
 //! 处理所有用户界面相关的功能，包括开始界面、暂停界面、游戏结束界面、关于界面、致谢界面等
 
-use bevy::prelude::*;
 use bevy::app::AppExit;
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
@@ -20,11 +20,17 @@ pub fn load_start_animation_assets(
 ) {
     // 使用3个较小的精灵图加载背景动画（15帧，每部分5帧）
     // 拆分以支持GPU纹理尺寸限制（最大16384）
-    let background_texture1: Handle<Image> = asset_server.load("background/background_sprite_part1.png");
-    let background_texture2: Handle<Image> = asset_server.load("background/background_sprite_part2.png");
-    let background_texture3: Handle<Image> = asset_server.load("background/background_sprite_part3.png");
+    let background_texture1: Handle<Image> =
+        asset_server.load("background/background_sprite_part1.png");
+    let background_texture2: Handle<Image> =
+        asset_server.load("background/background_sprite_part2.png");
+    let background_texture3: Handle<Image> =
+        asset_server.load("background/background_sprite_part3.png");
 
-    let background_tile_size = UVec2::new(BACKGROUND_ANIMATION_TILE_WIDTH as u32, BACKGROUND_ANIMATION_TILE_HEIGHT as u32); // 每帧的尺寸（窗口大小）
+    let background_tile_size = UVec2::new(
+        BACKGROUND_ANIMATION_TILE_WIDTH as u32,
+        BACKGROUND_ANIMATION_TILE_HEIGHT as u32,
+    ); // 每帧的尺寸（窗口大小）
 
     // 创建3个纹理图集，每个5帧
     let atlas1 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
@@ -37,7 +43,11 @@ pub fn load_start_animation_assets(
 
     // 存储到资源中
     animation_frames.texture_atlas_layouts = vec![layout1, layout2, layout3];
-    animation_frames.textures = vec![background_texture1, background_texture2, background_texture3];
+    animation_frames.textures = vec![
+        background_texture1,
+        background_texture2,
+        background_texture3,
+    ];
 }
 
 /// 生成开始界面的背景动画
@@ -64,16 +74,16 @@ pub fn spawn_start_screen_background(
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
         animation_indices,
-        AnimationTimer(Timer::from_seconds(ANIMATION_FRAME_START_BACKGROUND, TimerMode::Repeating)),
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_START_BACKGROUND,
+            TimerMode::Repeating,
+        )),
         CurrentAnimationFrame(0),
     ));
 }
 
 /// 生成开始界面的标题和菜单选项
-pub fn spawn_start_screen_title(
-    commands: &mut Commands,
-    font: Handle<Font>,
-) {
+pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>) {
     commands.spawn((
         StartScreenUI,
         Text2d("For Communism!!".to_string()),
@@ -210,7 +220,11 @@ pub fn spawn_start_screen(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // 加载所有动画帧
-    load_start_animation_assets(&asset_server, &mut animation_frames, &mut texture_atlas_layouts);
+    load_start_animation_assets(
+        &asset_server,
+        &mut animation_frames,
+        &mut texture_atlas_layouts,
+    );
 
     // 添加动画背景
     spawn_start_screen_background(&mut commands, &animation_frames);
@@ -226,10 +240,7 @@ pub fn spawn_start_screen(
 }
 
 /// 生成关于界面
-pub fn spawn_about_screen(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
+pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     // 加载自定义字体
     let custom_font: Handle<Font> = asset_server.load(FONT_EN);
 
@@ -281,7 +292,8 @@ pub fn spawn_about_screen(
     ));
 
     // 添加收款码文案
-    let support_text = "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)";
+    let support_text =
+        "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)";
 
     commands.spawn((
         AboutUI,
@@ -351,7 +363,7 @@ pub fn spawn_about_screen(
         Transform::from_xyz(250.0, -470.0, 1.0),
     ));
 
-// 添加返回提示
+    // 添加返回提示
     commands.spawn((
         AboutUI,
         Text2d("Press SPACE to return".to_string()),
@@ -366,10 +378,7 @@ pub fn spawn_about_screen(
 }
 
 /// 销毁关于界面
-pub fn despawn_about_screen(
-    mut commands: Commands,
-    query: Query<Entity, With<AboutUI>>,
-) {
+pub fn despawn_about_screen(mut commands: Commands, query: Query<Entity, With<AboutUI>>) {
     for entity in query.iter() {
         let () = commands.entity(entity).try_despawn();
     }
@@ -387,10 +396,7 @@ pub fn handle_about_input(
 }
 
 /// 生成致谢界面
-pub fn spawn_credits_screen(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
+pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
     // 加载自定义字体
     let custom_font: Handle<Font> = asset_server.load(FONT_EN);
 
@@ -469,10 +475,7 @@ pub fn spawn_credits_screen(
 }
 
 /// 销毁致谢界面
-pub fn despawn_credits_screen(
-    mut commands: Commands,
-    query: Query<Entity, With<CreditsUI>>,
-) {
+pub fn despawn_credits_screen(mut commands: Commands, query: Query<Entity, With<CreditsUI>>) {
     for entity in query.iter() {
         let () = commands.entity(entity).try_despawn();
     }
@@ -542,7 +545,15 @@ pub fn handle_start_screen_input(
 /// 动画化开始界面的背景
 pub fn animate_start_screen(
     time: Res<Time>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut Sprite, &mut CurrentAnimationFrame), With<StartScreenUI>>,
+    mut query: Query<
+        (
+            &AnimationIndices,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &mut CurrentAnimationFrame,
+        ),
+        With<StartScreenUI>,
+    >,
     animation_frames: Res<StartAnimationFrames>,
 ) {
     for (indices, mut timer, mut sprite, mut current_frame) in &mut query {
@@ -565,7 +576,8 @@ pub fn animate_start_screen(
             if atlas_index < animation_frames.textures.len() {
                 sprite.image = animation_frames.textures[atlas_index].clone();
                 if let Some(texture_atlas) = &mut sprite.texture_atlas {
-                    texture_atlas.layout = animation_frames.texture_atlas_layouts[atlas_index].clone();
+                    texture_atlas.layout =
+                        animation_frames.texture_atlas_layouts[atlas_index].clone();
                     texture_atlas.index = frame_in_atlas;
                 }
             }
@@ -942,7 +954,8 @@ pub fn handle_stage_intro_timer(
     // 淡入阶段
     if !stage_intro_timer.fade_in.is_finished() {
         stage_intro_timer.fade_in.tick(time.delta());
-        let progress = stage_intro_timer.fade_in.elapsed_secs() / stage_intro_timer.fade_in.duration().as_secs_f32();
+        let progress = stage_intro_timer.fade_in.elapsed_secs()
+            / stage_intro_timer.fade_in.duration().as_secs_f32();
         let alpha = progress.min(1.0);
         for mut text_color in &mut text_query {
             // 获取当前颜色（不包含透明度）
@@ -958,7 +971,8 @@ pub fn handle_stage_intro_timer(
     // 淡出阶段
     else if !stage_intro_timer.fade_out.is_finished() {
         stage_intro_timer.fade_out.tick(time.delta());
-        let progress = stage_intro_timer.fade_out.elapsed_secs() / stage_intro_timer.fade_out.duration().as_secs_f32();
+        let progress = stage_intro_timer.fade_out.elapsed_secs()
+            / stage_intro_timer.fade_out.duration().as_secs_f32();
         let alpha = 1.0 - progress.min(1.0);
         for mut text_color in &mut text_query {
             // 获取当前颜色（不包含透明度）
@@ -981,7 +995,7 @@ pub fn despawn_stage_intro(
 ) {
     // 重置背景色为游戏背景色
     clear_color.0 = BACKGROUND_COLOR;
-    
+
     for entity in stage_intro_query.iter() {
         let () = commands.entity(entity).try_despawn();
     }

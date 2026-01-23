@@ -4,24 +4,53 @@
 
 #![allow(clippy::wildcard_imports)]
 
+use bevy::asset::AssetPath;
+use bevy::audio::Volume;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use bevy::audio::Volume;
-use bevy::asset::AssetPath;
 
 use crate::effects;
 
 use crate::constants::*;
-use crate::resources::{PlayerInfo, RecallTimers, RecallTimer, DashTimers, DashTimer, DashDamageTracker, PlayerStatChanged, StatType, BarrierDamageTracker};
+use crate::resources::{
+    BarrierDamageTracker, DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged,
+    RecallTimer, RecallTimers, StatType,
+};
 
 /// 生成玩家1坦克
 pub fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     player_info: Res<PlayerInfo>,
-    mut query: Query<(Entity, &mut Transform, &mut KinematicCharacterController, &mut RotationTimer, &mut TargetRotation, &mut AnimationTimer, &mut Sprite, &AnimationIndices, &PlayerTank, Option<&IsDashing>), With<PlayerTank>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut Transform,
+            &mut KinematicCharacterController,
+            &mut RotationTimer,
+            &mut TargetRotation,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &PlayerTank,
+            Option<&IsDashing>,
+        ),
+        With<PlayerTank>,
+    >,
 ) {
-    for (_entity, mut transform, mut character_controller, mut rotation_timer, mut target_rotation, mut animation_timer, mut sprite, animation_indices, player_tank, is_dashing) in &mut query {
+    for (
+        _entity,
+        mut transform,
+        mut character_controller,
+        mut rotation_timer,
+        mut target_rotation,
+        mut animation_timer,
+        mut sprite,
+        animation_indices,
+        player_tank,
+        is_dashing,
+    ) in &mut query
+    {
         // 如果正在冲刺，跳过移动处理
         if is_dashing.is_some() {
             continue;
@@ -34,10 +63,10 @@ pub fn move_player_tank(
             let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
             let d_pressed = keyboard_input.pressed(KeyCode::KeyD);
             match (w_pressed, s_pressed, a_pressed, d_pressed) {
-                (true, false, false, false) => Vec2::new(0.0, 1.0),  // 上
+                (true, false, false, false) => Vec2::new(0.0, 1.0), // 上
                 (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
                 (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
-                (false, false, false, true) => Vec2::new(1.0, 0.0),  // 右
+                (false, false, false, true) => Vec2::new(1.0, 0.0), // 右
                 _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
             }
         } else {
@@ -47,10 +76,10 @@ pub fn move_player_tank(
             let left_pressed = keyboard_input.pressed(KeyCode::ArrowLeft);
             let right_pressed = keyboard_input.pressed(KeyCode::ArrowRight);
             match (up_pressed, down_pressed, left_pressed, right_pressed) {
-                (true, false, false, false) => Vec2::new(0.0, 1.0),  // 上
+                (true, false, false, false) => Vec2::new(0.0, 1.0), // 上
                 (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
                 (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
-                (false, false, false, true) => Vec2::new(1.0, 0.0),  // 右
+                (false, false, false, true) => Vec2::new(1.0, 0.0), // 右
                 _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
             }
         };
@@ -61,7 +90,9 @@ pub fn move_player_tank(
             let target_angle = angle - ANGLE_OFFSET_DEGREES.to_radians();
 
             let current_euler = target_rotation.angle;
-            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler)
+                % (std::f32::consts::PI * 2.0)
+                - std::f32::consts::PI;
 
             if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
                 target_rotation.angle = target_angle;
@@ -80,13 +111,19 @@ pub fn move_player_tank(
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 获取玩家的 speed 百分比加成
-        let speed_bonus = player_info.players.get(&player_tank.tank_type)
+        let speed_bonus = player_info
+            .players
+            .get(&player_tank.tank_type)
             .map_or(0.0, |p| p.speed as f32 / 100.0);
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
-        let speed = if needs_rotation { base_speed * ROTATION_SPEED_FACTOR } else { base_speed };
-        
+        let speed = if needs_rotation {
+            base_speed * ROTATION_SPEED_FACTOR
+        } else {
+            base_speed
+        };
+
         let is_moving = direction.length() > 0.0;
         if is_moving {
             character_controller.translation = Some(direction * speed * time.delta_secs());
@@ -118,11 +155,14 @@ pub fn move_player_tank(
             // 平滑旋转
             let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
             let target_angle = target_rotation.angle;
-            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler) % (std::f32::consts::PI * 2.0) - std::f32::consts::PI;
+            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler)
+                % (std::f32::consts::PI * 2.0)
+                - std::f32::consts::PI;
 
             if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
                 // 计算旋转进度（0.0 到 1.0）
-                let progress = rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
+                let progress =
+                    rotation_timer.elapsed_secs() / rotation_timer.duration().as_secs_f32();
                 // 使用缓动函数使旋转更平滑
                 let eased_progress = progress * progress * 2.0f32.mul_add(-progress, 3.0);
                 // 插值计算当前角度
@@ -159,9 +199,17 @@ pub fn handle_recall_input(
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
             let initial_position = if player_tank.tank_type == TankType::Player1 {
-                Vec3::new(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(
+                    -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+                    0.0,
+                )
             } else {
-                Vec3::new(TANK_WIDTH / 2.0 + COMMANDER_WIDTH/2.0 + PLAYER_SPAWN_OFFSET, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0)
+                Vec3::new(
+                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET,
+                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+                    0.0,
+                )
             };
 
             // 开始回城
@@ -174,13 +222,19 @@ pub fn handle_recall_input(
             // 创建回城进度条（在坦克正上方，初始满格）
             commands.spawn((
                 PlayingEntity,
-                RecallProgressBar { player_entity: entity },
+                RecallProgressBar {
+                    player_entity: entity,
+                },
                 Sprite {
                     color: Color::srgb(0.0, 1.0, 0.0), // 绿色
                     custom_size: Some(Vec2::new(PROGRESS_BAR_INITIAL_WIDTH, PROGRESS_BAR_HEIGHT)), // 初始宽度100（满格）
                     ..default()
                 },
-                Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET, Z_PROGRESS_BAR), // 在坦克上方
+                Transform::from_xyz(
+                    transform.translation.x,
+                    transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
+                    Z_PROGRESS_BAR,
+                ), // 在坦克上方
             ));
         }
     }
@@ -191,89 +245,135 @@ pub fn update_recall_timers(
     time: Res<Time>,
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut player_query: Query<(Entity, &mut Transform, &PlayerTank, Option<&IsRecalling>, Option<&Children>), With<PlayerTank>>,
+    mut player_query: Query<
+        (
+            Entity,
+            &mut Transform,
+            &PlayerTank,
+            Option<&IsRecalling>,
+            Option<&Children>,
+        ),
+        With<PlayerTank>,
+    >,
     mut recall_timers: ResMut<RecallTimers>,
     mut progress_bar_query: Query<(Entity, &mut Sprite, &RecallProgressBar)>,
 ) {
     for (entity, mut transform, player_tank, is_recalling, children) in &mut player_query {
-        if matches!(is_recalling, Some(IsRecalling))
-            && let Some(recall_timer) = recall_timers.timers.get_mut(&entity) {
-            // 检查是否按住回城键
-            let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
-                keyboard_input.pressed(KeyCode::KeyI)
-            } else {
-                keyboard_input.pressed(KeyCode::Numpad4)
-            };
+        // 卫语句：不在回城状态则跳过
+        let Some(IsRecalling) = is_recalling else { continue; };
+        
+        let Some(recall_timer) = recall_timers.timers.get_mut(&entity) else { continue; };
 
-            // 检查是否被打断（移动或射击）
-            let is_interrupted = if player_tank.tank_type == TankType::Player1 {
-                // 玩家1：检查WASD或J键
-                keyboard_input.pressed(KeyCode::KeyW) ||
-                keyboard_input.pressed(KeyCode::KeyS) ||
-                keyboard_input.pressed(KeyCode::KeyA) ||
-                keyboard_input.pressed(KeyCode::KeyD) ||
-                keyboard_input.pressed(KeyCode::KeyJ)
-            } else {
-                // 玩家2：检查方向键或小键盘1键
-                keyboard_input.pressed(KeyCode::ArrowUp) ||
-                keyboard_input.pressed(KeyCode::ArrowDown) ||
-                keyboard_input.pressed(KeyCode::ArrowLeft) ||
-                keyboard_input.pressed(KeyCode::ArrowRight) ||
-                keyboard_input.pressed(KeyCode::Numpad1)
-            };
+        let is_recall_key_pressed = is_recall_key_pressed(&keyboard_input, player_tank.tank_type);
+        let is_interrupted = is_movement_interrupted(&keyboard_input, player_tank.tank_type);
 
-            // 如果没有按住回城键，或者被打断，则取消回城
-            if !is_recall_key_pressed || is_interrupted {
-                // 打断回城
-                commands.entity(entity).remove::<IsRecalling>();
-                recall_timers.timers.remove(&entity);
+        // 卫语句：取消回城
+        if !is_recall_key_pressed || is_interrupted {
+            cancel_recall(&mut commands, &mut progress_bar_query, entity, &mut recall_timers);
+            continue;
+        }
 
-                // 删除进度条
-                for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                    if progress_bar.player_entity == entity {
-                        let () = commands.entity(progress_entity).try_despawn();
-                    }
-                }
-            } else {
-                // 更新计时器
-                recall_timer.timer.tick(time.delta());
+        // 更新计时器和进度条
+        recall_timer.timer.tick(time.delta());
+        update_progress_bar(&mut progress_bar_query, entity, recall_timer);
 
-                // 更新进度条（从满格递减）
-                let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
-                let bar_width = PROGRESS_BAR_INITIAL_WIDTH * (1.0 - progress); // 从100递减到0
+        // 卫语句：回城完成
+        if recall_timer.timer.just_finished() {
+            let start_position = recall_timer.start_position;
+            complete_recall(&mut commands, &mut progress_bar_query, entity, &mut recall_timers,
+                           &mut transform, children, start_position);
+        }
+    }
+}
 
-                for (_, mut sprite, progress_bar) in &mut progress_bar_query {
-                    if progress_bar.player_entity == entity {
-                        sprite.custom_size = Some(Vec2::new(bar_width, PROGRESS_BAR_HEIGHT));
-                    }
-                }
+/// 检查是否按住回城键
+fn is_recall_key_pressed(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
+    match tank_type {
+        TankType::Player1 => keyboard_input.pressed(KeyCode::KeyI),
+        TankType::Player2 => keyboard_input.pressed(KeyCode::Numpad4),
+        TankType::Enemy => false,
+    }
+}
 
-                // 检查是否完成
-                if recall_timer.timer.just_finished() {
-                    // 完成回城，传送到初始位置
-                    let initial_position = recall_timer.start_position;
+/// 检查是否被打断（移动或射击）
+fn is_movement_interrupted(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
+    match tank_type {
+        TankType::Player1 => {
+            keyboard_input.pressed(KeyCode::KeyW)
+                || keyboard_input.pressed(KeyCode::KeyS)
+                || keyboard_input.pressed(KeyCode::KeyA)
+                || keyboard_input.pressed(KeyCode::KeyD)
+                || keyboard_input.pressed(KeyCode::KeyJ)
+        }
+        TankType::Player2 => {
+            keyboard_input.pressed(KeyCode::ArrowUp)
+                || keyboard_input.pressed(KeyCode::ArrowDown)
+                || keyboard_input.pressed(KeyCode::ArrowLeft)
+                || keyboard_input.pressed(KeyCode::ArrowRight)
+                || keyboard_input.pressed(KeyCode::Numpad1)
+        }
+        TankType::Enemy => false,
+    }
+}
 
-                    // 先删除所有子实体（包括气泡），防止Transform传播干扰传送
-                    if let Some(children) = children {
-                        for child in children.iter() {
-                            let () = commands.entity(child).try_despawn();
-                        }
-                    }
+/// 取消回城
+fn cancel_recall(
+    commands: &mut Commands,
+    progress_bar_query: &mut Query<(Entity, &mut Sprite, &RecallProgressBar)>,
+    entity: Entity,
+    recall_timers: &mut ResMut<RecallTimers>,
+) {
+    commands.entity(entity).remove::<IsRecalling>();
+    recall_timers.timers.remove(&entity);
 
-                    transform.translation = initial_position;
+    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+        if progress_bar.player_entity == entity {
+            let () = commands.entity(progress_entity).try_despawn();
+        }
+    }
+}
 
-                    // 移除回城标记和计时器
-                    commands.entity(entity).remove::<IsRecalling>();
-                    recall_timers.timers.remove(&entity);
+/// 更新进度条
+fn update_progress_bar(
+    progress_bar_query: &mut Query<(Entity, &mut Sprite, &RecallProgressBar)>,
+    entity: Entity,
+    recall_timer: &RecallTimer,
+) {
+    let progress = recall_timer.timer.elapsed_secs() / recall_timer.timer.duration().as_secs_f32();
+    let bar_width = PROGRESS_BAR_INITIAL_WIDTH * (1.0 - progress);
 
-                    // 删除进度条
-                    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                        if progress_bar.player_entity == entity {
-                            let () = commands.entity(progress_entity).try_despawn();
-                        }
-                    }
-                }
-            }
+    for (_, mut sprite, progress_bar) in progress_bar_query.iter_mut() {
+        if progress_bar.player_entity == entity {
+            sprite.custom_size = Some(Vec2::new(bar_width, PROGRESS_BAR_HEIGHT));
+        }
+    }
+}
+
+/// 完成回城
+fn complete_recall(
+    commands: &mut Commands,
+    progress_bar_query: &mut Query<(Entity, &mut Sprite, &RecallProgressBar)>,
+    entity: Entity,
+    recall_timers: &mut ResMut<RecallTimers>,
+    transform: &mut Transform,
+    children: Option<&Children>,
+    initial_position: Vec3,
+) {
+    // 删除所有子实体
+    if let Some(children) = children {
+        for child in children.iter() {
+            let () = commands.entity(child).try_despawn();
+        }
+    }
+
+    transform.translation = initial_position;
+
+    commands.entity(entity).remove::<IsRecalling>();
+    recall_timers.timers.remove(&entity);
+
+    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+        if progress_bar.player_entity == entity {
+            let () = commands.entity(progress_entity).try_despawn();
         }
     }
 }
@@ -294,10 +394,14 @@ pub fn update_recall_progress_bars(
 
     // 然后更新进度条位置
     for (progress_bar, mut progress_transform) in &mut param_set.p1() {
-        if let Some((_, player_pos)) = player_transforms.iter().find(|(e, _)| *e == progress_bar.player_entity) {
+        if let Some((_, player_pos)) = player_transforms
+            .iter()
+            .find(|(e, _)| *e == progress_bar.player_entity)
+        {
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_pos.x;
-            progress_transform.translation.y = player_pos.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET;
+            progress_transform.translation.y =
+                player_pos.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -352,13 +456,21 @@ pub fn handle_dash_input(
 pub fn update_dash_movement(
     time: Res<Time>,
     mut commands: Commands,
-    mut player_query: Query<(Entity, &mut KinematicCharacterController, Option<&IsDashing>), With<PlayerTank>>,
+    mut player_query: Query<
+        (
+            Entity,
+            &mut KinematicCharacterController,
+            Option<&IsDashing>,
+        ),
+        With<PlayerTank>,
+    >,
     mut dash_timers: ResMut<DashTimers>,
     mut dash_damage_tracker: ResMut<DashDamageTracker>,
 ) {
     for (entity, mut character_controller, is_dashing) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
-            && let Some(dash_timer) = dash_timers.timers.get_mut(&entity) {
+            && let Some(dash_timer) = dash_timers.timers.get_mut(&entity)
+        {
             // 更新计时器
             dash_timer.timer.tick(time.delta());
 
@@ -400,128 +512,193 @@ pub fn handle_dash_collision(
     mut dash_damage_tracker: ResMut<DashDamageTracker>,
 ) {
     for event in collision_events.read() {
-        if let CollisionEvent::Started(e1, e2, _) = event {
-            // 检查是否是玩家坦克与 brick/steel/敌方坦克的碰撞
-            let (player_entity, brick_entity, steel_entity, enemy_entity): (Entity, Option<Entity>, Option<Entity>, Option<Entity>) = if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e1) {
-                if is_dashing.is_some() && steels.get(*e2).is_ok() {
-                    // 撞到 steel，检查 protection
-                    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
+        // 卫语句：只处理 Started 事件
+        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
-                    if can_break_steel {
-                        // protection = 100%，可以撞碎铁块
-                        (player_entity, None, Some(*e2), None)
-                    } else {
-                        // protection < 100%，玩家死亡
-                        handle_steel_collision(
-                            &mut commands,
-                            &mut effect_events,
-                            &asset_server,
-                            &mut texture_atlas_layouts,
-                            &player_tanks,
-                            &player_tanks_with_transform,
-                            &mut player_info,
-                            &player_avatars,
-                            &mut stat_changed_events,
-                            player_entity,
-                        );
-                        continue;
-                    }
-                } else if is_dashing.is_some() && bricks.get(*e2).is_ok() {
-                    (player_entity, Some(*e2), None, None)
-                } else if let Some(enemy) = check_enemy_collision(player_entity, *e1, *e2, &player_tanks, &enemy_tanks) {
-                    (player_entity, None, None, Some(enemy))
-                } else {
-                    continue;
-                }
-            } else if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e2) {
-                if is_dashing.is_some() && steels.get(*e1).is_ok() {
-                    // 撞到 steel，检查 protection
-                    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
+        // 提取碰撞信息
+        let Some((player_entity, brick_entity, steel_entity, enemy_entity)) =
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &asset_server, &mut texture_atlas_layouts, &player_tanks_with_transform, &player_avatars, &mut stat_changed_events)
+        else { continue; };
 
-                    if can_break_steel {
-                        // protection = 100%，可以撞碎铁块
-                        (player_entity, None, Some(*e1), None)
-                    } else {
-                        // protection < 100%，玩家死亡
-                        handle_steel_collision(
-                            &mut commands,
-                            &mut effect_events,
-                            &asset_server,
-                            &mut texture_atlas_layouts,
-                            &player_tanks,
-                            &player_tanks_with_transform,
-                            &mut player_info,
-                            &player_avatars,
-                            &mut stat_changed_events,
-                            player_entity,
-                        );
-                        continue;
-                    }
-                } else if is_dashing.is_some() && bricks.get(*e1).is_ok() {
-                    (player_entity, Some(*e1), None, None)
-                } else if let Some(enemy) = check_enemy_collision(player_entity, *e2, *e1, &player_tanks, &enemy_tanks) {
-                    (player_entity, None, None, Some(enemy))
-                } else {
-                    continue;
-                }
-            } else if let Some((pe, ee)) = check_enemy_collision_none(*e1, *e2, &player_tanks, &enemy_tanks) {
-                (pe, None, None, Some(ee))
-            } else {
-                continue;
-            };
+        // 处理 brick 碰撞
+        if let Some(b_entity) = brick_entity {
+            handle_brick_collision(
+                &mut commands,
+                &mut effect_events,
+                &asset_server,
+                &mut texture_atlas_layouts,
+                &player_tanks,
+                &player_tanks_with_transform,
+                &bricks,
+                &mut player_info,
+                &player_avatars,
+                &mut stat_changed_events,
+                player_entity,
+                b_entity,
+                &mut dash_damage_tracker,
+            );
+            continue;
+        }
 
-            // 处理 brick 碰撞
-            if let Some(b_entity) = brick_entity {
-                handle_brick_collision(
-                    &mut commands,
-                    &mut effect_events,
-                    &asset_server,
-                    &mut texture_atlas_layouts,
-                    &player_tanks,
-                    &player_tanks_with_transform,
-                    &bricks,
-                    &mut player_info,
-                    &player_avatars,
-                    &mut stat_changed_events,
-                    player_entity,
-                    b_entity,
-                    &mut dash_damage_tracker,
-                );
-                continue;
-            }
+        // 处理 steel 碰撞（protection = 100% 时）
+        if let Some(s_entity) = steel_entity {
+            handle_steel_break(
+                &mut commands,
+                &mut effect_events,
+                &asset_server,
+                &steels,
+                s_entity,
+            );
+            continue;
+        }
 
-            // 处理 steel 碰撞（protection = 100% 时）
-            if let Some(s_entity) = steel_entity {
-                handle_steel_break(
-                    &mut commands,
-                    &mut effect_events,
-                    &asset_server,
-                    &steels,
-                    s_entity,
-                );
-                continue;
-            }
-
-            // 处理敌方坦克碰撞
-            if let Some(e_entity) = enemy_entity {
-                handle_dash_enemy_tank_collision(
-                    &mut commands,
-                    &mut effect_events,
-                    &asset_server,
-                    &mut texture_atlas_layouts,
-                    &player_tanks,
-                    &player_tanks_with_transform,
-                    &enemy_tanks,
-                    &mut player_info,
-                    &player_avatars,
-                    &mut stat_changed_events,
-                    player_entity,
-                    e_entity,
-                    &mut dash_damage_tracker,
-                );
-            }
+        // 处理敌方坦克碰撞
+        if let Some(e_entity) = enemy_entity {
+            handle_dash_enemy_tank_collision(
+                &mut commands,
+                &mut effect_events,
+                &asset_server,
+                &mut texture_atlas_layouts,
+                &player_tanks,
+                &player_tanks_with_transform,
+                &enemy_tanks,
+                &mut player_info,
+                &player_avatars,
+                &mut stat_changed_events,
+                player_entity,
+                e_entity,
+                &mut dash_damage_tracker,
+            );
         }
     }
+}
+
+/// 提取冲刺碰撞信息
+fn extract_dash_collision_info(
+    e1: Entity,
+    e2: Entity,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+    bricks: &Query<(Entity, &Transform), With<Brick>>,
+    steels: &Query<(Entity, &Transform), With<Steel>>,
+    player_info: &ResMut<PlayerInfo>,
+    commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
+    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
+    // 尝试从 e1 获取玩家坦克
+    if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(e1) {
+        return handle_player_entity_collision(
+            player_entity,
+            player_tank,
+            is_dashing,
+            e2,
+            enemy_tanks,
+            bricks,
+            steels,
+            player_info,
+            commands,
+            effect_events,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks,
+            player_tanks_with_transform,
+            player_avatars,
+            stat_changed_events,
+        );
+    }
+
+    // 尝试从 e2 获取玩家坦克
+    if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(e2) {
+        return handle_player_entity_collision(
+            player_entity,
+            player_tank,
+            is_dashing,
+            e1,
+            enemy_tanks,
+            bricks,
+            steels,
+            player_info,
+            commands,
+            effect_events,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks,
+            player_tanks_with_transform,
+            player_avatars,
+            stat_changed_events,
+        );
+    }
+
+    // 检查是否是玩家坦克与敌方坦克的碰撞（玩家不在 e1 或 e2 中）
+    check_enemy_collision_none(e1, e2, player_tanks, enemy_tanks)
+        .map(|(pe, ee)| (pe, None, None, Some(ee)))
+}
+
+/// 处理玩家实体碰撞
+fn handle_player_entity_collision(
+    player_entity: Entity,
+    player_tank: &PlayerTank,
+    is_dashing: Option<&IsDashing>,
+    other_entity: Entity,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+    bricks: &Query<(Entity, &Transform), With<Brick>>,
+    steels: &Query<(Entity, &Transform), With<Steel>>,
+    player_info: &ResMut<PlayerInfo>,
+    commands: &mut Commands,
+    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
+    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
+    // 卫语句：不在冲刺状态则跳过
+    let Some(_) = is_dashing else { return None };
+
+    // 处理 steel 碰撞
+    if steels.get(other_entity).is_ok() {
+        let can_break_steel = player_info
+            .players
+            .get(&player_tank.tank_type)
+            .is_some_and(|player_stats| player_stats.protection >= 100);
+
+        if can_break_steel {
+            return Some((player_entity, None, Some(other_entity), None));
+        }
+
+        // protection < 100%，玩家死亡
+        handle_steel_collision(
+            commands,
+            effect_events,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks,
+            player_tanks_with_transform,
+            player_info,
+            player_avatars,
+            stat_changed_events,
+            player_entity,
+        );
+        return None;
+    }
+
+    // 处理 brick 碰撞
+    if bricks.get(other_entity).is_ok() {
+        return Some((player_entity, Some(other_entity), None, None));
+    }
+
+    // 处理敌方坦克碰撞
+    if let Some(enemy) = check_enemy_collision(player_entity, player_entity, other_entity, player_tanks, enemy_tanks) {
+        return Some((player_entity, None, None, Some(enemy)));
+    }
+
+    None
 }
 
 /// 检查敌方坦克碰撞
@@ -533,9 +710,11 @@ fn check_enemy_collision(
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
 ) -> Option<Entity> {
     if let Ok((_, _, is_dashing)) = player_tanks.get(e1)
-        && is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
-            return Some(e2);
-        }
+        && is_dashing.is_some()
+        && enemy_tanks.get(e2).is_ok()
+    {
+        return Some(e2);
+    }
     None
 }
 
@@ -551,9 +730,11 @@ fn check_enemy_collision_none(
             return Some((player_entity, e2));
         }
     } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e2)
-        && is_dashing.is_some() && enemy_tanks.get(e1).is_ok() {
-            return Some((player_entity, e1));
-        }
+        && is_dashing.is_some()
+        && enemy_tanks.get(e1).is_ok()
+    {
+        return Some((player_entity, e1));
+    }
     None
 }
 
@@ -574,9 +755,14 @@ fn handle_brick_collision(
     dash_damage_tracker: &mut DashDamageTracker,
 ) {
     // 获取玩家坦克信息
-    let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
-        if e == player_entity { Some(pt) } else { None }
-    }).unwrap();
+    let player_tank = player_tanks
+        .iter()
+        .find_map(
+            |(e, pt, _)| {
+                if e == player_entity { Some(pt) } else { None }
+            },
+        )
+        .unwrap();
 
     // 获取 brick 位置用于生成效果
     if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
@@ -597,7 +783,10 @@ fn handle_brick_collision(
     }
 
     // 检查本次 dash 是否已经扣过血
-    if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
+    if dash_damage_tracker
+        .has_taken_damage
+        .contains(&player_entity)
+    {
         return; // 已经扣过血，不再重复扣血
     }
 
@@ -621,7 +810,12 @@ fn handle_brick_collision(
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                effects::spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
+                effects::spawn_explosion(
+                    commands,
+                    asset_server,
+                    texture_atlas_layouts,
+                    tank_transform.translation,
+                );
             }
 
             // 销毁玩家坦克
@@ -652,18 +846,26 @@ fn handle_steel_collision(
     _texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_info: &mut ResMut<PlayerInfo>,
+    player_info: &ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
 ) {
     // 获取玩家坦克信息
-    let player_tank = player_tanks.iter().find_map(|(e, pt, _)| {
-        if e == player_entity { Some(pt) } else { None }
-    }).unwrap();
+    let player_tank = player_tanks
+        .iter()
+        .find_map(
+            |(e, pt, _)| {
+                if e == player_entity { Some(pt) } else { None }
+            },
+        )
+        .unwrap();
 
     // 检查 protection 是否为 100%
-    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
+    let can_break_steel = player_info
+        .players
+        .get(&player_tank.tank_type)
+        .is_some_and(|player_stats| player_stats.protection >= 100);
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
@@ -752,7 +954,10 @@ fn handle_dash_enemy_tank_collision(
     let () = commands.entity(enemy_entity).try_despawn();
 
     // 检查本次 dash 是否已经扣过血
-    if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
+    if dash_damage_tracker
+        .has_taken_damage
+        .contains(&player_entity)
+    {
         return; // 已经扣过血，不再重复扣血
     }
 
@@ -784,7 +989,12 @@ fn handle_dash_enemy_tank_collision(
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                effects::spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
+                effects::spawn_explosion(
+                    commands,
+                    asset_server,
+                    texture_atlas_layouts,
+                    tank_transform.translation,
+                );
             }
 
             // 销毁玩家坦克
@@ -832,13 +1042,17 @@ pub fn handle_barrier_collision(
 
             if distance < COLLISION_THRESHOLD {
                 // 检查冷却是否结束
-                let can_take_damage = barrier_damage_tracker.cooldowns
+                let can_take_damage = barrier_damage_tracker
+                    .cooldowns
                     .get(&player_entity)
                     .is_none_or(bevy::prelude::Timer::is_finished);
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let has_track_chain = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.track_chain);
+                    let has_track_chain = player_info
+                        .players
+                        .get(&player_tank.tank_type)
+                        .is_some_and(|player_stats| player_stats.track_chain);
 
                     if has_track_chain {
                         // 拥有 track_chain，免疫伤害，直接跳过
@@ -846,15 +1060,19 @@ pub fn handle_barrier_collision(
                     }
 
                     // 设置 2 秒冷却
-                    barrier_damage_tracker.cooldowns.insert(
-                        player_entity,
-                        Timer::from_seconds(2.0, TimerMode::Once)
-                    );
+                    barrier_damage_tracker
+                        .cooldowns
+                        .insert(player_entity, Timer::from_seconds(2.0, TimerMode::Once));
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-                        player_stats.speed = player_stats.speed.saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
-                        player_stats.protection = player_stats.protection.saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
+                    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type)
+                    {
+                        player_stats.speed = player_stats
+                            .speed
+                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
+                        player_stats.protection = player_stats
+                            .protection
+                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
 
                         // 发送 speed 和 protection 变更事件
                         stat_changed_events.write(PlayerStatChanged {

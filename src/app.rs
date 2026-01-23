@@ -5,21 +5,21 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy::window::{WindowResolution, PresentMode};
+use bevy::window::{PresentMode, WindowResolution};
 
 use crate::constants::*;
 use crate::resources::*;
 
 // 导入模块以便使用其函数
-use crate::game_state;
-use crate::ui;
-use crate::terrain;
-use crate::enemy;
-use crate::player;
 use crate::bullet;
 use crate::effects;
+use crate::enemy;
+use crate::game_state;
 use crate::laser;
+use crate::player;
 use crate::powerup;
+use crate::terrain;
+use crate::ui;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
@@ -74,94 +74,300 @@ pub fn register_game_systems(app: &mut App) {
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
         .init_resource::<BulletTracker>()
-        .add_systems(Startup, (
-            setup,
-            crate::levels::load_level_assets,
-        ))
-        .add_systems(OnEnter(GameState::StartScreen), (
-            game_state::cleanup_playing_entities,
-            game_state::reset_fading_out,
-            ui::spawn_start_screen
-        ).chain())
-        .add_systems(OnEnter(GameState::About), (ui::cleanup_start_screen_ui, ui::spawn_about_screen).chain())
-        .add_systems(OnExit(GameState::About), (ui::despawn_about_screen, ui::spawn_start_screen).chain())
-        .add_systems(Update, ui::handle_about_input.run_if(in_state(GameState::About)))
-        .add_systems(OnEnter(GameState::Credits), (ui::cleanup_start_screen_ui, ui::spawn_credits_screen).chain())
-        .add_systems(OnExit(GameState::Credits), (ui::despawn_credits_screen, ui::spawn_start_screen).chain())
-        .add_systems(Update, ui::handle_credits_input.run_if(in_state(GameState::Credits)))
-        .add_systems(OnEnter(GameState::StageIntro), (
-            game_state::reset_player_positions,
-            terrain::respawn_terrain_for_next_stage,
-            game_state::reset_for_next_stage,
-            ui::spawn_stage_intro,
-        ).chain())
-        .add_systems(Update, ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)))
+        .add_systems(Startup, (setup, crate::levels::load_level_assets))
+        .add_systems(
+            OnEnter(GameState::StartScreen),
+            (
+                game_state::cleanup_playing_entities,
+                game_state::reset_fading_out,
+                ui::spawn_start_screen,
+            )
+                .chain(),
+        )
+        .add_systems(
+            OnEnter(GameState::About),
+            (ui::cleanup_start_screen_ui, ui::spawn_about_screen).chain(),
+        )
+        .add_systems(
+            OnExit(GameState::About),
+            (ui::despawn_about_screen, ui::spawn_start_screen).chain(),
+        )
+        .add_systems(
+            Update,
+            ui::handle_about_input.run_if(in_state(GameState::About)),
+        )
+        .add_systems(
+            OnEnter(GameState::Credits),
+            (ui::cleanup_start_screen_ui, ui::spawn_credits_screen).chain(),
+        )
+        .add_systems(
+            OnExit(GameState::Credits),
+            (ui::despawn_credits_screen, ui::spawn_start_screen).chain(),
+        )
+        .add_systems(
+            Update,
+            ui::handle_credits_input.run_if(in_state(GameState::Credits)),
+        )
+        .add_systems(
+            OnEnter(GameState::StageIntro),
+            (
+                terrain::respawn_terrain_for_next_stage,
+                game_state::reset_player_positions,
+                game_state::reset_for_next_stage,
+                ui::spawn_stage_intro,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)),
+        )
         .add_systems(OnExit(GameState::StageIntro), ui::despawn_stage_intro)
-        .add_systems(OnEnter(GameState::Playing), terrain::spawn_game_entities_if_needed)
+        .add_systems(
+            OnEnter(GameState::Playing),
+            (
+                terrain::spawn_game_entities_if_needed,
+                terrain::update_stage_text,
+            )
+                .chain(),
+        )
         .add_systems(OnEnter(GameState::Paused), ui::spawn_pause_ui)
-        .add_systems(OnExit(GameState::Paused), ( ui::despawn_pause_ui,))
+        .add_systems(OnExit(GameState::Paused), (ui::despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), ui::spawn_game_over_ui)
-        .add_systems(OnExit(GameState::GameOver), (ui::despawn_game_over_ui, game_state::cleanup_playing_entities))
-        .add_systems(Update, enemy::move_enemy_tanks.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy::enemy_spawn_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy::animate_enemy_born_animation.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, enemy::animate_enemy_tank_texture.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::move_player_tank.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::handle_player_avatar_death.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::handle_recall_input.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::update_recall_timers.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::handle_dash_input.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::update_dash_movement.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::handle_dash_collision.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::handle_barrier_collision.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, player::update_recall_progress_bars.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_blue_bar_regen.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::player_shoot_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_bounds_check_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_despawn_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::bullet_commander_collision_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, bullet::handle_effect_events.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, laser::player_laser_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::animate_explosion.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::animate_laser.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::animate_forest_fire.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::animate_forest.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::animate_sea.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::animate_commander_music.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::play_sea_ambience.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::play_commander_music.run_if(in_state(GameState::Playing))) // 测试司令官音乐
-        .add_systems(Update, game_state::play_tree_ambience.run_if(in_state(GameState::Playing))) // 测试森林环绕声
-        .add_systems(Update, effects::animate_spark.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::handle_game_over_delay.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::check_game_over.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::check_stage_complete.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_player_info_display.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::animate_player_info_text.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_enemy_count_display.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_commander_health_bar.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::handle_commander_death.run_if(in_state(GameState::Playing))) // 测试司令官阵亡处理
-        .add_systems(Update, ui::animate_start_screen.run_if(not(in_state(GameState::Playing))))
-        .add_systems(Update, (
-            ui::handle_start_screen_input,
-            ui::update_option_colors,
-        ).run_if(in_state(GameState::StartScreen)))
-        .add_systems(Update, ui::handle_game_input.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, ui::handle_pause_input.run_if(in_state(GameState::Paused)))
-        .add_systems(Update, (ui::handle_game_over_input, ui::update_option_colors)
-            .chain().run_if(in_state(GameState::GameOver)))
-        .add_systems(Update, effects::handle_recoil_force.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::animate_smoke.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, effects::laser_collision_system.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, powerup::animate_powerup.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, powerup::handle_powerup_collision.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_air_cushion_effect.run_if(in_state(GameState::Playing)))
-        .add_systems(Update, game_state::update_menu_blink.run_if(in_state(GameState::StartScreen)))
-        .add_systems(Update, game_state::update_menu_blink.run_if(in_state(GameState::FadingOut)))
-        .add_systems(Update, ui::fade_out_screen.run_if(in_state(GameState::FadingOut)));
+        .add_systems(
+            OnExit(GameState::GameOver),
+            (
+                ui::despawn_game_over_ui,
+                game_state::cleanup_playing_entities,
+            ),
+        )
+        .add_systems(
+            Update,
+            enemy::move_enemy_tanks.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            enemy::enemy_spawn_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            enemy::animate_enemy_born_animation.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            enemy::animate_enemy_tank_texture.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::move_player_tank.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::handle_player_avatar_death.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::handle_recall_input.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::update_recall_timers.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::handle_dash_input.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::update_dash_movement.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::handle_dash_collision.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::handle_barrier_collision.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::update_recall_progress_bars.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_blue_bar_regen.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::player_shoot_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::bullet_bounds_check_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::bullet_despawn_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::bullet_commander_collision_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::handle_effect_events.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            laser::player_laser_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::animate_explosion.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::animate_laser.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::animate_forest_fire.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::animate_forest.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::animate_sea.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::animate_commander_music.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::play_sea_ambience.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::play_commander_music.run_if(in_state(GameState::Playing)),
+        ) // 测试司令官音乐
+        .add_systems(
+            Update,
+            game_state::play_tree_ambience.run_if(in_state(GameState::Playing)),
+        ) // 测试森林环绕声
+        .add_systems(
+            Update,
+            effects::animate_spark.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::handle_game_over_delay.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::check_game_over.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::check_stage_complete.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_player_info_display.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::animate_player_info_text.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_enemy_count_display.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_commander_health_bar.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::handle_commander_death.run_if(in_state(GameState::Playing)),
+        ) // 测试司令官阵亡处理
+        .add_systems(
+            Update,
+            ui::animate_start_screen.run_if(not(in_state(GameState::Playing))),
+        )
+        .add_systems(
+            Update,
+            (ui::handle_start_screen_input, ui::update_option_colors)
+                .run_if(in_state(GameState::StartScreen)),
+        )
+        .add_systems(
+            Update,
+            ui::handle_game_input.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            ui::handle_pause_input.run_if(in_state(GameState::Paused)),
+        )
+        .add_systems(
+            Update,
+            (ui::handle_game_over_input, ui::update_option_colors)
+                .chain()
+                .run_if(in_state(GameState::GameOver)),
+        )
+        .add_systems(
+            Update,
+            effects::handle_recoil_force.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::animate_smoke.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            effects::laser_collision_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            powerup::animate_powerup.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            powerup::handle_powerup_collision.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_air_cushion_effect.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_menu_blink.run_if(in_state(GameState::StartScreen)),
+        )
+        .add_systems(
+            Update,
+            game_state::update_menu_blink.run_if(in_state(GameState::FadingOut)),
+        )
+        .add_systems(
+            Update,
+            ui::fade_out_screen.run_if(in_state(GameState::FadingOut)),
+        );
 }
 
 pub fn setup(
@@ -172,9 +378,11 @@ pub fn setup(
     commands.spawn(Camera2d);
 
     // 初始化地形纹理图集布局
-    let sea_texture_atlas_layout = TextureAtlasLayout::from_grid(UVec2::new(100, 100), 3, 1, None, None);
+    let sea_texture_atlas_layout =
+        TextureAtlasLayout::from_grid(UVec2::new(100, 100), 3, 1, None, None);
     let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas_layout);
-    let forest_texture_atlas_layout = TextureAtlasLayout::from_grid(UVec2::new(131, 131), 10, 1, None, None);
+    let forest_texture_atlas_layout =
+        TextureAtlasLayout::from_grid(UVec2::new(131, 131), 10, 1, None, None);
     let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas_layout);
     commands.insert_resource(TerrainAtlasLayouts {
         sea: sea_texture_atlas_layout,

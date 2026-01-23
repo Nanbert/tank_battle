@@ -8,12 +8,20 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::{PlayerInfo, CommanderLife, PlayerStatChanged, StatType};
+use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType};
 
 /// 道具动画系统
 pub fn animate_powerup(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<PowerUp>>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<PowerUp>,
+    >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -70,19 +78,24 @@ pub fn handle_powerup_collision(
                 let stat_type = match powerup_type {
                     PowerUp::SpeedUp => {
                         if player_stats.speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
+                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::Speed)
                     }
                     PowerUp::Protection => {
                         if player_stats.protection < MAX_ATTRIBUTE_VALUE {
-                            player_stats.protection = (player_stats.protection + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
+                            player_stats.protection = (player_stats.protection
+                                + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::Protection)
                     }
                     PowerUp::FireSpeed => {
                         if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.fire_speed = (player_stats.fire_speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
+                            player_stats.fire_speed = (player_stats.fire_speed
+                                + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
                         }
                         Some(StatType::FireSpeed)
                     }
@@ -115,7 +128,10 @@ pub fn handle_powerup_collision(
                         // 更新 filter_groups，排除海（GROUP_2）
                         // 玩家坦克不设置 memberships（默认所有组），filters 设置为不包含 GROUP_2
                         if let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                            controller.filter_groups = Some(CollisionGroups::new(Group::all(), Group::all() & !SEA_GROUP));
+                            controller.filter_groups = Some(CollisionGroups::new(
+                                Group::all(),
+                                Group::all() & !SEA_GROUP,
+                            ));
                         }
                         Some(StatType::AirCushion)
                     }

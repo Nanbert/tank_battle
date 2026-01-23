@@ -4,8 +4,8 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use bevy::audio::Volume;
+use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
@@ -32,43 +32,55 @@ pub fn check_game_over(
     commander_life: Res<CommanderLife>,
     existing_timers: Query<(), With<GameOverTimer>>,
 ) {
-    // 如果已经存在 GameOverTimer，说明已经触发了 GameOver，不再重复触发
+    // 卫语句：已有计时器则跳过
     if !existing_timers.is_empty() {
         return;
     }
 
-    // 检测 Commander 血量是否为 0
+    // 卫语句：司令官阵亡
     if commander_life.life_red_bar == 0 {
-        // 启动 Game Over 延迟计时器（1.2秒），等待爆炸动画完成
-        commands.spawn((
-            GameOverTimer,
-            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-        ));
+        spawn_game_over_timer(&mut commands);
         return;
     }
 
-    // 检测所有玩家生命值是否都为 0
-    let all_players_dead = if player_info.players.is_empty() {
-        false
-    } else {
-        match *game_mode {
-            GameMode::OnePlayer => {
-                player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
-            }
-            GameMode::TwoPlayers => {
-                player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
-                    && player_info.players.get(&TankType::Player2).is_some_and(|p| p.life_red_bar == 0)
-            }
-        }
-    };
+    // 卫语句：无玩家则跳过
+    if player_info.players.is_empty() {
+        return;
+    }
+
+    let all_players_dead = check_all_players_dead(&player_info, &game_mode);
 
     if all_players_dead {
-        // 启动 Game Over 延迟计时器（1.2秒）
-        commands.spawn((
-            GameOverTimer,
-            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-        ));
+        spawn_game_over_timer(&mut commands);
     }
+}
+
+/// 检查所有玩家是否阵亡
+fn check_all_players_dead(player_info: &PlayerInfo, game_mode: &GameMode) -> bool {
+    match *game_mode {
+        GameMode::OnePlayer => player_info
+            .players
+            .get(&TankType::Player1)
+            .is_some_and(|p| p.life_red_bar == 0),
+        GameMode::TwoPlayers => {
+            player_info
+                .players
+                .get(&TankType::Player1)
+                .is_some_and(|p| p.life_red_bar == 0)
+                && player_info
+                    .players
+                    .get(&TankType::Player2)
+                    .is_some_and(|p| p.life_red_bar == 0)
+        }
+    }
+}
+
+/// 生成 Game Over 计时器
+fn spawn_game_over_timer(commands: &mut Commands) {
+    commands.spawn((
+        GameOverTimer,
+        AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
+    ));
 }
 
 /// 重置 `FadingOut` 资源的 alpha 值为 1.0
@@ -81,9 +93,7 @@ type TextUpdateFn = fn(&PlayerStats, TankType) -> Option<String>;
 
 fn get_text_update_fn(prefix: &str) -> TextUpdateFn {
     match prefix {
-        s if s.starts_with("Scores") => |stats, _| {
-            Some(format!("Scores: {}", stats.score))
-        },
+        s if s.starts_with("Scores") => |stats, _| Some(format!("Scores: {}", stats.score)),
         s if s.starts_with("Speed") => |stats, _| {
             Some(if stats.speed < 100 {
                 format!("Speed: {}%", stats.speed)
@@ -91,9 +101,7 @@ fn get_text_update_fn(prefix: &str) -> TextUpdateFn {
                 "Speed: Max".to_string()
             })
         },
-        s if s.starts_with("Shells") => |stats, _| {
-            Some(format!("Shells: {}", stats.shells))
-        },
+        s if s.starts_with("Shells") => |stats, _| Some(format!("Shells: {}", stats.shells)),
         s if s.starts_with("Protection") => |stats, _| {
             Some(if stats.protection < 100 {
                 format!("Protection: {}%", stats.protection)
@@ -144,8 +152,24 @@ pub fn update_player_info_display(
     changed_player_info: Res<PlayerInfo>,
     mut text2ds: Query<(&PlayerUI, &mut Text2d), With<Text2d>>,
     mut bar_queries: ParamSet<(
-        Query<(&mut Sprite, &HealthBarOriginalPosition, &mut Transform, &PlayerUI), With<HealthBar>>,
-        Query<(&mut Sprite, &BlueBarOriginalPosition, &mut Transform, &PlayerUI), With<BlueBar>>,
+        Query<
+            (
+                &mut Sprite,
+                &HealthBarOriginalPosition,
+                &mut Transform,
+                &PlayerUI,
+            ),
+            With<HealthBar>,
+        >,
+        Query<
+            (
+                &mut Sprite,
+                &BlueBarOriginalPosition,
+                &mut Transform,
+                &PlayerUI,
+            ),
+            With<BlueBar>,
+        >,
     )>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
 ) {
@@ -197,7 +221,14 @@ pub fn update_player_info_display(
 
 pub fn update_commander_health_bar(
     changed_commander_life: Res<CommanderLife>,
-    mut health_bars: Query<(&mut Sprite, &CommanderHealthBarOriginalPosition, &mut Transform), With<CommanderHealthBar>>,
+    mut health_bars: Query<
+        (
+            &mut Sprite,
+            &CommanderHealthBarOriginalPosition,
+            &mut Transform,
+        ),
+        With<CommanderHealthBar>,
+    >,
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
         let health_width = (changed_commander_life.life_red_bar as f32 / 3.0) * COMMANDER_BAR_WIDTH;
@@ -240,59 +271,90 @@ pub fn update_menu_blink(
     mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
     game_state: Res<State<GameState>>,
 ) {
-    // FadingOut 状态下的闪烁周期（秒）
+    match game_state.get() {
+        GameState::FadingOut => {
+            update_fading_out_blink(
+                &time,
+                &fading_out,
+                &menu_selection,
+                &mut blink_timer,
+                &mut text_query,
+            );
+        }
+        GameState::StartScreen => {
+            update_start_screen_blink(
+                &time,
+                &menu_selection,
+                &mut blink_timer,
+                &mut text_query,
+            );
+        }
+        _ => {}
+    }
+}
+
+/// 更新淡出状态下的闪烁
+fn update_fading_out_blink(
+    time: &Res<Time>,
+    fading_out: &Res<FadingOut>,
+    menu_selection: &Res<CurrentMenuSelection>,
+    blink_timer: &mut ResMut<MenuBlinkTimer>,
+    text_query: &mut Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+) {
     const FADE_OUT_BLINK_PERIOD: f32 = MENU_BLINK_PERIOD;
-    
-    // 在 FadingOut 状态下闪烁 + 淡出
-    if *game_state.get() == GameState::FadingOut {
-        // 确保计时器已正确初始化
-        if blink_timer.0.duration().is_zero() {
-            blink_timer.0 = Timer::from_seconds(FADE_OUT_BLINK_PERIOD, TimerMode::Repeating);
+
+    // 初始化计时器
+    if blink_timer.0.duration().is_zero() {
+        blink_timer.0 = Timer::from_seconds(FADE_OUT_BLINK_PERIOD, TimerMode::Repeating);
+    }
+
+    blink_timer.0.tick(time.delta());
+
+    for (option, mut text_color) in text_query.iter_mut() {
+        if option.index != menu_selection.selected_index {
+            continue;
         }
 
-        blink_timer.0.tick(time.delta());
+        let elapsed = blink_timer.0.elapsed_secs();
+        let cycle = elapsed % FADE_OUT_BLINK_PERIOD;
+        let half_period = FADE_OUT_BLINK_PERIOD / 2.0;
+        let blink_alpha = (cycle / half_period * std::f32::consts::PI).sin().max(0.0);
+        let final_alpha = blink_alpha * fading_out.alpha;
 
-        for (option, mut text_color) in &mut text_query {
-            if option.index == menu_selection.selected_index {
-                // 使用正弦波实现平滑闪烁
-                // FADE_OUT_BLINK_PERIOD 秒一个完整周期
-                let elapsed = blink_timer.0.elapsed_secs();
-                let cycle = elapsed % FADE_OUT_BLINK_PERIOD;
-                let half_period = FADE_OUT_BLINK_PERIOD / 2.0;
-                
-                // 使用正弦波计算闪烁：half_period 时达到峰值（1.0），0.0 和 FADE_OUT_BLINK_PERIOD 时为 0
-                // 这样闪烁更明显，中间最亮，两端最暗
-                let blink_alpha = (cycle / half_period * std::f32::consts::PI).sin().max(0.0);
-                
-                // 最终透明度 = 闪烁透明度 × 淡出透明度
-                let final_alpha = blink_alpha * fading_out.alpha;
-                
-                text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(final_alpha);
-            }
-        }
-    } else if *game_state.get() == GameState::StartScreen {
-        // 在 StartScreen 状态下，选中的选项闪烁
-        blink_timer.0.tick(time.delta());
+        text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(final_alpha);
+    }
+}
 
-        // 初始化计时器（0.5秒闪烁）
-        if blink_timer.0.duration().is_zero() {
-            blink_timer.0 = Timer::from_seconds(MENU_BLINK_PERIOD, TimerMode::Repeating);
+/// 更新开始屏幕状态下的闪烁
+fn update_start_screen_blink(
+    time: &Res<Time>,
+    menu_selection: &Res<CurrentMenuSelection>,
+    blink_timer: &mut ResMut<MenuBlinkTimer>,
+    text_query: &mut Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+) {
+    // 初始化计时器
+    if blink_timer.0.duration().is_zero() {
+        blink_timer.0 = Timer::from_seconds(MENU_BLINK_PERIOD, TimerMode::Repeating);
+    }
+
+    blink_timer.0.tick(time.delta());
+
+    if !blink_timer.0.just_finished() {
+        return;
+    }
+
+    for (option, mut text_color) in text_query.iter_mut() {
+        if option.index != menu_selection.selected_index {
+            continue;
         }
 
-        if blink_timer.0.just_finished() {
-            for (option, mut text_color) in &mut text_query {
-                if option.index == menu_selection.selected_index {
-                    // 当前选中的选项在黄色和白色之间闪烁
-                    let linear = text_color.0.to_linear();
-                    let is_yellow = linear.red > 0.9 && linear.green > 0.9 && linear.blue < 0.1;
-                    if is_yellow {
-                        text_color.0 = Color::srgb(1.0, 1.0, 1.0); // 切换到白色
-                    } else {
-                        text_color.0 = Color::srgb(1.0, 1.0, 0.0); // 切换到黄色
-                    }
-                }
-            }
-        }
+        let linear = text_color.0.to_linear();
+        let is_yellow = linear.red > 0.9 && linear.green > 0.9 && linear.blue < 0.1;
+        text_color.0 = if is_yellow {
+            Color::srgb(1.0, 1.0, 1.0)
+        } else {
+            Color::srgb(1.0, 1.0, 0.0)
+        };
     }
 }
 
@@ -336,33 +398,26 @@ pub fn check_stage_complete(
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
 ) {
-    // 检查是否完成关卡：已生成所有敌方坦克且当前没有存活的敌方坦克
+    // 卫语句：检查是否完成关卡
     let current_enemy_count = enemies.iter().count();
-    if enemy_spawn_state.has_spawned >= enemy_spawn_state.max_count && current_enemy_count == 0 {
-        // 检查玩家是否阵亡
-        let all_players_dead = if player_info.players.is_empty() {
-            false
-        } else {
-            match *game_mode {
-                GameMode::OnePlayer => {
-                    player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
-                }
-                GameMode::TwoPlayers => {
-                    player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
-                        && player_info.players.get(&TankType::Player2).is_some_and(|p| p.life_red_bar == 0)
-                }
-            }
-        };
-
-        // 如果玩家或 Commander 已阵亡，不能进入下一关
-        if all_players_dead || commander_life.life_red_bar == 0 {
-            return;
-        }
-
-        // 进入下一关
-        stage_level.0 += 1;
-        next_state.set(GameState::StageIntro);
+    if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count || current_enemy_count > 0 {
+        return;
     }
+
+    // 卫语句：无玩家则跳过
+    if player_info.players.is_empty() {
+        return;
+    }
+
+    // 卫语句：玩家或 Commander 已阵亡
+    let all_players_dead = check_all_players_dead(&player_info, &game_mode);
+    if all_players_dead || commander_life.life_red_bar == 0 {
+        return;
+    }
+
+    // 进入下一关
+    stage_level.0 += 1;
+    next_state.set(GameState::StageIntro);
 }
 
 /// 重置玩家坦克位置到出生点
@@ -373,12 +428,14 @@ pub fn reset_player_positions(
         match player_tank.tank_type {
             TankType::Player1 => {
                 // 玩家1出生位置：左侧
-                transform.translation.x = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
+                transform.translation.x =
+                    -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
                 transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
             }
             TankType::Player2 => {
                 // 玩家2出生位置：右侧
-                transform.translation.x = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
+                transform.translation.x =
+                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
                 transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
             }
             TankType::Enemy => {}
@@ -387,9 +444,7 @@ pub fn reset_player_positions(
     }
 }
 
-pub fn reset_for_next_stage(
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
-) {
+pub fn reset_for_next_stage(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
@@ -397,7 +452,15 @@ pub fn reset_for_next_stage(
 
 pub fn animate_sea(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<Sea>>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Sea>,
+    >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -429,7 +492,9 @@ pub fn play_sea_ambience(
 
     for player_transform in player_tanks.iter() {
         for sea_transform in seas.iter() {
-            let distance = player_transform.translation.distance(sea_transform.translation);
+            let distance = player_transform
+                .translation
+                .distance(sea_transform.translation);
             if distance < DETECTION_RADIUS {
                 is_near_sea = true;
                 break;
@@ -460,7 +525,15 @@ pub fn play_sea_ambience(
 
 pub fn animate_commander_music(
     time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices, &mut CurrentAnimationFrame), With<CommanderMusicAnimation>>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<CommanderMusicAnimation>,
+    >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -492,7 +565,9 @@ pub fn play_commander_music(
 
     for player_transform in player_tanks.iter() {
         for commander_transform in commander.iter() {
-            let distance = player_transform.translation.distance(commander_transform.translation);
+            let distance = player_transform
+                .translation
+                .distance(commander_transform.translation);
             if distance < DETECTION_RADIUS {
                 is_near_commander = true;
                 break;
@@ -515,7 +590,7 @@ pub fn play_commander_music(
             ];
             let mut rng = rand::rng();
             let random_music = music_files[rng.random_range(0..music_files.len())];
-            
+
             let commander_music_sound: Handle<AudioSource> = asset_server.load(random_music);
             commands.spawn((
                 AudioPlayer::new(commander_music_sound),
@@ -543,7 +618,9 @@ pub fn play_tree_ambience(
 
     for player_transform in player_tanks.iter() {
         for forest_transform in forests.iter() {
-            let distance = player_transform.translation.distance(forest_transform.translation);
+            let distance = player_transform
+                .translation
+                .distance(forest_transform.translation);
             if distance < DETECTION_RADIUS {
                 is_near_forest = true;
                 break;
@@ -572,161 +649,117 @@ pub fn play_tree_ambience(
     }
 }
 
-    pub fn update_air_cushion_effect(
+pub fn update_air_cushion_effect(
+    mut commands: Commands,
 
-            mut commands: Commands,
+    asset_server: Res<AssetServer>,
 
-            asset_server: Res<AssetServer>,
+    player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
 
-            player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
+    bubble_effects: Query<&crate::constants::BubbleEffect>,
 
-            bubble_effects: Query<&crate::constants::BubbleEffect>,
+    player_info: Res<PlayerInfo>,
+) {
+    for (entity, children, player_tank) in player_tanks.iter() {
+        // 检查玩家是否有 air_cushion 能力
 
-            player_info: Res<PlayerInfo>,
+        let has_air_cushion = player_info
+            .players
+            .get(&player_tank.tank_type)
+            .is_some_and(|stats| stats.air_cushion);
 
-        ) {
+        if has_air_cushion {
+            // 检查是否已经有气泡特效子实体
 
-            for (entity, children, player_tank) in player_tanks.iter() {
+            let has_bubble_sprite = children.is_some_and(|children| {
+                children.iter().any(|child| bubble_effects.contains(child))
+            });
 
-                // 检查玩家是否有 air_cushion 能力
+            if !has_bubble_sprite {
+                // 加载气泡纹理并缩放到 100x100
 
-                let has_air_cushion = player_info.players.get(&player_tank.tank_type)
+                let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
 
-                    .is_some_and(|stats| stats.air_cushion);
+                // 创建气泡特效实体
 
-    
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn((
+                        Sprite {
+                            image: bubble_texture,
 
-                if has_air_cushion {
+                            custom_size: Some(Vec2::new(POWERUP_BUBBLE_SIZE, POWERUP_BUBBLE_SIZE)),
 
-                    // 检查是否已经有气泡特效子实体
-
-                    let has_bubble_sprite = children.is_some_and(|children| children.iter().any(|child| bubble_effects.contains(child)));
-
-    
-
-                    if !has_bubble_sprite {
-
-                        // 加载气泡纹理并缩放到 100x100
-
-                        let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
-
-    
-
-                        // 创建气泡特效实体
-
-    
-
-                                                commands.entity(entity).with_children(|parent| {
-
-    
-
-                                                    parent.spawn((
-
-    
-
-                                                        Sprite {
-
-    
-
-                                                            image: bubble_texture,
-
-    
-
-                                                            custom_size: Some(Vec2::new(POWERUP_BUBBLE_SIZE, POWERUP_BUBBLE_SIZE)),
-
-    
-
-                                                            ..default()
-
-    
-
-                                                        },
-
-    
-
-                                                        Transform::from_xyz(0.0, 0.0, Z_DEFAULT), // 在坦克中心
-
-                                crate::constants::BubbleEffect,
-
-                            ));
-
-                        });
-
-                    }
-
-                } else {
-
-                    // 移除所有气泡特效子实体
-
-                    if let Some(children) = children {
-
-                        for child in children.iter() {
-
-                            if bubble_effects.contains(child) {
-
-                                let () = commands.entity(child).try_despawn();
-
-                            }
-
-                        }
-
-                    }
-
-                }
-
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, Z_DEFAULT), // 在坦克中心
+                        crate::constants::BubbleEffect,
+                    ));
+                });
             }
+        } else {
+            // 移除所有气泡特效子实体
+
+            if let Some(children) = children {
+                for child in children.iter() {
+                    if bubble_effects.contains(child) {
+                        let () = commands.entity(child).try_despawn();
+                    }
+                }
             }
-            
-            /// 处理司令官阵亡时更换纹理和头像
-            /// 处理司令官阵亡时更换纹理和头像
-            pub fn handle_commander_death(
-                asset_server: Res<AssetServer>,
-                commander_life: Res<CommanderLife>,
-                mut queries: ParamSet<(
-                    Query<&mut Sprite, With<Commander>>,
-                    Query<&mut Sprite, With<PlayerAvatar>>,
-                    Query<&mut AnimationTimer, With<Commander>>,
-                    Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
-                )>,
-                mut has_handled: Local<bool>,
-            ) {
-                // 只在司令官生命值归零时执行一次
-                if commander_life.life_red_bar != 0 {
-                    *has_handled = false;
-                    return;
-                }
-            
-                // 如果已经处理过，跳过
-                if *has_handled {
-                    return;
-                }
-            
-                *has_handled = true;
-            
-                // 更换司令官纹理为死亡纹理
-                for mut sprite in &mut queries.p0() {
-                    sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
-                    // 移除纹理图集，因为死亡纹理是单张图片
-                    sprite.texture_atlas = None;
-                }
-            
-                // 停止司令官动画
-                for mut timer in &mut queries.p2() {
-                    timer.pause();
-                }
-            
-                // 停止司令官音乐动画
-                for mut timer in &mut queries.p3() {
-                    timer.pause();
-                }
-            
-                // 更换所有玩家头像为死亡头像
-                for mut sprite in &mut queries.p1() {
-                    sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
-                    // 移除纹理图集，因为死亡头像纹理是单张图片
-                    sprite.texture_atlas = None;
-                }
-            }// 获取属性类型对应的前缀
+        }
+    }
+}
+
+/// 处理司令官阵亡时更换纹理和头像
+/// 处理司令官阵亡时更换纹理和头像
+pub fn handle_commander_death(
+    asset_server: Res<AssetServer>,
+    commander_life: Res<CommanderLife>,
+    mut queries: ParamSet<(
+        Query<&mut Sprite, With<Commander>>,
+        Query<&mut Sprite, With<PlayerAvatar>>,
+        Query<&mut AnimationTimer, With<Commander>>,
+        Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
+    )>,
+    mut has_handled: Local<bool>,
+) {
+    // 只在司令官生命值归零时执行一次
+    if commander_life.life_red_bar != 0 {
+        *has_handled = false;
+        return;
+    }
+
+    // 如果已经处理过，跳过
+    if *has_handled {
+        return;
+    }
+
+    *has_handled = true;
+
+    // 更换司令官纹理为死亡纹理
+    for mut sprite in &mut queries.p0() {
+        sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
+        // 移除纹理图集，因为死亡纹理是单张图片
+        sprite.texture_atlas = None;
+    }
+
+    // 停止司令官动画
+    for mut timer in &mut queries.p2() {
+        timer.pause();
+    }
+
+    // 停止司令官音乐动画
+    for mut timer in &mut queries.p3() {
+        timer.pause();
+    }
+
+    // 更换所有玩家头像为死亡头像
+    for mut sprite in &mut queries.p1() {
+        sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
+        // 移除纹理图集，因为死亡头像纹理是单张图片
+        sprite.texture_atlas = None;
+    }
+} // 获取属性类型对应的前缀
 const fn get_stat_prefix(stat_type: StatType) -> &'static str {
     match stat_type {
         StatType::Speed => "Speed:",
@@ -751,9 +784,12 @@ pub fn handle_stat_changed_for_blink(
         let prefix = get_stat_prefix(event.stat_type);
         for (entity, text, player_index) in &player_info_texts {
             if player_index.player_type == event.player_type && text.0.starts_with(prefix) {
-                commands.entity(entity).insert(PlayerInfoBlinkTimer(
-                    Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)
-                ));
+                commands
+                    .entity(entity)
+                    .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
+                        GAME_OVER_DELAY,
+                        TimerMode::Once,
+                    )));
                 break;
             }
         }
@@ -763,19 +799,31 @@ pub fn handle_stat_changed_for_blink(
 pub fn animate_player_info_text(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut PlayerInfoBlinkTimer, &mut TextColor, &Text2d, &PlayerUI), With<Text2d>>,
+    mut query: Query<
+        (
+            Entity,
+            &mut PlayerInfoBlinkTimer,
+            &mut TextColor,
+            &Text2d,
+            &PlayerUI,
+        ),
+        With<Text2d>,
+    >,
     player_info: Res<PlayerInfo>,
 ) {
     for (entity, mut timer, mut color, text, player_index) in &mut query {
         timer.tick(time.delta());
 
         // 判断是否达到最大值或On状态
-        let is_max = player_info.players.get(&player_index.player_type).is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
+        let is_max = player_info
+            .players
+            .get(&player_index.player_type)
+            .is_some_and(|player_stats| is_stat_at_max_value(&text.0, player_stats));
 
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
             commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
-            color.0 = Color::srgb(1.0, 0.0, 0.0);  // 红色
+            color.0 = Color::srgb(1.0, 0.0, 0.0); // 红色
         } else if timer.is_finished() {
             // 闪烁结束，移除计时器组件
             commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
@@ -816,17 +864,15 @@ fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
     } else if text.starts_with("Penetrate:") {
         player_stats.penetrate
     } else {
-        false  // 分数等其他属性没有最大值
+        false // 分数等其他属性没有最大值
     }
 }
 
 pub fn update_enemy_count_display(
     enemy_spawn_state: Res<EnemySpawnState>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
     mut query: Query<&mut Text2d, With<EnemyCountText>>,
 ) {
-    let current_enemy_count = enemy_tanks.iter().count();
-    let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned + current_enemy_count;
+    let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
 
     for mut text in &mut query {
         text.0 = format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count);
