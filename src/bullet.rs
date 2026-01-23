@@ -99,10 +99,10 @@ pub fn spawn_bullet(
 pub fn enemy_shoot_system(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut query: Query<(Entity, &Transform, &Velocity, &TankFireConfig), With<EnemyTank>>,
+    mut query: Query<(Entity, &Transform, &crate::constants::EnemyTank, &TankFireConfig), With<EnemyTank>>,
     mut bullet_tracker: ResMut<BulletTracker>,
 ) {
-    for (entity, transform, velocity, fire_config) in &mut query {
+    for (entity, transform, enemy_tank, fire_config) in &mut query {
         // 检查是否可以射击
         if !bullet_tracker.can_fire(entity, fire_config.max_bullets) {
             continue;
@@ -111,9 +111,9 @@ pub fn enemy_shoot_system(
         // 随机射击，每帧有 1.0% 的概率射击
         let mut rng = rand::rng();
         if rng.random::<f32>() < 0.01 {
-            // 计算子弹发射方向（基于坦克当前移动方向）
-            let direction = if velocity.linvel.length() > 0.0 {
-                velocity.linvel.normalize()
+            // 计算子弹发射方向（基于坦克的预期朝向 direction）
+            let direction = if enemy_tank.direction.length() > 0.0 {
+                enemy_tank.direction.normalize()
             } else {
                 Vec2::new(0.0, -1.0) // 默认向下
             };
