@@ -10,52 +10,6 @@ use crate::constants::*;
 use crate::resources::*;
 
 /// 生成玩家1坦克
-pub fn spawn_player1_tank(
-    commands: &mut Commands,
-    texture: Handle<Image>,
-    texture_atlas_layout: Handle<TextureAtlasLayout>,
-    animation_indices: AnimationIndices,
-) -> Entity {
-    let player_tank = PlayerTank { tank_type: TankType::Player1 };
-
-    commands.spawn_empty()
-        .insert(player_tank)
-        .insert(PlayingEntity)
-        .insert(TankFireConfig::default())
-        .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation { angle: 0.0_f32.to_radians() })
-        .insert(Sprite {
-            image: texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(80.0, 90.0)),
-            ..default()
-        })
-        .insert(Transform::from_xyz(-TANK_WIDTH / 2.0 - COMMANDER_WIDTH/2.0 - 50.0, MAP_BOTTOM_Y+TANK_HEIGHT / 2.0, 0.0))
-        .insert(Velocity{ linvel: Vec2::default(), angvel: 0.0 })
-        .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(0.05, TimerMode::Repeating)))
-        .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(35.0, 35.0))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC | ActiveCollisionTypes::KINEMATIC_KINEMATIC)
-        .insert(LockedAxes::ROTATION_LOCKED)
-        .insert(KinematicCharacterController {
-            offset: CharacterLength::Absolute(0.01),
-            filter_groups: None,
-            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                max_height: CharacterLength::Absolute(5.0),
-                min_width: CharacterLength::Absolute(0.5),
-                include_dynamic_bodies: false,
-            }),
-            ..default()
-        })
-        .id()
-}
-
-/// 玩家坦克移动系统
 pub fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -197,7 +151,7 @@ pub fn handle_recall_input(
             // 创建回城进度条（在坦克正上方，初始满格）
             commands.spawn((
                 PlayingEntity,
-                RecallProgressBar { player_type: player_tank.tank_type, player_entity: entity },
+                RecallProgressBar { player_entity: entity },
                 Sprite {
                     color: Color::srgb(0.0, 1.0, 0.0), // 绿色
                     custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）

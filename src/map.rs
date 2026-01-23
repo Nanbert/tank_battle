@@ -65,7 +65,7 @@ pub const GRID_SIZE: f32 = 100.0; // 每个网格的像素大小
 
 /// 将网格坐标转换为世界坐标
 pub fn grid_to_world(row: usize, col: usize) -> Vec2 {
-    let x = crate::constants::MAP_LEFT_X + col as f32 * GRID_SIZE + GRID_SIZE / 2.0;
-    let y = crate::constants::MAP_TOP_Y - row as f32 * GRID_SIZE - GRID_SIZE / 2.0;
+    let x = (col as f32).mul_add(GRID_SIZE, crate::constants::MAP_LEFT_X) + GRID_SIZE / 2.0;
+    let y = (row as f32).mul_add(-GRID_SIZE, crate::constants::MAP_TOP_Y) - GRID_SIZE / 2.0;
     Vec2::new(x, y)
 }

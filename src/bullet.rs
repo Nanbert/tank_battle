@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
-use crate::constants::*;
-use crate::resources::*;
+use crate::constants::{TankType, PlayingEntity, TankFireConfig, EnemyTank, TANK_HEIGHT, BULLET_SIZE, BULLET_SPEED, RotationTimer, PlayerTank, PLAYER_BULLET_SPEED, MAP_LEFT_X, MAP_RIGHT_X, MAP_BOTTOM_Y, MAP_TOP_Y, Forest, Brick, Steel, SOUND_BRICK_HIT, SOUND_METAL_CRASH, SOUND_HIT, PlayerUI, PlayerDead, SOUND_COMMANDER_GET_SHOT, SOUND_COMMANDER_DEATH};
+use crate::resources::{BulletTracker, PlayerInfo, PlayerStatChanged, StatType};
 use bevy::audio::Volume;
 
 /// 特效事件枚举
@@ -243,7 +243,7 @@ pub fn bullet_despawn_system(
         bullet_tracker.remove_bullet(entity);
 
         // 销毁子弹实体
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -321,18 +321,16 @@ pub fn bullet_terrain_collision_system(
             if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
                 // 子弹与树林碰撞
                 let player_index = bullet_owner.owner_type;
-                if player_index != TankType::Enemy {
-                    if let Some(player_stats) = player_info.players.get(&player_index) {
-                        if player_stats.fire_shell {
+                if player_index != TankType::Enemy
+                    && let Some(player_stats) = player_info.players.get(&player_index)
+                        && player_stats.fire_shell {
                             // 发送树林燃烧特效事件
                             effect_events.write(EffectEvent::ForestFire {
                                 position: forest_transform.translation,
                             });
                             // 销毁树林，不销毁子弹
-                            let _ = commands.entity(forest_entity).try_despawn();
+                            let () = commands.entity(forest_entity).try_despawn();
                         }
-                    }
-                }
             } else if bricks.get(terrain_entity).is_ok() {
                 // 子弹与砖块碰撞
                 // 播放砖块击中音效
@@ -348,12 +346,24 @@ pub fn bullet_terrain_collision_system(
                 });
 
                 // 销毁砖块和标记子弹销毁
-                let _ = commands.entity(terrain_entity).try_despawn();
+                let () = commands.entity(terrain_entity).try_despawn();
                 commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
             } else if steels.get(terrain_entity).is_ok() {
                 // 子弹与钢铁碰撞
                 let player_index = bullet_owner.owner_type;
-                if player_index != TankType::Enemy {
+                if player_index == TankType::Enemy {
+                    // 敌方子弹，只播放击中音效并标记子弹销毁
+                    let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
+                    commands.spawn(AudioPlayer::new(hit_sound));
+
+                    // 发送火花特效事件
+                    effect_events.write(EffectEvent::Spark {
+                        position: bullet_transform.translation,
+                    });
+
+                    // 只标记子弹销毁
+                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+                } else {
                     if let Some(player_stats) = player_info.players.get(&player_index) {
                         if player_stats.penetrate {
                             // 播放金属破碎音效
@@ -366,7 +376,7 @@ pub fn bullet_terrain_collision_system(
                             });
 
                             // 销毁钢铁和标记子弹销毁
-                            let _ = commands.entity(terrain_entity).try_despawn();
+                            let () = commands.entity(terrain_entity).try_despawn();
                             commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         } else {
                             // 没有 penetrate 效果，只播放击中音效
@@ -382,18 +392,6 @@ pub fn bullet_terrain_collision_system(
                             commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                         }
                     }
-                } else {
-                    // 敌方子弹，只播放击中音效并标记子弹销毁
-                    let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-                    commands.spawn(AudioPlayer::new(hit_sound));
-
-                    // 发送火花特效事件
-                    effect_events.write(EffectEvent::Spark {
-                        position: bullet_transform.translation,
-                    });
-
-                    // 只标记子弹销毁
-                    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                 }
             }
         }
@@ -445,7 +443,7 @@ pub fn bullet_tank_collision_system(
                         }
 
                         // 销毁敌方坦克
-                        let _ = commands.entity(tank_entity).try_despawn();
+                        let () = commands.entity(tank_entity).try_despawn();
 
                         // 增加分数
                         let player_type = bullet_owner_info.owner_type;
@@ -457,7 +455,7 @@ pub fn bullet_tank_collision_system(
 
                             // 发送分数变更事件
                             stat_changed_events.write(PlayerStatChanged {
-                                player_type: player_type,
+                                player_type,
                                 stat_type: StatType::Score,
                             });
                         }
@@ -545,7 +543,7 @@ pub fn bullet_tank_collision_system(
                                     }
 
                                     // 销毁玩家坦克
-                                    let _ = commands.entity(tank_entity).try_despawn();
+                                    let () = commands.entity(tank_entity).try_despawn();
 
                                     // 标记对应玩家的头像为死亡状态
                                     for (avatar_entity, player_idx) in player_avatars.iter() {

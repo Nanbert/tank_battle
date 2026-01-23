@@ -4,8 +4,8 @@
 
 use bevy::prelude::*;
 
-use crate::constants::*;
-use crate::resources::*;
+use crate::constants::{TankType, TEXTURE_LASER_BLUE, TEXTURE_LASER_RED, AnimationIndices, Laser, PlayingEntity, AnimationTimer, CurrentAnimationFrame, RotationTimer, PlayerTank, TankFireConfig, SOUND_LASER_CHARGE, TANK_HEIGHT, BULLET_SIZE, SOUND_LASER};
+use crate::resources::PlayerInfo;
 use crate::bullet::BulletOwner;
 use crate::constants::{RecoilForce, LaserCharge, LaserChargeProgressBar, LaserChargeSound};
 
@@ -125,56 +125,21 @@ pub fn player_laser_system(
             // 删除进度条
             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                 if progress_bar.player_entity == _entity {
-                    let _ = commands.entity(progress_entity).try_despawn();
+                    let () = commands.entity(progress_entity).try_despawn();
                 }
             }
             // 停止蓄力音效
             for (sound_entity, _) in sound_query.iter() {
-                let _ = commands.entity(sound_entity).try_despawn();
+                let () = commands.entity(sound_entity).try_despawn();
             }
             continue;
         }
 
         if keyboard.pressed(laser_key) {
             // 按住按键，开始或继续蓄力
-            if !has_charge {
-                // 获取玩家属性
-                let Some(player_stats) = player_info.players.get(&player_tank.tank_type) else {
-                    continue;
-                };
-
-                // 检查蓝量是否足够（需要3点蓝量）
-                if player_stats.energy_blue_bar < 3 {
-                    continue;
-                }
-
-                // 创建蓄力组件（4秒蓄力）
-                commands.entity(_entity).insert(LaserCharge {
-                    timer: Timer::from_seconds(4.0, TimerMode::Once),
-                    tank_type: player_tank.tank_type,
-                });
-
-                // 播放蓄力音效并添加标记
-                let charge_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER_CHARGE);
-                commands.spawn((
-                    AudioPlayer::new(charge_sound),
-                    LaserChargeSound,
-                ));
-
-                // 创建蓄力进度条（在坦克正上方，初始满格）
-                commands.spawn((
-                    PlayingEntity,
-                    LaserChargeProgressBar { player_entity: _entity },
-                    Sprite {
-                        color: Color::srgb(0.0, 1.0, 0.0), // 绿色
-                        custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
-                        ..default()
-                    },
-                    Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
-                ));
-            } else {
+            if has_charge {
                 // 更新蓄力计时器
-                for (e, mut charge) in charge_query.iter_mut() {
+                for (e, mut charge) in &mut charge_query {
                     if e == _entity && charge.tank_type == player_tank.tank_type {
                         charge.timer.tick(time.delta());
 
@@ -236,18 +201,53 @@ pub fn player_laser_system(
                             // 删除进度条
                             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                                 if progress_bar.player_entity == _entity {
-                                    let _ = commands.entity(progress_entity).try_despawn();
+                                    let () = commands.entity(progress_entity).try_despawn();
                                 }
                             }
                             
                             // 停止蓄力音效
                             for (sound_entity, _) in sound_query.iter() {
-                                let _ = commands.entity(sound_entity).try_despawn();
+                                let () = commands.entity(sound_entity).try_despawn();
                             }
                         }
                         break;
                     }
                 }
+            } else {
+                // 获取玩家属性
+                let Some(player_stats) = player_info.players.get(&player_tank.tank_type) else {
+                    continue;
+                };
+
+                // 检查蓝量是否足够（需要3点蓝量）
+                if player_stats.energy_blue_bar < 3 {
+                    continue;
+                }
+
+                // 创建蓄力组件（4秒蓄力）
+                commands.entity(_entity).insert(LaserCharge {
+                    timer: Timer::from_seconds(4.0, TimerMode::Once),
+                    tank_type: player_tank.tank_type,
+                });
+
+                // 播放蓄力音效并添加标记
+                let charge_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER_CHARGE);
+                commands.spawn((
+                    AudioPlayer::new(charge_sound),
+                    LaserChargeSound,
+                ));
+
+                // 创建蓄力进度条（在坦克正上方，初始满格）
+                commands.spawn((
+                    PlayingEntity,
+                    LaserChargeProgressBar { player_entity: _entity },
+                    Sprite {
+                        color: Color::srgb(0.0, 1.0, 0.0), // 绿色
+                        custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
+                        ..default()
+                    },
+                    Transform::from_xyz(transform.translation.x, transform.translation.y + TANK_HEIGHT / 2.0 + 20.0, 2.0), // 在坦克上方
+                ));
             }
         } else if has_charge {
             // 松开按键但蓄力未完成，取消蓄力
@@ -257,12 +257,12 @@ pub fn player_laser_system(
                     // 删除进度条
                     for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                         if progress_bar.player_entity == _entity {
-                            let _ = commands.entity(progress_entity).try_despawn();
+                            let () = commands.entity(progress_entity).try_despawn();
                         }
                     }
                     // 停止蓄力音效
                     for (sound_entity, _) in sound_query.iter() {
-                        let _ = commands.entity(sound_entity).try_despawn();
+                        let () = commands.entity(sound_entity).try_despawn();
                     }
                     break;
                 }

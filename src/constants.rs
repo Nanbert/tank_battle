@@ -614,7 +614,6 @@ pub struct BornPosition(pub Vec3);
 /// 回城进度条组件
 #[derive(Component)]
 pub struct RecallProgressBar {
-    pub player_type: TankType,
     pub player_entity: Entity,
 }
 

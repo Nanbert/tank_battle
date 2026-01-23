@@ -4,7 +4,7 @@ use crate::map::TerrainType;
 use std::fs;
 use std::path::Path;
 
-/// 关卡地图数据（使用 TerrainType 枚举）
+/// 关卡地图数据（使用 `TerrainType` 枚举）
 pub type LevelMap = [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
 /// 从文件加载关卡数据
@@ -30,15 +30,15 @@ fn load_level_from_file(level_num: usize) -> Result<LevelMap, String> {
     } else {
         "levels"
     };
-    let file_path = format!("{}/{}.txt", levels_dir, level_num);
+    let file_path = format!("{levels_dir}/{level_num}.txt");
     let path = Path::new(&file_path);
 
     if !path.exists() {
-        return Err(format!("Level file not found: {}", file_path));
+        return Err(format!("Level file not found: {file_path}"));
     }
 
     let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read level file: {}", e))?;
+        .map_err(|e| format!("Failed to read level file: {e}"))?;
 
     let mut result: LevelMap = [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
@@ -69,15 +69,15 @@ pub fn get_level(level: usize) -> LevelMap {
         Ok(map) => map,
         Err(_) => {
             // 如果加载失败，尝试加载第1关
-            if level != 1 {
-                eprintln!("Warning: Failed to load level {}, falling back to level 1", level);
-                load_level_from_file(1).unwrap_or_else(|_| {
+            if level == 1 {
+                eprintln!("Error: Failed to load level 1, using empty map");
+                [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
+            } else {
+                eprintln!("Warning: Failed to load level {level}, falling back to level 1");
+                load_level_from_file(1).unwrap_or({
                     // 如果第1关也加载失败，返回空地图
                     [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
                 })
-            } else {
-                eprintln!("Error: Failed to load level 1, using empty map");
-                [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
             }
         }
     }

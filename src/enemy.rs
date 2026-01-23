@@ -6,8 +6,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
-use crate::constants::*;
-use crate::resources::*;
+use crate::constants::{EnemyTank, ENEMY_BORN_PLACES, TEXTURE_ENEMY_BORN, AnimationIndices, EnemyBornAnimation, PlayingEntity, AnimationTimer, CurrentAnimationFrame, BornPosition, TankFireConfig, DirectionChangeTimer, CollisionCooldownTimer, RotationTimer, TargetRotation, TANK_SPEED, DIRECTIONS};
+use crate::resources::EnemySpawnState;
 
 /// 敌方坦克出生动画系统
 pub fn enemy_spawn_system(
@@ -96,7 +96,7 @@ pub fn animate_enemy_born_animation(
 
                 if current >= indices.last {
                     // 动画播放完毕，销毁出生动画实体
-                    let _ = commands.entity(entity).try_despawn();
+                    let () = commands.entity(entity).try_despawn();
                 } else {
                     // 继续播放动画
                     let next_index = current + 1;

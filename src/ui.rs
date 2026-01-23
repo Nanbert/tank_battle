@@ -147,7 +147,7 @@ pub fn spawn_start_screen_title(
         Text2d("EXIT".to_string()),
         TextFont {
             font_size: 80.0,
-            font: font.clone(),
+            font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
@@ -356,7 +356,7 @@ pub fn spawn_about_screen(
         Text2d("Press SPACE to return".to_string()),
         TextFont {
             font_size: 22.0,
-            font: custom_font.clone(),
+            font: custom_font,
             ..default()
         },
         TextColor(Color::srgb(0.0, 0.0, 0.0)),
@@ -370,7 +370,7 @@ pub fn despawn_about_screen(
     query: Query<Entity, With<AboutUI>>,
 ) {
     for entity in query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -459,7 +459,7 @@ pub fn spawn_credits_screen(
         Text2d("Press SPACE to return".to_string()),
         TextFont {
             font_size: 30.0,
-            font: custom_font.clone(),
+            font: custom_font,
             ..default()
         },
         TextColor(Color::srgb(0.0, 0.0, 0.0)),
@@ -473,7 +473,7 @@ pub fn despawn_credits_screen(
     query: Query<Entity, With<CreditsUI>>,
 ) {
     for entity in query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -620,7 +620,7 @@ pub fn spawn_pause_ui(
         Text2d("Press SPACE to resume | B to menu | ESC to exit".to_string()),
         TextFont {
             font_size: 30.0,
-            font: font.clone(),
+            font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
@@ -631,7 +631,7 @@ pub fn spawn_pause_ui(
 /// 销毁暂停界面
 pub fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseUI>>) {
     for entity in query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -748,7 +748,7 @@ pub fn spawn_game_over_ui(
         Text2d("W/S to select | SPACE to confirm".to_string()),
         TextFont {
             font_size: 30.0,
-            font: font.clone(),
+            font,
             ..default()
         },
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
@@ -797,7 +797,7 @@ pub fn handle_game_over_input(
 /// 销毁游戏结束界面
 pub fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOverUI>>) {
     for entity in query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -808,10 +808,10 @@ pub fn cleanup_start_screen_ui(
     text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     for (entity, _) in sprite_query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
     for (entity, _, _) in text_query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -821,7 +821,7 @@ pub fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
     sprite.color = Color::srgba(linear.red, linear.green, linear.blue, alpha);
 }
 
-/// 更新 TextColor 的透明度
+/// 更新 `TextColor` 的透明度
 pub fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
     let linear = text_color.0.to_linear();
     text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, alpha);
@@ -829,7 +829,7 @@ pub fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
 
 /// 淡出屏幕效果
 pub fn fade_out_screen(
-    mut commands: Commands,
+    commands: Commands,
     time: Res<Time>,
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
@@ -889,7 +889,7 @@ pub fn spawn_stage_intro(
         Text2d(format!("Stage {}", stage_level.0)),
         TextFont {
             font_size: 80.0,
-            font: font_en.clone(),
+            font: font_en,
             ..default()
         },
         TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
@@ -961,6 +961,6 @@ pub fn despawn_stage_intro(
     stage_intro_query: Query<Entity, With<StageIntroUI>>,
 ) {
     for entity in stage_intro_query.iter() {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 }
