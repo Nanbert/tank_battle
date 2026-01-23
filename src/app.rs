@@ -80,7 +80,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(OnEnter(GameState::StageIntro), (game_state::reset_for_next_stage, ui::spawn_stage_intro).chain())
         .add_systems(Update, ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)))
         .add_systems(OnExit(GameState::StageIntro), ui::despawn_stage_intro)
-        // .add_systems(OnEnter(GameState::Playing), terrain::spawn_game_entities_if_needed)
+        .add_systems(OnEnter(GameState::Playing), terrain::spawn_game_entities_if_needed)
         .add_systems(OnEnter(GameState::Paused), ui::spawn_pause_ui)
         .add_systems(OnExit(GameState::Paused), ( ui::despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), ui::spawn_game_over_ui)
