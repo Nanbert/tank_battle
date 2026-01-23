@@ -237,7 +237,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Sprite {
             color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -398,7 +398,7 @@ pub fn spawn_credits_screen(
         CreditsUI,
         Sprite {
             color: Color::srgb(1.0, 1.0, 1.0),
-            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -884,15 +884,15 @@ pub fn spawn_stage_intro(
         StageIntroUI,
         Sprite {
             color: Color::srgba(1.0, 1.0, 1.0, 1.0), // 白色
-            custom_size: Some(Vec2::new(WINDOW_WIDTH, WINDOW_HEIGHT)),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 100.0), // z=100.0 确保在所有游戏元素之上
     ));
 
     // 加载字体
-    let font_en: Handle<Font> = asset_server.load(FONT_EN);
-    let font_cn: Handle<Font> = asset_server.load(FONT_CN);
+    let en_font: Handle<Font> = asset_server.load(FONT_EN);
+    let zh_font: Handle<Font> = asset_server.load(FONT_CN);
 
     // Stage 标题（显示在屏幕中心）
     commands.spawn((
@@ -900,7 +900,7 @@ pub fn spawn_stage_intro(
         Text2d(format!("Stage {}", stage_level.0)),
         TextFont {
             font_size: 80.0,
-            font: font_en,
+            font: en_font,
             ..default()
         },
         TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
@@ -916,7 +916,7 @@ pub fn spawn_stage_intro(
         Text2d(quote_text.to_string()),
         TextFont {
             font_size: 28.0,
-            font: font_cn,
+            font: zh_font,
             ..default()
         },
         TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0

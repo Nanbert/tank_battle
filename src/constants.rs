@@ -71,11 +71,13 @@ pub const PLAYER_BULLET_SPEED: f32 = 600.0;
 pub const BULLET_SIZE: f32 = 10.0;
 pub const RECALL_TIME: f32 = 2.0; // 回城时间（秒）
 pub const VERTICAL_OFFSET: f32 = (BOTTOM_PADDING-TOP_PADDING) / 2.0; // 由于下边不留白，会导致坐标垂直便移-50
-pub const WINDOW_WIDTH: f32 = MAP_WIDTH + LEFT_PADDING + RIGHT_PADDING; // 总宽度
-pub const WINDOW_HEIGHT: f32 = MAP_HEIGHT + TOP_PADDING + BOTTOM_PADDING; // 总高度
-pub const WINDOW_LEFT_X:f32 = -WINDOW_WIDTH / 2.0;
-pub const WINDOW_RIGHT_X:f32 = WINDOW_WIDTH / 2.0;
-pub const WINDOW_TOP_Y:f32 = WINDOW_HEIGHT / 2.0;
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub const WINDOW_WIDTH: u32 = (MAP_WIDTH + LEFT_PADDING + RIGHT_PADDING) as u32; // 总宽度
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+pub const WINDOW_HEIGHT: u32 = (MAP_HEIGHT + TOP_PADDING + BOTTOM_PADDING) as u32; // 总高度
+pub const WINDOW_LEFT_X:f32 = -(WINDOW_WIDTH as f32) / 2.0;
+pub const WINDOW_RIGHT_X:f32 = (WINDOW_WIDTH as f32) / 2.0;
+pub const WINDOW_TOP_Y:f32 = (WINDOW_HEIGHT as f32) / 2.0;
 //pub const WINDOW_BOTTOM_Y:f32 = -WINDOW_HEIGHT / 2.0;
 pub const MAP_LEFT_X:f32 = -MAP_WIDTH / 2.0;
 pub const MAP_RIGHT_X:f32 = MAP_WIDTH / 2.0;
@@ -543,14 +545,20 @@ pub const BARRIER_HEIGHT: f32 = 100.0;
 #[derive(Component)]
 pub struct Brick;
 
-pub const BRICK_WIDTH: f32 = 50.0;
-pub const BRICK_HEIGHT: f32 = 50.0;
-
 #[derive(Component)]
 pub struct Steel;
 
-pub const STEEL_WIDTH: f32 = 50.0;
-pub const STEEL_HEIGHT: f32 = 50.0;
+// 纹理大小
+pub const BRICK_TEXTURE_WIDTH: f32 = 50.0;
+pub const BRICK_TEXTURE_HEIGHT: f32 = 50.0;
+pub const STEEL_TEXTURE_WIDTH: f32 = 50.0;
+pub const STEEL_TEXTURE_HEIGHT: f32 = 50.0;
+
+// 碰撞体积大小
+pub const BRICK_COLLIDER_WIDTH: f32 = 46.0;
+pub const BRICK_COLLIDER_HEIGHT: f32 = 46.0;
+pub const STEEL_COLLIDER_WIDTH: f32 = 46.0;
+pub const STEEL_COLLIDER_HEIGHT: f32 = 46.0;
 
 #[derive(Component)]
 pub struct Commander;
@@ -669,3 +677,6 @@ impl Default for TankFireConfig {
     }
 }
 pub const COMMANDER_LIFE_MAX: usize = 3;
+
+// 检测半径常量（用于海、司令官、森林的检测）
+pub const DETECTION_RADIUS: f32 = 100.0;

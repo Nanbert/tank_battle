@@ -2,12 +2,14 @@
 //!
 //! 处理墙壁、地图地形、指挥官、玩家坦克、道具等实体生成
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::*;
+use crate::resources::{TerrainAtlasLayouts, StageLevel, PlayerStats, EnemySpawnState, PlayerInfo, GameMode, GameEntitiesSpawned};
 
 /// 生成墙壁
 pub fn spawn_walls(commands: &mut Commands) {
@@ -85,7 +87,7 @@ pub fn respawn_terrain_for_next_stage(
 ) {
     // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物）
     for entity in bricks.iter().chain(steels.iter()).chain(forests.iter()).chain(seas.iter()).chain(commanders.iter()).chain(barriers.iter()) {
-        let _ = commands.entity(entity).try_despawn();
+        let () = commands.entity(entity).try_despawn();
     }
 
     // 重新生成新关卡的地形和司令官
@@ -93,7 +95,7 @@ pub fn respawn_terrain_for_next_stage(
     spawn_commander(&mut commands, &asset_server, &mut texture_atlas_layouts, &atlas_layouts);
 }
 
-/// 地形瓦片类型（用于 spawn_terrain_tile）
+/// 地形瓦片类型（用于 `spawn_terrain_tile`）
 #[derive(Clone, Copy)]
 pub enum TerrainTileType {
     Brick,
@@ -107,10 +109,10 @@ pub enum TerrainTileType {
 /// 
 /// 参数：
 /// - commands: 命令队列
-/// - asset_server: 资源服务器
-/// - atlas_layouts: 地形纹理图集布局资源
+/// - `asset_server`: 资源服务器
+/// - `atlas_layouts`: 地形纹理图集布局资源
 /// - position: 生成位置
-/// - tile_type: 地形类型
+/// - `tile_type`: 地形类型
 pub fn spawn_terrain_tile(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
@@ -126,12 +128,12 @@ pub fn spawn_terrain_tile(
                 PlayingEntity,
                 Sprite {
                     image: brick_texture,
-                    custom_size: Some(Vec2::new(BRICK_WIDTH, BRICK_HEIGHT)),
+                    custom_size: Some(Vec2::new(BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT)),
                     ..default()
                 },
                 Transform::from_xyz(position.x, position.y, 0.0),
                 RigidBody::Fixed,
-                Collider::cuboid(BRICK_WIDTH / 2.0, BRICK_HEIGHT / 2.0),
+                Collider::cuboid(BRICK_COLLIDER_WIDTH / 2.0, BRICK_COLLIDER_HEIGHT / 2.0),
                 ActiveEvents::COLLISION_EVENTS,
                 ActiveCollisionTypes::all(),
             )).id()
@@ -143,12 +145,12 @@ pub fn spawn_terrain_tile(
                 PlayingEntity,
                 Sprite {
                     image: steel_texture,
-                    custom_size: Some(Vec2::new(STEEL_WIDTH, STEEL_HEIGHT)),
+                    custom_size: Some(Vec2::new(STEEL_TEXTURE_WIDTH, STEEL_TEXTURE_HEIGHT)),
                     ..default()
                 },
                 Transform::from_xyz(position.x, position.y, 0.0),
                 RigidBody::Fixed,
-                Collider::cuboid(STEEL_WIDTH / 2.0, STEEL_HEIGHT / 2.0),
+                Collider::cuboid(STEEL_COLLIDER_WIDTH / 2.0, STEEL_COLLIDER_HEIGHT / 2.0),
                 ActiveEvents::COLLISION_EVENTS,
                 ActiveCollisionTypes::all(),
             )).id()
@@ -475,10 +477,9 @@ fn spawn_map_terrain(
     let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
 
     let mut spawned_count = 0;
-    for row in 0..MAP_ROWS {
-        for col in 0..MAP_COLS {
-            let terrain = level_map[row][col];
-            if terrain == TerrainType::Empty {
+    for (row, row_data) in level_map.iter().enumerate().take(MAP_ROWS) {
+        for (col, terrain) in row_data.iter().enumerate().take(MAP_COLS) {
+            if *terrain == TerrainType::Empty {
                 continue;
             }
 
@@ -564,7 +565,7 @@ fn spawn_commander(
 
     // 左墙：3块砖，紧贴司令官左侧
     for i in 0..3 {
-        let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
+        let y = (i as f32).mul_add(brick_size, commander_bottom + brick_size / 2.0);
         spawn_terrain_tile(
             commands,
             asset_server,
@@ -576,7 +577,7 @@ fn spawn_commander(
 
     // 右墙：3块砖，紧贴司令官右侧
     for i in 0..3 {
-        let y = commander_bottom + brick_size / 2.0 + i as f32 * brick_size;
+        let y = (i as f32).mul_add(brick_size, commander_bottom + brick_size / 2.0);
         spawn_terrain_tile(
             commands,
             asset_server,
@@ -588,7 +589,7 @@ fn spawn_commander(
 
     // 上墙：2块砖封顶，紧贴司令官顶部
     for i in 0..2 {
-        let x = -brick_size / 2.0 + i as f32 * brick_size;
+        let x = (i as f32).mul_add(brick_size, -brick_size / 2.0);
         spawn_terrain_tile(
             commands,
             asset_server,

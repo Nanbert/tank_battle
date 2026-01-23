@@ -2,11 +2,13 @@
 //!
 //! 处理道具动画和玩家拾取道具的碰撞检测
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::*;
+use crate::resources::{PlayerInfo, CommanderLife, PlayerStatChanged, StatType};
 
 /// 道具动画系统
 pub fn animate_powerup(
@@ -61,7 +63,7 @@ pub fn handle_powerup_collision(
             // 播放道具音效
             let powerup_sound: Handle<AudioSource> = asset_server.load(SOUND_POWERUP);
             commands.spawn(AudioPlayer::new(powerup_sound));
-            let _ = commands.entity(powerup_entity).try_despawn();
+            let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {

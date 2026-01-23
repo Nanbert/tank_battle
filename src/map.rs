@@ -39,7 +39,6 @@ impl TerrainType {
     /// 从字符串转换为地形类型
     pub fn from_str(s: &str) -> Self {
         match s {
-            "." => Self::Empty,
             "t" => Self::Forest,
             "s" => Self::Sea,
             "b" => Self::Brick,

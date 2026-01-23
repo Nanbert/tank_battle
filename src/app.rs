@@ -2,11 +2,13 @@
 //!
 //! 处理窗口配置、资源配置、游戏初始化等
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy::window::{WindowResolution, PresentMode};
 
 use crate::constants::*;
-use crate::resources::{MenuBlinkTimer, *};
+use crate::resources::*;
 
 // 导入模块以便使用其函数
 use crate::game_state;
@@ -24,7 +26,7 @@ pub fn configure_window_plugin() -> WindowPlugin {
         primary_window: Some(Window {
             title: "For Communism!!".to_string(),
             name: Some("tank_battle".to_string()),
-            resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
+            resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT),
             present_mode: PresentMode::AutoVsync,
             resizable: false,
             mode: bevy::window::WindowMode::Windowed,

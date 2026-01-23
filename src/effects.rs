@@ -2,6 +2,8 @@
 //!
 //! 处理爆炸、烟雾、火花、激光、森林火焰等特效动画
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy::audio::Volume;
 
@@ -124,7 +126,7 @@ pub fn animate_explosion(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁爆炸实体
-                let _ = commands.entity(entity).try_despawn();
+                let () = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -174,9 +176,9 @@ pub fn animate_laser(
                         CurrentAnimationFrame(0),
                     ));
                     
-                    let _ = commands.entity(despawn_entity).try_despawn();
+                    let () = commands.entity(despawn_entity).try_despawn();
                 }
-                let _ = commands.entity(entity).try_despawn();
+                let () = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -198,7 +200,7 @@ pub fn animate_smoke(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁烟雾实体
-                let _ = commands.entity(entity).try_despawn();
+                let () = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -244,7 +246,7 @@ pub fn animate_forest_fire(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁森林燃烧实体
-                let _ = commands.entity(entity).try_despawn();
+                let () = commands.entity(entity).try_despawn();
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;
@@ -287,7 +289,7 @@ pub fn animate_spark(
             let current = current_frame.0;
             if current >= indices.last {
                 // 动画播放完毕，销毁实体
-                let _ = commands.entity(entity).try_despawn();
+                let () = commands.entity(entity).try_despawn();
             } else {
                 // 继续播放动画
                 let next_index = current + 1;
@@ -315,7 +317,7 @@ pub fn laser_collision_system(
 ) {
     // 每5帧执行一次碰撞检测
     *frame_count += 1;
-    if *frame_count % 5 != 0 {
+    if !(*frame_count).is_multiple_of(5) {
         return;
     }
     
@@ -381,10 +383,10 @@ pub fn laser_collision_system(
 
         // 检测与砖块的碰撞
         for (brick_entity, brick_transform) in &bricks {
-            let brick_left = brick_transform.translation.x - BRICK_WIDTH / 2.0;
-            let brick_right = brick_transform.translation.x + BRICK_WIDTH / 2.0;
-            let brick_top = brick_transform.translation.y + BRICK_HEIGHT / 2.0;
-            let brick_bottom = brick_transform.translation.y - BRICK_HEIGHT / 2.0;
+            let brick_left = brick_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
+            let brick_right = brick_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
+            let brick_top = brick_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
+            let brick_bottom = brick_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
 
             // 简单的AABB碰撞检测
             if laser_left < brick_right && laser_right > brick_left &&
@@ -396,10 +398,10 @@ pub fn laser_collision_system(
 
         // 检测与钢块的碰撞
         for (steel_entity, steel_transform) in &steels {
-            let steel_left = steel_transform.translation.x - BRICK_WIDTH / 2.0;
-            let steel_right = steel_transform.translation.x + BRICK_WIDTH / 2.0;
-            let steel_top = steel_transform.translation.y + BRICK_HEIGHT / 2.0;
-            let steel_bottom = steel_transform.translation.y - BRICK_HEIGHT / 2.0;
+            let steel_left = steel_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
+            let steel_right = steel_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
+            let steel_top = steel_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
+            let steel_bottom = steel_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
 
             // 简单的AABB碰撞检测
             if laser_left < steel_right && laser_right > steel_left &&
@@ -411,10 +413,10 @@ pub fn laser_collision_system(
 
         // 检测与森林的碰撞
         for (forest_entity, forest_transform) in &forests {
-            let forest_left = forest_transform.translation.x - BRICK_WIDTH / 2.0;
-            let forest_right = forest_transform.translation.x + BRICK_WIDTH / 2.0;
-            let forest_top = forest_transform.translation.y + BRICK_HEIGHT / 2.0;
-            let forest_bottom = forest_transform.translation.y - BRICK_HEIGHT / 2.0;
+            let forest_left = forest_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
+            let forest_right = forest_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
+            let forest_top = forest_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
+            let forest_bottom = forest_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
 
             // 简单的AABB碰撞检测
             if laser_left < forest_right && laser_right > forest_left &&
@@ -426,10 +428,10 @@ pub fn laser_collision_system(
 
         // 检测与障碍的碰撞
         for (barrier_entity, barrier_transform) in &barriers {
-            let barrier_left = barrier_transform.translation.x - BRICK_WIDTH / 2.0;
-            let barrier_right = barrier_transform.translation.x + BRICK_WIDTH / 2.0;
-            let barrier_top = barrier_transform.translation.y + BRICK_HEIGHT / 2.0;
-            let barrier_bottom = barrier_transform.translation.y - BRICK_HEIGHT / 2.0;
+            let barrier_left = barrier_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
+            let barrier_right = barrier_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
+            let barrier_top = barrier_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
+            let barrier_bottom = barrier_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
 
             // 简单的AABB碰撞检测
             if laser_left < barrier_right && laser_right > barrier_left &&
@@ -441,10 +443,10 @@ pub fn laser_collision_system(
 
         // 检测与sea的碰撞
         for (sea_entity, sea_transform) in &seas {
-            let sea_left = sea_transform.translation.x - BRICK_WIDTH / 2.0;
-            let sea_right = sea_transform.translation.x + BRICK_WIDTH / 2.0;
-            let sea_top = sea_transform.translation.y + BRICK_HEIGHT / 2.0;
-            let sea_bottom = sea_transform.translation.y - BRICK_HEIGHT / 2.0;
+            let sea_left = sea_transform.translation.x - BRICK_TEXTURE_WIDTH / 2.0;
+            let sea_right = sea_transform.translation.x + BRICK_TEXTURE_WIDTH / 2.0;
+            let sea_top = sea_transform.translation.y + BRICK_TEXTURE_HEIGHT / 2.0;
+            let sea_bottom = sea_transform.translation.y - BRICK_TEXTURE_HEIGHT / 2.0;
 
             // 简单的AABB碰撞检测
             if laser_left < sea_right && laser_right > sea_left &&

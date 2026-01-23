@@ -2,13 +2,15 @@
 //!
 //! 处理子弹的生成、移动、碰撞检测和销毁逻辑
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::effects;
 
-use crate::constants::{TankType, PlayingEntity, TankFireConfig, EnemyTank, TANK_HEIGHT, BULLET_SIZE, BULLET_SPEED, RotationTimer, PlayerTank, PLAYER_BULLET_SPEED, MAP_LEFT_X, MAP_RIGHT_X, MAP_BOTTOM_Y, MAP_TOP_Y, Forest, Brick, Steel, SOUND_BRICK_HIT, SOUND_METAL_CRASH, SOUND_HIT, PlayerUI, PlayerDead, SOUND_COMMANDER_GET_SHOT, SOUND_COMMANDER_DEATH};
+use crate::constants::*;
 use crate::resources::{BulletTracker, PlayerInfo, PlayerStatChanged, StatType};
 use bevy::audio::Volume;
 
@@ -314,10 +316,7 @@ pub fn bullet_terrain_collision_system(
             };
 
             // 获取子弹信息
-            let (bullet_owner, bullet_transform) = match bullets.get(bullet_entity) {
-                Ok((_, owner, transform)) => (owner, transform),
-                Err(_) => continue,
-            };
+            let Ok((_, bullet_owner, bullet_transform)) = bullets.get(bullet_entity) else { continue };
 
             // 判断地形类型并处理碰撞
             if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
@@ -365,34 +364,32 @@ pub fn bullet_terrain_collision_system(
 
                     // 只标记子弹销毁
                     commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
-                } else {
-                    if let Some(player_stats) = player_info.players.get(&player_index) {
-                        if player_stats.penetrate {
-                            // 播放金属破碎音效
-                            let metal_crash_sound: Handle<AudioSource> = asset_server.load(SOUND_METAL_CRASH);
-                            commands.spawn(AudioPlayer::new(metal_crash_sound));
+                } else if let Some(player_stats) = player_info.players.get(&player_index) {
+                    if player_stats.penetrate {
+                        // 播放金属破碎音效
+                        let metal_crash_sound: Handle<AudioSource> = asset_server.load(SOUND_METAL_CRASH);
+                        commands.spawn(AudioPlayer::new(metal_crash_sound));
 
-                            // 发送火花特效事件
-                            effect_events.write(EffectEvent::Spark {
-                                position: bullet_transform.translation,
-                            });
+                        // 发送火花特效事件
+                        effect_events.write(EffectEvent::Spark {
+                            position: bullet_transform.translation,
+                        });
 
-                            // 销毁钢铁和标记子弹销毁
-                            let () = commands.entity(terrain_entity).try_despawn();
-                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
-                        } else {
-                            // 没有 penetrate 效果，只播放击中音效
-                            let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-                            commands.spawn(AudioPlayer::new(hit_sound));
+                        // 销毁钢铁和标记子弹销毁
+                        let () = commands.entity(terrain_entity).try_despawn();
+                        commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+                    } else {
+                        // 没有 penetrate 效果，只播放击中音效
+                        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
+                        commands.spawn(AudioPlayer::new(hit_sound));
 
-                            // 发送火花特效事件
-                            effect_events.write(EffectEvent::Spark {
-                                position: bullet_transform.translation,
-                            });
+                        // 发送火花特效事件
+                        effect_events.write(EffectEvent::Spark {
+                            position: bullet_transform.translation,
+                        });
 
-                            // 只标记子弹销毁
-                            commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
-                        }
+                        // 只标记子弹销毁
+                        commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
                     }
                 }
             }
@@ -609,10 +606,7 @@ pub fn bullet_commander_collision_system(
             };
 
             // 获取子弹信息
-            let bullet_owner_info = match bullets.get(bullet_entity) {
-                Ok((_, owner, _)) => owner,
-                Err(_) => continue,
-            };
+            let Ok((_, bullet_owner_info, _)) = bullets.get(bullet_entity) else { continue };
 
             // 只处理敌方子弹击中司令官的情况
             if bullet_owner_info.owner_type != TankType::Enemy {
@@ -620,16 +614,10 @@ pub fn bullet_commander_collision_system(
             }
 
             // 获取司令官位置
-            let commander_transform = match commanders.get(commander_entity) {
-                Ok((_, transform)) => transform,
-                Err(_) => continue,
-            };
+            let Ok((_, commander_transform)) = commanders.get(commander_entity) else { continue };
 
             // 使用 AABB 碰撞检测验证碰撞
-            let bullet_transform = match bullets.get(bullet_entity) {
-                Ok((_, _, transform)) => transform,
-                Err(_) => continue,
-            };
+            let Ok((_, _, bullet_transform)) = bullets.get(bullet_entity) else { continue };
 
             // 简单的 AABB 碰撞检测
             let commander_half_size = Vec2::new(crate::constants::COMMANDER_WIDTH / 2.0, crate::constants::COMMANDER_HEIGHT / 2.0);

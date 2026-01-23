@@ -2,6 +2,8 @@
 //!
 //! 处理游戏关卡、游戏结束、游戏重置等状态管理
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy::audio::Volume;
 use rand::Rng;
@@ -17,7 +19,7 @@ pub fn handle_game_over_delay(
     for (entity, mut timer) in &mut query {
         timer.tick(time.delta());
         if timer.is_finished() {
-            let _ = commands.entity(entity).try_despawn();
+            let () = commands.entity(entity).try_despawn();
             next_state.set(GameState::GameOver);
         }
     }
@@ -51,11 +53,11 @@ pub fn check_game_over(
     } else {
         match *game_mode {
             GameMode::OnePlayer => {
-                player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
+                player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
             }
             GameMode::TwoPlayers => {
-                player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
-                    && player_info.players.get(&TankType::Player2).map_or(false, |p| p.life_red_bar == 0)
+                player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
+                    && player_info.players.get(&TankType::Player2).is_some_and(|p| p.life_red_bar == 0)
             }
         }
     };
@@ -69,7 +71,7 @@ pub fn check_game_over(
     }
 }
 
-/// 重置 FadingOut 资源的 alpha 值为 1.0
+/// 重置 `FadingOut` 资源的 alpha 值为 1.0
 pub fn reset_fading_out(mut fading_out: ResMut<FadingOut>) {
     fading_out.alpha = 1.0;
 }
@@ -343,11 +345,11 @@ pub fn check_stage_complete(
         } else {
             match *game_mode {
                 GameMode::OnePlayer => {
-                    player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
+                    player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
                 }
                 GameMode::TwoPlayers => {
-                    player_info.players.get(&TankType::Player1).map_or(false, |p| p.life_red_bar == 0)
-                        && player_info.players.get(&TankType::Player2).map_or(false, |p| p.life_red_bar == 0)
+                    player_info.players.get(&TankType::Player1).is_some_and(|p| p.life_red_bar == 0)
+                        && player_info.players.get(&TankType::Player2).is_some_and(|p| p.life_red_bar == 0)
                 }
             }
         };
@@ -367,7 +369,7 @@ pub fn check_stage_complete(
 pub fn reset_player_positions(
     mut player_tanks: Query<(&mut Transform, &PlayerTank), With<PlayerTank>>,
 ) {
-    for (mut transform, player_tank) in player_tanks.iter_mut() {
+    for (mut transform, player_tank) in &mut player_tanks {
         match player_tank.tank_type {
             TankType::Player1 => {
                 // 玩家1出生位置：左侧
@@ -379,7 +381,7 @@ pub fn reset_player_positions(
                 transform.translation.x = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0;
                 transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
             }
-            _ => {}
+            TankType::Enemy => {}
         }
         transform.rotation = Quat::IDENTITY;
     }
@@ -424,7 +426,6 @@ pub fn play_sea_ambience(
 ) {
     // 检查是否有玩家坦克在海附近
     let mut is_near_sea = false;
-    const DETECTION_RADIUS: f32 = 90.0; // 海检测半径
 
     for player_transform in player_tanks.iter() {
         for sea_transform in seas.iter() {
@@ -452,7 +453,7 @@ pub fn play_sea_ambience(
     } else {
         // 如果不在海附近但有播放音效，则停止
         for (entity, _) in ambience_players.iter() {
-            let _ = commands.entity(entity).try_despawn();
+            let () = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -488,7 +489,6 @@ pub fn play_commander_music(
 ) {
     // 检查是否有玩家坦克在司令官附近
     let mut is_near_commander = false;
-    const DETECTION_RADIUS: f32 = 90.0; // 司令官检测半径
 
     for player_transform in player_tanks.iter() {
         for commander_transform in commander.iter() {
@@ -526,7 +526,7 @@ pub fn play_commander_music(
     } else {
         // 如果不在司令官附近但有播放音效，则停止
         for (entity, _) in ambience_players.iter() {
-            let _ = commands.entity(entity).try_despawn();
+            let () = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -540,7 +540,6 @@ pub fn play_tree_ambience(
 ) {
     // 检查是否有玩家坦克在森林附近
     let mut is_near_forest = false;
-    const DETECTION_RADIUS: f32 = 90.0; // 森林检测半径
 
     for player_transform in player_tanks.iter() {
         for forest_transform in forests.iter() {
@@ -568,7 +567,7 @@ pub fn play_tree_ambience(
     } else {
         // 如果不在森林附近但有播放音效，则停止
         for (entity, _) in ambience_players.iter() {
-            let _ = commands.entity(entity).try_despawn();
+            let () = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -593,9 +592,7 @@ pub fn play_tree_ambience(
 
                 let has_air_cushion = player_info.players.get(&player_tank.tank_type)
 
-                    .map(|stats| stats.air_cushion)
-
-                    .unwrap_or(false);
+                    .is_some_and(|stats| stats.air_cushion);
 
     
 
@@ -603,15 +600,7 @@ pub fn play_tree_ambience(
 
                     // 检查是否已经有气泡特效子实体
 
-                    let has_bubble_sprite = if let Some(children) = children {
-
-                        children.iter().any(|child| bubble_effects.contains(child))
-
-                    } else {
-
-                        false
-
-                    };
+                    let has_bubble_sprite = children.is_some_and(|children| children.iter().any(|child| bubble_effects.contains(child)));
 
     
 
@@ -659,7 +648,7 @@ pub fn play_tree_ambience(
 
                             if bubble_effects.contains(child) {
 
-                                let _ = commands.entity(child).try_despawn();
+                                let () = commands.entity(child).try_despawn();
 
                             }
 
@@ -699,24 +688,24 @@ pub fn play_tree_ambience(
                 *has_handled = true;
             
                 // 更换司令官纹理为死亡纹理
-                for mut sprite in queries.p0().iter_mut() {
+                for mut sprite in &mut queries.p0() {
                     sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
                     // 移除纹理图集，因为死亡纹理是单张图片
                     sprite.texture_atlas = None;
                 }
             
                 // 停止司令官动画
-                for mut timer in queries.p2().iter_mut() {
+                for mut timer in &mut queries.p2() {
                     timer.pause();
                 }
             
                 // 停止司令官音乐动画
-                for mut timer in queries.p3().iter_mut() {
+                for mut timer in &mut queries.p3() {
                     timer.pause();
                 }
             
                 // 更换所有玩家头像为死亡头像
-                for mut sprite in queries.p1().iter_mut() {
+                for mut sprite in &mut queries.p1() {
                     sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
                     // 移除纹理图集，因为死亡头像纹理是单张图片
                     sprite.texture_atlas = None;

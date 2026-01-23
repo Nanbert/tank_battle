@@ -12,24 +12,16 @@ pub struct LevelAssets {
     levels: Vec<Option<LevelMap>>,
 }
 
-/// 从 AssetServer 加载关卡数据
-/// 地形符号对照：
-/// . = 空地
-/// t = 树林（坦克可穿过，提供掩护）
-/// s = 海（子弹可穿过，坦克不可）
-/// b = 砖块（可破坏，1发子弹，完整 100×100）
-/// bl = 砖块左半（50×100）
-/// br = 砖块右半（50×100）
-/// bt = 砖块上半（100×50）
-/// bb = 砖块下半（100×50）
-/// i = 钢铁（不可破坏，完整 100×100）
+
+
+/// 从文件内容解析关卡地图
 /// il = 钢铁左半（50×100）
 /// ir = 钢铁右半（50×100）
 /// it = 钢铁上半（100×50）
 /// ib = 钢铁下半（100×50）
 /// a = 屏障（可破坏，2发子弹）
-pub fn parse_level_content(content: &str) -> Result<LevelMap, String> {
-    let mut result: LevelMap = [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
+pub fn parse_level_content(content: &str) -> [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] {
+    let mut result: [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS] = [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
     for (row_idx, line) in content.lines().enumerate() {
         if row_idx >= crate::map::MAP_ROWS {
@@ -40,7 +32,7 @@ pub fn parse_level_content(content: &str) -> Result<LevelMap, String> {
         let tokens: Vec<&str> = line.split_whitespace().collect();
         // 调试第7行
         if row_idx == 6 {
-            eprintln!("Row 6: line='{}', tokens={:?}", line, tokens);
+            eprintln!("Row 6: line='{line}', tokens={tokens:?}");
         }
         for (col_idx, token) in tokens.iter().enumerate() {
             if col_idx >= crate::map::MAP_COLS {
@@ -56,17 +48,16 @@ pub fn parse_level_content(content: &str) -> Result<LevelMap, String> {
         }
     }
 
-    Ok(result)
+    result
 }
 
-/// 从 LevelAssets 资源获取关卡数据
+/// 从 `LevelAssets` 资源获取关卡数据
 pub fn get_level_from_assets(level_assets: &LevelAssets, level: usize) -> LevelMap {
     let level_idx = level - 1; // 关卡从1开始，数组从0开始
-    if level_idx < level_assets.levels.len() {
-        if let Some(ref map) = level_assets.levels[level_idx] {
-            return map.clone();
+    if level_idx < level_assets.levels.len()
+        && let Some(ref map_data) = level_assets.levels[level_idx] {
+            return *map_data;
         }
-    }
     // 如果关卡未加载，返回空地图
     eprintln!("Warning: Level {level} not loaded, returning empty map");
     [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
@@ -81,41 +72,35 @@ pub fn load_level_assets(
     // 预加载前4个关卡
     for level in 1..=4 {
         if let Ok(content) = std::fs::read_to_string(format!("levels/{level}.txt")) {
-            match parse_level_content(&content) {
-                Ok(map) => {
-                    if level_assets.levels.len() < level {
-                        level_assets.levels.resize(level, None);
+            let map_data = parse_level_content(&content);
+            if level_assets.levels.len() < level {
+                level_assets.levels.resize(level, None);
+            }
+            level_assets.levels[level - 1] = Some(map_data);
+
+            // 统计地形类型
+            let mut brick_count = 0;
+            let mut steel_count = 0;
+            let mut forest_count = 0;
+            let mut sea_count = 0;
+            let mut barrier_count = 0;
+
+            for row in &map_data {
+                for terrain in row {
+                    match terrain {
+                        TerrainType::Brick | TerrainType::BrickLeft | TerrainType::BrickRight |
+                        TerrainType::BrickTop | TerrainType::BrickBottom => brick_count += 1,
+                        TerrainType::Steel | TerrainType::SteelLeft | TerrainType::SteelRight |
+                        TerrainType::SteelTop | TerrainType::SteelBottom => steel_count += 1,
+                        TerrainType::Forest => forest_count += 1,
+                        TerrainType::Sea => sea_count += 1,
+                        TerrainType::Barrier => barrier_count += 1,
+                        TerrainType::Empty => {}
                     }
-                    level_assets.levels[level - 1] = Some(map);
-
-                    // 统计地形类型
-                    let mut brick_count = 0;
-                    let mut steel_count = 0;
-                    let mut forest_count = 0;
-                    let mut sea_count = 0;
-                    let mut barrier_count = 0;
-
-                    for row in &map {
-                        for terrain in row {
-                            match terrain {
-                                TerrainType::Brick | TerrainType::BrickLeft | TerrainType::BrickRight |
-                                TerrainType::BrickTop | TerrainType::BrickBottom => brick_count += 1,
-                                TerrainType::Steel | TerrainType::SteelLeft | TerrainType::SteelRight |
-                                TerrainType::SteelTop | TerrainType::SteelBottom => steel_count += 1,
-                                TerrainType::Forest => forest_count += 1,
-                                TerrainType::Sea => sea_count += 1,
-                                TerrainType::Barrier => barrier_count += 1,
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    eprintln!("Level {level} loaded successfully: {brick_count} bricks, {steel_count} steels, {forest_count} forests, {sea_count} seas, {barrier_count} barriers");
-                }
-                Err(e) => {
-                    eprintln!("Error parsing level {level}: {e}");
                 }
             }
+
+            eprintln!("Level {level} loaded successfully: {brick_count} bricks, {steel_count} steels, {forest_count} forests, {sea_count} seas, {barrier_count} barriers");
         } else {
             eprintln!("Warning: Level file levels/{level}.txt not found");
         }

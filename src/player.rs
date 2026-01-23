@@ -2,6 +2,8 @@
 //!
 //! 处理玩家坦克的生成、移动、回城、冲刺和碰撞检测
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy::audio::Volume;
@@ -10,7 +12,7 @@ use bevy::asset::AssetPath;
 use crate::effects;
 
 use crate::constants::*;
-use crate::resources::*;
+use crate::resources::{PlayerInfo, RecallTimers, RecallTimer, DashTimers, DashTimer, DashDamageTracker, PlayerStatChanged, StatType, BarrierDamageTracker};
 
 /// 生成玩家1坦克
 pub fn move_player_tank(
@@ -79,8 +81,7 @@ pub fn move_player_tank(
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 获取玩家的 speed 百分比加成
         let speed_bonus = player_info.players.get(&player_tank.tank_type)
-            .map(|p| p.speed as f32 / 100.0)
-            .unwrap_or(0.0);
+            .map_or(0.0, |p| p.speed as f32 / 100.0);
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
@@ -95,10 +96,7 @@ pub fn move_player_tank(
 
         // 处理纹理动画
         if let Some(atlas) = &mut sprite.texture_atlas {
-            if !is_moving {
-                atlas.index = animation_indices.last;
-                animation_timer.reset();
-            } else {
+            if is_moving {
                 animation_timer.tick(time.delta());
                 if animation_timer.just_finished() {
                     atlas.index = if atlas.index == animation_indices.last {
@@ -107,6 +105,9 @@ pub fn move_player_tank(
                         atlas.index + 1
                     }
                 }
+            } else {
+                atlas.index = animation_indices.last;
+                animation_timer.reset();
             }
         }
 
@@ -230,7 +231,7 @@ pub fn update_recall_timers(
                 // 删除进度条
                 for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                     if progress_bar.player_entity == entity {
-                        let _ = commands.entity(progress_entity).try_despawn();
+                        let () = commands.entity(progress_entity).try_despawn();
                     }
                 }
             } else {
@@ -255,7 +256,7 @@ pub fn update_recall_timers(
                     // 先删除所有子实体（包括气泡），防止Transform传播干扰传送
                     if let Some(children) = children {
                         for child in children.iter() {
-                            let _ = commands.entity(child).try_despawn();
+                            let () = commands.entity(child).try_despawn();
                         }
                     }
 
@@ -268,7 +269,7 @@ pub fn update_recall_timers(
                     // 删除进度条
                     for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
                         if progress_bar.player_entity == entity {
-                            let _ = commands.entity(progress_entity).try_despawn();
+                            let () = commands.entity(progress_entity).try_despawn();
                         }
                     }
                 }
@@ -404,11 +405,7 @@ pub fn handle_dash_collision(
             let (player_entity, brick_entity, steel_entity, enemy_entity): (Entity, Option<Entity>, Option<Entity>, Option<Entity>) = if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e1) {
                 if is_dashing.is_some() && steels.get(*e2).is_ok() {
                     // 撞到 steel，检查 protection
-                    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
-                        player_stats.protection >= 100
-                    } else {
-                        false
-                    };
+                    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
 
                     if can_break_steel {
                         // protection = 100%，可以撞碎铁块
@@ -439,11 +436,7 @@ pub fn handle_dash_collision(
             } else if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(*e2) {
                 if is_dashing.is_some() && steels.get(*e1).is_ok() {
                     // 撞到 steel，检查 protection
-                    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
-                        player_stats.protection >= 100
-                    } else {
-                        false
-                    };
+                    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
 
                     if can_break_steel {
                         // protection = 100%，可以撞碎铁块
@@ -539,11 +532,10 @@ fn check_enemy_collision(
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
 ) -> Option<Entity> {
-    if let Ok((_, _, is_dashing)) = player_tanks.get(e1) {
-        if is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
+    if let Ok((_, _, is_dashing)) = player_tanks.get(e1)
+        && is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
             return Some(e2);
         }
-    }
     None
 }
 
@@ -558,11 +550,10 @@ fn check_enemy_collision_none(
         if is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
             return Some((player_entity, e2));
         }
-    } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e2) {
-        if is_dashing.is_some() && enemy_tanks.get(e1).is_ok() {
+    } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e2)
+        && is_dashing.is_some() && enemy_tanks.get(e1).is_ok() {
             return Some((player_entity, e1));
         }
-    }
     None
 }
 
@@ -602,7 +593,7 @@ fn handle_brick_collision(
         });
 
         // 销毁 brick
-        let _ = commands.entity(brick_entity).try_despawn();
+        let () = commands.entity(brick_entity).try_despawn();
     }
 
     // 检查本次 dash 是否已经扣过血
@@ -614,10 +605,8 @@ fn handle_brick_collision(
     if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
         let health_cost = if player_stats.protection < 40 {
             2 // 2/3血条
-        } else if player_stats.protection < 80 {
-            1 // 1/3血条
         } else {
-            0 // 不扣血
+            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
         };
 
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
@@ -636,7 +625,7 @@ fn handle_brick_collision(
             }
 
             // 销毁玩家坦克
-            let _ = commands.entity(player_entity).try_despawn();
+            let () = commands.entity(player_entity).try_despawn();
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
@@ -655,6 +644,7 @@ fn handle_brick_collision(
 }
 
 /// 处理钢铁碰撞
+#[allow(clippy::needless_pass_by_ref_mut)]
 fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
@@ -673,11 +663,7 @@ fn handle_steel_collision(
     }).unwrap();
 
     // 检查 protection 是否为 100%
-    let can_break_steel = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
-        player_stats.protection >= 100
-    } else {
-        false
-    };
+    let can_break_steel = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.protection >= 100);
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
@@ -698,7 +684,7 @@ fn handle_steel_collision(
         }
 
         // 销毁玩家坦克
-        let _ = commands.entity(player_entity).try_despawn();
+        let () = commands.entity(player_entity).try_despawn();
 
         // 标记对应玩家的头像为死亡状态
         for (avatar_entity, player_index) in player_avatars.iter() {
@@ -731,16 +717,16 @@ fn handle_steel_break(
         });
 
         // 销毁 steel
-        let _ = commands.entity(steel_entity).try_despawn();
+        let () = commands.entity(steel_entity).try_despawn();
     }
 }
 
 /// 处理冲刺与敌方坦克碰撞
 fn handle_dash_enemy_tank_collision(
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     asset_server: &Res<AssetServer>,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
@@ -763,7 +749,7 @@ fn handle_dash_enemy_tank_collision(
     }
 
     // 销毁敌方坦克
-    let _ = commands.entity(enemy_entity).try_despawn();
+    let () = commands.entity(enemy_entity).try_despawn();
 
     // 检查本次 dash 是否已经扣过血
     if dash_damage_tracker.has_taken_damage.contains(&player_entity) {
@@ -783,10 +769,8 @@ fn handle_dash_enemy_tank_collision(
         // 根据 protection 百分比决定扣血量
         let health_cost = if player_stats.protection < 40 {
             2 // 2/3血条
-        } else if player_stats.protection < 80 {
-            1 // 1/3血条
         } else {
-            0 // 不扣血
+            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
         };
         player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
 
@@ -800,11 +784,11 @@ fn handle_dash_enemy_tank_collision(
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
-                effects::spawn_explosion(&mut commands, &asset_server, &mut texture_atlas_layouts, tank_transform.translation);
+                effects::spawn_explosion(commands, asset_server, texture_atlas_layouts, tank_transform.translation);
             }
 
             // 销毁玩家坦克
-            let _ = commands.entity(player_entity).try_despawn();
+            let () = commands.entity(player_entity).try_despawn();
 
             // 标记对应玩家的头像为死亡状态
             for (avatar_entity, player_index) in player_avatars.iter() {
@@ -831,8 +815,10 @@ pub fn handle_barrier_collision(
     mut barrier_damage_tracker: ResMut<BarrierDamageTracker>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
+    const COLLISION_THRESHOLD: f32 = 70.0;
+
     // 更新所有冷却计时器
-    for (_, timer) in barrier_damage_tracker.cooldowns.iter_mut() {
+    for timer in barrier_damage_tracker.cooldowns.values_mut() {
         timer.tick(time.delta());
     }
 
@@ -843,21 +829,16 @@ pub fn handle_barrier_collision(
             let distance = (player_transform.translation - barrier_transform.translation).length();
 
             // 如果距离小于阈值，则认为碰撞
-            const COLLISION_THRESHOLD: f32 = 70.0;
 
             if distance < COLLISION_THRESHOLD {
                 // 检查冷却是否结束
                 let can_take_damage = barrier_damage_tracker.cooldowns
                     .get(&player_entity)
-                    .map_or(true, |timer| timer.is_finished());
+                    .is_none_or(bevy::prelude::Timer::is_finished);
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let has_track_chain = if let Some(player_stats) = player_info.players.get(&player_tank.tank_type) {
-                        player_stats.track_chain
-                    } else {
-                        false
-                    };
+                    let has_track_chain = player_info.players.get(&player_tank.tank_type).is_some_and(|player_stats| player_stats.track_chain);
 
                     if has_track_chain {
                         // 拥有 track_chain，免疫伤害，直接跳过

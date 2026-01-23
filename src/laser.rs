@@ -2,12 +2,13 @@
 //!
 //! 处理激光的生成、动画和蓝量消耗
 
+#![allow(clippy::wildcard_imports)]
+
 use bevy::prelude::*;
 
-use crate::constants::{TankType, TEXTURE_LASER_BLUE, TEXTURE_LASER_RED, AnimationIndices, Laser, PlayingEntity, AnimationTimer, CurrentAnimationFrame, RotationTimer, PlayerTank, TankFireConfig, SOUND_LASER_CHARGE, TANK_HEIGHT, BULLET_SIZE, SOUND_LASER};
+use crate::constants::*;
 use crate::resources::PlayerInfo;
 use crate::bullet::BulletOwner;
-use crate::constants::{RecoilForce, LaserCharge, LaserChargeProgressBar, LaserChargeSound};
 
 /// 激光生成参数
 pub struct LaserSpawnParams {
@@ -86,7 +87,7 @@ pub fn player_laser_system(
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
-    for (_entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
+    for (entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
         // 检查是否正在旋转
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
@@ -100,7 +101,7 @@ pub fn player_laser_system(
         };
 
         // 检查是否已经存在蓄力组件
-        let has_charge = charge_query.iter().any(|(e, c)| e == _entity && c.tank_type == player_tank.tank_type);
+        let has_charge = charge_query.iter().any(|(e, c)| e == entity && c.tank_type == player_tank.tank_type);
 
         // 检查是否被打断（移动或射击）
         let is_interrupted = if player_tank.tank_type == TankType::Player1 {
@@ -121,10 +122,10 @@ pub fn player_laser_system(
 
         if is_interrupted && has_charge {
             // 打断蓄力
-            commands.entity(_entity).remove::<LaserCharge>();
+            commands.entity(entity).remove::<LaserCharge>();
             // 删除进度条
             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                if progress_bar.player_entity == _entity {
+                if progress_bar.player_entity == entity {
                     let () = commands.entity(progress_entity).try_despawn();
                 }
             }
@@ -140,7 +141,7 @@ pub fn player_laser_system(
             if has_charge {
                 // 更新蓄力计时器
                 for (e, mut charge) in &mut charge_query {
-                    if e == _entity && charge.tank_type == player_tank.tank_type {
+                    if e == entity && charge.tank_type == player_tank.tank_type {
                         charge.timer.tick(time.delta());
 
                         // 更新进度条（从满格向两边递减）
@@ -148,7 +149,7 @@ pub fn player_laser_system(
                         let bar_width = 100.0 * (1.0 - progress); // 从100递减到0
 
                         for (_, mut sprite, progress_bar) in &mut progress_bar_query {
-                            if progress_bar.player_entity == _entity {
+                            if progress_bar.player_entity == entity {
                                 sprite.custom_size = Some(Vec2::new(bar_width, 8.0));
                             }
                         }
@@ -187,20 +188,20 @@ pub fn player_laser_system(
                                 // 立刻应用后坐力：向后移动 0.3 个身位
                                 let recoil_distance = TANK_HEIGHT * 0.3;
                                 let recoil_offset = direction * -recoil_distance;
-                                commands.entity(_entity).insert(RecoilForce {
+                                commands.entity(entity).insert(RecoilForce {
                                     original_pos: transform.translation,
                                     target_offset: recoil_offset,
                                     timer: Timer::from_seconds(0.3, TimerMode::Once),
                                 });
 
                                 }
-                            
+
                             // 移除蓄力组件
-                            commands.entity(_entity).remove::<LaserCharge>();
-                            
+                            commands.entity(entity).remove::<LaserCharge>();
+
                             // 删除进度条
                             for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                                if progress_bar.player_entity == _entity {
+                                if progress_bar.player_entity == entity {
                                     let () = commands.entity(progress_entity).try_despawn();
                                 }
                             }
@@ -225,7 +226,7 @@ pub fn player_laser_system(
                 }
 
                 // 创建蓄力组件（4秒蓄力）
-                commands.entity(_entity).insert(LaserCharge {
+                commands.entity(entity).insert(LaserCharge {
                     timer: Timer::from_seconds(4.0, TimerMode::Once),
                     tank_type: player_tank.tank_type,
                 });
@@ -240,7 +241,7 @@ pub fn player_laser_system(
                 // 创建蓄力进度条（在坦克正上方，初始满格）
                 commands.spawn((
                     PlayingEntity,
-                    LaserChargeProgressBar { player_entity: _entity },
+                    LaserChargeProgressBar { player_entity: entity },
                     Sprite {
                         color: Color::srgb(0.0, 1.0, 0.0), // 绿色
                         custom_size: Some(Vec2::new(100.0, 8.0)), // 初始宽度100（满格）
@@ -252,11 +253,11 @@ pub fn player_laser_system(
         } else if has_charge {
             // 松开按键但蓄力未完成，取消蓄力
             for (e, _) in charge_query.iter() {
-                if e == _entity {
-                    commands.entity(_entity).remove::<LaserCharge>();
+                if e == entity {
+                    commands.entity(entity).remove::<LaserCharge>();
                     // 删除进度条
                     for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-                        if progress_bar.player_entity == _entity {
+                        if progress_bar.player_entity == entity {
                             let () = commands.entity(progress_entity).try_despawn();
                         }
                     }
