@@ -31,8 +31,11 @@ use bevy_rapier2d::prelude::*;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(DefaultPlugins.set(app::configure_asset_plugin()))
-        .add_plugins(app::configure_window_plugin())
+    app.add_plugins(
+        DefaultPlugins
+            .set(app::configure_asset_plugin())
+            .set(app::configure_window_plugin())
+    )
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
 
     app::configure_game_resources(&mut app);

@@ -59,7 +59,9 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(FadingOut { alpha: 1.0 })
         .insert_resource(CurrentMenuSelection { selected_index: 0 })
         .insert_resource(AnimationIndices { first: 0, last: 14 })
-        .insert_resource(CurrentAnimationFrame(0));
+        .insert_resource(CurrentAnimationFrame(0))
+        .init_resource::<GameEntitiesSpawned>()
+        .init_resource::<StageIntroTimer>();
 }
 
 pub fn register_game_systems(app: &mut App) {
@@ -213,8 +215,8 @@ pub fn setup(
     });
 
     // 加载森林火焰纹理
-    let forest_fire_texture: Handle<Image> = asset_server.load("effect/forest_fire.png");
-    let forest_fire_texture_atlas_layout = TextureAtlasLayout::from_grid(UVec2::new(100, 100), 5, 3, None, None);
+    let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
+    let forest_fire_texture_atlas_layout = TextureAtlasLayout::from_grid(UVec2::new(131, 131), 10, 1, None, None);
     let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas_layout);
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 14 };
     commands.insert_resource(ForestFireTexture {
