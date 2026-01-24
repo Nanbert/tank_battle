@@ -824,27 +824,16 @@ pub fn spawn_game_entities_if_needed(
                 TankType::Player1,
                 PlayerStats {
                     name: "Li Yun Long".to_string(),
-
                     speed: INITIAL_ATTRIBUTE_VALUE,
-
                     fire_speed: INITIAL_ATTRIBUTE_VALUE,
-
                     protection: INITIAL_ATTRIBUTE_VALUE,
-
                     shells: 1,
-
                     penetrate: false,
-
                     track_chain: false,
-
                     air_cushion: false,
-
                     fire_shell: false,
-
                     life_red_bar: 3,
-
                     energy_blue_bar: 3,
-
                     score: 0,
                 },
             );
@@ -926,58 +915,35 @@ pub fn spawn_game_entities_if_needed(
                 TankType::Player1,
                 PlayerStats {
                     name: "Li Yun Long".to_string(),
-
                     speed: 40,
-
                     fire_speed: 40,
-
                     protection: 40,
-
                     shells: 1,
-
                     penetrate: false,
-
                     track_chain: false,
-
                     air_cushion: false,
-
                     fire_shell: false,
-
                     life_red_bar: 3,
-
                     energy_blue_bar: 3,
-
                     score: 0,
                 },
             );
 
             // 初始化玩家2信息
-
             player_info.players.insert(
                 TankType::Player2,
                 PlayerStats {
                     name: "Chu Yun Fei".to_string(),
-
                     speed: 40,
-
                     fire_speed: 40,
-
                     protection: 40,
-
                     shells: 1,
-
                     penetrate: false,
-
                     track_chain: false,
-
                     air_cushion: false,
-
                     fire_shell: false,
-
                     life_red_bar: 3,
-
                     energy_blue_bar: 3,
-
                     score: 0,
                 },
             );
