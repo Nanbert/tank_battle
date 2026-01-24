@@ -269,29 +269,83 @@ pub fn spawn_terrain_tile(
     }
 }
 
+/// 地形瓦片布局类型
+#[derive(Clone, Copy)]
+pub(crate) enum TileLayout {
+    /// 2x2 网格（4个瓦片）
+    Full,
+    /// 左半（2x1 网格，2个瓦片）
+    Left,
+    /// 右半（2x1 网格，2个瓦片）
+    Right,
+    /// 上半（1x2 网格，2个瓦片）
+    Top,
+    /// 下半（1x2 网格，2个瓦片）
+    Bottom,
+}
+
+/// 生成地形瓦片组（通用函数）
+///
+/// 参数：
+/// - commands: 命令队列
+/// - asset_server: 资源服务器
+/// - atlas_layouts: 地形纹理图集布局资源
+/// - center_position: 中心位置
+/// - tile_type: 地形类型（砖块或钢块）
+/// - layout: 瓦片布局类型
+///
+/// 返回：生成的实体数组（2或4个，取决于布局类型）
+pub fn spawn_tile_group(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    center_position: Vec2,
+    tile_type: TerrainTileType,
+    layout: TileLayout,
+) -> Vec<Entity> {
+    let offset = BRICK_GROUP_OFFSET;
+    let positions = match layout {
+        TileLayout::Full => vec![
+            Vec2::new(-offset, offset),
+            Vec2::new(offset, offset),
+            Vec2::new(-offset, -offset),
+            Vec2::new(offset, -offset),
+        ],
+        TileLayout::Left => vec![Vec2::new(-offset, offset), Vec2::new(-offset, -offset)],
+        TileLayout::Right => vec![Vec2::new(offset, offset), Vec2::new(offset, -offset)],
+        TileLayout::Top => vec![Vec2::new(-offset, offset), Vec2::new(offset, offset)],
+        TileLayout::Bottom => vec![Vec2::new(-offset, -offset), Vec2::new(offset, -offset)],
+    };
+
+    positions
+        .into_iter()
+        .map(|pos| {
+            spawn_terrain_tile(
+                commands,
+                asset_server,
+                atlas_layouts,
+                center_position + pos,
+                tile_type,
+            )
+        })
+        .collect()
+}
+
 /// 生成砖块组（2x2网格，100x100）
 pub fn spawn_brick_group(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 4] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(offset, offset),
-        Vec2::new(-offset, -offset),
-        Vec2::new(offset, -offset),
-    ];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Brick,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Brick,
+        TileLayout::Full,
+    )
 }
 
 /// 生成钢块组（2x2网格，100x100）
@@ -300,23 +354,15 @@ pub fn spawn_steel_group(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 4] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [
-        Vec2::new(-offset, offset),
-        Vec2::new(offset, offset),
-        Vec2::new(-offset, -offset),
-        Vec2::new(offset, -offset),
-    ];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Steel,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Steel,
+        TileLayout::Full,
+    )
 }
 
 /// 生成砖块左半（2x1网格，50x100）
@@ -325,18 +371,15 @@ pub fn spawn_brick_left(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, offset), Vec2::new(-offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Brick,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Brick,
+        TileLayout::Left,
+    )
 }
 
 /// 生成砖块右半（2x1网格，50x100）
@@ -345,18 +388,15 @@ pub fn spawn_brick_right(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(offset, offset), Vec2::new(offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Brick,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Brick,
+        TileLayout::Right,
+    )
 }
 
 /// 生成砖块上半（1x2网格，100x50）
@@ -365,18 +405,15 @@ pub fn spawn_brick_top(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, offset), Vec2::new(offset, offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Brick,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Brick,
+        TileLayout::Top,
+    )
 }
 
 /// 生成砖块下半（1x2网格，100x50）
@@ -385,18 +422,15 @@ pub fn spawn_brick_bottom(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, -offset), Vec2::new(offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Brick,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Brick,
+        TileLayout::Bottom,
+    )
 }
 
 /// 生成钢块左半（2x1网格，50x100）
@@ -405,18 +439,15 @@ pub fn spawn_steel_left(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, offset), Vec2::new(-offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Steel,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Steel,
+        TileLayout::Left,
+    )
 }
 
 /// 生成钢块右半（2x1网格，50x100）
@@ -425,18 +456,15 @@ pub fn spawn_steel_right(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(offset, offset), Vec2::new(offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Steel,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Steel,
+        TileLayout::Right,
+    )
 }
 
 /// 生成钢块上半（1x2网格，100x50）
@@ -445,18 +473,15 @@ pub fn spawn_steel_top(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, offset), Vec2::new(offset, offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Steel,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Steel,
+        TileLayout::Top,
+    )
 }
 
 /// 生成钢块下半（1x2网格，100x50）
@@ -465,18 +490,15 @@ pub fn spawn_steel_bottom(
     asset_server: &Res<AssetServer>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
     center_position: Vec2,
-) -> [Entity; 2] {
-    let offset = BRICK_GROUP_OFFSET;
-    let positions = [Vec2::new(-offset, -offset), Vec2::new(offset, -offset)];
-    positions.map(|pos| {
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            center_position + pos,
-            TerrainTileType::Steel,
-        )
-    })
+) -> Vec<Entity> {
+    spawn_tile_group(
+        commands,
+        asset_server,
+        atlas_layouts,
+        center_position,
+        TerrainTileType::Steel,
+        TileLayout::Bottom,
+    )
 }
 
 pub fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
@@ -686,19 +708,30 @@ fn spawn_commander(
     ));
 }
 
-fn spawn_player1_tank(
+fn spawn_player_tank(
     commands: &mut Commands,
     texture: Handle<Image>,
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
+    tank_type: TankType,
 ) -> Entity {
-    let player_tank = PlayerTank {
-        tank_type: TankType::Player1,
+    let (x_pos, custom_size, collider_half) = match tank_type {
+        TankType::Player1 => (
+            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
+            PLAYER_COLLIDER_HALF,
+        ),
+        TankType::Player2 => (
+            TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
+            Vec2::new(80.0, 90.0),
+            TANK_WIDTH / 2.0,
+        ),
+        TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
 
     commands
         .spawn_empty()
-        .insert(player_tank)
+        .insert(PlayerTank { tank_type })
         .insert(PlayingEntity)
         .insert(TankFireConfig::default())
         .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
@@ -711,14 +744,11 @@ fn spawn_player1_tank(
                 layout: texture_atlas_layout,
                 index: animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(
-                PLAYER_TANK_DISPLAY_WIDTH,
-                PLAYER_TANK_DISPLAY_HEIGHT,
-            )),
+            custom_size: Some(custom_size),
             ..default()
         })
         .insert(Transform::from_xyz(
-            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+            x_pos,
             MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
             0.0,
         ))
@@ -732,7 +762,7 @@ fn spawn_player1_tank(
             TimerMode::Repeating,
         )))
         .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF))
+        .insert(Collider::cuboid(collider_half, collider_half))
         .insert(ActiveEvents::COLLISION_EVENTS)
         .insert(
             ActiveCollisionTypes::default()
@@ -811,11 +841,12 @@ pub fn spawn_game_entities_if_needed(
         GameMode::OnePlayer => {
             // 单人模式：只生成玩家1
 
-            let _player1_tank_entity = spawn_player1_tank(
+            let _player1_tank_entity = spawn_player_tank(
                 &mut commands,
                 player1_texture,
                 player_texture_atlas_layout,
                 player_animation_indices,
+                TankType::Player1,
             );
 
             // 初始化玩家1信息
@@ -842,72 +873,21 @@ pub fn spawn_game_entities_if_needed(
         GameMode::TwoPlayers => {
             // 双人模式：生成玩家1和玩家2
 
-            let _player1_tank_entity = spawn_player1_tank(
+            let _player1_tank_entity = spawn_player_tank(
                 &mut commands,
                 player1_texture,
                 player_texture_atlas_layout.clone(),
                 player_animation_indices,
+                TankType::Player1,
             );
 
-            let _player2_tank_entity = commands
-                .spawn_empty()
-                .insert(PlayerTank {
-                    tank_type: TankType::Player2,
-                })
-                .insert(PlayingEntity)
-                .insert(TankFireConfig::default())
-                .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-                .insert(TargetRotation {
-                    angle: 0.0_f32.to_radians(),
-                })
-                .insert(Sprite {
-                    image: player2_texture,
-                    texture_atlas: Some(TextureAtlas {
-                        layout: player_texture_atlas_layout,
-                        index: player_animation_indices.first,
-                    }),
-                    custom_size: Some(Vec2::new(80.0, 90.0)),
-                    ..default()
-                })
-                .insert(Transform::from_xyz(
-                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
-                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-                    0.0,
-                ))
-                .insert(Velocity {
-                    linvel: Vec2::default(),
-                    angvel: 0.0,
-                })
-                .insert(player_animation_indices)
-                .insert(AnimationTimer(Timer::from_seconds(
-                    0.1,
-                    TimerMode::Repeating,
-                )))
-                .insert(RigidBody::KinematicPositionBased)
-                .insert(Collider::cuboid(TANK_WIDTH / 2.0, TANK_HEIGHT / 2.0))
-                .insert(ActiveEvents::COLLISION_EVENTS)
-                .insert(
-                    ActiveCollisionTypes::default()
-                        | ActiveCollisionTypes::KINEMATIC_STATIC
-                        | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-                )
-                .insert(LockedAxes::ROTATION_LOCKED)
-                .insert(KinematicCharacterController {
-                    offset: CharacterLength::Absolute(0.01),
-
-                    filter_groups: None,
-
-                    autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                        max_height: CharacterLength::Absolute(5.0),
-
-                        min_width: CharacterLength::Absolute(0.5),
-
-                        include_dynamic_bodies: false,
-                    }),
-
-                    ..default()
-                })
-                .id();
+            let _player2_tank_entity = spawn_player_tank(
+                &mut commands,
+                player2_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
+                TankType::Player2,
+            );
 
             // 初始化玩家1信息
 
