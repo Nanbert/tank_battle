@@ -6,6 +6,7 @@
 
 use bevy::audio::Volume;
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
@@ -422,9 +423,17 @@ pub fn check_stage_complete(
 
 /// 重置玩家坦克位置到出生点
 pub fn reset_player_positions(
-    mut player_tanks: Query<(&mut Transform, &PlayerTank), With<PlayerTank>>,
+    mut player_tanks: Query<
+        (
+            &mut Transform,
+            &mut Velocity,
+            &mut KinematicCharacterController,
+            &PlayerTank,
+        ),
+        With<PlayerTank>,
+    >,
 ) {
-    for (mut transform, player_tank) in &mut player_tanks {
+    for (mut transform, mut velocity, mut character_controller, player_tank) in &mut player_tanks {
         match player_tank.tank_type {
             TankType::Player1 => {
                 // 玩家1出生位置：左侧
@@ -441,6 +450,11 @@ pub fn reset_player_positions(
             TankType::Enemy => {}
         }
         transform.rotation = Quat::IDENTITY;
+
+        // 重置物理引擎速度和位移累积
+        velocity.linvel = Vec2::ZERO;
+        velocity.angvel = 0.0;
+        character_controller.translation = None;
     }
 }
 
