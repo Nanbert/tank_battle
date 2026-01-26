@@ -501,15 +501,6 @@ pub fn spawn_steel_bottom(
     )
 }
 
-pub fn is_stat_at_max_value(text: &str, player_stats: &PlayerStats) -> bool {
-    match text {
-        s if s.contains("Speed") => player_stats.speed >= 100,
-        s if s.contains("Shells") => player_stats.shells >= 5,
-        s if s.contains("Protection") => player_stats.protection >= 100,
-        s if s.contains("Fire Speed") => player_stats.fire_speed >= 100,
-        _ => false,
-    }
-}
 fn spawn_map_terrain(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
@@ -933,34 +924,6 @@ pub fn spawn_game_entities_if_needed(
     // 加载字体
     let font: Handle<Font> = asset_server.load(FONT_EN);
 
-    // 根据游戏模式生成UI
-    match *game_mode {
-        GameMode::OnePlayer => {
-            // 单人模式：只生成玩家1的UI
-            for config in PLAYER1_UI_ELEMENTS {
-                spawn_ui_element_from_config(
-                    &mut commands,
-                    &font,
-                    &asset_server,
-                    &mut texture_atlas_layouts,
-                    config,
-                    &player_info,
-                    TankType::Player1,
-                );
-            }
-        }
-        GameMode::TwoPlayers => {
-            // 双人模式：生成玩家1和玩家2的UI
-            spawn_player_info(
-                &mut commands,
-                &font,
-                &asset_server,
-                &mut texture_atlas_layouts,
-                &player_info,
-            );
-        }
-    }
-
     spawn_top_text_info(&mut commands, &font, stage_level.0);
 
     // 生成道具
@@ -970,38 +933,6 @@ pub fn spawn_game_entities_if_needed(
         &mut texture_atlas_layouts,
         &stage_level,
     );
-}
-fn spawn_player_info(
-    commands: &mut Commands,
-    font: &Handle<Font>,
-    asset_server: &AssetServer,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_info: &PlayerInfo,
-) {
-    // 生成玩家1 UI 元素
-    for config in PLAYER1_UI_ELEMENTS {
-        spawn_ui_element_from_config(
-            commands,
-            font,
-            asset_server,
-            texture_atlas_layouts,
-            config,
-            player_info,
-            TankType::Player1,
-        );
-    }
-    // 生成玩家2 UI 元素
-    for config in PLAYER2_UI_ELEMENTS {
-        spawn_ui_element_from_config(
-            commands,
-            font,
-            asset_server,
-            texture_atlas_layouts,
-            config,
-            player_info,
-            TankType::Player2,
-        );
-    }
 }
 
 fn spawn_top_text_info(commands: &mut Commands, font: &Handle<Font>, stage_level: usize) {
@@ -1057,105 +988,6 @@ fn spawn_top_text_info(commands: &mut Commands, font: &Handle<Font>, stage_level
         TextColor(Color::srgb(1.0, 1.0, 1.0)),
         Transform::from_xyz(WINDOW_RIGHT_X - 465.0, WINDOW_TOP_Y - 50.0, 1.0),
     ));
-}
-
-fn spawn_ui_element_from_config(
-    commands: &mut Commands,
-    font: &Handle<Font>,
-    asset_server: &AssetServer,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    config: &UIElementConfig,
-    player_info: &PlayerInfo,
-    tank_type: TankType,
-) {
-    let player_stats = &player_info.players[&tank_type];
-    match config.element_type {
-        UIElementType::NormalText(f) => {
-            let text = f(player_stats);
-            // 检查属性是否达到最大值或On状态，如果是则设置红色
-            let text_color = if is_stat_at_max_value(&text, player_stats) {
-                Color::srgb(1.0, 0.0, 0.0) // 红色
-            } else {
-                Color::srgb(1.0, 1.0, 1.0) // 白色
-            };
-
-            commands.spawn((
-                PlayerUI {
-                    player_type: tank_type,
-                },
-                PlayingEntity,
-                Text2d(text),
-                TextFont {
-                    font_size: config.font_size,
-                    font: font.clone(),
-                    ..default()
-                },
-                TextColor(text_color),
-                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
-            ));
-        }
-        UIElementType::PlayerAvatar => {
-            let player_avatar_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR);
-            let player_avatar_tile_size = UVec2::new(160, 147);
-            let player_avatar_texture_atlas =
-                TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
-            let player_avatar_texture_atlas_layout =
-                texture_atlas_layouts.add(player_avatar_texture_atlas);
-            let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
-            commands.spawn((
-                PlayerUI {
-                    player_type: tank_type,
-                },
-                PlayerAvatar,
-                PlayingEntity,
-                Sprite {
-                    image: player_avatar_texture,
-                    texture_atlas: Some(TextureAtlas {
-                        layout: player_avatar_texture_atlas_layout,
-                        index: 0,
-                    }),
-                    custom_size: Some(Vec2::new(160.0, 147.0)),
-                    ..default()
-                },
-                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
-                player_avatar_animation_indices,
-                AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-                CurrentAnimationFrame(0),
-            ));
-        }
-        UIElementType::HealthBar => {
-            commands.spawn((
-                PlayerUI {
-                    player_type: tank_type,
-                },
-                HealthBar,
-                HealthBarOriginalPosition(config.x_pos),
-                PlayingEntity,
-                Sprite {
-                    color: Color::srgb(1.0, 0.0, 0.0),
-                    custom_size: Some(Vec2::new(160.0, 10.0)),
-                    ..default()
-                },
-                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
-            ));
-        }
-        UIElementType::BlueBar => {
-            commands.spawn((
-                PlayerUI {
-                    player_type: tank_type,
-                },
-                BlueBar,
-                BlueBarOriginalPosition(config.x_pos),
-                PlayingEntity,
-                Sprite {
-                    color: Color::srgb(0.0, 0.5, 1.0),
-                    custom_size: Some(Vec2::new(160.0, 10.0)),
-                    ..default()
-                },
-                Transform::from_xyz(config.x_pos, config.y_pos, 1.0),
-            ));
-        }
-    }
 }
 
 fn spawn_power_ups(

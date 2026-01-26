@@ -15,11 +15,13 @@ use crate::bullet;
 use crate::effects;
 use crate::enemy;
 use crate::game_state;
+use crate::hud_ui;
 use crate::laser;
+use crate::menus_ui;
+use crate::overlay_ui;
 use crate::player;
 use crate::powerup;
 use crate::terrain;
-use crate::ui;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
@@ -79,34 +81,35 @@ pub fn register_game_systems(app: &mut App) {
             OnEnter(GameState::StartScreen),
             (
                 game_state::cleanup_playing_entities,
+                hud_ui::despawn_player_hud,
                 game_state::reset_fading_out,
-                ui::spawn_start_screen,
+                menus_ui::spawn_start_screen,
             )
                 .chain(),
         )
         .add_systems(
             OnEnter(GameState::About),
-            (ui::cleanup_start_screen_ui, ui::spawn_about_screen).chain(),
+            (menus_ui::cleanup_start_screen_ui, menus_ui::spawn_about_screen).chain(),
         )
         .add_systems(
             OnExit(GameState::About),
-            (ui::despawn_about_screen, ui::spawn_start_screen).chain(),
+            (menus_ui::despawn_about_screen, menus_ui::spawn_start_screen).chain(),
         )
         .add_systems(
             Update,
-            ui::handle_about_input.run_if(in_state(GameState::About)),
+            menus_ui::handle_about_input.run_if(in_state(GameState::About)),
         )
         .add_systems(
             OnEnter(GameState::Credits),
-            (ui::cleanup_start_screen_ui, ui::spawn_credits_screen).chain(),
+            (menus_ui::cleanup_start_screen_ui, menus_ui::spawn_credits_screen).chain(),
         )
         .add_systems(
             OnExit(GameState::Credits),
-            (ui::despawn_credits_screen, ui::spawn_start_screen).chain(),
+            (menus_ui::despawn_credits_screen, menus_ui::spawn_start_screen).chain(),
         )
         .add_systems(
             Update,
-            ui::handle_credits_input.run_if(in_state(GameState::Credits)),
+            menus_ui::handle_credits_input.run_if(in_state(GameState::Credits)),
         )
         .add_systems(
             OnEnter(GameState::StageIntro),
@@ -114,31 +117,33 @@ pub fn register_game_systems(app: &mut App) {
                 terrain::respawn_terrain_for_next_stage,
                 game_state::reset_player_positions,
                 game_state::reset_for_next_stage,
-                ui::spawn_stage_intro,
+                overlay_ui::spawn_stage_intro,
             )
                 .chain(),
         )
         .add_systems(
             Update,
-            ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)),
+            overlay_ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)),
         )
-        .add_systems(OnExit(GameState::StageIntro), ui::despawn_stage_intro)
+        .add_systems(OnExit(GameState::StageIntro), overlay_ui::despawn_stage_intro)
         .add_systems(
             OnEnter(GameState::Playing),
             (
                 terrain::spawn_game_entities_if_needed,
                 terrain::update_stage_text,
+                hud_ui::spawn_player_hud,
             )
                 .chain(),
         )
-        .add_systems(OnEnter(GameState::Paused), ui::spawn_pause_ui)
-        .add_systems(OnExit(GameState::Paused), (ui::despawn_pause_ui,))
-        .add_systems(OnEnter(GameState::GameOver), ui::spawn_game_over_ui)
+        .add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
+        .add_systems(OnExit(GameState::Paused), (overlay_ui::despawn_pause_ui,))
+        .add_systems(OnEnter(GameState::GameOver), overlay_ui::spawn_game_over_ui)
         .add_systems(
             OnExit(GameState::GameOver),
             (
-                ui::despawn_game_over_ui,
+                overlay_ui::despawn_game_over_ui,
                 game_state::cleanup_playing_entities,
+                hud_ui::despawn_player_hud,
             ),
         )
         .add_systems(
@@ -291,11 +296,11 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::handle_stat_changed_for_blink.run_if(in_state(GameState::Playing)),
+            hud_ui::handle_hud_stat_changed.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            game_state::animate_player_info_text.run_if(in_state(GameState::Playing)),
+            hud_ui::animate_hud_text.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -307,28 +312,36 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            hud_ui::update_player1_hud.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            hud_ui::update_player2_hud.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             game_state::handle_commander_death.run_if(in_state(GameState::Playing)),
         ) // 测试司令官阵亡处理
         .add_systems(
             Update,
-            ui::animate_start_screen.run_if(not(in_state(GameState::Playing))),
+            menus_ui::animate_start_screen.run_if(not(in_state(GameState::Playing))),
         )
         .add_systems(
             Update,
-            (ui::handle_start_screen_input, ui::update_option_colors)
+            (menus_ui::handle_start_screen_input, menus_ui::update_option_colors)
                 .run_if(in_state(GameState::StartScreen)),
         )
         .add_systems(
             Update,
-            ui::handle_game_input.run_if(in_state(GameState::Playing)),
+            overlay_ui::handle_game_input.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            ui::handle_pause_input.run_if(in_state(GameState::Paused)),
+            overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)),
         )
         .add_systems(
             Update,
-            (ui::handle_game_over_input, ui::update_option_colors)
+            (overlay_ui::handle_game_over_input, menus_ui::update_option_colors)
                 .chain()
                 .run_if(in_state(GameState::GameOver)),
         )
@@ -366,7 +379,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            ui::fade_out_screen.run_if(in_state(GameState::FadingOut)),
+            overlay_ui::fade_out_screen.run_if(in_state(GameState::FadingOut)),
         );
 }
 
