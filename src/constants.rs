@@ -312,6 +312,9 @@ pub const STEEL_COLLIDER_HEIGHT: f32 = 46.0;
 pub struct Commander;
 
 #[derive(Component)]
+pub struct CommanderText;
+
+#[derive(Component)]
 pub struct CommanderHealthBar;
 
 #[derive(Component)]

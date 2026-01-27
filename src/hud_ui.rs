@@ -439,7 +439,7 @@ let stats = match player_type {
 /// 销毁所有 HUD
 pub fn despawn_hud(
     mut commands: Commands,
-    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
 ) {
     // 销毁顶部 HUD
@@ -778,6 +778,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
 
     commands.spawn((
         PlayingEntity,
+        CommanderText,
         Text2d("Commander Life:".to_string()),
         TextFont {
             font_size: 28.0,
@@ -822,7 +823,7 @@ pub fn spawn_hud(
     game_mode: Res<GameMode>,
     player1_hud_query: Query<(), With<Player1Hud>>,
     player2_hud_query: Query<(), With<Player2Hud>>,
-    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
     stage_level: Res<StageLevel>,
 ) {

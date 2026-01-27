@@ -404,3 +404,13 @@ fn update_enemy_tank_movement(
         }
     }
 }
+
+/// 销毁所有敌方坦克
+pub fn despawn_enemy_tank(
+    mut commands: Commands,
+    enemy_tanks: Query<Entity, With<EnemyTank>>,
+) {
+    for entity in enemy_tanks.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+}

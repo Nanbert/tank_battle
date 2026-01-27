@@ -82,7 +82,12 @@ pub fn register_game_systems(app: &mut App) {
             (
                 commander::despawn_commander,
                 player::despawn_players,
-                game_state::cleanup_playing_entities,
+                enemy::despawn_enemy_tank,
+                terrain::despawn_map,
+                powerup::despawn_powerups,
+                |mut stage_level: ResMut<crate::resources::StageLevel>| {
+                    stage_level.0 = 1;
+                },
                 hud_ui::despawn_hud,
                 game_state::reset_fading_out,
                 menus_ui::spawn_start_screen,
@@ -158,7 +163,10 @@ pub fn register_game_systems(app: &mut App) {
             OnExit(GameState::GameOver),
             (
                 overlay_ui::despawn_game_over_ui,
-                game_state::cleanup_playing_entities,
+                enemy::despawn_enemy_tank,
+                |mut stage_level: ResMut<crate::resources::StageLevel>| {
+                    stage_level.0 = 1;
+                },
                 hud_ui::despawn_hud,
             ),
         )

@@ -176,47 +176,6 @@ fn update_start_screen_blink(
     }
 }
 
-pub fn cleanup_playing_entities(
-    mut commands: Commands,
-    playing_entities: Query<Entity, With<PlayingEntity>>,
-    mut player_info: ResMut<PlayerInfo>,
-    mut enemy_spawn_state: ResMut<EnemySpawnState>,
-    mut stage_level: ResMut<StageLevel>,
-    mut commander_life: ResMut<CommanderLife>,
-) {
-    // 清理所有游戏实体
-    for entity in playing_entities.iter() {
-        commands.entity(entity).try_despawn();
-    }
-
-    // 重置玩家信息
-    player_info.player1 = PlayerStats {
-        name: "Player 1".to_string(),
-        speed: 1,
-        fire_speed: 1,
-        protection: 0,
-        shells: 1,
-        penetrate: false,
-        track_chain: false,
-        air_cushion: false,
-        fire_shell: false,
-        life_points: 3,
-        energy_points: 3,
-        score: 0,
-    };
-    player_info.player2 = None;
-
-    // 重置敌方坦克计数
-    enemy_spawn_state.has_spawned = 0;
-    enemy_spawn_state.spawn_cooldown.reset();
-
-    // 重置关卡数
-    stage_level.0 = 1;
-
-    // 重置 Commander 生命值
-    commander_life.life_points = 3;
-}
-
 pub fn check_stage_complete(
     enemy_spawn_state: Res<EnemySpawnState>,
     enemies: Query<(), With<EnemyTank>>,

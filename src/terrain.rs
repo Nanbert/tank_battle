@@ -12,6 +12,28 @@ use crate::resources::{
     StageLevel, TerrainAtlasLayouts,
 };
 
+/// 销毁所有地图元素（围墙、砖块、钢、森林、海、障碍物）
+pub fn despawn_map(
+    mut commands: Commands,
+    bricks: Query<Entity, With<Brick>>,
+    steels: Query<Entity, With<Steel>>,
+    forests: Query<Entity, With<Forest>>,
+    seas: Query<Entity, With<Sea>>,
+    barriers: Query<Entity, With<Barrier>>,
+    walls: Query<Entity, With<Wall>>,
+) {
+    for entity in bricks
+        .iter()
+        .chain(steels.iter())
+        .chain(forests.iter())
+        .chain(seas.iter())
+        .chain(barriers.iter())
+        .chain(walls.iter())
+    {
+        let () = commands.entity(entity).try_despawn();
+    }
+}
+
 /// 生成墙壁
 pub fn spawn_walls(commands: &mut Commands) {
     // 左墙（在原游戏区域左边界，向下平移40像素）

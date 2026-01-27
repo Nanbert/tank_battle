@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
+use crate::resources::CommanderLife;
 
 /// 生成司令官
 pub fn spawn_commander(
@@ -16,6 +17,7 @@ pub fn spawn_commander(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     commanders: Query<Entity, With<Commander>>,
     children: Query<&Children>,
+    mut commander_life: ResMut<CommanderLife>,
 ) {
     // 防御性编程：先销毁可能存在的旧司令官及其子节点
     for entity in commanders.iter() {
@@ -28,6 +30,9 @@ pub fn spawn_commander(
         // 再销毁父节点
         let () = commands.entity(entity).try_despawn();
     }
+
+    // 重置 Commander 生命值
+    commander_life.life_points = 3;
 
     let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
