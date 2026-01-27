@@ -9,7 +9,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{
-    EnemySpawnState, GameEntitiesSpawned, StageLevel, TerrainAtlasLayouts,
+    StageLevel, TerrainAtlasLayouts,
 };
 
 /// 生成墙壁
@@ -69,49 +69,6 @@ pub fn spawn_walls(commands: &mut Commands) {
             ..default()
         },
     ));
-}
-
-/// 重新生成下一关的地形（保留四面墙）
-pub fn respawn_terrain_for_next_stage(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    asset_server: Res<AssetServer>,
-    atlas_layouts: Res<TerrainAtlasLayouts>,
-    level_assets: Res<crate::levels::LevelAssets>,
-    stage_level: Res<StageLevel>,
-    bricks: Query<Entity, With<Brick>>,
-    steels: Query<Entity, With<Steel>>,
-    forests: Query<Entity, With<Forest>>,
-    seas: Query<Entity, With<Sea>>,
-    commanders: Query<Entity, With<Commander>>,
-    barriers: Query<Entity, With<Barrier>>,
-) {
-    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物）
-    for entity in bricks
-        .iter()
-        .chain(steels.iter())
-        .chain(forests.iter())
-        .chain(seas.iter())
-        .chain(commanders.iter())
-        .chain(barriers.iter())
-    {
-        let () = commands.entity(entity).try_despawn();
-    }
-
-    // 重新生成新关卡的地形和司令官
-    spawn_map_terrain(
-        &mut commands,
-        &asset_server,
-        &atlas_layouts,
-        &level_assets,
-        stage_level.0,
-    );
-    spawn_commander(
-        &mut commands,
-        &asset_server,
-        &mut texture_atlas_layouts,
-        &atlas_layouts,
-    );
 }
 
 /// 地形瓦片类型（用于 `spawn_terrain_tile`）
@@ -572,22 +529,59 @@ fn spawn_map_terrain(
     }
 }
 
-fn spawn_commander(
+/// 生成游戏地图（包括围墙、地形和司令官堡垒）
+pub fn spawn_map(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    atlas_layouts: Res<TerrainAtlasLayouts>,
+    level_assets: Res<crate::levels::LevelAssets>,
+    mut clear_color: ResMut<ClearColor>,
+    stage_level: Res<StageLevel>,
+    bricks: Query<Entity, With<Brick>>,
+    steels: Query<Entity, With<Steel>>,
+    forests: Query<Entity, With<Forest>>,
+    seas: Query<Entity, With<Sea>>,
+    barriers: Query<Entity, With<Barrier>>,
+    walls: Query<Entity, With<Wall>>,
+) {
+    // 防御性编程：先清理所有可能存在的地图实体
+    for entity in bricks
+        .iter()
+        .chain(steels.iter())
+        .chain(forests.iter())
+        .chain(seas.iter())
+        .chain(barriers.iter())
+        .chain(walls.iter())
+    {
+        let () = commands.entity(entity).try_despawn();
+    }
+
+    // 设置背景色为黑色
+    clear_color.0 = BACKGROUND_COLOR;
+
+    // 生成围墙
+    spawn_walls(&mut commands);
+
+    // 根据地图数组生成地形
+    spawn_map_terrain(
+        &mut commands,
+        &asset_server,
+        &atlas_layouts,
+        &level_assets,
+        stage_level.0,
+    );
+
+    // 生成司令官堡垒墙
+    spawn_commander_fortress(&mut commands, &asset_server, &atlas_layouts);
+}
+
+/// 生成包围司令官的三面砖块堡垒墙（左、右、上）
+pub fn spawn_commander_fortress(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
 ) {
-    let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
-    // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
-    let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas =
-        TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
-    let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
-    let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
-
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
-    let commander_x = 0.0;
 
     // 司令官边界
     let commander_left = -COMMANDER_WIDTH / 2.0;
@@ -595,7 +589,6 @@ fn spawn_commander(
     let commander_top = commander_y + COMMANDER_HEIGHT / 2.0;
     let commander_bottom = commander_y - COMMANDER_HEIGHT / 2.0;
 
-    // 创建包围司令官的砖块堡垒墙
     let brick_size = COMMANDER_BRICK_SIZE;
 
     // 左墙：3块砖，紧贴司令官左侧
@@ -633,100 +626,5 @@ fn spawn_commander(
             TerrainTileType::Brick,
         );
     }
-
-    commands.spawn((
-        Commander,
-        PlayingEntity,
-        Sprite {
-            image: commander_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: commander_texture_atlas_layout,
-                index: commander_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(COMMANDER_WIDTH, COMMANDER_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(commander_x, commander_y, 0.0),
-        commander_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_COMMANDER,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-        RigidBody::Fixed,
-        Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
-    ));
-
-    // 创建音乐动画精灵（一直播放）
-    let music_texture: Handle<Image> = asset_server.load(TEXTURE_MUSIC_NOTE);
-    let music_tile_size = UVec2::new(140, 120);
-    let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
-    let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
-    let music_animation_indices = AnimationIndices { first: 0, last: 9 };
-
-    commands.spawn((
-        CommanderMusicAnimation,
-        PlayingEntity,
-        Sprite {
-            image: music_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: music_texture_atlas_layout,
-                index: music_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(70.0, 60.0)),
-            ..default()
-        },
-        Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)), // z=1.0 使动画在 Commander 上方
-        music_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_COMMANDER_MUSIC,
-            TimerMode::Repeating,
-        )), // 每0.1秒切换一帧
-        CurrentAnimationFrame(0),
-    ));
-}
-
-pub fn spawn_game_entities_if_needed(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    asset_server: Res<AssetServer>,
-    atlas_layouts: Res<TerrainAtlasLayouts>,
-    level_assets: Res<crate::levels::LevelAssets>,
-    mut clear_color: ResMut<ClearColor>,
-    _enemy_spawn_state: Res<EnemySpawnState>,
-    stage_level: Res<StageLevel>,
-    mut entities_spawned: ResMut<GameEntitiesSpawned>,
-) {
-    // 如果游戏实体已经生成，则跳过
-    if entities_spawned.0 {
-        return;
-    }
-
-    // 标记游戏实体已生成
-    entities_spawned.0 = true;
-
-    // 设置背景色为黑色
-    clear_color.0 = BACKGROUND_COLOR;
-
-    // 生成墙壁
-    spawn_walls(&mut commands);
-
-    // 根据地图数组生成地形
-    spawn_map_terrain(
-        &mut commands,
-        &asset_server,
-        &atlas_layouts,
-        &level_assets,
-        stage_level.0,
-    );
-
-    // 生成司令官
-    spawn_commander(
-        &mut commands,
-        &asset_server,
-        &mut texture_atlas_layouts,
-        &atlas_layouts,
-    );
 }
 

@@ -4,6 +4,7 @@
 
 mod app;
 mod bullet;
+mod commander;
 mod constants;
 mod effects;
 mod enemy;

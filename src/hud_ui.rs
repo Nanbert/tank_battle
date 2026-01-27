@@ -826,11 +826,6 @@ pub fn spawn_hud(
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
     stage_level: Res<StageLevel>,
 ) {
-    // 只在第一关时生成 HUD
-    if stage_level.0 != 1 {
-        return;
-    }
-
     // 先清理现有的 HUD，以防万一
     for entity in top_hud_query.iter() {
         let () = commands.entity(entity).try_despawn();

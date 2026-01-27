@@ -229,9 +229,6 @@ pub struct DashDamageTracker {
     pub has_taken_damage: HashSet<Entity>, // 记录本次 dash 已经扣血的玩家坦克
 }
 
-// 标记游戏实体是否已生成
-#[derive(Resource, Default)]
-pub struct GameEntitiesSpawned(pub bool);
 // 地形纹理图集布局资源
 #[derive(Resource)]
 pub struct TerrainAtlasLayouts {

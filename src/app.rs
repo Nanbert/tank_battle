@@ -12,6 +12,7 @@ use crate::resources::*;
 
 // 导入模块以便使用其函数
 use crate::bullet;
+use crate::commander;
 use crate::effects;
 use crate::enemy;
 use crate::game_state;
@@ -66,7 +67,6 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(AnimationIndices { first: 0, last: 14 })
         .insert_resource(CurrentAnimationFrame(0))
         .insert_resource(MenuBlinkTimer(Timer::default()))
-        .init_resource::<GameEntitiesSpawned>()
         .init_resource::<StageIntroTimer>()
         .init_resource::<crate::levels::LevelAssets>();
 }
@@ -80,6 +80,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StartScreen),
             (
+                commander::despawn_commander,
                 player::despawn_players,
                 game_state::cleanup_playing_entities,
                 hud_ui::despawn_hud,
@@ -115,14 +116,32 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StageIntro),
             (
-                player::spawn_players_if_first_stage,
-                terrain::respawn_terrain_for_next_stage,
+                player::init_players.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
+                ),
+                terrain::spawn_map,
                 powerup::despawn_powerups,
-                powerup::spawn_power_ups,
-                hud_ui::spawn_hud,
+                powerup::spawn_power_ups_air_cushion.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
+                ),
+                powerup::spawn_power_ups_random.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1,
+                ),
+                hud_ui::spawn_hud.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
+                ),
                 hud_ui::update_stage_text,
                 game_state::reset_player_positions,
                 game_state::reset_for_next_stage,
+            )
+                .chain(),
+        )
+        .add_systems(
+            OnEnter(GameState::StageIntro),
+            (
+                commander::spawn_commander.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
+                ),
                 overlay_ui::spawn_stage_intro,
             )
                 .chain(),
@@ -132,10 +151,6 @@ pub fn register_game_systems(app: &mut App) {
             overlay_ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)),
         )
         .add_systems(OnExit(GameState::StageIntro), overlay_ui::despawn_stage_intro)
-        .add_systems(
-            OnEnter(GameState::Playing),
-            terrain::spawn_game_entities_if_needed,
-        )
         .add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
         .add_systems(OnExit(GameState::Paused), (overlay_ui::despawn_pause_ui,))
         .add_systems(OnEnter(GameState::GameOver), overlay_ui::spawn_game_over_ui)

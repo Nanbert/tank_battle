@@ -9,7 +9,7 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType, StageLevel};
+use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType};
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -208,33 +208,13 @@ pub fn handle_powerup_collision(
 ///
 /// 根据关卡选择道具类型，第一关强制生成 air_cushion 道具，其他关卡随机选择。
 /// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
-pub fn spawn_power_ups(
+/// 第一关强制生成 air_cushion 道具
+pub fn spawn_power_ups_air_cushion(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    stage_level: Res<StageLevel>,
 ) {
-    let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 air_cushion 道具
-        PowerUp::AirCushion
-    } else {
-        // 其他关卡随机选择一个道具类型
-        let powerup_types = [
-            PowerUp::SpeedUp,
-            PowerUp::Protection,
-            PowerUp::FireSpeed,
-            PowerUp::FireShell,
-            PowerUp::TrackChain,
-            PowerUp::Penetrate,
-            PowerUp::Repair,
-            PowerUp::Hamburger,
-            PowerUp::AirCushion,
-            PowerUp::Shell,
-        ];
-
-        let mut rng = rand::rng();
-        powerup_types[rng.random_range(0..powerup_types.len())]
-    };
+    let powerup_type = PowerUp::AirCushion;
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
@@ -244,6 +224,49 @@ pub fn spawn_power_ups(
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
     let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
+    let position = Vec3::new(x, y, 0.0);
+
+    spawn_powerup_batch(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        powerup_type,
+        powerup_type.texture_path(),
+        &[position],
+    );
+}
+
+/// 随机生成道具
+pub fn spawn_power_ups_random(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let powerup_types = [
+        PowerUp::SpeedUp,
+        PowerUp::Protection,
+        PowerUp::FireSpeed,
+        PowerUp::FireShell,
+        PowerUp::TrackChain,
+        PowerUp::Penetrate,
+        PowerUp::Repair,
+        PowerUp::Hamburger,
+        PowerUp::AirCushion,
+        PowerUp::Shell,
+    ];
+
+    let mut rng = rand::rng();
+    let powerup_type = powerup_types[rng.random_range(0..powerup_types.len())];
+
+    // 定义禁止区域
+    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
+    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
+    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
+    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
+
+    // 在随机位置生成道具（在地图范围内），避开禁止区域
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
     let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, 0.0);

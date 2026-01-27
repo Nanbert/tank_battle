@@ -14,7 +14,7 @@ use crate::constants::*;
 use crate::powerup;
 use crate::resources::{
     BarrierDamageTracker, BlueBarRegenTimer, DashDamageTracker, DashTimer, DashTimers,
-    GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StageLevel,
+    GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers,
     StatType,
 };
 
@@ -601,7 +601,7 @@ pub fn handle_dash_collision(
 
         // 提取碰撞信息
         let Some((player_entity, brick_entity, steel_entity, enemy_entity)) =
-            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &asset_server, &mut texture_atlas_layouts, &player_tanks_with_transform, &player_avatars, &mut stat_changed_events)
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &player_tanks_with_transform, &player_avatars)
         else { continue; };
 
         // 处理 brick 碰撞
@@ -616,7 +616,6 @@ pub fn handle_dash_collision(
                 &bricks,
                 &mut player_info,
                 &player_avatars,
-                &mut stat_changed_events,
                 player_entity,
                 b_entity,
                 &mut dash_damage_tracker,
@@ -629,7 +628,6 @@ pub fn handle_dash_collision(
             handle_steel_break(
                 &mut commands,
                 &mut effect_events,
-                &asset_server,
                 &steels,
                 s_entity,
             );
@@ -668,11 +666,8 @@ fn extract_dash_collision_info(
     player_info: &ResMut<PlayerInfo>,
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
-    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
 ) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
     // 尝试从 e1 获取玩家坦克
     if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(e1) {
@@ -687,12 +682,9 @@ fn extract_dash_collision_info(
             player_info,
             commands,
             effect_events,
-            asset_server,
-            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_avatars,
-            stat_changed_events,
         );
     }
 
@@ -709,12 +701,9 @@ fn extract_dash_collision_info(
             player_info,
             commands,
             effect_events,
-            asset_server,
-            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_avatars,
-            stat_changed_events,
         );
     }
 
@@ -735,12 +724,9 @@ fn handle_player_entity_collision(
     player_info: &ResMut<PlayerInfo>,
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    asset_server: &Res<AssetServer>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
-    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
 ) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
     // 卫语句：不在冲刺状态则跳过
     let Some(_) = is_dashing else { return None };
@@ -764,13 +750,10 @@ fn handle_player_entity_collision(
         handle_steel_collision(
             commands,
             effect_events,
-            asset_server,
-            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_info,
             player_avatars,
-            stat_changed_events,
             player_entity,
         );
         return None;
@@ -782,7 +765,7 @@ fn handle_player_entity_collision(
     }
 
     // 处理敌方坦克碰撞
-    if let Some(enemy) = check_enemy_collision(player_entity, player_entity, other_entity, player_tanks, enemy_tanks) {
+    if let Some(enemy) = check_enemy_collision(player_entity, other_entity, player_tanks, enemy_tanks) {
         return Some((player_entity, None, None, Some(enemy)));
     }
 
@@ -791,7 +774,6 @@ fn handle_player_entity_collision(
 
 /// 检查敌方坦克碰撞
 fn check_enemy_collision(
-    _player_entity: Entity,
     e1: Entity,
     e2: Entity,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
@@ -837,7 +819,6 @@ fn handle_brick_collision(
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     player_info: &mut ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
-    _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     brick_entity: Entity,
     dash_damage_tracker: &mut DashDamageTracker,
@@ -933,13 +914,10 @@ fn handle_brick_collision(
 fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    _asset_server: &Res<AssetServer>,
-    _texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &ResMut<PlayerInfo>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
-    _stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
 ) {
     // 获取玩家坦克信息
@@ -1002,7 +980,6 @@ fn handle_steel_collision(
 fn handle_steel_break(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    _asset_server: &Res<AssetServer>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
     steel_entity: Entity,
 ) {
@@ -1356,21 +1333,15 @@ pub fn recover_energy(
     }
 }
 
-/// 只在第一关时生成玩家坦克
-pub fn spawn_players_if_first_stage(
+/// 初始化玩家坦克
+pub fn init_players(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     game_mode: Res<GameMode>,
     mut player_info: ResMut<PlayerInfo>,
-    stage_level: Res<StageLevel>,
     existing_players: Query<Entity, With<PlayerTank>>,
 ) {
-    // 只在第一关时生成玩家
-    if stage_level.0 != 1 {
-        return;
-    }
-
     // 防御性编程：先清理可能存在的旧玩家坦克和信息
     for entity in existing_players.iter() {
         let () = commands.entity(entity).try_despawn();

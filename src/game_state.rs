@@ -183,7 +183,6 @@ pub fn cleanup_playing_entities(
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
     mut stage_level: ResMut<StageLevel>,
     mut commander_life: ResMut<CommanderLife>,
-    mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
     // 清理所有游戏实体
     for entity in playing_entities.iter() {
@@ -216,9 +215,6 @@ pub fn cleanup_playing_entities(
 
     // 重置 Commander 生命值
     commander_life.life_points = 3;
-
-    // 重置游戏实体生成标志
-    entities_spawned.0 = false;
 }
 
 pub fn check_stage_complete(
