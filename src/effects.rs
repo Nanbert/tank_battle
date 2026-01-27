@@ -294,10 +294,14 @@ pub fn update_air_cushion_effect(
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 air_cushion 能力
-        let has_air_cushion = player_info
-            .players
-            .get(&player_tank.tank_type)
-            .is_some_and(|stats| stats.air_cushion);
+        let has_air_cushion = match player_tank.tank_type {
+            TankType::Player1 => player_info.player1.air_cushion,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .is_some_and(|stats| stats.air_cushion),
+            TankType::Enemy => false,
+        };
 
         if has_air_cushion {
             // 检查是否已经有气泡特效子实体

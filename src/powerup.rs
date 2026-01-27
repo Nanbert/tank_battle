@@ -119,83 +119,86 @@ pub fn handle_powerup_collision(
             let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
-            if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-                let stat_type = match powerup_type {
-                    PowerUp::SpeedUp => {
-                        if player_stats.speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::Speed)
+            let player_stats = match player_tank.tank_type {
+                TankType::Player1 => &mut player_info.player1,
+                TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+                TankType::Enemy => unreachable!(),
+            };
+            let stat_type = match powerup_type {
+                PowerUp::SpeedUp => {
+                    if player_stats.speed < MAX_ATTRIBUTE_VALUE {
+                        player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
+                            .min(MAX_ATTRIBUTE_VALUE);
                     }
-                    PowerUp::Protection => {
-                        if player_stats.protection < MAX_ATTRIBUTE_VALUE {
-                            player_stats.protection = (player_stats.protection
-                                + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::Protection)
-                    }
-                    PowerUp::FireSpeed => {
-                        if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.fire_speed = (player_stats.fire_speed
-                                + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::FireSpeed)
-                    }
-                    PowerUp::FireShell => {
-                        player_stats.fire_shell = true;
-                        Some(StatType::FireShell)
-                    }
-                    PowerUp::TrackChain => {
-                        player_stats.track_chain = true;
-                        Some(StatType::TrackChain)
-                    }
-                    PowerUp::Penetrate => {
-                        player_stats.penetrate = true;
-                        Some(StatType::Penetrate)
-                    }
-                    PowerUp::Repair => {
-                        if player_stats.life_points < COMMANDER_LIFE_MAX {
-                            player_stats.life_points += 1;
-                        }
-                        None // 修理道具不需要闪烁文字
-                    }
-                    PowerUp::Hamburger => {
-                        if commander_life.life_points < COMMANDER_LIFE_MAX {
-                            commander_life.life_points += 1;
-                        }
-                        None // 汉堡道具不影响玩家属性，不发送事件
-                    }
-                    PowerUp::AirCushion => {
-                        player_stats.air_cushion = true;
-                        // 更新 filter_groups，排除海（GROUP_2）
-                        // 玩家坦克不设置 memberships（默认所有组），filters 设置为不包含 GROUP_2
-                        if let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                            controller.filter_groups = Some(CollisionGroups::new(
-                                Group::all(),
-                                Group::all() & !SEA_GROUP,
-                            ));
-                        }
-                        Some(StatType::AirCushion)
-                    }
-                    PowerUp::Shell => {
-                        // 增加 1 颗子弹，最多 2 颗
-                        if player_stats.shells < 2 {
-                            player_stats.shells += 1;
-                        }
-                        Some(StatType::Shell)
-                    }
-                };
-
-                // 发送属性变更事件（如果有）
-                if let Some(st) = stat_type {
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type: player_tank.tank_type,
-                        stat_type: st,
-                    });
+                    Some(StatType::Speed)
                 }
+                PowerUp::Protection => {
+                    if player_stats.protection < MAX_ATTRIBUTE_VALUE {
+                        player_stats.protection = (player_stats.protection
+                            + POWERUP_ATTRIBUTE_INCREASE)
+                            .min(MAX_ATTRIBUTE_VALUE);
+                    }
+                    Some(StatType::Protection)
+                }
+                PowerUp::FireSpeed => {
+                    if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
+                        player_stats.fire_speed = (player_stats.fire_speed
+                            + POWERUP_ATTRIBUTE_INCREASE)
+                            .min(MAX_ATTRIBUTE_VALUE);
+                    }
+                    Some(StatType::FireSpeed)
+                }
+                PowerUp::FireShell => {
+                    player_stats.fire_shell = true;
+                    Some(StatType::FireShell)
+                }
+                PowerUp::TrackChain => {
+                    player_stats.track_chain = true;
+                    Some(StatType::TrackChain)
+                }
+                PowerUp::Penetrate => {
+                    player_stats.penetrate = true;
+                    Some(StatType::Penetrate)
+                }
+                PowerUp::Repair => {
+                    if player_stats.life_points < COMMANDER_LIFE_MAX {
+                        player_stats.life_points += 1;
+                    }
+                    None // 修理道具不需要闪烁文字
+                }
+                PowerUp::Hamburger => {
+                    if commander_life.life_points < COMMANDER_LIFE_MAX {
+                        commander_life.life_points += 1;
+                    }
+                    None // 汉堡道具不影响玩家属性，不发送事件
+                }
+                PowerUp::AirCushion => {
+                    player_stats.air_cushion = true;
+                    // 更新 filter_groups，排除海（GROUP_2）
+                    // 玩家坦克不设置 memberships（默认所有组），filters 设置为不包含 GROUP_2
+                    if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                        controller.filter_groups = Some(CollisionGroups::new(
+                            Group::all(),
+                            Group::all() & !SEA_GROUP,
+                        ));
+                    }
+                    Some(StatType::AirCushion)
+                }
+                PowerUp::Shell => {
+                    // 增加 1 颗子弹，最多 2 颗
+                    if player_stats.shells < 2 {
+                        player_stats.shells += 1;
+                    }
+                    Some(StatType::Shell)
+                }
+            };
+
+            // 发送属性变更事件（如果有）
+            if let Some(st) = stat_type {
+                stat_changed_events.write(PlayerStatChanged {
+                    player_type: player_tank.tank_type,
+                    stat_type: st,
+                });
             }
         }
     }

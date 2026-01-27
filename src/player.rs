@@ -188,10 +188,14 @@ pub fn move_player_tank(
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 获取玩家的 speed 百分比加成
-        let speed_bonus = player_info
-            .players
-            .get(&player_tank.tank_type)
-            .map_or(0.0, |p| p.speed as f32 / 100.0);
+        let speed_bonus = match player_tank.tank_type {
+            TankType::Player1 => player_info.player1.speed as f32 / 100.0,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .map_or(0.0, |p| p.speed as f32 / 100.0),
+            TankType::Enemy => 0.0,
+        };
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
@@ -506,24 +510,27 @@ pub fn handle_dash_input(
 
         if is_dash_key_pressed && !is_dashing {
             // 检查蓝条是否足够（需要至少1点蓝条）
-            if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-                let energy_cost = 1; // 1点蓝条（1/3蓝条）
-                if player_stats.energy_points >= energy_cost {
-                    // 立即扣除蓝条
-                    player_stats.energy_points -= energy_cost;
+            let player_stats = match player_tank.tank_type {
+                TankType::Player1 => &mut player_info.player1,
+                TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+                TankType::Enemy => unreachable!(),
+            };
+            let energy_cost = 1; // 1点蓝条（1/3蓝条）
+            if player_stats.energy_points >= energy_cost {
+                // 立即扣除蓝条
+                player_stats.energy_points -= energy_cost;
 
-                    // 计算坦克当前朝向
-                    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-                    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
-                    let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+                // 计算坦克当前朝向
+                let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
+                let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
+                let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
 
-                    // 开始冲刺
-                    let dash_timer = DashTimer::new(direction, DASH_DURATION);
-                    dash_timers.timers.insert(entity, dash_timer);
+                // 开始冲刺
+                let dash_timer = DashTimer::new(direction, DASH_DURATION);
+                dash_timers.timers.insert(entity, dash_timer);
 
-                    // 添加冲刺标记
-                    commands.entity(entity).insert(IsDashing);
-                }
+                // 添加冲刺标记
+                commands.entity(entity).insert(IsDashing);
             }
         }
     }
@@ -740,10 +747,14 @@ fn handle_player_entity_collision(
 
     // 处理 steel 碰撞
     if steels.get(other_entity).is_ok() {
-        let can_break_steel = player_info
-            .players
-            .get(&player_tank.tank_type)
-            .is_some_and(|player_stats| player_stats.protection >= 100);
+        let can_break_steel = match player_tank.tank_type {
+            TankType::Player1 => player_info.player1.protection >= 100,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .is_some_and(|p| p.protection >= 100),
+            TankType::Enemy => false,
+        };
 
         if can_break_steel {
             return Some((player_entity, None, Some(other_entity), None));
@@ -868,49 +879,52 @@ fn handle_brick_collision(
     }
 
     // 根据 protection 百分比决定扣血量
-    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-        let health_cost = if player_stats.protection < 40 {
-            2 // 2/3血条
-        } else {
-            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-        };
+    let player_stats = match player_tank.tank_type {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
+    };
+    let health_cost = if player_stats.protection < 40 {
+        2 // 2/3血条
+    } else {
+        usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
+    };
 
-        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+    player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
 
-        // 标记本次 dash 已经扣过血
-        if health_cost > 0 {
-            dash_damage_tracker.has_taken_damage.insert(player_entity);
+    // 标记本次 dash 已经扣过血
+    if health_cost > 0 {
+        dash_damage_tracker.has_taken_damage.insert(player_entity);
+    }
+
+    // 检查玩家是否死亡
+    if player_stats.life_points == 0 {
+        // 获取玩家坦克位置用于生成爆炸效果
+        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+            // 生成爆炸效果
+            effects::spawn_explosion(
+                commands,
+                asset_server,
+                texture_atlas_layouts,
+                tank_transform.translation,
+            );
         }
 
-        // 检查玩家是否死亡
-        if player_stats.life_points == 0 {
-            // 获取玩家坦克位置用于生成爆炸效果
-            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-                // 生成爆炸效果
-                effects::spawn_explosion(
-                    commands,
-                    asset_server,
-                    texture_atlas_layouts,
-                    tank_transform.translation,
-                );
+        // 销毁玩家坦克
+        let () = commands.entity(player_entity).try_despawn();
+
+        // 标记对应玩家的头像为死亡状态
+        for (avatar_entity, player_index) in player_avatars.iter() {
+            if player_index.player_type == player_tank.tank_type {
+                commands.entity(avatar_entity).insert(PlayerDead);
             }
-
-            // 销毁玩家坦克
-            let () = commands.entity(player_entity).try_despawn();
-
-            // 标记对应玩家的头像为死亡状态
-            for (avatar_entity, player_index) in player_avatars.iter() {
-                if player_index.player_type == player_tank.tank_type {
-                    commands.entity(avatar_entity).insert(PlayerDead);
-                }
-            }
-
-            // 启动 Game Over 延迟计时器（1.2秒）
-            commands.spawn((
-                GameOverTimer,
-                AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-            ));
         }
+
+        // 启动 Game Over 延迟计时器（1.2秒）
+        commands.spawn((
+            GameOverTimer,
+            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
+        ));
     }
 }
 
@@ -939,10 +953,14 @@ fn handle_steel_collision(
         .unwrap();
 
     // 检查 protection 是否为 100%
-    let can_break_steel = player_info
-        .players
-        .get(&player_tank.tank_type)
-        .is_some_and(|player_stats| player_stats.protection >= 100);
+    let can_break_steel = match player_tank.tank_type {
+        TankType::Player1 => player_info.player1.protection >= 100,
+        TankType::Player2 => player_info
+            .player2
+            .as_ref()
+            .is_some_and(|p| p.protection >= 100),
+        TankType::Enemy => false,
+    };
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
@@ -1039,57 +1057,60 @@ fn handle_dash_enemy_tank_collision(
     }
 
     // 增加分数
-    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
-        player_stats.score += 100;
+    let player_stats = match player_tank.tank_type {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
+    };
+    player_stats.score += 100;
 
-        // 发送分数变更事件
-        stat_changed_events.write(PlayerStatChanged {
-            player_type: player_tank.tank_type,
-            stat_type: StatType::Score,
-        });
+    // 发送分数变更事件
+    stat_changed_events.write(PlayerStatChanged {
+        player_type: player_tank.tank_type,
+        stat_type: StatType::Score,
+    });
 
-        // 根据 protection 百分比决定扣血量
-        let health_cost = if player_stats.protection < 40 {
-            DASH_DAMAGE_COST_HIGH // 2/3血条
-        } else {
-            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-        };
-        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+    // 根据 protection 百分比决定扣血量
+    let health_cost = if player_stats.protection < 40 {
+        DASH_DAMAGE_COST_HIGH // 2/3血条
+    } else {
+        usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
+    };
+    player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
 
-        // 标记本次 dash 已经扣过血
-        if health_cost > 0 {
-            dash_damage_tracker.has_taken_damage.insert(player_entity);
+    // 标记本次 dash 已经扣过血
+    if health_cost > 0 {
+        dash_damage_tracker.has_taken_damage.insert(player_entity);
+    }
+
+    // 检查玩家是否死亡
+    if player_stats.life_points == 0 {
+        // 获取玩家坦克位置用于生成爆炸效果
+        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+            // 生成爆炸效果
+            effects::spawn_explosion(
+                commands,
+                asset_server,
+                texture_atlas_layouts,
+                tank_transform.translation,
+            );
         }
 
-        // 检查玩家是否死亡
-        if player_stats.life_points == 0 {
-            // 获取玩家坦克位置用于生成爆炸效果
-            if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-                // 生成爆炸效果
-                effects::spawn_explosion(
-                    commands,
-                    asset_server,
-                    texture_atlas_layouts,
-                    tank_transform.translation,
-                );
+        // 销毁玩家坦克
+        let () = commands.entity(player_entity).try_despawn();
+
+        // 标记对应玩家的头像为死亡状态
+        for (avatar_entity, player_index) in player_avatars.iter() {
+            if player_index.player_type == player_tank.tank_type {
+                commands.entity(avatar_entity).insert(PlayerDead);
             }
-
-            // 销毁玩家坦克
-            let () = commands.entity(player_entity).try_despawn();
-
-            // 标记对应玩家的头像为死亡状态
-            for (avatar_entity, player_index) in player_avatars.iter() {
-                if player_index.player_type == player_tank.tank_type {
-                    commands.entity(avatar_entity).insert(PlayerDead);
-                }
-            }
-
-            // 启动 Game Over 延迟计时器（1.2秒）
-            commands.spawn((
-                GameOverTimer,
-                AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-            ));
         }
+
+        // 启动 Game Over 延迟计时器（1.2秒）
+        commands.spawn((
+            GameOverTimer,
+            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
+        ));
     }
 }
 
@@ -1126,12 +1147,13 @@ pub fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let has_track_chain = player_info
-                        .players
-                        .get(&player_tank.tank_type)
-                        .is_some_and(|player_stats| player_stats.track_chain);
+                    let player_stats = match player_tank.tank_type {
+                        TankType::Player1 => &player_info.player1,
+                        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+                        TankType::Enemy => unreachable!(),
+                    };
 
-                    if has_track_chain {
+                    if player_stats.track_chain {
                         // 拥有 track_chain，免疫伤害，直接跳过
                         continue;
                     }
@@ -1142,25 +1164,27 @@ pub fn handle_barrier_collision(
                         .insert(player_entity, Timer::from_seconds(2.0, TimerMode::Once));
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type)
-                    {
-                        player_stats.speed = player_stats
-                            .speed
-                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
-                        player_stats.protection = player_stats
-                            .protection
-                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                    let player_stats = match player_tank.tank_type {
+                        TankType::Player1 => &mut player_info.player1,
+                        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+                        TankType::Enemy => unreachable!(),
+                    };
+                    player_stats.speed = player_stats
+                        .speed
+                        .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                    player_stats.protection = player_stats
+                        .protection
+                        .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
 
-                        // 发送 speed 和 protection 变更事件
-                        stat_changed_events.write(PlayerStatChanged {
-                            player_type: player_tank.tank_type,
-                            stat_type: StatType::Speed,
-                        });
-                        stat_changed_events.write(PlayerStatChanged {
-                            player_type: player_tank.tank_type,
-                            stat_type: StatType::Protection,
-                        });
-                    }
+                    // 发送 speed 和 protection 变更事件
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type: player_tank.tank_type,
+                        stat_type: StatType::Speed,
+                    });
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type: player_tank.tank_type,
+                        stat_type: StatType::Protection,
+                    });
                 }
             }
         }
@@ -1196,23 +1220,21 @@ fn spawn_players(
             );
 
             // 初始化玩家1信息
-            player_info.players.insert(
-                TankType::Player1,
-                PlayerStats {
-                    name: "Li Yun Long".to_string(),
-                    speed: INITIAL_ATTRIBUTE_VALUE,
-                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
-                    protection: INITIAL_ATTRIBUTE_VALUE,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_points: 3,
-                    energy_points: 3,
-                    score: 0,
-                },
-            );
+            player_info.player1 = PlayerStats {
+                name: "Li Yun Long".to_string(),
+                speed: INITIAL_ATTRIBUTE_VALUE,
+                fire_speed: INITIAL_ATTRIBUTE_VALUE,
+                protection: INITIAL_ATTRIBUTE_VALUE,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_points: 3,
+                energy_points: 3,
+                score: 0,
+            };
+            player_info.player2 = None;
         }
 
         GameMode::TwoPlayers => {
@@ -1234,39 +1256,34 @@ fn spawn_players(
             );
 
             // 初始化玩家1信息
-            player_info.players.insert(
-                TankType::Player1,
-                PlayerStats {
-                    name: "Li Yun Long".to_string(),
-                    speed: 40,
-                    fire_speed: 40,
-                    protection: 40,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_points: 3,
-                    energy_points: 3,
-                    score: 0,
-                },
-            );
+            player_info.player1 = PlayerStats {
+                name: "Li Yun Long".to_string(),
+                speed: 40,
+                fire_speed: 40,
+                protection: 40,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_points: 3,
+                energy_points: 3,
+                score: 0,
+            };
 
             // 初始化玩家2信息
-            player_info.players.insert(
-                TankType::Player2,
-                PlayerStats {
-                    name: "Chu Yun Fei".to_string(),
-                    speed: 40,
-                    fire_speed: 40,
-                    protection: 40,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_points: 3,
-                    energy_points: 3,
+            player_info.player2 = Some(PlayerStats {
+                name: "Chu Yun Fei".to_string(),
+                speed: 40,
+                fire_speed: 40,
+                protection: 40,
+                shells: 1,
+                penetrate: false,
+                track_chain: false,
+                air_cushion: false,
+                fire_shell: false,
+                life_points: 3,
+                energy_points: 3,
                     score: 0,
                 },
             );
@@ -1286,7 +1303,21 @@ pub fn despawn_players(
     }
 
     // 清空玩家信息
-    player_info.players.clear();
+    player_info.player1 = PlayerStats {
+        name: "Player 1".to_string(),
+        speed: 1,
+        fire_speed: 1,
+        protection: 0,
+        shells: 1,
+        penetrate: false,
+        track_chain: false,
+        air_cushion: false,
+        fire_shell: false,
+        life_points: 0,
+        energy_points: 3,
+        score: 0,
+    };
+    player_info.player2 = None;
 }
 
 /// 恢复玩家能量点数
@@ -1296,7 +1327,12 @@ pub fn recover_energy(
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 检查是否有玩家能量不满
-    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_points < 3);
+    let any_player_needs_regen =
+        player_info.player1.energy_points < 3
+            || player_info
+                .player2
+                .as_ref()
+                .is_some_and(|p| p.energy_points < 3);
 
     // 只有当有玩家能量不满时才更新计时器
     if any_player_needs_regen {
@@ -1304,9 +1340,13 @@ pub fn recover_energy(
 
         // 当计时器触发时，恢复1点能量
         if regen_timer.timer.just_finished() {
-            for player_stats in player_info.players.values_mut() {
-                if player_stats.energy_points < 3 {
-                    player_stats.energy_points = (player_stats.energy_points + 1).min(3);
+            if player_info.player1.energy_points < 3 {
+                player_info.player1.energy_points =
+                    (player_info.player1.energy_points + 1).min(3);
+            }
+            if let Some(ref mut p2) = player_info.player2 {
+                if p2.energy_points < 3 {
+                    p2.energy_points = (p2.energy_points + 1).min(3);
                 }
             }
         }
@@ -1335,7 +1375,7 @@ pub fn spawn_players_if_first_stage(
     for entity in existing_players.iter() {
         let () = commands.entity(entity).try_despawn();
     }
-    player_info.players.clear();
+    // 玩家信息会在 spawn_players 中重新初始化
 
     // 生成新玩家
     spawn_players(

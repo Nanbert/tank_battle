@@ -212,8 +212,10 @@ fn start_charge(
     transform: &Transform,
     tank_type: TankType,
 ) {
-    let Some(player_stats) = player_info.players.get(&tank_type) else {
-        return;
+    let player_stats = match tank_type {
+        TankType::Player1 => &player_info.player1,
+        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
     };
 
     // 检查蓝量是否足够（需要3点蓝量）
@@ -312,8 +314,10 @@ fn fire_laser(
     transform: &Transform,
     tank_type: TankType,
 ) {
-    let Some(player_stats) = player_info.players.get_mut(&tank_type) else {
-        return;
+    let player_stats = match tank_type {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
     };
 
     // 消耗整个蓝条

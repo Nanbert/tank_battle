@@ -160,10 +160,11 @@ fn spawn_single_player_hud(
     energy_points: 0,
     score: 0,
 };
-let stats = player_info
-    .players
-    .get(&player_type)
-    .unwrap_or(&default_stats);
+let stats = match player_type {
+    TankType::Player1 => &player_info.player1,
+    TankType::Player2 => player_info.player2.as_ref().unwrap_or(&default_stats),
+    TankType::Enemy => &default_stats,
+};
 
     // 玩家名称
     commands.spawn((
@@ -462,10 +463,7 @@ pub fn update_player1_hud(
     mut text_query: Query<(&mut Text2d, Option<&SpeedText>, Option<&FireSpeedText>, Option<&ProtectionText>, Option<&ShellsText>, Option<&ScoreText>, Option<&AirCushionText>, Option<&PenetrateText>, Option<&TrackChainText>, Option<&FireShellText>), With<Player1Hud>>,
     mut bar_query: Query<(&mut Sprite, &mut Transform, Option<&HealthBar>, Option<&BlueBar>), With<Player1Hud>>,
 ) {
-    let stats = player_info.players.get(&TankType::Player1);
-    let Some(stats) = stats else {
-        return;
-    };
+    let stats = &player_info.player1;
 
     // 更新所有文本
     for (mut text, is_speed, is_fire_speed, is_protection, is_shells, is_score, is_air_cushion, is_penetrate, is_track_chain, is_fire_shell) in text_query.iter_mut() {
@@ -541,8 +539,7 @@ pub fn update_player2_hud(
         return;
     }
 
-    let stats = player_info.players.get(&TankType::Player2);
-    let Some(stats) = stats else {
+    let Some(stats) = player_info.player2.as_ref() else {
         return;
     };
 
@@ -718,7 +715,10 @@ fn get_hud_stat_prefix(stat_type: StatType) -> &'static str {
 /// 判断 HUD 属性是否达到最大值或On状态
 fn is_hud_stat_at_max_value(text: &str, player_info: &PlayerInfo) -> bool {
     // 检查玩家1和玩家2的属性
-    for player_stats in player_info.players.values() {
+    let players = [&player_info.player1]
+        .into_iter()
+        .chain(player_info.player2.as_ref().into_iter());
+    for player_stats in players {
         if text.starts_with("Shells:") {
             if player_stats.shells >= 2 {
                 return true;

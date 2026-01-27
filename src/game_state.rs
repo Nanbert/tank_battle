@@ -42,8 +42,8 @@ pub fn check_game_over(
         return;
     }
 
-    // 卫语句：无玩家则跳过
-    if player_info.players.is_empty() {
+    // 卫语句：无玩家则跳过（单人模式下 player1 必定存在）
+    if *game_mode == GameMode::OnePlayer && player_info.player1.life_points == 0 {
         return;
     }
 
@@ -57,18 +57,12 @@ pub fn check_game_over(
 /// 检查所有玩家是否阵亡
 fn check_all_players_dead(player_info: &PlayerInfo, game_mode: &GameMode) -> bool {
     match *game_mode {
-        GameMode::OnePlayer => player_info
-            .players
-            .get(&TankType::Player1)
-            .is_some_and(|p| p.life_points == 0),
+        GameMode::OnePlayer => player_info.player1.life_points == 0,
         GameMode::TwoPlayers => {
-            player_info
-                .players
-                .get(&TankType::Player1)
-                .is_some_and(|p| p.life_points == 0)
+            player_info.player1.life_points == 0
                 && player_info
-                    .players
-                    .get(&TankType::Player2)
+                    .player2
+                    .as_ref()
                     .is_some_and(|p| p.life_points == 0)
         }
     }
@@ -197,7 +191,21 @@ pub fn cleanup_playing_entities(
     }
 
     // 重置玩家信息
-    player_info.players.clear();
+    player_info.player1 = PlayerStats {
+        name: "Player 1".to_string(),
+        speed: 1,
+        fire_speed: 1,
+        protection: 0,
+        shells: 1,
+        penetrate: false,
+        track_chain: false,
+        air_cushion: false,
+        fire_shell: false,
+        life_points: 3,
+        energy_points: 3,
+        score: 0,
+    };
+    player_info.player2 = None;
 
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
@@ -225,11 +233,6 @@ pub fn check_stage_complete(
     // 卫语句：检查是否完成关卡
     let current_enemy_count = enemies.iter().count();
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count || current_enemy_count > 0 {
-        return;
-    }
-
-    // 卫语句：无玩家则跳过
-    if player_info.players.is_empty() {
         return;
     }
 

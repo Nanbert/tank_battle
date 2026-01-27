@@ -110,10 +110,11 @@ pub struct StageIntroTimer {
 
 #[derive(Resource, Default)]
 pub struct PlayerInfo {
-    pub players: HashMap<TankType, PlayerStats>,
+    pub player1: PlayerStats,
+    pub player2: Option<PlayerStats>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct PlayerStats {
     pub name: String,
     pub speed: usize,

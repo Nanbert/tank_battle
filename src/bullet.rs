@@ -191,8 +191,10 @@ pub fn player_shoot_system(
         }
 
         // 获取玩家属性
-        let Some(player_stats) = player_info.players.get(&player_tank.tank_type) else {
-            continue;
+        let player_stats = match player_tank.tank_type {
+            TankType::Player1 => &player_info.player1,
+            TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+            TankType::Enemy => unreachable!(),
         };
 
         // 检查是否可以射击（使用 player_stats.shells 作为最大子弹数）
@@ -428,8 +430,10 @@ fn handle_forest_collision(
         return;
     }
 
-    let Some(player_stats) = player_info.players.get(owner_type) else {
-        return;
+    let player_stats = match *owner_type {
+        TankType::Player1 => &player_info.player1,
+        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
     };
 
     if !player_stats.fire_shell {
@@ -495,14 +499,10 @@ fn handle_steel_collision(
         return;
     }
 
-    let Some(player_stats) = player_info.players.get(owner_type) else {
-        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-        commands.spawn(AudioPlayer::new(hit_sound));
-        // 清理所有者引用，允许坦克再次射击
-        bullet_tracker.remove_bullet(bullet_entity);
-        // 销毁子弹实体
-        let () = commands.entity(bullet_entity).try_despawn();
-        return;
+    let player_stats = match *owner_type {
+        TankType::Player1 => &player_info.player1,
+        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
     };
 
     if player_stats.penetrate {
@@ -625,13 +625,16 @@ fn handle_player_bullet_hit_enemy(
     let () = commands.entity(tank_entity).try_despawn();
 
     // 增加分数
-    if let Some(player_stats) = player_info.players.get_mut(&player_type) {
-        player_stats.score += 100;
-        stat_changed_events.write(PlayerStatChanged {
-            player_type,
-            stat_type: StatType::Score,
-        });
-    }
+    let player_stats = match player_type {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
+    };
+    player_stats.score += 100;
+    stat_changed_events.write(PlayerStatChanged {
+        player_type,
+        stat_type: StatType::Score,
+    });
 }
 
 /// 处理敌方子弹击中玩家坦克
@@ -659,8 +662,10 @@ fn handle_enemy_bullet_hit_player(
     }
 
     // 扣除对应玩家的生命值
-    let Some(player_stats) = player_info.players.get_mut(&player_index) else {
-        return;
+    let player_stats = match player_index {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!(),
     };
 
     // 检查玩家是否有特效或额外子弹
