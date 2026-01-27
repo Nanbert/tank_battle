@@ -13,8 +13,9 @@ use crate::effects;
 use crate::constants::*;
 use crate::powerup;
 use crate::resources::{
-    BarrierDamageTracker, DashDamageTracker, DashTimer, DashTimers, GameMode, PlayerInfo,
-    PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StageLevel, StatType,
+    BarrierDamageTracker, BlueBarRegenTimer, DashDamageTracker, DashTimer, DashTimers,
+    GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StageLevel,
+    StatType,
 };
 
 /// 生成玩家坦克
@@ -507,9 +508,9 @@ pub fn handle_dash_input(
             // 检查蓝条是否足够（需要至少1点蓝条）
             if let Some(player_stats) = player_info.players.get_mut(&player_tank.tank_type) {
                 let energy_cost = 1; // 1点蓝条（1/3蓝条）
-                if player_stats.energy_blue_bar >= energy_cost {
+                if player_stats.energy_points >= energy_cost {
                     // 立即扣除蓝条
-                    player_stats.energy_blue_bar -= energy_cost;
+                    player_stats.energy_points -= energy_cost;
 
                     // 计算坦克当前朝向
                     let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
@@ -874,7 +875,7 @@ fn handle_brick_collision(
             usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
         };
 
-        player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
 
         // 标记本次 dash 已经扣过血
         if health_cost > 0 {
@@ -882,7 +883,7 @@ fn handle_brick_collision(
         }
 
         // 检查玩家是否死亡
-        if player_stats.life_red_bar == 0 {
+        if player_stats.life_points == 0 {
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
@@ -1053,7 +1054,7 @@ fn handle_dash_enemy_tank_collision(
         } else {
             usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
         };
-        player_stats.life_red_bar = player_stats.life_red_bar.saturating_sub(health_cost);
+        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
 
         // 标记本次 dash 已经扣过血
         if health_cost > 0 {
@@ -1061,7 +1062,7 @@ fn handle_dash_enemy_tank_collision(
         }
 
         // 检查玩家是否死亡
-        if player_stats.life_red_bar == 0 {
+        if player_stats.life_points == 0 {
             // 获取玩家坦克位置用于生成爆炸效果
             if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
                 // 生成爆炸效果
@@ -1167,7 +1168,7 @@ pub fn handle_barrier_collision(
 }
 
 /// 生成玩家坦克和信息
-pub fn spawn_players(
+fn spawn_players(
     commands: &mut Commands,
     asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
@@ -1207,8 +1208,8 @@ pub fn spawn_players(
                     track_chain: false,
                     air_cushion: false,
                     fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
+                    life_points: 3,
+                    energy_points: 3,
                     score: 0,
                 },
             );
@@ -1245,8 +1246,8 @@ pub fn spawn_players(
                     track_chain: false,
                     air_cushion: false,
                     fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
+                    life_points: 3,
+                    energy_points: 3,
                     score: 0,
                 },
             );
@@ -1264,8 +1265,8 @@ pub fn spawn_players(
                     track_chain: false,
                     air_cushion: false,
                     fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
+                    life_points: 3,
+                    energy_points: 3,
                     score: 0,
                 },
             );
@@ -1286,6 +1287,33 @@ pub fn despawn_players(
 
     // 清空玩家信息
     player_info.players.clear();
+}
+
+/// 恢复玩家能量点数
+pub fn recover_energy(
+    time: Res<Time>,
+    mut regen_timer: ResMut<BlueBarRegenTimer>,
+    mut player_info: ResMut<PlayerInfo>,
+) {
+    // 检查是否有玩家能量不满
+    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_points < 3);
+
+    // 只有当有玩家能量不满时才更新计时器
+    if any_player_needs_regen {
+        regen_timer.timer.tick(time.delta());
+
+        // 当计时器触发时，恢复1点能量
+        if regen_timer.timer.just_finished() {
+            for player_stats in player_info.players.values_mut() {
+                if player_stats.energy_points < 3 {
+                    player_stats.energy_points = (player_stats.energy_points + 1).min(3);
+                }
+            }
+        }
+    } else {
+        // 所有玩家能量都满时，重置计时器
+        regen_timer.timer.reset();
+    }
 }
 
 /// 只在第一关时生成玩家坦克

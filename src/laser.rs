@@ -217,7 +217,7 @@ fn start_charge(
     };
 
     // 检查蓝量是否足够（需要3点蓝量）
-    if player_stats.energy_blue_bar < 3 {
+    if player_stats.energy_points < 3 {
         return;
     }
 
@@ -317,7 +317,7 @@ fn fire_laser(
     };
 
     // 消耗整个蓝条
-    player_stats.energy_blue_bar = 0;
+    player_stats.energy_points = 0;
 
     // 计算激光发射方向
     let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;

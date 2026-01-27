@@ -157,14 +157,14 @@ pub fn handle_powerup_collision(
                         Some(StatType::Penetrate)
                     }
                     PowerUp::Repair => {
-                        if player_stats.life_red_bar < COMMANDER_LIFE_MAX {
-                            player_stats.life_red_bar += 1;
+                        if player_stats.life_points < COMMANDER_LIFE_MAX {
+                            player_stats.life_points += 1;
                         }
                         None // 修理道具不需要闪烁文字
                     }
                     PowerUp::Hamburger => {
-                        if commander_life.life_red_bar < COMMANDER_LIFE_MAX {
-                            commander_life.life_red_bar += 1;
+                        if commander_life.life_points < COMMANDER_LIFE_MAX {
+                            commander_life.life_points += 1;
                         }
                         None // 汉堡道具不影响玩家属性，不发送事件
                     }

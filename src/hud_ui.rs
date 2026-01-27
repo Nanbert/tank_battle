@@ -156,8 +156,8 @@ fn spawn_single_player_hud(
     track_chain: false,
     air_cushion: false,
     fire_shell: false,
-    life_red_bar: 0,
-    energy_blue_bar: 0,
+    life_points: 0,
+    energy_points: 0,
     score: 0,
 };
 let stats = player_info
@@ -397,7 +397,7 @@ let stats = player_info
     ));
 
     // 血条前景（红色）
-    let health_width = HUD_BAR_WIDTH * (stats.life_red_bar as f32 / 3.0);
+    let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / 3.0);
     commands.spawn((
         marker.clone(),
         HealthBar,
@@ -422,7 +422,7 @@ let stats = player_info
     ));
 
     // 蓝条前景（蓝色）
-    let blue_width = HUD_BAR_WIDTH * (stats.energy_blue_bar as f32 / 3.0);
+    let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / 3.0);
     commands.spawn((
         marker.clone(),
         BlueBar,
@@ -516,13 +516,13 @@ pub fn update_player1_hud(
         let color = sprite.color.to_srgba();
         if is_health_bar.is_some() && color.red > 0.5 {
             // 这是红色血条前景
-            let health_width = HUD_BAR_WIDTH * (stats.life_red_bar as f32 / 3.0);
+            let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / 3.0);
             sprite.custom_size = Some(Vec2::new(health_width, HUD_BAR_HEIGHT));
             // 更新位置以保持左对齐
             transform.translation.x = WINDOW_LEFT_X + 115.0 - HUD_BAR_WIDTH / 2.0 + health_width / 2.0;
         } else if is_blue_bar.is_some() && color.blue > 0.5 {
             // 这是蓝色蓝条前景
-            let blue_width = HUD_BAR_WIDTH * (stats.energy_blue_bar as f32 / 3.0);
+            let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / 3.0);
             sprite.custom_size = Some(Vec2::new(blue_width, HUD_BAR_HEIGHT));
             // 更新位置以保持左对齐
             transform.translation.x = WINDOW_LEFT_X + 115.0 - HUD_BAR_WIDTH / 2.0 + blue_width / 2.0;
@@ -595,13 +595,13 @@ pub fn update_player2_hud(
         let color = sprite.color.to_srgba();
         if is_health_bar.is_some() && color.red > 0.5 {
             // 这是红色血条前景
-            let health_width = HUD_BAR_WIDTH * (stats.life_red_bar as f32 / 3.0);
+            let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / 3.0);
             sprite.custom_size = Some(Vec2::new(health_width, HUD_BAR_HEIGHT));
             // 更新位置以保持左对齐
             transform.translation.x = WINDOW_RIGHT_X - 115.0 - HUD_BAR_WIDTH / 2.0 + health_width / 2.0;
         } else if is_blue_bar.is_some() && color.blue > 0.5 {
             // 这是蓝色蓝条前景
-            let blue_width = HUD_BAR_WIDTH * (stats.energy_blue_bar as f32 / 3.0);
+            let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / 3.0);
             sprite.custom_size = Some(Vec2::new(blue_width, HUD_BAR_HEIGHT));
             // 更新位置以保持左对齐
             transform.translation.x = WINDOW_RIGHT_X - 115.0 - HUD_BAR_WIDTH / 2.0 + blue_width / 2.0;
@@ -866,7 +866,7 @@ pub fn update_commander_health_bar(
     >,
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        let health_width = (commander_life.life_red_bar as f32 / 3.0) * COMMANDER_BAR_WIDTH;
+        let health_width = (commander_life.life_points as f32 / 3.0) * COMMANDER_BAR_WIDTH;
         sprite.custom_size = Some(Vec2::new(health_width, BAR_HEIGHT));
         transform.translation.x = original_pos.0 - (COMMANDER_BAR_WIDTH - health_width) / 2.0;
     }
@@ -914,7 +914,7 @@ pub fn handle_commander_death(
     mut has_handled: Local<bool>,
 ) {
     // 只在司令官生命值归零时执行一次
-    if commander_life.life_red_bar != 0 {
+    if commander_life.life_points != 0 {
         *has_handled = false;
         return;
     }

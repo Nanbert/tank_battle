@@ -51,7 +51,7 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
         .insert_resource(CommanderLife {
-            life_red_bar: COMMANDER_LIFE_MAX,
+            life_points: COMMANDER_LIFE_MAX,
         })
         .insert_resource(PlayerInfo::default())
         .insert_resource(EnemySpawnState::default())
@@ -201,7 +201,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::update_blue_bar_regen.run_if(in_state(GameState::Playing)),
+            player::recover_energy.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

@@ -37,7 +37,7 @@ pub fn check_game_over(
     }
 
     // 卫语句：司令官阵亡
-    if commander_life.life_red_bar == 0 {
+    if commander_life.life_points == 0 {
         spawn_game_over_timer(&mut commands);
         return;
     }
@@ -60,16 +60,16 @@ fn check_all_players_dead(player_info: &PlayerInfo, game_mode: &GameMode) -> boo
         GameMode::OnePlayer => player_info
             .players
             .get(&TankType::Player1)
-            .is_some_and(|p| p.life_red_bar == 0),
+            .is_some_and(|p| p.life_points == 0),
         GameMode::TwoPlayers => {
             player_info
                 .players
                 .get(&TankType::Player1)
-                .is_some_and(|p| p.life_red_bar == 0)
+                .is_some_and(|p| p.life_points == 0)
                 && player_info
                     .players
                     .get(&TankType::Player2)
-                    .is_some_and(|p| p.life_red_bar == 0)
+                    .is_some_and(|p| p.life_points == 0)
         }
     }
 }
@@ -85,32 +85,6 @@ fn spawn_game_over_timer(commands: &mut Commands) {
 /// 重置 `FadingOut` 资源的 alpha 值为 1.0
 pub fn reset_fading_out(mut fading_out: ResMut<FadingOut>) {
     fading_out.alpha = 1.0;
-}
-
-pub fn update_blue_bar_regen(
-    time: Res<Time>,
-    mut regen_timer: ResMut<BlueBarRegenTimer>,
-    mut player_info: ResMut<PlayerInfo>,
-) {
-    // 检查是否有玩家蓝条不满
-    let any_player_needs_regen = player_info.players.values().any(|p| p.energy_blue_bar < 3);
-
-    // 只有当有玩家蓝条不满时才更新计时器
-    if any_player_needs_regen {
-        regen_timer.timer.tick(time.delta());
-
-        // 当计时器触发时，恢复1点蓝条
-        if regen_timer.timer.just_finished() {
-            for player_stats in player_info.players.values_mut() {
-                if player_stats.energy_blue_bar < 3 {
-                    player_stats.energy_blue_bar = (player_stats.energy_blue_bar + 1).min(3);
-                }
-            }
-        }
-    } else {
-        // 所有玩家蓝条都满时，重置计时器
-        regen_timer.timer.reset();
-    }
 }
 
 pub fn update_menu_blink(
@@ -233,7 +207,7 @@ pub fn cleanup_playing_entities(
     stage_level.0 = 1;
 
     // 重置 Commander 生命值
-    commander_life.life_red_bar = 3;
+    commander_life.life_points = 3;
 
     // 重置游戏实体生成标志
     entities_spawned.0 = false;
@@ -261,7 +235,7 @@ pub fn check_stage_complete(
 
     // 卫语句：玩家或 Commander 已阵亡
     let all_players_dead = check_all_players_dead(&player_info, &game_mode);
-    if all_players_dead || commander_life.life_red_bar == 0 {
+    if all_players_dead || commander_life.life_points == 0 {
         return;
     }
 

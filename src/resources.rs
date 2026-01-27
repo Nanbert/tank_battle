@@ -124,8 +124,8 @@ pub struct PlayerStats {
     pub track_chain: bool,
     pub air_cushion: bool,
     pub fire_shell: bool,
-    pub life_red_bar: usize,    // max 3
-    pub energy_blue_bar: usize, // max 3
+    pub life_points: usize,    // max 3
+    pub energy_points: usize, // max 3
     pub score: usize,
 }
 
@@ -186,12 +186,12 @@ impl Default for BlueBarRegenTimer {
 // Commander 生命值资源
 #[derive(Resource)]
 pub struct CommanderLife {
-    pub life_red_bar: usize, // max 3
+    pub life_points: usize, // max 3
 }
 
 impl Default for CommanderLife {
     fn default() -> Self {
-        Self { life_red_bar: 3 }
+        Self { life_points: 3 }
     }
 }
 

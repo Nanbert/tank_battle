@@ -755,11 +755,11 @@ fn damage_player_tank(
     player_index: TankType,
     tank_entity: Entity,
 ) {
-    if player_stats.life_red_bar > 0 {
-        player_stats.life_red_bar -= 1;
+    if player_stats.life_points > 0 {
+        player_stats.life_points -= 1;
     }
 
-    if player_stats.life_red_bar == 0 {
+    if player_stats.life_points == 0 {
         if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
             effect_events.write(EffectEvent::Explosion {
                 position: tank_transform.translation,
@@ -885,12 +885,12 @@ pub fn bullet_commander_collision_system(
                 });
 
                 // 减少司令官生命值
-                if commander_life.life_red_bar > 0 {
-                    commander_life.life_red_bar -= 1;
+                if commander_life.life_points > 0 {
+                    commander_life.life_points -= 1;
                 }
 
                 // 检查是否是致命伤（生命值归零）
-                if commander_life.life_red_bar == 0 {
+                if commander_life.life_points == 0 {
                     // 播放死亡音效
                     let death_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_DEATH);
                     commands.spawn(AudioPlayer::new(death_sound));
