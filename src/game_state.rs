@@ -4,13 +4,10 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::audio::Volume;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use rand::Rng;
 
 use crate::constants::*;
-use crate::powerup;
 use crate::resources::*;
 pub fn handle_game_over_delay(
     time: Res<Time>,
@@ -286,6 +283,11 @@ pub fn reset_player_positions(
     >,
 ) {
     for (mut transform, mut velocity, mut character_controller, player_tank) in &mut player_tanks {
+        // 重置物理引擎速度和位移累积
+        velocity.linvel = Vec2::ZERO;
+        velocity.angvel = 0.0;
+        character_controller.translation = None;
+
         match player_tank.tank_type {
             TankType::Player1 => {
                 // 玩家1出生位置：左侧
@@ -302,11 +304,6 @@ pub fn reset_player_positions(
             TankType::Enemy => {}
         }
         transform.rotation = Quat::IDENTITY;
-
-        // 重置物理引擎速度和位移累积
-        velocity.linvel = Vec2::ZERO;
-        velocity.angvel = 0.0;
-        character_controller.translation = None;
     }
 }
 
@@ -314,287 +311,6 @@ pub fn reset_for_next_stage(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
-}
-
-pub fn play_sea_ambience(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    player_tanks: Query<&Transform, With<PlayerTank>>,
-    seas: Query<&Transform, With<Sea>>,
-    ambience_players: Query<(Entity, &mut AudioPlayer), With<SeaAmbiencePlayer>>,
-) {
-    // 检查是否有玩家坦克在海附近
-    let mut is_near_sea = false;
-
-    for player_transform in player_tanks.iter() {
-        for sea_transform in seas.iter() {
-            let distance = player_transform
-                .translation
-                .distance(sea_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_sea = true;
-                break;
-            }
-        }
-        if is_near_sea {
-            break;
-        }
-    }
-
-    if is_near_sea {
-        // 如果在海附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            let sea_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_SEA_AMBIENCE);
-            commands.spawn((
-                AudioPlayer::new(sea_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
-                SeaAmbiencePlayer,
-            ));
-        }
-    } else {
-        // 如果不在海附近但有播放音效，则停止
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
-
-pub fn animate_commander_music(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<CommanderMusicAnimation>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
-    }
-}
-
-pub fn play_commander_music(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    player_tanks: Query<&Transform, With<PlayerTank>>,
-    commander: Query<&Transform, With<Commander>>,
-    ambience_players: Query<(Entity, &mut AudioPlayer), With<CommanderAmbiencePlayer>>,
-) {
-    // 检查是否有玩家坦克在司令官附近
-    let mut is_near_commander = false;
-
-    for player_transform in player_tanks.iter() {
-        for commander_transform in commander.iter() {
-            let distance = player_transform
-                .translation
-                .distance(commander_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_commander = true;
-                break;
-            }
-        }
-        if is_near_commander {
-            break;
-        }
-    }
-
-    if is_near_commander {
-        // 如果在司令官附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            // 从 commander_music_000 到 commander_music_003 中随机选择
-            let music_files = [
-                SOUND_COMMANDER_MUSIC_000,
-                SOUND_COMMANDER_MUSIC_001,
-                SOUND_COMMANDER_MUSIC_002,
-                SOUND_COMMANDER_MUSIC_003,
-            ];
-            let mut rng = rand::rng();
-            let random_music = music_files[rng.random_range(0..music_files.len())];
-
-            let commander_music_sound: Handle<AudioSource> = asset_server.load(random_music);
-            commands.spawn((
-                AudioPlayer::new(commander_music_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_COMMANDER_MUSIC)),
-                CommanderAmbiencePlayer,
-            ));
-        }
-    } else {
-        // 如果不在司令官附近但有播放音效，则停止
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
-
-pub fn play_tree_ambience(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    player_tanks: Query<&Transform, With<PlayerTank>>,
-    forests: Query<&Transform, With<Forest>>,
-    ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
-) {
-    // 检查是否有玩家坦克在森林附近
-    let mut is_near_forest = false;
-
-    for player_transform in player_tanks.iter() {
-        for forest_transform in forests.iter() {
-            let distance = player_transform
-                .translation
-                .distance(forest_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_forest = true;
-                break;
-            }
-        }
-        if is_near_forest {
-            break;
-        }
-    }
-
-    if is_near_forest {
-        // 如果在森林附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            let tree_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_TREE_AMBIENCE);
-            commands.spawn((
-                AudioPlayer::new(tree_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
-                TreeAmbiencePlayer,
-            ));
-        }
-    } else {
-        // 如果不在森林附近但有播放音效，则停止
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
-
-pub fn update_air_cushion_effect(
-    mut commands: Commands,
-
-    asset_server: Res<AssetServer>,
-
-    player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
-
-    bubble_effects: Query<&crate::constants::BubbleEffect>,
-
-    player_info: Res<PlayerInfo>,
-) {
-    for (entity, children, player_tank) in player_tanks.iter() {
-        // 检查玩家是否有 air_cushion 能力
-
-        let has_air_cushion = player_info
-            .players
-            .get(&player_tank.tank_type)
-            .is_some_and(|stats| stats.air_cushion);
-
-        if has_air_cushion {
-            // 检查是否已经有气泡特效子实体
-
-            let has_bubble_sprite = children.is_some_and(|children| {
-                children.iter().any(|child| bubble_effects.contains(child))
-            });
-
-            if !has_bubble_sprite {
-                // 加载气泡纹理并缩放到 100x100
-
-                let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
-
-                // 创建气泡特效实体
-
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        Sprite {
-                            image: bubble_texture,
-
-                            custom_size: Some(Vec2::new(powerup::POWERUP_BUBBLE_SIZE, powerup::POWERUP_BUBBLE_SIZE)),
-
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, Z_DEFAULT), // 在坦克中心
-                        crate::constants::BubbleEffect,
-                    ));
-                });
-            }
-        } else {
-            // 移除所有气泡特效子实体
-
-            if let Some(children) = children {
-                for child in children.iter() {
-                    if bubble_effects.contains(child) {
-                        let () = commands.entity(child).try_despawn();
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// 处理司令官阵亡时更换纹理和头像
-/// 处理司令官阵亡时更换纹理和头像
-pub fn handle_commander_death(
-    asset_server: Res<AssetServer>,
-    commander_life: Res<CommanderLife>,
-    mut queries: ParamSet<(
-        Query<&mut Sprite, With<Commander>>,
-        Query<&mut Sprite, With<PlayerAvatar>>,
-        Query<&mut AnimationTimer, With<Commander>>,
-        Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
-    )>,
-    mut has_handled: Local<bool>,
-) {
-    // 只在司令官生命值归零时执行一次
-    if commander_life.life_red_bar != 0 {
-        *has_handled = false;
-        return;
-    }
-
-    // 如果已经处理过，跳过
-    if *has_handled {
-        return;
-    }
-
-    *has_handled = true;
-
-    // 更换司令官纹理为死亡纹理
-    for mut sprite in &mut queries.p0() {
-        sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
-        // 移除纹理图集，因为死亡纹理是单张图片
-        sprite.texture_atlas = None;
-    }
-
-    // 停止司令官动画
-    for mut timer in &mut queries.p2() {
-        timer.pause();
-    }
-
-    // 停止司令官音乐动画
-    for mut timer in &mut queries.p3() {
-        timer.pause();
-    }
-
-    // 更换所有玩家头像为死亡头像
-    for mut sprite in &mut queries.p1() {
-        sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
-        // 移除纹理图集，因为死亡头像纹理是单张图片
-        sprite.texture_atlas = None;
-    }
 }
 
 // 文本更新函数类型

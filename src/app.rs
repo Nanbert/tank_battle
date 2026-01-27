@@ -80,6 +80,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StartScreen),
             (
+                player::despawn_players,
                 game_state::cleanup_playing_entities,
                 hud_ui::despawn_hud,
                 game_state::reset_fading_out,
@@ -114,6 +115,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StageIntro),
             (
+                player::spawn_players_if_first_stage,
                 terrain::respawn_terrain_for_next_stage,
                 powerup::despawn_powerups,
                 powerup::spawn_power_ups,
@@ -167,7 +169,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            player::handle_player_avatar_death.run_if(in_state(GameState::Playing)),
+            hud_ui::handle_player_avatar_death.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -255,19 +257,19 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::animate_commander_music.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<CommanderMusicAnimation>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            game_state::play_sea_ambience.run_if(in_state(GameState::Playing)),
+            effects::play_sea_ambience.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            game_state::play_commander_music.run_if(in_state(GameState::Playing)),
+            effects::play_commander_ambience.run_if(in_state(GameState::Playing)),
         ) // 测试司令官音乐
         .add_systems(
             Update,
-            game_state::play_tree_ambience.run_if(in_state(GameState::Playing)),
+            effects::play_tree_ambience.run_if(in_state(GameState::Playing)),
         ) // 测试森林环绕声
         .add_systems(
             Update,
@@ -311,7 +313,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::handle_commander_death.run_if(in_state(GameState::Playing)),
+            hud_ui::handle_commander_death.run_if(in_state(GameState::Playing)),
         ) // 测试司令官阵亡处理
         .add_systems(
             Update,
@@ -358,7 +360,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::update_air_cushion_effect.run_if(in_state(GameState::Playing)),
+            effects::update_air_cushion_effect.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

@@ -9,8 +9,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{
-    EnemySpawnState, GameEntitiesSpawned, GameMode, PlayerInfo, PlayerStats, StageLevel,
-    TerrainAtlasLayouts,
+    EnemySpawnState, GameEntitiesSpawned, StageLevel, TerrainAtlasLayouts,
 };
 
 /// 生成墙壁
@@ -696,9 +695,7 @@ pub fn spawn_game_entities_if_needed(
     level_assets: Res<crate::levels::LevelAssets>,
     mut clear_color: ResMut<ClearColor>,
     _enemy_spawn_state: Res<EnemySpawnState>,
-    mut player_info: ResMut<PlayerInfo>,
     stage_level: Res<StageLevel>,
-    game_mode: Res<GameMode>,
     mut entities_spawned: ResMut<GameEntitiesSpawned>,
 ) {
     // 如果游戏实体已经生成，则跳过
@@ -731,108 +728,5 @@ pub fn spawn_game_entities_if_needed(
         &mut texture_atlas_layouts,
         &atlas_layouts,
     );
-
-    // 加载玩家坦克纹理和创建精灵图
-    let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
-    let player2_texture = asset_server.load(TEXTURE_PLAYER_TANK2);
-    let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
-    let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
-    let player_animation_indices = AnimationIndices { first: 0, last: 1 };
-
-    // 根据游戏模式生成玩家
-
-    match *game_mode {
-        GameMode::OnePlayer => {
-            // 单人模式：只生成玩家1
-
-            let _player1_tank_entity = crate::player::spawn_player_tank(
-                &mut commands,
-                player1_texture,
-                player_texture_atlas_layout,
-                player_animation_indices,
-                TankType::Player1,
-            );
-
-            // 初始化玩家1信息
-
-            player_info.players.insert(
-                TankType::Player1,
-                PlayerStats {
-                    name: "Li Yun Long".to_string(),
-                    speed: INITIAL_ATTRIBUTE_VALUE,
-                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
-                    protection: INITIAL_ATTRIBUTE_VALUE,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
-                    score: 0,
-                },
-            );
-        }
-
-        GameMode::TwoPlayers => {
-            // 双人模式：生成玩家1和玩家2
-
-            let _player1_tank_entity = crate::player::spawn_player_tank(
-                &mut commands,
-                player1_texture,
-                player_texture_atlas_layout.clone(),
-                player_animation_indices,
-                TankType::Player1,
-            );
-
-            let _player2_tank_entity = crate::player::spawn_player_tank(
-                &mut commands,
-                player2_texture,
-                player_texture_atlas_layout,
-                player_animation_indices,
-                TankType::Player2,
-            );
-
-            // 初始化玩家1信息
-
-            player_info.players.insert(
-                TankType::Player1,
-                PlayerStats {
-                    name: "Li Yun Long".to_string(),
-                    speed: 40,
-                    fire_speed: 40,
-                    protection: 40,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
-                    score: 0,
-                },
-            );
-
-            // 初始化玩家2信息
-            player_info.players.insert(
-                TankType::Player2,
-                PlayerStats {
-                    name: "Chu Yun Fei".to_string(),
-                    speed: 40,
-                    fire_speed: 40,
-                    protection: 40,
-                    shells: 1,
-                    penetrate: false,
-                    track_chain: false,
-                    air_cushion: false,
-                    fire_shell: false,
-                    life_red_bar: 3,
-                    energy_blue_bar: 3,
-                    score: 0,
-                },
-            );
-        }
-    }
 }
 

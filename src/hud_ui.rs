@@ -2,6 +2,7 @@
 //!
 //! 处理游戏内的 HUD 显示，包括玩家状态、血条、蓝条等
 
+use bevy::asset::AssetPath;
 use bevy::prelude::*;
 
 #[allow(clippy::wildcard_imports)]
@@ -880,6 +881,73 @@ pub fn update_enemy_count_display(
 
     for mut text in &mut query {
         text.0 = format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count);
+    }
+}
+
+/// 处理玩家头像死亡状态
+pub fn handle_player_avatar_death(
+    asset_server: Res<AssetServer>,
+    mut query: Query<(&mut Sprite, Has<PlayerDead>), With<PlayerAvatar>>,
+) {
+    let avatar_death_path = AssetPath::from("texture/avatar_death.png");
+    for (mut sprite, is_dead) in &mut query {
+        if is_dead && sprite.image.path() != Some(&avatar_death_path) {
+            // 切换到死亡头像纹理
+            let avatar_dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_DEATH);
+            sprite.image = avatar_dead_texture.clone();
+            sprite.texture_atlas = None; // 死亡头像不需要动画
+            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
+        }
+    }
+}
+
+/// 处理司令官阵亡时更换纹理和头像
+pub fn handle_commander_death(
+    asset_server: Res<AssetServer>,
+    commander_life: Res<CommanderLife>,
+    mut queries: ParamSet<(
+        Query<&mut Sprite, With<Commander>>,
+        Query<&mut Sprite, With<PlayerAvatar>>,
+        Query<&mut AnimationTimer, With<Commander>>,
+        Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
+    )>,
+    mut has_handled: Local<bool>,
+) {
+    // 只在司令官生命值归零时执行一次
+    if commander_life.life_red_bar != 0 {
+        *has_handled = false;
+        return;
+    }
+
+    // 如果已经处理过，跳过
+    if *has_handled {
+        return;
+    }
+
+    *has_handled = true;
+
+    // 更换司令官纹理为死亡纹理
+    for mut sprite in &mut queries.p0() {
+        sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
+        // 移除纹理图集，因为死亡纹理是单张图片
+        sprite.texture_atlas = None;
+    }
+
+    // 停止司令官动画
+    for mut timer in &mut queries.p2() {
+        timer.pause();
+    }
+
+    // 停止司令官音乐动画
+    for mut timer in &mut queries.p3() {
+        timer.pause();
+    }
+
+    // 更换所有玩家头像为死亡头像
+    for mut sprite in &mut queries.p1() {
+        sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
+        // 移除纹理图集，因为死亡头像纹理是单张图片
+        sprite.texture_atlas = None;
     }
 }
 

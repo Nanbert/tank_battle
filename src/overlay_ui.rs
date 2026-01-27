@@ -56,21 +56,7 @@ pub fn fade_out_screen(
     // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
         next_state.set(GameState::StageIntro);
-        cleanup_start_screen_ui(commands, sprite_query, text_query);
-    }
-}
-
-/// 清理开始界面的UI元素
-pub fn cleanup_start_screen_ui(
-    mut commands: Commands,
-    sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
-    text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
-) {
-    for (entity, _) in sprite_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
-    for (entity, _, _) in text_query.iter() {
-        let () = commands.entity(entity).try_despawn();
+        crate::menus_ui::cleanup_start_screen_ui(commands, sprite_query, text_query);
     }
 }
 

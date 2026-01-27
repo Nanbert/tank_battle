@@ -4,7 +4,6 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::asset::AssetPath;
 use bevy::audio::Volume;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -14,8 +13,8 @@ use crate::effects;
 use crate::constants::*;
 use crate::powerup;
 use crate::resources::{
-    BarrierDamageTracker, DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged,
-    RecallTimer, RecallTimers, StatType,
+    BarrierDamageTracker, DashDamageTracker, DashTimer, DashTimers, GameMode, PlayerInfo,
+    PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StageLevel, StatType,
 };
 
 /// 生成玩家坦克
@@ -1167,19 +1166,158 @@ pub fn handle_barrier_collision(
     }
 }
 
-/// 处理玩家头像死亡状态
-pub fn handle_player_avatar_death(
-    asset_server: Res<AssetServer>,
-    mut query: Query<(&mut Sprite, Has<PlayerDead>), With<PlayerAvatar>>,
+/// 生成玩家坦克和信息
+pub fn spawn_players(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    game_mode: GameMode,
+    player_info: &mut ResMut<PlayerInfo>,
 ) {
-    let avatar_death_path = AssetPath::from("texture/avatar_death.png");
-    for (mut sprite, is_dead) in &mut query {
-        if is_dead && sprite.image.path() != Some(&avatar_death_path) {
-            // 切换到死亡头像纹理
-            let avatar_dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_DEATH);
-            sprite.image = avatar_dead_texture.clone();
-            sprite.texture_atlas = None; // 死亡头像不需要动画
-            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
+    // 加载玩家坦克纹理和创建精灵图
+    let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
+    let player2_texture = asset_server.load(TEXTURE_PLAYER_TANK2);
+    let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
+    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
+    let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
+    let player_animation_indices = AnimationIndices { first: 0, last: 1 };
+
+    // 根据游戏模式生成玩家
+    match game_mode {
+        GameMode::OnePlayer => {
+            // 单人模式：只生成玩家1
+            let _player1_tank_entity = spawn_player_tank(
+                commands,
+                player1_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
+                TankType::Player1,
+            );
+
+            // 初始化玩家1信息
+            player_info.players.insert(
+                TankType::Player1,
+                PlayerStats {
+                    name: "Li Yun Long".to_string(),
+                    speed: INITIAL_ATTRIBUTE_VALUE,
+                    fire_speed: INITIAL_ATTRIBUTE_VALUE,
+                    protection: INITIAL_ATTRIBUTE_VALUE,
+                    shells: 1,
+                    penetrate: false,
+                    track_chain: false,
+                    air_cushion: false,
+                    fire_shell: false,
+                    life_red_bar: 3,
+                    energy_blue_bar: 3,
+                    score: 0,
+                },
+            );
+        }
+
+        GameMode::TwoPlayers => {
+            // 双人模式：生成玩家1和玩家2
+            let _player1_tank_entity = spawn_player_tank(
+                commands,
+                player1_texture,
+                player_texture_atlas_layout.clone(),
+                player_animation_indices,
+                TankType::Player1,
+            );
+
+            let _player2_tank_entity = spawn_player_tank(
+                commands,
+                player2_texture,
+                player_texture_atlas_layout,
+                player_animation_indices,
+                TankType::Player2,
+            );
+
+            // 初始化玩家1信息
+            player_info.players.insert(
+                TankType::Player1,
+                PlayerStats {
+                    name: "Li Yun Long".to_string(),
+                    speed: 40,
+                    fire_speed: 40,
+                    protection: 40,
+                    shells: 1,
+                    penetrate: false,
+                    track_chain: false,
+                    air_cushion: false,
+                    fire_shell: false,
+                    life_red_bar: 3,
+                    energy_blue_bar: 3,
+                    score: 0,
+                },
+            );
+
+            // 初始化玩家2信息
+            player_info.players.insert(
+                TankType::Player2,
+                PlayerStats {
+                    name: "Chu Yun Fei".to_string(),
+                    speed: 40,
+                    fire_speed: 40,
+                    protection: 40,
+                    shells: 1,
+                    penetrate: false,
+                    track_chain: false,
+                    air_cushion: false,
+                    fire_shell: false,
+                    life_red_bar: 3,
+                    energy_blue_bar: 3,
+                    score: 0,
+                },
+            );
         }
     }
+}
+
+/// 销毁所有玩家坦克
+pub fn despawn_players(
+    mut commands: Commands,
+    player_tanks: Query<Entity, With<PlayerTank>>,
+    mut player_info: ResMut<PlayerInfo>,
+) {
+    // 销毁所有玩家坦克
+    for entity in player_tanks.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+
+    // 清空玩家信息
+    player_info.players.clear();
+}
+
+/// 只在第一关时生成玩家坦克
+pub fn spawn_players_if_first_stage(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    game_mode: Res<GameMode>,
+    mut player_info: ResMut<PlayerInfo>,
+    stage_level: Res<StageLevel>,
+    existing_players: Query<Entity, With<PlayerTank>>,
+) {
+    // 只在第一关时生成玩家
+    if stage_level.0 != 1 {
+        return;
+    }
+
+    // 防御性编程：先清理可能存在的旧玩家坦克和信息
+    for entity in existing_players.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+    player_info.players.clear();
+
+    // 生成新玩家
+    spawn_players(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        match *game_mode {
+            GameMode::OnePlayer => GameMode::OnePlayer,
+            GameMode::TwoPlayers => GameMode::TwoPlayers,
+        },
+        &mut player_info,
+    );
 }
