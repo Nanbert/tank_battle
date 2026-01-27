@@ -390,8 +390,8 @@ pub fn handle_game_over_input(
     if keyboard_input.just_pressed(KeyCode::Space) {
         match menu_selection.selected_index {
             0 => {
-                // Restart: 重置游戏状态并重新开始
-                next_state.set(GameState::Playing);
+                // Restart: 进入关卡介绍页面
+                next_state.set(GameState::StageIntro);
             }
             1 => {
                 // Back to Menu: 返回开始界面

@@ -21,7 +21,6 @@ pub const SOUND_HIT: &str = "music/hit_sound.ogg";
 pub const SOUND_LASER_CHARGE: &str = "music/laser_charge.ogg";
 pub const SOUND_LASER: &str = "music/laser.ogg";
 pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
-pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 
@@ -312,37 +311,6 @@ pub const STEEL_COLLIDER_HEIGHT: f32 = 46.0;
 #[derive(Component)]
 pub struct Commander;
 
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
-pub enum PowerUp {
-    SpeedUp,
-    Protection,
-    FireSpeed,
-    FireShell,
-    TrackChain,
-    Penetrate,
-    Repair,
-    Hamburger,
-    AirCushion,
-    Shell,
-}
-
-impl PowerUp {
-    pub const fn texture_path(self) -> &'static str {
-        match self {
-            Self::SpeedUp => "power_up/speed_up.png",
-            Self::Protection => "power_up/protection.png",
-            Self::FireSpeed => "power_up/fire_speed.png",
-            Self::FireShell => "power_up/fire_shell.png",
-            Self::TrackChain => "power_up/track_chain.png",
-            Self::Penetrate => "power_up/penetrate.png",
-            Self::Repair => "power_up/repair.png",
-            Self::Hamburger => "power_up/hamburger.png",
-            Self::AirCushion => "power_up/air_cushion.png",
-            Self::Shell => "power_up/shell.png",
-        }
-    }
-}
-
 #[derive(Component)]
 pub struct HealthBar;
 
@@ -528,10 +496,6 @@ pub const BAR_TOTAL_WIDTH: f32 = 160.0; // 血条/蓝条总宽度
 pub const BAR_HEIGHT: f32 = 10.0; // 血条/蓝条高度
 pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度
 
-// 道具
-pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0; // 道具碰撞检测距离
-pub const POWERUP_BUBBLE_SIZE: f32 = 100.0; // 气泡特效尺寸
-
 // ==================== 速度和角度常量 ====================
 pub const ANGLE_DIFF_THRESHOLD: f32 = 0.01; // 角度差阈值
 pub const ANGLE_DIFF_RESET_THRESHOLD: f32 = 0.1; // 角度差阈值（重置计时器）
@@ -546,7 +510,6 @@ pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数
 pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01; // 敌方坦克射击概率
 pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4; // 随机转向概率
-pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20; // 道具属性增加量
 pub const INITIAL_ATTRIBUTE_VALUE: usize = 40; // 初始属性值
 pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
 pub const DASH_DAMAGE_COST_HIGH: usize = 2; // 高扣血量

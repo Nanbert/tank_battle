@@ -1,14 +1,59 @@
 //! 道具系统
 //!
-//! 处理道具动画和玩家拾取道具的碰撞检测
+//! 处理道具生成、动画和玩家拾取道具的碰撞检测
 
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType};
+use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType, StageLevel};
+
+/// 道具碰撞检测距离
+pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
+
+/// 气泡特效尺寸
+pub const POWERUP_BUBBLE_SIZE: f32 = 100.0;
+
+/// 道具属性增加量
+pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;
+
+/// 道具音效路径
+pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
+
+/// 道具类型枚举
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum PowerUp {
+    SpeedUp,
+    Protection,
+    FireSpeed,
+    FireShell,
+    TrackChain,
+    Penetrate,
+    Repair,
+    Hamburger,
+    AirCushion,
+    Shell,
+}
+
+impl PowerUp {
+    pub const fn texture_path(self) -> &'static str {
+        match self {
+            Self::SpeedUp => "power_up/speed_up.png",
+            Self::Protection => "power_up/protection.png",
+            Self::FireSpeed => "power_up/fire_speed.png",
+            Self::FireShell => "power_up/fire_shell.png",
+            Self::TrackChain => "power_up/track_chain.png",
+            Self::Penetrate => "power_up/penetrate.png",
+            Self::Repair => "power_up/repair.png",
+            Self::Hamburger => "power_up/hamburger.png",
+            Self::AirCushion => "power_up/air_cushion.png",
+            Self::Shell => "power_up/shell.png",
+        }
+    }
+}
 
 /// 道具动画系统
 pub fn animate_powerup(
@@ -153,5 +198,103 @@ pub fn handle_powerup_collision(
                 }
             }
         }
+    }
+}
+
+/// 生成道具
+///
+/// 根据关卡选择道具类型，第一关强制生成 air_cushion 道具，其他关卡随机选择。
+/// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
+pub fn spawn_power_ups(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    stage_level: Res<StageLevel>,
+) {
+    let powerup_type = if stage_level.0 == 1 {
+        // 第一关强制生成 air_cushion 道具
+        PowerUp::AirCushion
+    } else {
+        // 其他关卡随机选择一个道具类型
+        let powerup_types = [
+            PowerUp::SpeedUp,
+            PowerUp::Protection,
+            PowerUp::FireSpeed,
+            PowerUp::FireShell,
+            PowerUp::TrackChain,
+            PowerUp::Penetrate,
+            PowerUp::Repair,
+            PowerUp::Hamburger,
+            PowerUp::AirCushion,
+            PowerUp::Shell,
+        ];
+
+        let mut rng = rand::rng();
+        powerup_types[rng.random_range(0..powerup_types.len())]
+    };
+
+    // 定义禁止区域
+    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
+    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
+    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
+    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
+
+    // 在随机位置生成道具（在地图范围内），避开禁止区域
+    let mut rng = rand::rng();
+    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
+    let position = Vec3::new(x, y, 0.0);
+
+    spawn_powerup_batch(
+        &mut commands,
+        &asset_server,
+        &mut texture_atlas_layouts,
+        powerup_type,
+        powerup_type.texture_path(),
+        &[position],
+    );
+}
+
+/// 批量生成道具
+///
+/// 在指定位置生成多个相同类型的道具。
+///
+/// 参数：
+/// - commands: 命令队列
+/// - asset_server: 资源服务器
+/// - texture_atlas_layouts: 纹理图集布局资源
+/// - powerup_type: 道具类型
+/// - texture_path: 道具纹理路径
+/// - positions: 生成位置数组
+fn spawn_powerup_batch(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    powerup_type: PowerUp,
+    texture_path: &'static str,
+    positions: &[Vec3],
+) {
+    let texture: Handle<Image> = asset_server.load(texture_path);
+    let tile_size = UVec2::new(87, 69);
+    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
+    let animation_indices = AnimationIndices { first: 0, last: 2 };
+
+    for pos in positions {
+        commands.spawn((
+            powerup_type,
+            PlayingEntity,
+            Sprite::from_atlas_image(
+                texture.clone(),
+                TextureAtlas {
+                    layout: texture_atlas_layout.clone(),
+                    index: animation_indices.first,
+                },
+            ),
+            Transform::from_xyz(pos.x, pos.y, 0.8), // z=0.8 使道具高于除了树之外的所有图层
+            animation_indices,
+            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+        ));
     }
 }

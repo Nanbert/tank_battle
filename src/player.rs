@@ -12,10 +12,87 @@ use bevy_rapier2d::prelude::*;
 use crate::effects;
 
 use crate::constants::*;
+use crate::powerup;
 use crate::resources::{
     BarrierDamageTracker, DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged,
     RecallTimer, RecallTimers, StatType,
 };
+
+/// 生成玩家坦克
+pub fn spawn_player_tank(
+    commands: &mut Commands,
+    texture: Handle<Image>,
+    texture_atlas_layout: Handle<TextureAtlasLayout>,
+    animation_indices: AnimationIndices,
+    tank_type: TankType,
+) -> Entity {
+    let (x_pos, custom_size, collider_half) = match tank_type {
+        TankType::Player1 => (
+            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
+            PLAYER_COLLIDER_HALF,
+        ),
+        TankType::Player2 => (
+            TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
+            Vec2::new(80.0, 90.0),
+            TANK_WIDTH / 2.0,
+        ),
+        TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
+    };
+
+    commands
+        .spawn_empty()
+        .insert(PlayerTank { tank_type })
+        .insert(PlayingEntity)
+        .insert(TankFireConfig::default())
+        .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
+        .insert(TargetRotation {
+            angle: 0.0_f32.to_radians(),
+        })
+        .insert(Sprite {
+            image: texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: texture_atlas_layout,
+                index: animation_indices.first,
+            }),
+            custom_size: Some(custom_size),
+            ..default()
+        })
+        .insert(Transform::from_xyz(
+            x_pos,
+            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+            0.0,
+        ))
+        .insert(Velocity {
+            linvel: Vec2::default(),
+            angvel: 0.0,
+        })
+        .insert(animation_indices)
+        .insert(AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_ENEMY_MOVE,
+            TimerMode::Repeating,
+        )))
+        .insert(RigidBody::KinematicPositionBased)
+        .insert(Collider::cuboid(collider_half, collider_half))
+        .insert(ActiveEvents::COLLISION_EVENTS)
+        .insert(
+            ActiveCollisionTypes::default()
+                | ActiveCollisionTypes::KINEMATIC_STATIC
+                | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+        )
+        .insert(LockedAxes::ROTATION_LOCKED)
+        .insert(KinematicCharacterController {
+            offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
+            filter_groups: None,
+            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
+                max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
+                min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
+                include_dynamic_bodies: false,
+            }),
+            ..default()
+        })
+        .id()
+}
 
 /// 生成玩家1坦克
 pub fn move_player_tank(
@@ -1069,10 +1146,10 @@ pub fn handle_barrier_collision(
                     {
                         player_stats.speed = player_stats
                             .speed
-                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
+                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
                         player_stats.protection = player_stats
                             .protection
-                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
+                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
 
                         // 发送 speed 和 protection 变更事件
                         stat_changed_events.write(PlayerStatChanged {

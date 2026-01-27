@@ -81,7 +81,7 @@ pub fn register_game_systems(app: &mut App) {
             OnEnter(GameState::StartScreen),
             (
                 game_state::cleanup_playing_entities,
-                hud_ui::despawn_player_hud,
+                hud_ui::despawn_hud,
                 game_state::reset_fading_out,
                 menus_ui::spawn_start_screen,
             )
@@ -115,6 +115,9 @@ pub fn register_game_systems(app: &mut App) {
             OnEnter(GameState::StageIntro),
             (
                 terrain::respawn_terrain_for_next_stage,
+                powerup::spawn_power_ups,
+                hud_ui::spawn_hud,
+                hud_ui::update_stage_text,
                 game_state::reset_player_positions,
                 game_state::reset_for_next_stage,
                 overlay_ui::spawn_stage_intro,
@@ -128,12 +131,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(OnExit(GameState::StageIntro), overlay_ui::despawn_stage_intro)
         .add_systems(
             OnEnter(GameState::Playing),
-            (
-                terrain::spawn_game_entities_if_needed,
-                terrain::update_stage_text,
-                hud_ui::spawn_player_hud,
-            )
-                .chain(),
+            terrain::spawn_game_entities_if_needed,
         )
         .add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
         .add_systems(OnExit(GameState::Paused), (overlay_ui::despawn_pause_ui,))
@@ -143,7 +141,7 @@ pub fn register_game_systems(app: &mut App) {
             (
                 overlay_ui::despawn_game_over_ui,
                 game_state::cleanup_playing_entities,
-                hud_ui::despawn_player_hud,
+                hud_ui::despawn_hud,
             ),
         )
         .add_systems(

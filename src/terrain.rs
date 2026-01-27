@@ -1,14 +1,14 @@
 //! 地形和实体生成模块
 //!
-//! 处理墙壁、地图地形、指挥官、玩家坦克、道具等实体生成
+//! 处理墙壁、地图地形、指挥官、玩家坦克等实体生成
 
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use rand::Rng;
 
 use crate::constants::*;
+use crate::powerup::PowerUp;
 use crate::resources::{
     EnemySpawnState, GameEntitiesSpawned, GameMode, PlayerInfo, PlayerStats, StageLevel,
     TerrainAtlasLayouts,
@@ -115,14 +115,6 @@ pub fn respawn_terrain_for_next_stage(
         &asset_server,
         &mut texture_atlas_layouts,
         &atlas_layouts,
-    );
-
-    // 生成新关卡的道具
-    spawn_power_ups(
-        &mut commands,
-        &asset_server,
-        &mut texture_atlas_layouts,
-        &stage_level,
     );
 }
 
@@ -699,81 +691,6 @@ fn spawn_commander(
     ));
 }
 
-fn spawn_player_tank(
-    commands: &mut Commands,
-    texture: Handle<Image>,
-    texture_atlas_layout: Handle<TextureAtlasLayout>,
-    animation_indices: AnimationIndices,
-    tank_type: TankType,
-) -> Entity {
-    let (x_pos, custom_size, collider_half) = match tank_type {
-        TankType::Player1 => (
-            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
-            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
-            PLAYER_COLLIDER_HALF,
-        ),
-        TankType::Player2 => (
-            TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
-            Vec2::new(80.0, 90.0),
-            TANK_WIDTH / 2.0,
-        ),
-        TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
-    };
-
-    commands
-        .spawn_empty()
-        .insert(PlayerTank { tank_type })
-        .insert(PlayingEntity)
-        .insert(TankFireConfig::default())
-        .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation {
-            angle: 0.0_f32.to_radians(),
-        })
-        .insert(Sprite {
-            image: texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: animation_indices.first,
-            }),
-            custom_size: Some(custom_size),
-            ..default()
-        })
-        .insert(Transform::from_xyz(
-            x_pos,
-            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-            0.0,
-        ))
-        .insert(Velocity {
-            linvel: Vec2::default(),
-            angvel: 0.0,
-        })
-        .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_ENEMY_MOVE,
-            TimerMode::Repeating,
-        )))
-        .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(collider_half, collider_half))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(
-            ActiveCollisionTypes::default()
-                | ActiveCollisionTypes::KINEMATIC_STATIC
-                | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-        )
-        .insert(LockedAxes::ROTATION_LOCKED)
-        .insert(KinematicCharacterController {
-            offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
-            filter_groups: None,
-            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
-                min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
-                include_dynamic_bodies: false,
-            }),
-            ..default()
-        })
-        .id()
-}
-
 pub fn spawn_game_entities_if_needed(
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
@@ -832,7 +749,7 @@ pub fn spawn_game_entities_if_needed(
         GameMode::OnePlayer => {
             // 单人模式：只生成玩家1
 
-            let _player1_tank_entity = spawn_player_tank(
+            let _player1_tank_entity = crate::player::spawn_player_tank(
                 &mut commands,
                 player1_texture,
                 player_texture_atlas_layout,
@@ -864,7 +781,7 @@ pub fn spawn_game_entities_if_needed(
         GameMode::TwoPlayers => {
             // 双人模式：生成玩家1和玩家2
 
-            let _player1_tank_entity = spawn_player_tank(
+            let _player1_tank_entity = crate::player::spawn_player_tank(
                 &mut commands,
                 player1_texture,
                 player_texture_atlas_layout.clone(),
@@ -872,7 +789,7 @@ pub fn spawn_game_entities_if_needed(
                 TankType::Player1,
             );
 
-            let _player2_tank_entity = spawn_player_tank(
+            let _player2_tank_entity = crate::player::spawn_player_tank(
                 &mut commands,
                 player2_texture,
                 player_texture_atlas_layout,
@@ -920,169 +837,5 @@ pub fn spawn_game_entities_if_needed(
             );
         }
     }
-
-    // 加载字体
-    let font: Handle<Font> = asset_server.load(FONT_EN);
-
-    spawn_top_text_info(&mut commands, &font, stage_level.0);
-
-    // 生成道具
-    spawn_power_ups(
-        &mut commands,
-        &asset_server,
-        &mut texture_atlas_layouts,
-        &stage_level,
-    );
 }
 
-fn spawn_top_text_info(commands: &mut Commands, font: &Handle<Font>, stage_level: usize) {
-    // 其他游戏信息 UI 元素配置
-    let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
-
-    // 关卡信息显示在顶部中心
-    commands.spawn((
-        PlayingEntity,
-        StageText,
-        Text2d(format!("Stage {stage_level}")),
-        TextFont {
-            font_size: 28.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
-        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, 1.0),
-    ));
-
-    commands.spawn((
-        PlayingEntity,
-        Text2d("Commander Life:".to_string()),
-        TextFont {
-            font_size: 28.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(commander_text_x - 42.0, WINDOW_TOP_Y - 50.0, 1.0),
-    ));
-    // Commander 血条（与玩家血条长度相同：160像素），放在文字正右方
-    commands.spawn((
-        PlayingEntity,
-        CommanderHealthBar,
-        CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
-        Sprite {
-            color: Color::srgb(1.0, 0.0, 0.0),
-            custom_size: Some(Vec2::new(160.0, 10.0)),
-            ..default()
-        },
-        Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
-    ));
-    commands.spawn((
-        PlayingEntity,
-        EnemyCountText,
-        Text2d("Enemy Left: 5/5".to_string()),
-        TextFont {
-            font_size: 28.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
-        Transform::from_xyz(WINDOW_RIGHT_X - 465.0, WINDOW_TOP_Y - 50.0, 1.0),
-    ));
-}
-
-fn spawn_power_ups(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    stage_level: &StageLevel,
-) {
-    let powerup_type = if stage_level.0 == 1 {
-        // 第一关强制生成 air_cushion 道具
-        PowerUp::AirCushion
-    } else {
-        // 其他关卡随机选择一个道具类型
-        let powerup_types = [
-            PowerUp::SpeedUp,
-            PowerUp::Protection,
-            PowerUp::FireSpeed,
-            PowerUp::FireShell,
-            PowerUp::TrackChain,
-            PowerUp::Penetrate,
-            PowerUp::Repair,
-            PowerUp::Hamburger,
-            PowerUp::AirCushion,
-            PowerUp::Shell,
-        ];
-
-        let mut rng = rand::rng();
-        powerup_types[rng.random_range(0..powerup_types.len())]
-    };
-
-    // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
-    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
-    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
-    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
-
-    // 在随机位置生成道具（在地图范围内），避开禁止区域
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
-    let position = Vec3::new(x, y, 0.0);
-
-    spawn_powerup_batch(
-        commands,
-        asset_server,
-        texture_atlas_layouts,
-        powerup_type,
-        powerup_type.texture_path(),
-        &[position],
-    );
-}
-
-fn spawn_powerup_batch(
-    commands: &mut Commands,
-    asset_server: &AssetServer,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    powerup_type: PowerUp,
-    texture_path: &'static str,
-    positions: &[Vec3],
-) {
-    let texture: Handle<Image> = asset_server.load(texture_path);
-    let tile_size = UVec2::new(87, 69);
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
-
-    for pos in positions {
-        commands.spawn((
-            powerup_type,
-            PlayingEntity,
-            Sprite::from_atlas_image(
-                texture.clone(),
-                TextureAtlas {
-                    layout: texture_atlas_layout.clone(),
-                    index: animation_indices.first,
-                },
-            ),
-            Transform::from_xyz(pos.x, pos.y, 0.8), // z=0.8 使道具高于除了树之外的所有图层
-            animation_indices,
-            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-            CurrentAnimationFrame(0),
-            RigidBody::Fixed,
-            Collider::cuboid(87.0 / 2.0, 69.0 / 2.0),
-            Sensor,
-            ActiveEvents::COLLISION_EVENTS,
-        ));
-    }
-}
-
-/// 更新关卡信息文本
-pub fn update_stage_text(
-    stage_level: Res<StageLevel>,
-    mut stage_text_query: Query<&mut Text2d, With<StageText>>,
-) {
-    for mut text in &mut stage_text_query {
-        text.0 = format!("Stage {}", stage_level.0);
-    }
-}

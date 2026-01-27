@@ -91,7 +91,7 @@ pub struct BlueBar;
 // ============================================================================
 
 /// 生成玩家 HUD
-pub fn spawn_player_hud(
+fn spawn_player_hud(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
@@ -434,9 +434,19 @@ let stats = player_info
     ));
 }
 
-/// 销毁玩家 HUD
-pub fn despawn_player_hud(mut commands: Commands, hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>) {
-    for entity in hud_query.iter() {
+/// 销毁所有 HUD
+pub fn despawn_hud(
+    mut commands: Commands,
+    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
+) {
+    // 销毁顶部 HUD
+    for entity in top_hud_query.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+
+    // 销毁玩家 HUD
+    for entity in player_hud_query.iter() {
         let () = commands.entity(entity).try_despawn();
     }
 }
@@ -743,4 +753,101 @@ fn is_hud_stat_at_max_value(text: &str, player_info: &PlayerInfo) -> bool {
         }
     }
     false
+}
+
+/// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
+fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_level: &Res<StageLevel>) {
+    let font: Handle<Font> = asset_server.load(FONT_EN);
+    // 其他游戏信息 UI 元素配置
+    let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
+
+    // 关卡信息显示在顶部中心
+    commands.spawn((
+        PlayingEntity,
+        StageText,
+        Text2d(format!("Stage {}", stage_level.0)),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+
+    commands.spawn((
+        PlayingEntity,
+        Text2d("Commander Life:".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(commander_text_x - 42.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+    // Commander 血条（与玩家血条长度相同：160像素），放在文字正右方
+    commands.spawn((
+        PlayingEntity,
+        CommanderHealthBar,
+        CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
+        Sprite {
+            color: Color::srgb(1.0, 0.0, 0.0),
+            custom_size: Some(Vec2::new(160.0, 10.0)),
+            ..default()
+        },
+        Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
+    ));
+    commands.spawn((
+        PlayingEntity,
+        EnemyCountText,
+        Text2d("Enemy Left: 5/5".to_string()),
+        TextFont {
+            font_size: 28.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        Transform::from_xyz(WINDOW_RIGHT_X - 465.0, WINDOW_TOP_Y - 50.0, 1.0),
+    ));
+}
+
+/// 生成所有 HUD（只在第一关时生成）
+pub fn spawn_hud(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    player_info: Res<PlayerInfo>,
+    game_mode: Res<GameMode>,
+    player1_hud_query: Query<(), With<Player1Hud>>,
+    player2_hud_query: Query<(), With<Player2Hud>>,
+    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
+    stage_level: Res<StageLevel>,
+) {
+    // 只在第一关时生成 HUD
+    if stage_level.0 != 1 {
+        return;
+    }
+
+    // 先清理现有的 HUD，以防万一
+    for entity in top_hud_query.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+    for entity in player_hud_query.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+
+    spawn_top_hud(commands.reborrow(), &asset_server, &stage_level);
+    spawn_player_hud(commands, asset_server, texture_atlas_layouts, player_info, game_mode, player1_hud_query, player2_hud_query);
+}
+
+/// 更新关卡信息文本
+pub fn update_stage_text(
+    stage_level: Res<StageLevel>,
+    mut stage_text_query: Query<&mut Text2d, With<StageText>>,
+) {
+    for mut text in &mut stage_text_query {
+        text.0 = format!("Stage {}", stage_level.0);
+    }
 }

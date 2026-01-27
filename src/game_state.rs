@@ -10,6 +10,7 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
+use crate::powerup;
 use crate::resources::*;
 pub fn handle_game_over_delay(
     time: Res<Time>,
@@ -701,7 +702,7 @@ pub fn update_air_cushion_effect(
                         Sprite {
                             image: bubble_texture,
 
-                            custom_size: Some(Vec2::new(POWERUP_BUBBLE_SIZE, POWERUP_BUBBLE_SIZE)),
+                            custom_size: Some(Vec2::new(powerup::POWERUP_BUBBLE_SIZE, powerup::POWERUP_BUBBLE_SIZE)),
 
                             ..default()
                         },
