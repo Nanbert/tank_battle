@@ -34,8 +34,7 @@ pub struct BulletOwner {
 }
 
 /// 子弹销毁标记组件
-#[derive(Component)]
-pub struct BulletDespawnMarker;
+
 
 /// 子弹生成参数
 pub struct BulletSpawnParams {
@@ -239,6 +238,7 @@ pub fn player_shoot_system(
 /// 子弹边界检查系统
 pub fn bullet_bounds_check_system(
     mut commands: Commands,
+    mut bullet_tracker: ResMut<BulletTracker>,
     mut query: Query<(Entity, &Transform), With<Bullet>>,
 ) {
     for (entity, transform) in &mut query {
@@ -247,24 +247,11 @@ pub fn bullet_bounds_check_system(
 
         // 检查子弹是否超出游戏窗口边界
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x) || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y) {
-            commands.entity(entity).try_insert(BulletDespawnMarker);
+            // 清理所有者引用，允许坦克再次射击
+            bullet_tracker.remove_bullet(entity);
+            // 销毁子弹实体
+            let () = commands.entity(entity).try_despawn();
         }
-    }
-}
-
-/// 子弹统一销毁系统
-/// 处理所有子弹的销毁逻辑，包括清理所有者引用和实际销毁
-pub fn bullet_despawn_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &BulletDespawnMarker, &BulletOwner), With<Bullet>>,
-    mut bullet_tracker: ResMut<BulletTracker>,
-) {
-    for (entity, _marker, _owner) in &mut query {
-        // 清理所有者引用，允许坦克再次射击
-        bullet_tracker.remove_bullet(entity);
-
-        // 销毁子弹实体
-        let () = commands.entity(entity).try_despawn();
     }
 }
 
@@ -320,6 +307,7 @@ pub fn bullet_terrain_collision_system(
     bricks: Query<(), With<Brick>>,
     steels: Query<(), With<Steel>>,
     player_info: Res<PlayerInfo>,
+    mut bullet_tracker: ResMut<BulletTracker>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -348,6 +336,7 @@ pub fn bullet_terrain_collision_system(
             &bricks,
             &steels,
             &player_info,
+            &mut bullet_tracker,
         );
     }
 }
@@ -380,6 +369,7 @@ fn handle_terrain_collision(
     bricks: &Query<(), With<Brick>>,
     steels: &Query<(), With<Steel>>,
     player_info: &Res<PlayerInfo>,
+    bullet_tracker: &mut BulletTracker,
 ) {
     // 处理森林碰撞
     if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
@@ -403,6 +393,7 @@ fn handle_terrain_collision(
             terrain_entity,
             bullet_entity,
             bullet_transform,
+            bullet_tracker,
         );
         return;
     }
@@ -418,6 +409,7 @@ fn handle_terrain_collision(
             bullet_transform,
             &bullet_owner.owner_type,
             player_info,
+            bullet_tracker,
         );
     }
 }
@@ -458,6 +450,7 @@ fn handle_brick_collision(
     brick_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
+    bullet_tracker: &mut BulletTracker,
 ) {
     let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
     commands.spawn((
@@ -470,7 +463,10 @@ fn handle_brick_collision(
     });
 
     let () = commands.entity(brick_entity).try_despawn();
-    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+    // 清理所有者引用，允许坦克再次射击
+    bullet_tracker.remove_bullet(bullet_entity);
+    // 销毁子弹实体
+    let () = commands.entity(bullet_entity).try_despawn();
 }
 
 /// 处理钢铁碰撞
@@ -483,6 +479,7 @@ fn handle_steel_collision(
     bullet_transform: &Transform,
     owner_type: &TankType,
     player_info: &Res<PlayerInfo>,
+    bullet_tracker: &mut BulletTracker,
 ) {
     effect_events.write(EffectEvent::Spark {
         position: bullet_transform.translation,
@@ -491,14 +488,20 @@ fn handle_steel_collision(
     if matches!(owner_type, TankType::Enemy) {
         let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
         commands.spawn(AudioPlayer::new(hit_sound));
-        commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+        // 清理所有者引用，允许坦克再次射击
+        bullet_tracker.remove_bullet(bullet_entity);
+        // 销毁子弹实体
+        let () = commands.entity(bullet_entity).try_despawn();
         return;
     }
 
     let Some(player_stats) = player_info.players.get(owner_type) else {
         let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
         commands.spawn(AudioPlayer::new(hit_sound));
-        commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+        // 清理所有者引用，允许坦克再次射击
+        bullet_tracker.remove_bullet(bullet_entity);
+        // 销毁子弹实体
+        let () = commands.entity(bullet_entity).try_despawn();
         return;
     };
 
@@ -511,7 +514,10 @@ fn handle_steel_collision(
         commands.spawn(AudioPlayer::new(hit_sound));
     }
 
-    commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+    // 清理所有者引用，允许坦克再次射击
+    bullet_tracker.remove_bullet(bullet_entity);
+    // 销毁子弹实体
+    let () = commands.entity(bullet_entity).try_despawn();
 }
 
 /// 子弹与坦克碰撞检测系统
@@ -521,6 +527,7 @@ pub fn bullet_tank_collision_system(
     mut effect_events: MessageWriter<EffectEvent>,
     _texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
+    mut bullet_tracker: ResMut<BulletTracker>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks: Query<(), With<EnemyTank>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
@@ -585,7 +592,10 @@ pub fn bullet_tank_collision_system(
             );
         }
 
-        commands.entity(bullet_entity).try_insert(BulletDespawnMarker);
+        // 清理所有者引用，允许坦克再次射击
+        bullet_tracker.remove_bullet(bullet_entity);
+        // 销毁子弹实体
+        let () = commands.entity(bullet_entity).try_despawn();
     }
 }
 
@@ -814,6 +824,7 @@ pub fn bullet_commander_collision_system(
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
     mut commander_life: ResMut<crate::resources::CommanderLife>,
+    mut bullet_tracker: ResMut<BulletTracker>,
 ) {
     for event in collision_events.read() {
         if let CollisionEvent::Started(e1, e2, _) = event {
@@ -885,10 +896,10 @@ pub fn bullet_commander_collision_system(
                     commands.spawn(AudioPlayer::new(death_sound));
                 }
 
-                // 标记子弹销毁
-                commands
-                    .entity(bullet_entity)
-                    .try_insert(BulletDespawnMarker);
+                // 清理所有者引用，允许坦克再次射击
+                bullet_tracker.remove_bullet(bullet_entity);
+                // 销毁子弹实体
+                let () = commands.entity(bullet_entity).try_despawn();
             }
         }
     }

@@ -298,3 +298,10 @@ fn spawn_powerup_batch(
         ));
     }
 }
+
+/// 销毁所有道具
+pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<PowerUp>>) {
+    for entity in powerups.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+}

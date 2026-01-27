@@ -115,6 +115,7 @@ pub fn register_game_systems(app: &mut App) {
             OnEnter(GameState::StageIntro),
             (
                 terrain::respawn_terrain_for_next_stage,
+                powerup::despawn_powerups,
                 powerup::spawn_power_ups,
                 hud_ui::spawn_hud,
                 hud_ui::update_stage_text,
@@ -158,7 +159,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            enemy::animate_enemy_tank_texture.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<EnemyTank>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -214,10 +215,6 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            bullet::bullet_despawn_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
             bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -242,7 +239,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::animate_laser.run_if(in_state(GameState::Playing)),
+            laser::animate_laser.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -250,11 +247,11 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::animate_forest.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<Forest>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            game_state::animate_sea.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<Sea>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -290,10 +287,6 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::update_player_info_display.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
             hud_ui::handle_hud_stat_changed.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -302,11 +295,11 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            game_state::update_enemy_count_display.run_if(in_state(GameState::Playing)),
+            hud_ui::update_enemy_count_display.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            game_state::update_commander_health_bar.run_if(in_state(GameState::Playing)),
+            hud_ui::update_commander_health_bar.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -345,7 +338,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::handle_recoil_force.run_if(in_state(GameState::Playing)),
+            laser::handle_recoil_force.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -353,7 +346,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::laser_collision_system.run_if(in_state(GameState::Playing)),
+            laser::laser_collision_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

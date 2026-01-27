@@ -184,6 +184,7 @@ pub fn animate_enemy_born_animation(
                         })
                         .insert(Transform::from_translation(born_position.0))
                         .insert(enemy_animation_indices)
+                        .insert(CurrentAnimationFrame(0))
                         .insert(Velocity {
                             linvel: Vec2::new(0.0, -TANK_SPEED),
                             angvel: 0.0,
@@ -206,26 +207,6 @@ pub fn animate_enemy_born_animation(
                         .id();
                 }
             }
-        }
-    }
-}
-
-/// 敌方坦克纹理动画系统
-pub fn animate_enemy_tank_texture(
-    time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices), With<EnemyTank>>,
-) {
-    // 敌方坦克：统一刷新
-    for (mut timer, mut sprite, indices) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas
-        {
-            atlas.index = if atlas.index == indices.last {
-                indices.first
-            } else {
-                atlas.index + 1
-            };
         }
     }
 }

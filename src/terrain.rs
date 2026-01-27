@@ -8,7 +8,6 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::powerup::PowerUp;
 use crate::resources::{
     EnemySpawnState, GameEntitiesSpawned, GameMode, PlayerInfo, PlayerStats, StageLevel,
     TerrainAtlasLayouts,
@@ -87,9 +86,8 @@ pub fn respawn_terrain_for_next_stage(
     seas: Query<Entity, With<Sea>>,
     commanders: Query<Entity, With<Commander>>,
     barriers: Query<Entity, With<Barrier>>,
-    powerups: Query<Entity, With<PowerUp>>,
 ) {
-    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物、道具）
+    // Despawn 所有地形实体（砖块、钢、树、海、森林、司令官、障碍物）
     for entity in bricks
         .iter()
         .chain(steels.iter())
@@ -97,7 +95,6 @@ pub fn respawn_terrain_for_next_stage(
         .chain(seas.iter())
         .chain(commanders.iter())
         .chain(barriers.iter())
-        .chain(powerups.iter())
     {
         let () = commands.entity(entity).try_despawn();
     }

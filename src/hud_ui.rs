@@ -851,3 +851,36 @@ pub fn update_stage_text(
         text.0 = format!("Stage {}", stage_level.0);
     }
 }
+
+/// 更新 Commander 血条
+pub fn update_commander_health_bar(
+    commander_life: Res<CommanderLife>,
+    mut health_bars: Query<
+        (
+            &mut Sprite,
+            &CommanderHealthBarOriginalPosition,
+            &mut Transform,
+        ),
+        With<CommanderHealthBar>,
+    >,
+) {
+    for (mut sprite, original_pos, mut transform) in &mut health_bars {
+        let health_width = (commander_life.life_red_bar as f32 / 3.0) * COMMANDER_BAR_WIDTH;
+        sprite.custom_size = Some(Vec2::new(health_width, BAR_HEIGHT));
+        transform.translation.x = original_pos.0 - (COMMANDER_BAR_WIDTH - health_width) / 2.0;
+    }
+}
+
+/// 更新敌方坦克数量显示
+pub fn update_enemy_count_display(
+    enemy_spawn_state: Res<crate::resources::EnemySpawnState>,
+    mut query: Query<&mut Text2d, With<EnemyCountText>>,
+) {
+    let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
+
+    for mut text in &mut query {
+        text.0 = format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count);
+    }
+}
+
+

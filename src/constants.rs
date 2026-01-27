@@ -312,18 +312,6 @@ pub const STEEL_COLLIDER_HEIGHT: f32 = 46.0;
 pub struct Commander;
 
 #[derive(Component)]
-pub struct HealthBar;
-
-#[derive(Component)]
-pub struct BlueBar;
-
-#[derive(Component)]
-pub struct BlueBarOriginalPosition(pub f32); // 记录蓝条的原始 X 位置
-
-#[derive(Component)]
-pub struct HealthBarOriginalPosition(pub f32); // 记录血条的原始 X 位置
-
-#[derive(Component)]
 pub struct CommanderHealthBar;
 
 #[derive(Component)]
@@ -492,7 +480,6 @@ pub const BACKGROUND_ANIMATION_TILE_WIDTH: f32 = 2060.0; // 背景动画瓦片�
 pub const BACKGROUND_ANIMATION_TILE_HEIGHT: f32 = 1300.0; // 背景动画瓦片高度
 
 // 血条/蓝条
-pub const BAR_TOTAL_WIDTH: f32 = 160.0; // 血条/蓝条总宽度
 pub const BAR_HEIGHT: f32 = 10.0; // 血条/蓝条高度
 pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度
 
