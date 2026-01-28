@@ -34,60 +34,40 @@ pub fn despawn_map(
     }
 }
 
-/// 生成墙壁
+/// 生成边界线（3条白线：顶部、左侧、右侧）
 pub fn spawn_walls(commands: &mut Commands) {
-    // 左墙（在原游戏区域左边界，向下平移40像素）
+    // 左边界线（从顶部边界线下方开始，延伸到窗口底部）
     commands.spawn((
         Wall,
         PlayingEntity,
-        Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
+        Sprite::from_color(Color::WHITE, Vec2::ONE),
         Transform {
-            translation: Vec3::new(MAP_LEFT_X - WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(WALL_SCALE, MAP_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_LEFT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+            scale: Vec3::new(5.0, MAP_HEIGHT, 1.0),
             ..default()
         },
     ));
 
-    // 右墙（在原游戏区域右边界，向下平移40像素）
+    // 右边界线（从顶部边界线下方开始，延伸到窗口底部）
     commands.spawn((
         Wall,
         PlayingEntity,
-        Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(0.1, MAP_TOP_Y / 100.0),
+        Sprite::from_color(Color::WHITE, Vec2::ONE),
         Transform {
-            translation: Vec3::new(MAP_RIGHT_X + WALL_POSITION_OFFSET_2, VERTICAL_OFFSET, 0.0),
-            scale: Vec3::new(WALL_SCALE, MAP_HEIGHT, 1.0),
+            translation: Vec3::new(MAP_RIGHT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+            scale: Vec3::new(5.0, MAP_HEIGHT, 1.0),
             ..default()
         },
     ));
 
-    // 上墙（在原游戏区域上边界，向下平移40像素）
+    // 上边界线（向左右各延伸2像素）
     commands.spawn((
         Wall,
         PlayingEntity,
-        Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
+        Sprite::from_color(Color::WHITE, Vec2::ONE),
         Transform {
-            translation: Vec3::new(0.0, MAP_TOP_Y + WALL_POSITION_OFFSET_2, 0.0),
-            scale: Vec3::new(MAP_WIDTH, WALL_SCALE, 1.0),
-            ..default()
-        },
-    ));
-
-    // 下墙（在原游戏区域下边界，向下平移40像素）
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::srgb(0.8, 0.8, 0.8), Vec2::ONE),
-        RigidBody::Fixed,
-        Collider::cuboid(MAP_RIGHT_X / 100.0, 0.1),
-        Transform {
-            translation: Vec3::new(0.0, MAP_BOTTOM_Y - WALL_POSITION_OFFSET_2, 0.0),
-            scale: Vec3::new(MAP_WIDTH, WALL_SCALE, 1.0),
+            translation: Vec3::new(0.0, MAP_TOP_Y, 0.0),
+            scale: Vec3::new(MAP_WIDTH + 4.0, 5.0, 1.0),
             ..default()
         },
     ));

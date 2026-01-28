@@ -247,6 +247,9 @@ pub fn move_enemy_tanks(
         if collision_cooldown.is_finished() {
             handle_enemy_tank_collision(
                 entity,
+                &transform,
+                ENEMY_COLLIDER_HALF_WIDTH,
+                ENEMY_COLLIDER_HALF_HEIGHT,
                 &mut enemy_tank,
                 &mut direction_timer,
                 &mut collision_cooldown,
@@ -286,7 +289,47 @@ pub fn move_enemy_tanks(
             // 旋转完成，直接设置为目标角度
             transform.rotation = target_rotation;
         }
+
+        // 限制敌方坦克在地图边界内
+        transform.translation.x = transform.translation.x.clamp(
+            MAP_LEFT_X + TANK_WIDTH / 2.0,
+            MAP_RIGHT_X - TANK_WIDTH / 2.0,
+        );
+        transform.translation.y = transform.translation.y.clamp(
+            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+            MAP_TOP_Y - TANK_HEIGHT / 2.0,
+        );
     }
+}
+
+/// 检测边界碰撞
+fn check_boundary_collision(transform: &Transform, collider_half_width: f32, collider_half_height: f32) -> Option<Vec2> {
+    const BOUNDARY_BUFFER: f32 = 10.0; // 边界缓冲距离
+
+    let x = transform.translation.x;
+    let y = transform.translation.y;
+
+    // 检查左边界
+    if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER {
+        return Some(Vec2::new(1.0, 0.0)); // 指向右
+    }
+
+    // 检查右边界
+    if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER {
+        return Some(Vec2::new(-1.0, 0.0)); // 指向左
+    }
+
+    // 检查上边界
+    if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER {
+        return Some(Vec2::new(0.0, -1.0)); // 指向下
+    }
+
+    // 检查下边界
+    if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER {
+        return Some(Vec2::new(0.0, 1.0)); // 指向上
+    }
+
+    None
 }
 
 /// 检测敌方坦克碰撞
@@ -350,11 +393,24 @@ fn choose_available_direction(blocked_direction: Vec2) -> Vec2 {
 /// 处理敌方坦克碰撞
 fn handle_enemy_tank_collision(
     entity: Entity,
+    transform: &Transform,
+    collider_half_width: f32,
+    collider_half_height: f32,
     enemy_tank: &mut EnemyTank,
     direction_timer: &mut DirectionChangeTimer,
     collision_cooldown: &mut CollisionCooldownTimer,
     rapier_context: &RapierContext,
 ) {
+    // 优先检测边界碰撞
+    if let Some(boundary_normal) = check_boundary_collision(transform, collider_half_width, collider_half_height) {
+        let blocked_direction = get_blocked_direction(boundary_normal);
+        enemy_tank.direction = choose_available_direction(blocked_direction);
+        direction_timer.reset();
+        collision_cooldown.reset();
+        return;
+    }
+
+    // 检测物理碰撞
     if let Some(collision_normal) = detect_enemy_tank_collision(entity, rapier_context) {
         let blocked_direction = get_blocked_direction(collision_normal);
         enemy_tank.direction = choose_available_direction(blocked_direction);

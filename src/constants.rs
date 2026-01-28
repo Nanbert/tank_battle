@@ -429,8 +429,6 @@ pub const PROGRESS_BAR_Y_OFFSET: f32 = 20.0; // 回城进度条Y偏移
 pub const PROGRESS_BAR_INITIAL_WIDTH: f32 = 100.0; // 回城进度条初始宽度
 
 // 墙壁和地形
-pub const WALL_POSITION_OFFSET_2: f32 = 5.0; // 墙壁位置偏移
-pub const WALL_SCALE: f32 = 10.0; // 墙壁缩放
 pub const BRICK_GROUP_OFFSET: f32 = 25.0; // 砖块组偏移
 pub const CHARACTER_CONTROLLER_OFFSET: f32 = 0.01; // CharacterController offset
 pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max_height

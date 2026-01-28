@@ -254,6 +254,16 @@ pub fn move_player_tank(
                 transform.rotation = Quat::from_rotation_z(target_angle);
             }
         }
+
+        // 限制坦克在地图边界内
+        transform.translation.x = transform.translation.x.clamp(
+            MAP_LEFT_X + TANK_WIDTH / 2.0,
+            MAP_RIGHT_X - TANK_WIDTH / 2.0,
+        );
+        transform.translation.y = transform.translation.y.clamp(
+            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+            MAP_TOP_Y - TANK_HEIGHT / 2.0,
+        );
     }
 }
 
@@ -544,6 +554,7 @@ pub fn update_dash_movement(
         (
             Entity,
             &mut KinematicCharacterController,
+            &mut Transform,
             Option<&IsDashing>,
         ),
         With<PlayerTank>,
@@ -551,7 +562,7 @@ pub fn update_dash_movement(
     mut dash_timers: ResMut<DashTimers>,
     mut dash_damage_tracker: ResMut<DashDamageTracker>,
 ) {
-    for (entity, mut character_controller, is_dashing) in &mut player_query {
+    for (entity, mut character_controller, mut transform, is_dashing) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
             && let Some(dash_timer) = dash_timers.timers.get_mut(&entity)
         {
@@ -564,6 +575,16 @@ pub fn update_dash_movement(
             // 设置移动
             let movement = dash_timer.direction * dash_speed * time.delta_secs();
             character_controller.translation = Some(movement);
+
+            // 限制坦克在地图边界内
+            transform.translation.x = transform.translation.x.clamp(
+                MAP_LEFT_X + TANK_WIDTH / 2.0,
+                MAP_RIGHT_X - TANK_WIDTH / 2.0,
+            );
+            transform.translation.y = transform.translation.y.clamp(
+                MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+                MAP_TOP_Y - TANK_HEIGHT / 2.0,
+            );
 
             // 检查是否完成
             if dash_timer.timer.just_finished() {
