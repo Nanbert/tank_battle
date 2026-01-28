@@ -19,10 +19,10 @@ use crate::game_state;
 use crate::hud_ui;
 use crate::laser;
 use crate::menus_ui;
+use crate::map;
 use crate::overlay_ui;
 use crate::player;
 use crate::powerup;
-use crate::terrain;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
@@ -83,7 +83,7 @@ pub fn register_game_systems(app: &mut App) {
                 commander::despawn_commander,
                 player::despawn_players,
                 enemy::despawn_enemy_tank,
-                terrain::despawn_map,
+                map::despawn_map,
                 powerup::despawn_powerups,
                 |mut stage_level: ResMut<crate::resources::StageLevel>| {
                     stage_level.0 = 1;
@@ -124,7 +124,7 @@ pub fn register_game_systems(app: &mut App) {
                 player::init_players.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
-                terrain::spawn_map,
+                map::spawn_map,
                 powerup::despawn_powerups,
                 powerup::spawn_power_ups_air_cushion.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
