@@ -192,6 +192,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            hud_ui::animate_player_avatar.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             hud_ui::handle_player_avatar_death.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -277,6 +281,10 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             Update,
             effects::animate_looping_sprite::<Sea>.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            commander::animate_commander.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

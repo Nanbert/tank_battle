@@ -880,6 +880,43 @@ pub fn update_enemy_count_display(
     }
 }
 
+/// 动画玩家头像（只在存活时播放）
+pub fn animate_player_avatar(
+    time: Res<Time>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+            Has<PlayerDead>,
+        ),
+        With<PlayerAvatar>,
+    >,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame, is_dead) in &mut query {
+        // 玩家已死亡，不播放动画
+        if is_dead {
+            continue;
+        }
+
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(
     asset_server: Res<AssetServer>,

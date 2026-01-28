@@ -303,29 +303,34 @@ pub fn move_enemy_tanks(
 }
 
 /// 检测边界碰撞
-fn check_boundary_collision(transform: &Transform, collider_half_width: f32, collider_half_height: f32) -> Option<Vec2> {
-    const BOUNDARY_BUFFER: f32 = 10.0; // 边界缓冲距离
+fn check_boundary_collision(
+    transform: &Transform,
+    collider_half_width: f32,
+    collider_half_height: f32,
+    current_direction: Vec2,
+) -> Option<Vec2> {
+    const BOUNDARY_BUFFER: f32 = 20.0; // 边界缓冲距离（增加到20像素）
 
     let x = transform.translation.x;
     let y = transform.translation.y;
 
-    // 检查左边界
-    if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER {
+    // 检查左边界：只有当朝左且距离左边界过近时才触发
+    if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER && current_direction.x < -0.5 {
         return Some(Vec2::new(1.0, 0.0)); // 指向右
     }
 
-    // 检查右边界
-    if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER {
+    // 检查右边界：只有当朝右且距离右边界过近时才触发
+    if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER && current_direction.x > 0.5 {
         return Some(Vec2::new(-1.0, 0.0)); // 指向左
     }
 
-    // 检查上边界
-    if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER {
+    // 检查上边界：只有当朝上且距离上边界过近时才触发
+    if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER && current_direction.y > 0.5 {
         return Some(Vec2::new(0.0, -1.0)); // 指向下
     }
 
-    // 检查下边界
-    if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER {
+    // 检查下边界：只有当朝下且距离下边界过近时才触发
+    if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER && current_direction.y < -0.5 {
         return Some(Vec2::new(0.0, 1.0)); // 指向上
     }
 
@@ -401,8 +406,13 @@ fn handle_enemy_tank_collision(
     collision_cooldown: &mut CollisionCooldownTimer,
     rapier_context: &RapierContext,
 ) {
-    // 优先检测边界碰撞
-    if let Some(boundary_normal) = check_boundary_collision(transform, collider_half_width, collider_half_height) {
+    // 优先检测边界碰撞（传入当前朝向）
+    if let Some(boundary_normal) = check_boundary_collision(
+        transform,
+        collider_half_width,
+        collider_half_height,
+        enemy_tank.direction,
+    ) {
         let blocked_direction = get_blocked_direction(boundary_normal);
         enemy_tank.direction = choose_available_direction(blocked_direction);
         direction_timer.reset();

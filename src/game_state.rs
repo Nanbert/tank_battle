@@ -41,11 +41,6 @@ pub fn check_game_over(
         return;
     }
 
-    // 卫语句：无玩家则跳过（单人模式下 player1 必定存在）
-    if *game_mode == GameMode::OnePlayer && player_info.player1.life_points == 0 {
-        return;
-    }
-
     let all_players_dead = check_all_players_dead(&player_info, &game_mode);
 
     if all_players_dead {

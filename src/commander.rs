@@ -69,7 +69,7 @@ pub fn spawn_commander(
         ActiveEvents::COLLISION_EVENTS,
     )).id();
 
-    // 创建音乐动画精灵作为子节点（一直播放）
+    // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
     let music_texture: Handle<Image> = asset_server.load(TEXTURE_MUSIC_NOTE);
     let music_tile_size = UVec2::new(140, 120);
     let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
@@ -78,6 +78,7 @@ pub fn spawn_commander(
 
     commands.spawn((
         CommanderMusicAnimation,
+        PlayingEntity,
         Sprite {
             image: music_texture,
             texture_atlas: Some(TextureAtlas {
@@ -94,24 +95,59 @@ pub fn spawn_commander(
             TimerMode::Repeating,
         )), // 每0.1秒切换一帧
         CurrentAnimationFrame(0),
-    ))
-    .set_parent_in_place(commander_entity);
+    ));
+}
+
+/// 动画 Commander 纹理（只在存活时播放）
+pub fn animate_commander(
+    time: Res<Time>,
+    commander_life: Res<CommanderLife>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<Commander>,
+    >,
+) {
+    // Commander 已死亡，不播放动画
+    if commander_life.life_points == 0 {
+        return;
+    }
+
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
+    }
 }
 
 /// 销毁司令官实体
 pub fn despawn_commander(
     mut commands: Commands,
     commanders: Query<Entity, With<Commander>>,
-    children: Query<&Children>,
+    music_animations: Query<Entity, With<CommanderMusicAnimation>>,
 ) {
+    // 销毁所有 Commander 实体
     for entity in commanders.iter() {
-        // 先销毁所有子节点
-        if let Ok(children) = children.get(entity) {
-            for child in children.iter() {
-                let () = commands.entity(child).try_despawn();
-            }
-        }
-        // 再销毁父节点
+        let () = commands.entity(entity).try_despawn();
+    }
+
+    // 销毁所有 MusicNote 动画实体
+    for entity in music_animations.iter() {
         let () = commands.entity(entity).try_despawn();
     }
 }
