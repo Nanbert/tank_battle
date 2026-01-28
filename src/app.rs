@@ -136,8 +136,8 @@ pub fn register_game_systems(app: &mut App) {
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
                 hud_ui::update_stage_text,
-                game_state::reset_player_positions,
-                game_state::reset_for_next_stage,
+                player::reset_player_positions,
+                enemy::reset_enemy_spawn_state,
             )
                 .chain(),
         )

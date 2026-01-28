@@ -18,6 +18,15 @@ use crate::resources::{
     StatType,
 };
 
+/// 玩家1初始X坐标（左侧）
+const PLAYER1_START_X: f32 = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
+
+/// 玩家2初始X坐标（右侧）
+const PLAYER2_START_X: f32 = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
+
+/// 玩家初始Y坐标（底部）
+const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
+
 /// 生成玩家坦克
 pub fn spawn_player_tank(
     commands: &mut Commands,
@@ -28,12 +37,12 @@ pub fn spawn_player_tank(
 ) -> Entity {
     let (x_pos, custom_size, collider_half) = match tank_type {
         TankType::Player1 => (
-            -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
+            PLAYER1_START_X,
             Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
             PLAYER_COLLIDER_HALF,
         ),
         TankType::Player2 => (
-            TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + 50.0,
+            PLAYER2_START_X,
             Vec2::new(80.0, 90.0),
             TANK_WIDTH / 2.0,
         ),
@@ -60,7 +69,7 @@ pub fn spawn_player_tank(
         })
         .insert(Transform::from_xyz(
             x_pos,
-            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
+            PLAYER_START_Y,
             0.0,
         ))
         .insert(Velocity {
@@ -290,17 +299,9 @@ pub fn handle_recall_input(
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
             let initial_position = if player_tank.tank_type == TankType::Player1 {
-                Vec3::new(
-                    -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET,
-                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-                    0.0,
-                )
+                Vec3::new(PLAYER1_START_X, PLAYER_START_Y, 0.0)
             } else {
-                Vec3::new(
-                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET,
-                    MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-                    0.0,
-                )
+                Vec3::new(PLAYER2_START_X, PLAYER_START_Y, 0.0)
             };
 
             // 开始回城
@@ -494,6 +495,41 @@ pub fn update_recall_progress_bars(
             progress_transform.translation.y =
                 player_pos.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET;
         }
+    }
+}
+
+/// 重置玩家坦克位置到出生点
+pub fn reset_player_positions(
+    mut player_tanks: Query<
+        (
+            &mut Transform,
+            &mut Velocity,
+            &mut KinematicCharacterController,
+            &PlayerTank,
+        ),
+        With<PlayerTank>,
+    >,
+) {
+    for (mut transform, mut velocity, mut character_controller, player_tank) in &mut player_tanks {
+        // 重置物理引擎速度和位移累积
+        velocity.linvel = Vec2::ZERO;
+        velocity.angvel = 0.0;
+        character_controller.translation = None;
+
+        match player_tank.tank_type {
+            TankType::Player1 => {
+                // 玩家1出生位置：左侧
+                transform.translation.x = PLAYER1_START_X;
+                transform.translation.y = PLAYER_START_Y;
+            }
+            TankType::Player2 => {
+                // 玩家2出生位置：右侧
+                transform.translation.x = PLAYER2_START_X;
+                transform.translation.y = PLAYER_START_Y;
+            }
+            TankType::Enemy => {}
+        }
+        transform.rotation = Quat::IDENTITY;
     }
 }
 
