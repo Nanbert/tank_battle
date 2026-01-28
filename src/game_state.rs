@@ -5,7 +5,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::*;
@@ -200,49 +199,6 @@ pub fn check_stage_complete(
     // 进入下一关
     stage_level.0 += 1;
     next_state.set(GameState::StageIntro);
-}
-
-/// 重置玩家坦克位置到出生点
-pub fn reset_player_positions(
-    mut player_tanks: Query<
-        (
-            &mut Transform,
-            &mut Velocity,
-            &mut KinematicCharacterController,
-            &PlayerTank,
-        ),
-        With<PlayerTank>,
-    >,
-) {
-    for (mut transform, mut velocity, mut character_controller, player_tank) in &mut player_tanks {
-        // 重置物理引擎速度和位移累积
-        velocity.linvel = Vec2::ZERO;
-        velocity.angvel = 0.0;
-        character_controller.translation = None;
-
-        match player_tank.tank_type {
-            TankType::Player1 => {
-                // 玩家1出生位置：左侧
-                transform.translation.x =
-                    -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
-                transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
-            }
-            TankType::Player2 => {
-                // 玩家2出生位置：右侧
-                transform.translation.x =
-                    TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
-                transform.translation.y = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
-            }
-            TankType::Enemy => {}
-        }
-        transform.rotation = Quat::IDENTITY;
-    }
-}
-
-pub fn reset_for_next_stage(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
-    // 重置敌方坦克计数
-    enemy_spawn_state.has_spawned = 0;
-    enemy_spawn_state.spawn_cooldown.reset();
 }
 
 // 文本更新函数类型

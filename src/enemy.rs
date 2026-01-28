@@ -470,3 +470,10 @@ pub fn despawn_enemy_tank(
         let () = commands.entity(entity).try_despawn();
     }
 }
+
+/// 重置敌方坦克生成状态
+pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
+    // 重置敌方坦克计数
+    enemy_spawn_state.has_spawned = 0;
+    enemy_spawn_state.spawn_cooldown.reset();
+}
