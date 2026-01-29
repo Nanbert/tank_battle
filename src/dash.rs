@@ -387,12 +387,6 @@ fn kill_player_tank(
             commands.entity(avatar_entity).insert(PlayerDead);
         }
     }
-
-    // 启动 Game Over 延迟计时器
-    commands.spawn((
-        GameOverTimer,
-        AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-    ));
 }
 
 /// 处理砖块碰撞
