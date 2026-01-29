@@ -237,6 +237,23 @@ pub struct TerrainAtlasLayouts {
     pub forest_fire: Handle<TextureAtlasLayout>,
 }
 
+// 子弹资源
+#[derive(Resource)]
+pub struct BulletResources {
+    /// 玩家1子弹纹理
+    pub bullet_player1: Handle<Image>,
+    /// 玩家2子弹纹理
+    pub bullet_player2: Handle<Image>,
+    /// 敌方子弹纹理
+    pub bullet_enemy: Handle<Image>,
+    /// 砖块击中音效
+    pub brick_hit_sound: Handle<AudioSource>,
+    /// 击中音效
+    pub hit_sound: Handle<AudioSource>,
+    /// 金属碰撞音效
+    pub metal_crash_sound: Handle<AudioSource>,
+}
+
 // ==================== 游戏资源管理 ====================
 
 /// 字体资源

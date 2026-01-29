@@ -65,15 +65,13 @@ pub fn configure_game_resources(app: &mut App) {
             avatar_death: Handle::default(),
             avatar_commander_dead: Handle::default(),
         })
-        .insert_resource(SoundResources {
-            explosion: Handle::default(),
-            brick_hit: Handle::default(),
-            hit: Handle::default(),
-            metal_crash: Handle::default(),
-            laser_charge: Handle::default(),
-            laser: Handle::default(),
-            commander_get_shot: Handle::default(),
-            commander_death: Handle::default(),
+.insert_resource(BulletResources {
+            bullet_player1: Handle::default(),
+            bullet_player2: Handle::default(),
+            bullet_enemy: Handle::default(),
+            brick_hit_sound: Handle::default(),
+            hit_sound: Handle::default(),
+            metal_crash_sound: Handle::default(),
         })
         .insert_resource(EffectResources {
             explosion: Handle::default(),
@@ -114,7 +112,6 @@ pub fn register_game_systems(app: &mut App) {
             (
                 setup,
                 crate::levels::load_level_assets,
-                bullet::init_bullet_resources,
                 init_game_resources,
             )
         )
@@ -521,5 +518,15 @@ pub fn init_game_resources(
         smoke: asset_server.load(TEXTURE_SMOKE),
         bubble: asset_server.load(TEXTURE_BUBBLE),
         steel_hit: asset_server.load(TEXTURE_STEEL_HIT),
+    });
+
+    // 子弹资源
+    commands.insert_resource(BulletResources {
+        bullet_player1: asset_server.load("texture/bullets/bullet_player1.png"),
+        bullet_player2: asset_server.load("texture/bullets/bullet_player2.png"),
+        bullet_enemy: asset_server.load("texture/bullets/bullet_enemy.png"),
+        brick_hit_sound: asset_server.load(SOUND_BRICK_HIT),
+        hit_sound: asset_server.load(SOUND_HIT),
+        metal_crash_sound: asset_server.load(SOUND_METAL_CRASH),
     });
 }

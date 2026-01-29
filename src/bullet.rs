@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::effects;
 
 use crate::constants::*;
-use crate::resources::{BulletTracker, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts};
+use crate::resources::{BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts};
 use bevy::audio::Volume;
 
 /// 获取玩家统计数据的不可变引用
@@ -56,37 +56,6 @@ pub enum EffectEvent {
 
 /// 子弹资源缓存
 /// 用于预加载子弹纹理和音效，避免重复加载
-#[derive(Resource)]
-pub struct BulletResources {
-    /// 玩家1子弹纹理
-    pub bullet_player1: Handle<Image>,
-    /// 玩家2子弹纹理
-    pub bullet_player2: Handle<Image>,
-    /// 敌方子弹纹理
-    pub bullet_enemy: Handle<Image>,
-    /// 砖块击中音效
-    pub brick_hit_sound: Handle<AudioSource>,
-    /// 击中音效
-    pub hit_sound: Handle<AudioSource>,
-    /// 金属碰撞音效
-    pub metal_crash_sound: Handle<AudioSource>,
-}
-
-/// 初始化子弹资源
-pub fn init_bullet_resources(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
-    commands.insert_resource(BulletResources {
-        bullet_player1: asset_server.load("texture/bullets/bullet_player1.png"),
-        bullet_player2: asset_server.load("texture/bullets/bullet_player2.png"),
-        bullet_enemy: asset_server.load("texture/bullets/bullet_enemy.png"),
-        brick_hit_sound: asset_server.load(SOUND_BRICK_HIT),
-        hit_sound: asset_server.load(SOUND_HIT),
-        metal_crash_sound: asset_server.load(SOUND_METAL_CRASH),
-    });
-}
-
 /// 子弹实体标记组件
 #[derive(Component)]
 pub struct Bullet;
