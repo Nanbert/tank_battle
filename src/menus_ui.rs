@@ -90,7 +90,7 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>) {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 0.0, 0.0)),
+        TextColor(COLOR_RED),
         Transform::from_xyz(0.0, 400.0, 1.0),
     ));
 
@@ -103,7 +103,7 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>) {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 初始选中，黄色
+        TextColor(COLOR_YELLOW), // 初始选中，黄色
         Transform::from_xyz(0.0, 50.0, 1.0),
         MenuOption { index: 0 },
     ));
@@ -177,7 +177,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
             font_smoothing: default(),
             line_height: default(),
         },
-        TextColor(Color::srgb(0.0, 0.5, 1.0)), // 蓝色
+        TextColor(COLOR_BLUE), // 蓝色
         Transform::from_xyz(0.0, -450.0, 1.0),
     ));
 
@@ -191,7 +191,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
             font_smoothing: default(),
             line_height: default(),
         },
-        TextColor(Color::srgb(1.0, 0.0, 0.0)), // 红色
+        TextColor(COLOR_RED), // 红色
         Transform::from_xyz(0.0, -480.0, 1.0),
     ));
 
@@ -205,7 +205,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
             font_smoothing: default(),
             line_height: default(),
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        TextColor(COLOR_YELLOW), // 黄色
         Transform::from_xyz(0.0, -510.0, 1.0),
     ));
 }
@@ -246,7 +246,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
     commands.spawn((
         AboutUI,
         Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
+            color: COLOR_WHITE,
             custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
@@ -262,7 +262,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, 600.0, 1.0),
     ));
 
@@ -277,7 +277,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         TextLayout::new_with_justify(bevy::text::Justify::Center),
         Transform::from_xyz(0.0, 350.0, 1.0),
     ));
@@ -294,7 +294,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         TextLayout::new_with_justify(bevy::text::Justify::Center),
         Transform::from_xyz(0.0, 50.0, 1.0),
     ));
@@ -326,7 +326,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(-250.0, -470.0, 1.0),
     ));
 
@@ -350,7 +350,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(250.0, -470.0, 1.0),
     ));
 
@@ -363,7 +363,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             font: custom_font,
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, -550.0, 1.0),
     ));
 }
@@ -395,7 +395,7 @@ pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServe
     commands.spawn((
         CreditsUI,
         Sprite {
-            color: Color::srgb(1.0, 1.0, 1.0),
+            color: COLOR_WHITE,
             custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
@@ -411,7 +411,7 @@ pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServe
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, 500.0, 1.0),
     ));
 
@@ -426,7 +426,7 @@ pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServe
             font: custom_font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         TextLayout::new_with_justify(bevy::text::Justify::Left),
         Transform::from_xyz(-400.0, 100.0, 1.0),
     ));
@@ -440,7 +440,7 @@ pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServe
             font: custom_font,
             ..default()
         },
-        TextColor(Color::srgb(0.0, 0.0, 0.0)),
+        TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, -500.0, 1.0),
     ));
 }
@@ -564,9 +564,9 @@ pub fn update_option_colors(
     for (option, mut text_color) in &mut text_query {
         if option.index == menu_selection.selected_index {
             // 选中的选项使用黄色
-            text_color.0 = Color::srgb(1.0, 1.0, 0.0);
+            text_color.0 = COLOR_YELLOW;
         } else {
-            text_color.0 = Color::srgb(1.0, 1.0, 1.0); // 白色
+            text_color.0 = COLOR_WHITE; // 白色
         }
     }
 }

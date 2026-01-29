@@ -240,7 +240,7 @@ fn start_charge(
             player_entity: entity,
         },
         Sprite {
-            color: Color::srgb(0.0, 1.0, 0.0),
+            color: COLOR_GREEN,
             custom_size: Some(Vec2::new(
                 LASER_CHARGE_PROGRESS_BAR_WIDTH,
                 PROGRESS_BAR_HEIGHT,

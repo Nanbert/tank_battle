@@ -49,7 +49,7 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 }
 
 pub fn configure_game_resources(app: &mut App) {
-    app.insert_resource(ClearColor(Color::srgb(0.0, 0.0, 0.0)))
+    app.insert_resource(ClearColor(COLOR_BLACK))
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
         .insert_resource(CommanderLife {

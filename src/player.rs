@@ -315,7 +315,7 @@ pub fn handle_recall_input(
                     player_entity: entity,
                 },
                 Sprite {
-                    color: Color::srgb(0.0, 1.0, 0.0), // 绿色
+                    color: COLOR_GREEN,
                     custom_size: Some(Vec2::new(PROGRESS_BAR_INITIAL_WIDTH, PROGRESS_BAR_HEIGHT)), // 初始宽度100（满格）
                     ..default()
                 },

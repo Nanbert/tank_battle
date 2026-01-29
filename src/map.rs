@@ -119,7 +119,7 @@ fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
     commands.spawn((
         Wall,
         PlayingEntity,
-        Sprite::from_color(Color::WHITE, Vec2::ONE),
+        Sprite::from_color(COLOR_WHITE, Vec2::ONE),
         Transform { translation: position, scale, ..default() },
     ));
 }
@@ -425,7 +425,7 @@ pub fn spawn_map(
     }
 
     // 设置背景色为黑色
-    clear_color.0 = BACKGROUND_COLOR;
+    clear_color.0 = COLOR_BACKGROUND;
 
     // 生成围墙
     spawn_walls(&mut commands);

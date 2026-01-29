@@ -176,7 +176,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 780.0, Z_UI),
     ));
 
@@ -197,7 +197,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 830.0, Z_UI),
     ));
 
@@ -218,7 +218,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 880.0, Z_UI),
     ));
 
@@ -239,7 +239,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 930.0, Z_UI),
     ));
 
@@ -253,7 +253,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 980.0, Z_UI),
     ));
 
@@ -270,7 +270,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 420.0, Z_UI),
     ));
 
@@ -287,7 +287,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 470.0, Z_UI),
     ));
 
@@ -304,7 +304,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 520.0, Z_UI),
     ));
 
@@ -321,7 +321,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 370.0, Z_UI),
     ));
 
@@ -335,7 +335,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 320.0, Z_UI),
     ));
 
@@ -357,7 +357,7 @@ let stats = match player_type {
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 50.0, Z_UI),
     ));
 
@@ -390,7 +390,7 @@ let stats = match player_type {
         marker.clone(),
         HealthBar,
         Sprite {
-            color: Color::srgb(0.3, 0.3, 0.3),
+            color: COLOR_GRAY,
             custom_size: Some(Vec2::new(HUD_BAR_WIDTH, HUD_BAR_HEIGHT)),
             ..default()
         },
@@ -403,7 +403,7 @@ let stats = match player_type {
         marker.clone(),
         HealthBar,
         Sprite {
-            color: Color::srgb(1.0, 0.0, 0.0),
+            color: COLOR_RED,
             custom_size: Some(Vec2::new(health_width, HUD_BAR_HEIGHT)),
             ..default()
         },
@@ -415,7 +415,7 @@ let stats = match player_type {
         marker.clone(),
         BlueBar,
         Sprite {
-            color: Color::srgb(0.3, 0.3, 0.3),
+            color: COLOR_GRAY,
             custom_size: Some(Vec2::new(HUD_BAR_WIDTH, HUD_BAR_HEIGHT)),
             ..default()
         },
@@ -428,7 +428,7 @@ let stats = match player_type {
         marker.clone(),
         BlueBar,
         Sprite {
-            color: Color::srgb(0.0, 0.5, 1.0),
+            color: COLOR_BLUE,
             custom_size: Some(Vec2::new(blue_width, HUD_BAR_HEIGHT)),
             ..default()
         },
@@ -654,11 +654,11 @@ pub fn animate_hud_text(
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
             commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
-            color.0 = Color::srgb(1.0, 0.0, 0.0); // 红色
+            color.0 = COLOR_RED; // 红色
         } else if timer.is_finished() {
             // 闪烁结束，移除计时器组件
             commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
-            color.0 = Color::srgb(1.0, 1.0, 1.0);
+            color.0 = COLOR_WHITE;
         } else {
             // 未达到最大值：闪烁效果
             let elapsed = timer.elapsed_secs();
@@ -666,10 +666,10 @@ pub fn animate_hud_text(
 
             if cycle < TEXT_BLINK_CYCLE / 2.0 {
                 // 亮状态：绿色
-                color.0 = Color::srgb(0.0, 1.0, 0.0);
+                color.0 = COLOR_GREEN;
             } else {
                 // 灭状态：透明
-                color.0 = Color::srgba(1.0, 1.0, 1.0, 0.0);
+                color.0 = COLOR_TRANSPARENT;
             }
         }
     }
@@ -750,7 +750,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)), // 黄色
+        TextColor(COLOR_YELLOW), // 黄色
         Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, 1.0),
     ));
 
@@ -763,7 +763,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(commander_text_x - 42.0, WINDOW_TOP_Y - 50.0, 1.0),
     ));
     // Commander 血条（与玩家血条长度相同：160像素），放在文字正右方
@@ -772,7 +772,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
         CommanderHealthBar,
         CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
         Sprite {
-            color: Color::srgb(1.0, 0.0, 0.0),
+            color: COLOR_RED,
             custom_size: Some(Vec2::new(160.0, 10.0)),
             ..default()
         },
@@ -787,7 +787,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(WINDOW_RIGHT_X - 465.0, WINDOW_TOP_Y - 50.0, 1.0),
     ));
 }

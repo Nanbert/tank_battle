@@ -69,7 +69,7 @@ pub fn spawn_stage_intro(
     stage_level: Res<StageLevel>,
 ) {
     // 设置背景色为白色
-    clear_color.0 = Color::srgb(1.0, 1.0, 1.0);
+    clear_color.0 = COLOR_WHITE;
 
     // 初始化计时器
     stage_intro_timer.fade_in = Timer::from_seconds(STAGE_FADE_IN_DURATION, TimerMode::Once);
@@ -80,7 +80,7 @@ pub fn spawn_stage_intro(
     commands.spawn((
         StageIntroUI,
         Sprite {
-            color: Color::srgba(1.0, 1.0, 1.0, 1.0), // 白色
+            color: COLOR_WHITE, // 白色
             custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
@@ -100,7 +100,7 @@ pub fn spawn_stage_intro(
             font: en_font,
             ..default()
         },
-        TextColor(Color::srgba(0.0, 0.0, 0.0, 0.0)), // 黑色，初始透明度为0
+        TextColor(COLOR_TRANSPARENT_BLACK), // 黑色，初始透明度为0
         Transform::from_xyz(0.0, 100.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
     ));
 
@@ -116,7 +116,7 @@ pub fn spawn_stage_intro(
             font: zh_font,
             ..default()
         },
-        TextColor(Color::srgba(0.3, 0.3, 0.3, 0.0)), // 暗灰色，初始透明度为0
+        TextColor(COLOR_DARK_GRAY.with_alpha(0.0)), // 暗灰色，初始透明度为0
         TextLayout::new_with_justify(Justify::Center),
         Transform::from_xyz(0.0, -50.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
     ));
@@ -172,7 +172,7 @@ pub fn despawn_stage_intro(
     stage_intro_query: Query<Entity, With<StageIntroUI>>,
 ) {
     // 重置背景色为游戏背景色
-    clear_color.0 = BACKGROUND_COLOR;
+    clear_color.0 = COLOR_BACKGROUND;
 
     for entity in stage_intro_query.iter() {
         let () = commands.entity(entity).try_despawn();
@@ -206,7 +206,7 @@ pub fn spawn_pause_ui(
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 0.0)),
+        TextColor(COLOR_YELLOW),
         Transform::from_xyz(0.0, 0.0, Z_UI),
     ));
 
@@ -218,7 +218,7 @@ pub fn spawn_pause_ui(
             font,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -100.0, Z_UI),
     ));
 }
@@ -293,7 +293,7 @@ pub fn spawn_game_over_ui(
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 0.0, 0.0)),
+        TextColor(COLOR_RED),
         Transform::from_xyz(0.0, 100.0, Z_UI),
     ));
 
@@ -306,7 +306,7 @@ pub fn spawn_game_over_ui(
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, 0.0, Z_UI),
         MenuOption { index: 0 },
     ));
@@ -320,7 +320,7 @@ pub fn spawn_game_over_ui(
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -60.0, Z_UI),
         MenuOption { index: 1 },
     ));
@@ -334,7 +334,7 @@ pub fn spawn_game_over_ui(
             font: font.clone(),
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -120.0, Z_UI),
         MenuOption { index: 2 },
     ));
@@ -348,7 +348,7 @@ pub fn spawn_game_over_ui(
             font,
             ..default()
         },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)),
+        TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -200.0, Z_UI),
     ));
 }

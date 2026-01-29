@@ -133,7 +133,7 @@ fn update_fading_out_blink(
         let blink_alpha = (cycle / half_period * std::f32::consts::PI).sin().max(0.0);
         let final_alpha = blink_alpha * fading_out.alpha;
 
-        text_color.0 = Color::srgb(1.0, 1.0, 0.0).with_alpha(final_alpha);
+        text_color.0 = COLOR_YELLOW.with_alpha(final_alpha);
     }
 }
 
@@ -163,9 +163,9 @@ fn update_start_screen_blink(
         let linear = text_color.0.to_linear();
         let is_yellow = linear.red > 0.9 && linear.green > 0.9 && linear.blue < 0.1;
         text_color.0 = if is_yellow {
-            Color::srgb(1.0, 1.0, 1.0)
+            COLOR_WHITE
         } else {
-            Color::srgb(1.0, 1.0, 0.0)
+            COLOR_YELLOW
         };
     }
 }

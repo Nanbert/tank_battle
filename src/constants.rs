@@ -96,7 +96,18 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
     ),
 ];
 
-pub const BACKGROUND_COLOR: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
+// ==================== 颜色常量 ====================
+pub const COLOR_BACKGROUND: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
+pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 黑色
+pub const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0); // 白色
+pub const COLOR_RED: Color = Color::srgb(1.0, 0.0, 0.0); // 红色
+pub const COLOR_GREEN: Color = Color::srgb(0.0, 1.0, 0.0); // 绿色
+pub const COLOR_BLUE: Color = Color::srgb(0.0, 0.5, 1.0); // 蓝色
+pub const COLOR_YELLOW: Color = Color::srgb(1.0, 1.0, 0.0); // 黄色
+pub const COLOR_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 灰色
+pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 暗灰色
+pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明白色
+pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
 
 pub const COMMANDER_WIDTH: f32 = 100.0;
 pub const COMMANDER_HEIGHT: f32 = 100.0;
