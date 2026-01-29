@@ -80,6 +80,25 @@ pub fn grid_to_world(row: usize, col: usize) -> Vec2 {
     Vec2::new(x, y)
 }
 
+/// 获取所有地图实体
+fn query_all_map_entities(
+    bricks: Query<Entity, With<Brick>>,
+    steels: Query<Entity, With<Steel>>,
+    forests: Query<Entity, With<Forest>>,
+    seas: Query<Entity, With<Sea>>,
+    barriers: Query<Entity, With<Barrier>>,
+    walls: Query<Entity, With<Wall>>,
+) -> Vec<Entity> {
+    bricks
+        .iter()
+        .chain(steels.iter())
+        .chain(forests.iter())
+        .chain(seas.iter())
+        .chain(barriers.iter())
+        .chain(walls.iter())
+        .collect()
+}
+
 /// 销毁所有地图元素（围墙、砖块、钢、森林、海、障碍物）
 pub fn despawn_map(
     mut commands: Commands,
@@ -90,55 +109,43 @@ pub fn despawn_map(
     barriers: Query<Entity, With<Barrier>>,
     walls: Query<Entity, With<Wall>>,
 ) {
-    for entity in bricks
-        .iter()
-        .chain(steels.iter())
-        .chain(forests.iter())
-        .chain(seas.iter())
-        .chain(barriers.iter())
-        .chain(walls.iter())
-    {
+    for entity in query_all_map_entities(bricks, steels, forests, seas, barriers, walls) {
         let () = commands.entity(entity).try_despawn();
     }
 }
 
+/// 生成单条边界线
+fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
+    commands.spawn((
+        Wall,
+        PlayingEntity,
+        Sprite::from_color(Color::WHITE, Vec2::ONE),
+        Transform { translation: position, scale, ..default() },
+    ));
+}
+
 /// 生成边界线（3条白线：顶部、左侧、右侧）
 pub fn spawn_walls(commands: &mut Commands) {
-    // 左边界线（从顶部边界线下方开始，延伸到窗口底部）
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::WHITE, Vec2::ONE),
-        Transform {
-            translation: Vec3::new(MAP_LEFT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-            scale: Vec3::new(5.0, MAP_HEIGHT, 1.0),
-            ..default()
-        },
-    ));
+    // 左边界线
+    spawn_wall_line(
+        commands,
+        Vec3::new(MAP_LEFT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(5.0, MAP_HEIGHT, 1.0),
+    );
 
-    // 右边界线（从顶部边界线下方开始，延伸到窗口底部）
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::WHITE, Vec2::ONE),
-        Transform {
-            translation: Vec3::new(MAP_RIGHT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-            scale: Vec3::new(5.0, MAP_HEIGHT, 1.0),
-            ..default()
-        },
-    ));
+    // 右边界线
+    spawn_wall_line(
+        commands,
+        Vec3::new(MAP_RIGHT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(5.0, MAP_HEIGHT, 1.0),
+    );
 
-    // 上边界线（向左右各延伸2像素）
-    commands.spawn((
-        Wall,
-        PlayingEntity,
-        Sprite::from_color(Color::WHITE, Vec2::ONE),
-        Transform {
-            translation: Vec3::new(0.0, MAP_TOP_Y, 0.0),
-            scale: Vec3::new(MAP_WIDTH + 4.0, 5.0, 1.0),
-            ..default()
-        },
-    ));
+    // 上边界线
+    spawn_wall_line(
+        commands,
+        Vec3::new(0.0, MAP_TOP_Y, 0.0),
+        Vec3::new(MAP_WIDTH + 4.0, 5.0, 1.0),
+    );
 }
 
 /// 地形瓦片类型（用于 `spawn_terrain_tile`）
@@ -346,174 +353,24 @@ pub fn spawn_tile_group(
         .collect()
 }
 
-/// 生成砖块组（2x2网格，100x100）
-pub fn spawn_brick_group(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Brick,
-        TileLayout::Full,
-    )
-}
-
-/// 生成钢块组（2x2网格，100x100）
-pub fn spawn_steel_group(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Steel,
-        TileLayout::Full,
-    )
-}
-
-/// 生成砖块左半（2x1网格，50x100）
-pub fn spawn_brick_left(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Brick,
-        TileLayout::Left,
-    )
-}
-
-/// 生成砖块右半（2x1网格，50x100）
-pub fn spawn_brick_right(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Brick,
-        TileLayout::Right,
-    )
-}
-
-/// 生成砖块上半（1x2网格，100x50）
-pub fn spawn_brick_top(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Brick,
-        TileLayout::Top,
-    )
-}
-
-/// 生成砖块下半（1x2网格，100x50）
-pub fn spawn_brick_bottom(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Brick,
-        TileLayout::Bottom,
-    )
-}
-
-/// 生成钢块左半（2x1网格，50x100）
-pub fn spawn_steel_left(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Steel,
-        TileLayout::Left,
-    )
-}
-
-/// 生成钢块右半（2x1网格，50x100）
-pub fn spawn_steel_right(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Steel,
-        TileLayout::Right,
-    )
-}
-
-/// 生成钢块上半（1x2网格，100x50）
-pub fn spawn_steel_top(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Steel,
-        TileLayout::Top,
-    )
-}
-
-/// 生成钢块下半（1x2网格，100x50）
-pub fn spawn_steel_bottom(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
-    center_position: Vec2,
-) -> Vec<Entity> {
-    spawn_tile_group(
-        commands,
-        asset_server,
-        atlas_layouts,
-        center_position,
-        TerrainTileType::Steel,
-        TileLayout::Bottom,
-    )
+/// 地形配置：将 TerrainType 映射到 (TerrainTileType, Option<TileLayout>)
+fn get_terrain_config(terrain: TerrainType) -> Option<(TerrainTileType, Option<TileLayout>)> {
+    match terrain {
+        TerrainType::Brick => Some((TerrainTileType::Brick, Some(TileLayout::Full))),
+        TerrainType::BrickLeft => Some((TerrainTileType::Brick, Some(TileLayout::Left))),
+        TerrainType::BrickRight => Some((TerrainTileType::Brick, Some(TileLayout::Right))),
+        TerrainType::BrickTop => Some((TerrainTileType::Brick, Some(TileLayout::Top))),
+        TerrainType::BrickBottom => Some((TerrainTileType::Brick, Some(TileLayout::Bottom))),
+        TerrainType::Steel => Some((TerrainTileType::Steel, Some(TileLayout::Full))),
+        TerrainType::SteelLeft => Some((TerrainTileType::Steel, Some(TileLayout::Left))),
+        TerrainType::SteelRight => Some((TerrainTileType::Steel, Some(TileLayout::Right))),
+        TerrainType::SteelTop => Some((TerrainTileType::Steel, Some(TileLayout::Top))),
+        TerrainType::SteelBottom => Some((TerrainTileType::Steel, Some(TileLayout::Bottom))),
+        TerrainType::Forest => Some((TerrainTileType::Forest, None)),
+        TerrainType::Sea => Some((TerrainTileType::Sea, None)),
+        TerrainType::Barrier => Some((TerrainTileType::Barrier, None)),
+        TerrainType::Empty => None,
+    }
 }
 
 fn spawn_map_terrain(
@@ -533,65 +390,15 @@ fn spawn_map_terrain(
 
             let pos = grid_to_world(row, col);
 
-            match terrain {
-                TerrainType::Forest => {
-                    spawn_terrain_tile(
-                        commands,
-                        asset_server,
-                        atlas_layouts,
-                        pos,
-                        TerrainTileType::Forest,
-                    );
+            if let Some((tile_type, layout)) = get_terrain_config(*terrain) {
+                match layout {
+                    Some(layout_type) => {
+                        spawn_tile_group(commands, asset_server, atlas_layouts, pos, tile_type, layout_type);
+                    }
+                    None => {
+                        spawn_terrain_tile(commands, asset_server, atlas_layouts, pos, tile_type);
+                    }
                 }
-                TerrainType::Sea => {
-                    spawn_terrain_tile(
-                        commands,
-                        asset_server,
-                        atlas_layouts,
-                        pos,
-                        TerrainTileType::Sea,
-                    );
-                }
-                TerrainType::Brick => {
-                    spawn_brick_group(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::BrickLeft => {
-                    spawn_brick_left(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::BrickRight => {
-                    spawn_brick_right(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::BrickTop => {
-                    spawn_brick_top(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::BrickBottom => {
-                    spawn_brick_bottom(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::Steel => {
-                    spawn_steel_group(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::SteelLeft => {
-                    spawn_steel_left(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::SteelRight => {
-                    spawn_steel_right(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::SteelTop => {
-                    spawn_steel_top(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::SteelBottom => {
-                    spawn_steel_bottom(commands, asset_server, atlas_layouts, pos);
-                }
-                TerrainType::Barrier => {
-                    spawn_terrain_tile(
-                        commands,
-                        asset_server,
-                        atlas_layouts,
-                        pos,
-                        TerrainTileType::Barrier,
-                    );
-                }
-                TerrainType::Empty => {}
             }
         }
     }
@@ -613,14 +420,7 @@ pub fn spawn_map(
     walls: Query<Entity, With<Wall>>,
 ) {
     // 防御性编程：先清理所有可能存在的地图实体
-    for entity in bricks
-        .iter()
-        .chain(steels.iter())
-        .chain(forests.iter())
-        .chain(seas.iter())
-        .chain(barriers.iter())
-        .chain(walls.iter())
-    {
+    for entity in query_all_map_entities(bricks, steels, forests, seas, barriers, walls) {
         let () = commands.entity(entity).try_despawn();
     }
 
@@ -643,6 +443,28 @@ pub fn spawn_map(
     spawn_commander_fortress(&mut commands, &asset_server, &atlas_layouts);
 }
 
+/// 生成一列砖块墙
+fn spawn_wall_column(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    fixed_axis: f32,
+    start_pos: f32,
+    brick_size: f32,
+    count: usize,
+    is_vertical: bool,
+) {
+    for i in 0..count {
+        let pos = (i as f32).mul_add(brick_size, start_pos + brick_size / 2.0);
+        let position = if is_vertical {
+            Vec2::new(fixed_axis, pos)
+        } else {
+            Vec2::new(pos, fixed_axis)
+        };
+        spawn_terrain_tile(commands, asset_server, atlas_layouts, position, TerrainTileType::Brick);
+    }
+}
+
 /// 生成包围司令官的三面砖块堡垒墙（左、右、上）
 pub fn spawn_commander_fortress(
     commands: &mut Commands,
@@ -659,40 +481,40 @@ pub fn spawn_commander_fortress(
 
     let brick_size = COMMANDER_BRICK_SIZE;
 
-    // 左墙：3块砖，紧贴司令官左侧
-    for i in 0..3 {
-        let y = (i as f32).mul_add(brick_size, commander_bottom + brick_size / 2.0);
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            Vec2::new(commander_left - brick_size / 2.0, y),
-            TerrainTileType::Brick,
-        );
-    }
+    // 左墙：3块砖
+    spawn_wall_column(
+        commands,
+        asset_server,
+        atlas_layouts,
+        commander_left - brick_size / 2.0,
+        commander_bottom,
+        brick_size,
+        3,
+        true,
+    );
 
-    // 右墙：3块砖，紧贴司令官右侧
-    for i in 0..3 {
-        let y = (i as f32).mul_add(brick_size, commander_bottom + brick_size / 2.0);
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            Vec2::new(commander_right + brick_size / 2.0, y),
-            TerrainTileType::Brick,
-        );
-    }
+    // 右墙：3块砖
+    spawn_wall_column(
+        commands,
+        asset_server,
+        atlas_layouts,
+        commander_right + brick_size / 2.0,
+        commander_bottom,
+        brick_size,
+        3,
+        true,
+    );
 
-    // 上墙：2块砖封顶，紧贴司令官顶部
-    for i in 0..2 {
-        let x = (i as f32).mul_add(brick_size, -brick_size / 2.0);
-        spawn_terrain_tile(
-            commands,
-            asset_server,
-            atlas_layouts,
-            Vec2::new(x, commander_top + brick_size / 2.0),
-            TerrainTileType::Brick,
-        );
-    }
+    // 上墙：2块砖
+    spawn_wall_column(
+        commands,
+        asset_server,
+        atlas_layouts,
+        commander_top + brick_size / 2.0,
+        -brick_size / 2.0,
+        brick_size,
+        2,
+        false,
+    );
 }
 
