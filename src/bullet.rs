@@ -819,7 +819,6 @@ pub fn handle_effect_events(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    effect_resources: Res<EffectResources>,
     terrain_atlas_layouts: Res<TerrainAtlasLayouts>,
 ) {
     for event in events.read() {
@@ -843,7 +842,6 @@ pub fn handle_effect_events(
             EffectEvent::ForestFire { position } => {
                 effects::spawn_forest_fire(
                     &mut commands,
-                    &effect_resources,
                     &terrain_atlas_layouts,
                     &asset_server,
                     *position,

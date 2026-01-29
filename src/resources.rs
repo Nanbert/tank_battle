@@ -284,5 +284,4 @@ pub struct EffectResources {
     pub smoke: Handle<Image>,
     pub bubble: Handle<Image>,
     pub steel_hit: Handle<Image>,
-    pub forest_fire: Handle<Image>,
 }

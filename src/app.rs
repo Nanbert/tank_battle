@@ -81,7 +81,6 @@ pub fn configure_game_resources(app: &mut App) {
             smoke: Handle::default(),
             bubble: Handle::default(),
             steel_hit: Handle::default(),
-            forest_fire: Handle::default(),
         })
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
@@ -522,6 +521,5 @@ pub fn init_game_resources(
         smoke: asset_server.load(TEXTURE_SMOKE),
         bubble: asset_server.load(TEXTURE_BUBBLE),
         steel_hit: asset_server.load(TEXTURE_STEEL_HIT),
-        forest_fire: asset_server.load("maps/tree_fire_sheet.png"),
     });
 }
