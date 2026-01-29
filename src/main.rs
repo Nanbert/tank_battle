@@ -6,6 +6,7 @@ mod app;
 mod bullet;
 mod commander;
 mod constants;
+mod dash;
 mod effects;
 mod enemy;
 mod game_state;

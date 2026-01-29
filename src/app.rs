@@ -13,6 +13,7 @@ use crate::resources::*;
 // 导入模块以便使用其函数
 use crate::bullet;
 use crate::commander;
+use crate::dash;
 use crate::effects;
 use crate::enemy;
 use crate::game_state;
@@ -208,15 +209,15 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            player::handle_dash_input.run_if(in_state(GameState::Playing)),
+            dash::handle_dash_input.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            player::update_dash_movement.run_if(in_state(GameState::Playing)),
+            dash::update_dash_movement.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            player::handle_dash_collision.run_if(in_state(GameState::Playing)),
+            dash::handle_dash_collision.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
