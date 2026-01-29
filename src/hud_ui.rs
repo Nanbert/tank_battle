@@ -27,63 +27,63 @@ pub struct Player2Hud;
 pub struct PlayerNameText;
 
 /// 速度文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct SpeedText;
 
 /// 射速文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct FireSpeedText;
 
 /// 护盾文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct ProtectionText;
 
 /// 炮弹数量文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct ShellsText;
 
 /// 分数文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct ScoreText;
 
 /// 穿透效果文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct PenetrateText;
 
 /// 履带链效果文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct TrackChainText;
 
 /// 气垫效果文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct AirCushionText;
 
 /// 火焰炮弹效果文本标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct FireShellText;
 
 /// 效果标题标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct EffectsTitle;
 
 /// 玩家头像标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct PlayerAvatar;
 
 /// 血条标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct HealthBar;
 
 /// 蓝条标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct BlueBar;
 
 /// 血条前景标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct HealthBarForeground;
 
 /// 蓝条前景标记
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct BlueBarForeground;
 
 // ============================================================================
@@ -101,12 +101,7 @@ const HUD_PREFIX_TRACK_CHAIN: &str = "Track Chain:";
 const HUD_PREFIX_AIR_CUSHION: &str = "Air Cushion:";
 const HUD_PREFIX_FIRE_SHELL: &str = "Fire Shell:";
 
-/// HUD 魔法数字常量
-const HUD_MAX_PERCENT: usize = 100;
-const HUD_MAX_LIFE_POINTS: f32 = 3.0;
-const HUD_MAX_SHELLS: usize = 2;
-const HUD_BAR_Y_OFFSET_HEALTH: f32 = 235.0;
-const HUD_BAR_Y_OFFSET_BLUE: f32 = 250.0;
+
 
 // ============================================================================
 // HUD Spawn Functions
@@ -115,7 +110,8 @@ const HUD_BAR_Y_OFFSET_BLUE: f32 = 250.0;
 /// 生成玩家 HUD
 fn spawn_player_hud(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    font_resources: Res<FontResources>,
+    commander_resources: Res<CommanderResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -125,14 +121,14 @@ fn spawn_player_hud(
     // 只在 HUD 不存在时才创建，以保留颜色状态
     // 关卡切换时，白色背景会自然遮挡 HUD
 
-    let font: Handle<Font> = asset_server.load(FONT_EN);
+    let font = font_resources.en.clone();
 
     // 玩家1 HUD
     if player1_hud_query.is_empty() {
         spawn_single_player_hud(
             &mut commands,
             &font,
-            &asset_server,
+            &commander_resources,
             &mut texture_atlas_layouts,
             &player_info,
             TankType::Player1,
@@ -146,7 +142,7 @@ fn spawn_player_hud(
         spawn_single_player_hud(
             &mut commands,
             &font,
-            &asset_server,
+            &commander_resources,
             &mut texture_atlas_layouts,
             &player_info,
             TankType::Player2,
@@ -160,7 +156,7 @@ fn spawn_player_hud(
 fn spawn_single_player_hud(
     commands: &mut Commands,
     font: &Handle<Font>,
-    asset_server: &Res<AssetServer>,
+    commander_resources: &CommanderResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &PlayerInfo,
     player_type: TankType,
@@ -180,155 +176,53 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 780.0, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_NAME, Z_UI),
     ));
 
-    // Speed
-    commands.spawn((
+    // 属性文本（百分比类型）
+    spawn_percent_text(
+        commands,
         marker.clone(),
         SpeedText,
-        Text2d(format!(
-            "Speed:{}",
-            if stats.speed >= 100 {
-                "MAX".to_string()
-            } else {
-                format!("{}%", stats.speed)
-            }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 830.0, Z_UI),
-    ));
-
-    // Fire Speed
-    commands.spawn((
+        font,
+        HUD_PREFIX_SPEED,
+        stats.speed,
+        HUD_Y_SPEED,
+        x_pos,
+    );
+    spawn_percent_text(
+        commands,
         marker.clone(),
         FireSpeedText,
-        Text2d(format!(
-            "Fire Speed:{}",
-            if stats.fire_speed >= 100 {
-                "MAX".to_string()
-            } else {
-                format!("{}%", stats.fire_speed)
-            }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 880.0, Z_UI),
-    ));
-
-    // Protection
-    commands.spawn((
+        font,
+        HUD_PREFIX_FIRE_SPEED,
+        stats.fire_speed,
+        HUD_Y_FIRE_SPEED,
+        x_pos,
+    );
+    spawn_percent_text(
+        commands,
         marker.clone(),
         ProtectionText,
-        Text2d(format!(
-            "Protection:{}",
-            if stats.protection >= 100 {
-                "MAX".to_string()
-            } else {
-                format!("{}%", stats.protection)
-            }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 930.0, Z_UI),
-    ));
+        font,
+        HUD_PREFIX_PROTECTION,
+        stats.protection,
+        HUD_Y_PROTECTION,
+        x_pos,
+    );
 
-    // Shells
-    commands.spawn((
+    // 炮弹数量
+    spawn_stat_text(
+        commands,
         marker.clone(),
         ShellsText,
-        Text2d(format!("Shells: {}", stats.shells)),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 980.0, Z_UI),
-    ));
+        font,
+        &format!("{} {}", HUD_PREFIX_SHELLS, stats.shells),
+        HUD_Y_SHELLS,
+        x_pos,
+    );
 
-    // Penetrate
-    commands.spawn((
-        marker.clone(),
-        PenetrateText,
-        Text2d(format!(
-            "Penetrate: {}",
-            if stats.penetrate { "On" } else { "Off" }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 420.0, Z_UI),
-    ));
-
-    // Track Chain
-    commands.spawn((
-        marker.clone(),
-        TrackChainText,
-        Text2d(format!(
-            "Track Chain: {}",
-            if stats.track_chain { "On" } else { "Off" }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 470.0, Z_UI),
-    ));
-
-    // Air Cushion
-    commands.spawn((
-        marker.clone(),
-        AirCushionText,
-        Text2d(format!(
-            "Air Cushion: {}",
-            if stats.air_cushion { "On" } else { "Off" }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 520.0, Z_UI),
-    ));
-
-    // Fire Shell
-    commands.spawn((
-        marker.clone(),
-        FireShellText,
-        Text2d(format!(
-            "Fire Shell: {}",
-            if stats.fire_shell { "On" } else { "Off" }
-        )),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 370.0, Z_UI),
-    ));
-
-    // Effects 标题
+    // 效果标题
     commands.spawn((
         marker.clone(),
         EffectsTitle,
@@ -339,8 +233,50 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 320.0, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_EFFECTS_TITLE, Z_UI),
     ));
+
+    // 效果文本（布尔类型）
+    spawn_effect_text(
+        commands,
+        marker.clone(),
+        FireShellText,
+        font,
+        HUD_PREFIX_FIRE_SHELL,
+        stats.fire_shell,
+        HUD_Y_FIRE_SHELL,
+        x_pos,
+    );
+    spawn_effect_text(
+        commands,
+        marker.clone(),
+        PenetrateText,
+        font,
+        HUD_PREFIX_PENETRATE,
+        stats.penetrate,
+        HUD_Y_PENETRATE,
+        x_pos,
+    );
+    spawn_effect_text(
+        commands,
+        marker.clone(),
+        TrackChainText,
+        font,
+        HUD_PREFIX_TRACK_CHAIN,
+        stats.track_chain,
+        HUD_Y_TRACK_CHAIN,
+        x_pos,
+    );
+    spawn_effect_text(
+        commands,
+        marker.clone(),
+        AirCushionText,
+        font,
+        HUD_PREFIX_AIR_CUSHION,
+        stats.air_cushion,
+        HUD_Y_AIR_CUSHION,
+        x_pos,
+    );
 
     // 分数
     commands.spawn((
@@ -353,11 +289,11 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 50.0, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_SCORE, Z_UI),
     ));
 
     // 玩家头像（使用精灵图）
-    let player_avatar_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR);
+    let player_avatar_texture = commander_resources.avatar.clone();
     let player_avatar_tile_size = UVec2::new(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
@@ -377,7 +313,7 @@ fn spawn_single_player_hud(
             custom_size: Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT)),
             ..default()
         },
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 150.0, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_AVATAR, Z_UI),
         player_avatar_animation_indices,
         AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
@@ -484,6 +420,71 @@ fn spawn_bar<T: Component + Clone>(
     ));
 }
 
+/// 生成属性文本
+fn spawn_stat_text<T1: Component, T2: Component>(
+    commands: &mut Commands,
+    marker1: T1,
+    marker2: T2,
+    font: &Handle<Font>,
+    text: &str,
+    y_offset: f32,
+    x_pos: f32,
+) {
+    commands.spawn((
+        marker1,
+        marker2,
+        Text2d(text.to_string()),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - y_offset, Z_UI),
+    ));
+}
+
+/// 生成效果开关文本
+fn spawn_effect_text<T1: Component, T2: Component>(
+    commands: &mut Commands,
+    marker1: T1,
+    marker2: T2,
+    font: &Handle<Font>,
+    prefix: &str,
+    value: bool,
+    y_offset: f32,
+    x_pos: f32,
+) {
+    spawn_stat_text(
+        commands,
+        marker1,
+        marker2,
+        font,
+        &format!("{}: {}", prefix, if value { "On" } else { "Off" }),
+        y_offset,
+        x_pos,
+    );
+}
+
+/// 生成百分比属性文本
+fn spawn_percent_text<T1: Component, T2: Component>(
+    commands: &mut Commands,
+    marker1: T1,
+    marker2: T2,
+    font: &Handle<Font>,
+    prefix: &str,
+    value: usize,
+    y_offset: f32,
+    x_pos: f32,
+) {
+    let text = if value >= HUD_MAX_PERCENT {
+        format!("{}MAX", prefix)
+    } else {
+        format!("{}{}%", prefix, value)
+    };
+    spawn_stat_text(commands, marker1, marker2, font, &text, y_offset, x_pos);
+}
+
 /// 获取玩家统计数据（用于 spawn_single_player_hud）
 fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -> PlayerStats {
     match player_type {
@@ -531,42 +532,100 @@ fn update_bar(
 
 /// 更新单个玩家的文本
 fn update_single_player_text(stats: &PlayerStats, text: &mut String) {
-    if text.starts_with(HUD_PREFIX_SPEED) {
-        *text = format!(
-            "{}{}",
-            HUD_PREFIX_SPEED,
-            format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT)
-        );
-    } else if text.starts_with(HUD_PREFIX_FIRE_SPEED) {
-        *text = format!(
-            "{}{}",
-            HUD_PREFIX_FIRE_SPEED,
-            format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT)
-        );
-    } else if text.starts_with(HUD_PREFIX_PROTECTION) {
-        *text = format!(
-            "{}{}",
-            HUD_PREFIX_PROTECTION,
-            format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT)
-        );
-    } else if text.starts_with(HUD_PREFIX_SHELLS) {
+    // 百分比属性
+    let percent_attrs = [
+        (HUD_PREFIX_SPEED, stats.speed),
+        (HUD_PREFIX_FIRE_SPEED, stats.fire_speed),
+        (HUD_PREFIX_PROTECTION, stats.protection),
+    ];
+
+    for (prefix, value) in percent_attrs {
+        if text.starts_with(prefix) {
+            *text = format!(
+                "{}{}",
+                prefix,
+                format_percent_value(value, value >= HUD_MAX_PERCENT)
+            );
+            return;
+        }
+    }
+
+    // 布尔效果属性
+    let effect_attrs = [
+        (HUD_PREFIX_FIRE_SHELL, stats.fire_shell),
+        (HUD_PREFIX_PENETRATE, stats.penetrate),
+        (HUD_PREFIX_TRACK_CHAIN, stats.track_chain),
+        (HUD_PREFIX_AIR_CUSHION, stats.air_cushion),
+    ];
+
+    for (prefix, value) in effect_attrs {
+        if text.starts_with(prefix) {
+            *text = format!("{}: {}", prefix, format_bool_value(value));
+            return;
+        }
+    }
+
+    // 其他属性
+    if text.starts_with(HUD_PREFIX_SHELLS) {
         *text = format!("{} {}", HUD_PREFIX_SHELLS, stats.shells);
     } else if text.starts_with("Scores") {
         *text = format!("Scores: {}", stats.score);
-    } else if text.starts_with(HUD_PREFIX_AIR_CUSHION) {
-        *text = format!("{}{}", HUD_PREFIX_AIR_CUSHION, format_bool_value(stats.air_cushion));
-    } else if text.starts_with(HUD_PREFIX_PENETRATE) {
-        *text = format!("{} {}", HUD_PREFIX_PENETRATE, format_bool_value(stats.penetrate));
-    } else if text.starts_with(HUD_PREFIX_TRACK_CHAIN) {
-        *text = format!("{}{}", HUD_PREFIX_TRACK_CHAIN, format_bool_value(stats.track_chain));
-    } else if text.starts_with(HUD_PREFIX_FIRE_SHELL) {
-        *text = format!("{}{}", HUD_PREFIX_FIRE_SHELL, format_bool_value(stats.fire_shell));
     }
 }
 
 // ============================================================================
 // HUD Update Functions
 // ============================================================================
+
+/// 更新单个玩家的 HUD（内部辅助函数）
+fn update_single_player_hud(
+    stats: &PlayerStats,
+    x_pos: f32,
+    text_query: &mut Query<(&mut Text2d, Option<&Player1Hud>, Option<&Player2Hud>)>,
+    bar_query: &mut Query<(
+        &mut Sprite,
+        &mut Transform,
+        Option<&HealthBarForeground>,
+        Option<&BlueBarForeground>,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
+    is_player1: bool,
+) {
+    // 更新文本
+    for (mut text, is_p1, is_p2) in text_query.iter_mut() {
+        if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
+            update_single_player_text(stats, &mut text.0);
+        }
+    }
+
+    // 更新血条和蓝条
+    for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, is_p2) in
+        bar_query.iter_mut()
+    {
+        if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
+            if is_health_foreground.is_some() {
+                update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats.life_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos,
+                    HUD_BAR_WIDTH,
+                );
+            } else if is_blue_foreground.is_some() {
+                update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats.energy_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos,
+                    HUD_BAR_WIDTH,
+                );
+            }
+        }
+    }
+}
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
 pub fn update_player_hud(
@@ -583,81 +642,24 @@ pub fn update_player_hud(
     )>,
 ) {
     // 更新玩家1 HUD
-    let stats1 = &player_info.player1;
-    let x_pos1 = WINDOW_LEFT_X + 115.0;
-
-    // 更新玩家1文本
-    for (mut text, is_p1, _is_p2) in text_query.iter_mut() {
-        if is_p1.is_some() {
-            update_single_player_text(stats1, &mut text.0);
-        }
-    }
-
-    // 更新玩家1血条和蓝条
-    for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, _is_p2) in
-        bar_query.iter_mut()
-    {
-        if is_p1.is_some() {
-            if is_health_foreground.is_some() {
-                update_bar(
-                    &mut sprite,
-                    &mut transform,
-                    stats1.life_points as f32,
-                    HUD_MAX_LIFE_POINTS,
-                    x_pos1,
-                    HUD_BAR_WIDTH,
-                );
-            } else if is_blue_foreground.is_some() {
-                update_bar(
-                    &mut sprite,
-                    &mut transform,
-                    stats1.energy_points as f32,
-                    HUD_MAX_LIFE_POINTS,
-                    x_pos1,
-                    HUD_BAR_WIDTH,
-                );
-            }
-        }
-    }
+    update_single_player_hud(
+        &player_info.player1,
+        WINDOW_LEFT_X + 115.0,
+        &mut text_query,
+        &mut bar_query,
+        true,
+    );
 
     // 更新玩家2 HUD（仅在双人模式下）
     if *game_mode == GameMode::TwoPlayers {
         if let Some(stats2) = &player_info.player2 {
-            let x_pos2 = WINDOW_RIGHT_X - 115.0;
-
-            // 更新玩家2文本
-            for (mut text, _is_p1, is_p2) in text_query.iter_mut() {
-                if is_p2.is_some() {
-                    update_single_player_text(stats2, &mut text.0);
-                }
-            }
-
-            // 更新玩家2血条和蓝条
-            for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, _is_p1, is_p2) in
-                bar_query.iter_mut()
-            {
-                if is_p2.is_some() {
-                    if is_health_foreground.is_some() {
-                        update_bar(
-                            &mut sprite,
-                            &mut transform,
-                            stats2.life_points as f32,
-                            HUD_MAX_LIFE_POINTS,
-                            x_pos2,
-                            HUD_BAR_WIDTH,
-                        );
-                    } else if is_blue_foreground.is_some() {
-                        update_bar(
-                            &mut sprite,
-                            &mut transform,
-                            stats2.energy_points as f32,
-                            HUD_MAX_LIFE_POINTS,
-                            x_pos2,
-                            HUD_BAR_WIDTH,
-                        );
-                    }
-                }
-            }
+            update_single_player_hud(
+                stats2,
+                WINDOW_RIGHT_X - 115.0,
+                &mut text_query,
+                &mut bar_query,
+                false,
+            );
         }
     }
 }
@@ -814,8 +816,8 @@ fn is_hud_stat_at_max_value(
 }
 
 /// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
-fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_level: &Res<StageLevel>) {
-    let font: Handle<Font> = asset_server.load(FONT_EN);
+fn spawn_top_hud(mut commands: Commands, font_resources: &FontResources, stage_level: &Res<StageLevel>) {
+    let font = font_resources.en.clone();
     // 其他游戏信息 UI 元素配置
     let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
 
@@ -874,7 +876,8 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
 /// 生成所有 HUD（只在第一关时生成）
 pub fn spawn_hud(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    font_resources: Res<FontResources>,
+    commander_resources: Res<CommanderResources>,
     texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -892,8 +895,8 @@ pub fn spawn_hud(
         let () = commands.entity(entity).try_despawn();
     }
 
-    spawn_top_hud(commands.reborrow(), &asset_server, &stage_level);
-    spawn_player_hud(commands, asset_server, texture_atlas_layouts, player_info, game_mode, player1_hud_query, player2_hud_query);
+    spawn_top_hud(commands.reborrow(), &font_resources, &stage_level);
+    spawn_player_hud(commands, font_resources, commander_resources, texture_atlas_layouts, player_info, game_mode, player1_hud_query, player2_hud_query);
 }
 
 /// 更新关卡信息文本
@@ -976,15 +979,14 @@ pub fn animate_player_avatar(
 
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(
-    asset_server: Res<AssetServer>,
+    commander_resources: Res<CommanderResources>,
     mut query: Query<(&mut Sprite, Has<PlayerDead>), With<PlayerAvatar>>,
 ) {
     let avatar_death_path = AssetPath::from("texture/avatar_death.png");
     for (mut sprite, is_dead) in &mut query {
         if is_dead && sprite.image.path() != Some(&avatar_death_path) {
             // 切换到死亡头像纹理
-            let avatar_dead_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR_DEATH);
-            sprite.image = avatar_dead_texture.clone();
+            sprite.image = commander_resources.avatar_death.clone();
             sprite.texture_atlas = None; // 死亡头像不需要动画
             sprite.custom_size = Some(Vec2::new(160.0, 147.0));
         }
@@ -993,7 +995,7 @@ pub fn handle_player_avatar_death(
 
 /// 处理司令官阵亡时更换纹理和头像
 pub fn handle_commander_death(
-    asset_server: Res<AssetServer>,
+    commander_resources: Res<CommanderResources>,
     commander_life: Res<CommanderLife>,
     mut queries: ParamSet<(
         Query<&mut Sprite, With<Commander>>,
@@ -1018,7 +1020,7 @@ pub fn handle_commander_death(
 
     // 更换司令官纹理为死亡纹理
     for mut sprite in &mut queries.p0() {
-        sprite.image = asset_server.load(TEXTURE_COMMANDER_DEAD);
+        sprite.image = commander_resources.dead_texture.clone();
         // 移除纹理图集，因为死亡纹理是单张图片
         sprite.texture_atlas = None;
     }
@@ -1035,7 +1037,7 @@ pub fn handle_commander_death(
 
     // 更换所有玩家头像为死亡头像
     for mut sprite in &mut queries.p1() {
-        sprite.image = asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD);
+        sprite.image = commander_resources.avatar_commander_dead.clone();
         // 移除纹理图集，因为死亡头像纹理是单张图片
         sprite.texture_atlas = None;
     }

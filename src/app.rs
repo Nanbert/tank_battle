@@ -50,6 +50,39 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 
 pub fn configure_game_resources(app: &mut App) {
     app.insert_resource(ClearColor(COLOR_BLACK))
+        .insert_resource(FontResources {
+            cn: Handle::default(),
+            en: Handle::default(),
+        })
+        .insert_resource(PlayerTankResources {
+            player1: Handle::default(),
+            player2: Handle::default(),
+        })
+        .insert_resource(CommanderResources {
+            texture: Handle::default(),
+            dead_texture: Handle::default(),
+            avatar: Handle::default(),
+            avatar_death: Handle::default(),
+            avatar_commander_dead: Handle::default(),
+        })
+        .insert_resource(SoundResources {
+            explosion: Handle::default(),
+            brick_hit: Handle::default(),
+            hit: Handle::default(),
+            metal_crash: Handle::default(),
+            laser_charge: Handle::default(),
+            laser: Handle::default(),
+            commander_get_shot: Handle::default(),
+            commander_death: Handle::default(),
+        })
+        .insert_resource(EffectResources {
+            explosion: Handle::default(),
+            spark: Handle::default(),
+            smoke: Handle::default(),
+            bubble: Handle::default(),
+            steel_hit: Handle::default(),
+            forest_fire: Handle::default(),
+        })
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
         .insert_resource(CommanderLife {
@@ -77,7 +110,15 @@ pub fn register_game_systems(app: &mut App) {
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
         .init_resource::<BulletTracker>()
-        .add_systems(Startup, (setup, crate::levels::load_level_assets, bullet::init_bullet_resources))
+        .add_systems(
+            Startup,
+            (
+                setup,
+                crate::levels::load_level_assets,
+                bullet::init_bullet_resources,
+                init_game_resources,
+            )
+        )
         .add_systems(
             OnEnter(GameState::StartScreen),
             (
@@ -421,5 +462,55 @@ pub fn setup(
     commands.insert_resource(TerrainAtlasLayouts {
         sea: sea_texture_atlas_layout,
         forest: forest_texture_atlas_layout,
+    });
+}
+
+/// 初始化游戏资源
+/// 预加载常用的字体、纹理和音效，避免运行时重复加载
+pub fn init_game_resources(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    // 字体资源
+    commands.insert_resource(FontResources {
+        cn: asset_server.load(FONT_CN),
+        en: asset_server.load(FONT_EN),
+    });
+
+    // 玩家坦克资源
+    commands.insert_resource(PlayerTankResources {
+        player1: asset_server.load(TEXTURE_PLAYER_TANK1),
+        player2: asset_server.load(TEXTURE_PLAYER_TANK2),
+    });
+
+    // 司令官资源
+    commands.insert_resource(CommanderResources {
+        texture: asset_server.load(TEXTURE_COMMANDER),
+        dead_texture: asset_server.load(TEXTURE_COMMANDER_DEAD),
+        avatar: asset_server.load(TEXTURE_AVATAR),
+        avatar_death: asset_server.load(TEXTURE_AVATAR_DEATH),
+        avatar_commander_dead: asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD),
+    });
+
+    // 音效资源
+    commands.insert_resource(SoundResources {
+        explosion: asset_server.load(SOUND_EXPLOSION),
+        brick_hit: asset_server.load(SOUND_BRICK_HIT),
+        hit: asset_server.load(SOUND_HIT),
+        metal_crash: asset_server.load(SOUND_METAL_CRASH),
+        laser_charge: asset_server.load(SOUND_LASER_CHARGE),
+        laser: asset_server.load(SOUND_LASER),
+        commander_get_shot: asset_server.load(SOUND_COMMANDER_GET_SHOT),
+        commander_death: asset_server.load(SOUND_COMMANDER_DEATH),
+    });
+
+    // 特效纹理资源
+    commands.insert_resource(EffectResources {
+        explosion: asset_server.load(TEXTURE_EXPLOSION),
+        spark: asset_server.load(TEXTURE_STEEL_HIT),
+        smoke: asset_server.load(TEXTURE_SMOKE),
+        bubble: asset_server.load(TEXTURE_BUBBLE),
+        steel_hit: asset_server.load(TEXTURE_STEEL_HIT),
+        forest_fire: asset_server.load("maps/tree_fire_sheet.png"),
     });
 }

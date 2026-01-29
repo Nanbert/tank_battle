@@ -8,11 +8,12 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::CommanderLife;
+use crate::resources::{CommanderLife, CommanderResources};
 
 /// 生成司令官
 pub fn spawn_commander(
     mut commands: Commands,
+    commander_resources: Res<CommanderResources>,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     commanders: Query<Entity, With<Commander>>,
@@ -34,7 +35,7 @@ pub fn spawn_commander(
     // 重置 Commander 生命值
     commander_life.life_points = 3;
 
-    let commander_texture: Handle<Image> = asset_server.load(TEXTURE_COMMANDER);
+    let commander_texture = commander_resources.texture.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
     let commander_texture_atlas =
@@ -45,7 +46,7 @@ pub fn spawn_commander(
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
     let commander_x = 0.0;
 
-    let commander_entity = commands.spawn((
+    let _commander_entity = commands.spawn((
         Commander,
         PlayingEntity,
         Sprite {

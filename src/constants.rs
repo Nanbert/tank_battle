@@ -552,6 +552,28 @@ pub const Z_UI: f32 = 10.0; // UI层级
 pub const Z_STAGE_INTRO_BG: f32 = 100.0; // 关卡介绍层级
 pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
 
+// ==================== HUD 位置常量 ====================
+// 玩家 HUD Y 轴偏移量（相对于 WINDOW_TOP_Y）
+pub const HUD_Y_NAME: f32 = 780.0; // 玩家名称
+pub const HUD_Y_SPEED: f32 = 830.0; // 速度
+pub const HUD_Y_FIRE_SPEED: f32 = 880.0; // 射速
+pub const HUD_Y_PROTECTION: f32 = 930.0; // 护盾
+pub const HUD_Y_SHELLS: f32 = 980.0; // 炮弹数量
+pub const HUD_Y_EFFECTS_TITLE: f32 = 320.0; // 效果标题
+pub const HUD_Y_FIRE_SHELL: f32 = 370.0; // 火焰炮弹效果
+pub const HUD_Y_PENETRATE: f32 = 420.0; // 穿透效果
+pub const HUD_Y_TRACK_CHAIN: f32 = 470.0; // 履带链效果
+pub const HUD_Y_AIR_CUSHION: f32 = 520.0; // 气垫效果
+pub const HUD_Y_SCORE: f32 = 50.0; // 分数
+pub const HUD_Y_AVATAR: f32 = 150.0; // 玩家头像
+pub const HUD_BAR_Y_OFFSET_HEALTH: f32 = 235.0; // 血条 Y 偏移
+pub const HUD_BAR_Y_OFFSET_BLUE: f32 = 250.0; // 蓝条 Y 偏移
+
+// HUD 数值常量
+pub const HUD_MAX_PERCENT: usize = 100; // 最大百分比
+pub const HUD_MAX_LIFE_POINTS: f32 = 3.0; // 最大生命值
+pub const HUD_MAX_SHELLS: usize = 2; // 最大炮弹数
+
 // ==================== UI字体大小常量 ====================
 pub const FONT_SIZE_SMALL: f32 = 18.0; // 小字体
 pub const FONT_SIZE_INFO: f32 = 20.0; // 说明文字字体

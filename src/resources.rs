@@ -235,3 +235,53 @@ pub struct TerrainAtlasLayouts {
     pub sea: Handle<TextureAtlasLayout>,
     pub forest: Handle<TextureAtlasLayout>,
 }
+
+// ==================== 游戏资源管理 ====================
+
+/// 字体资源
+#[derive(Resource)]
+pub struct FontResources {
+    pub cn: Handle<Font>,
+    pub en: Handle<Font>,
+}
+
+/// 玩家坦克资源
+#[derive(Resource)]
+pub struct PlayerTankResources {
+    pub player1: Handle<Image>,
+    pub player2: Handle<Image>,
+}
+
+/// 司令官资源
+#[derive(Resource)]
+pub struct CommanderResources {
+    pub texture: Handle<Image>,
+    pub dead_texture: Handle<Image>,
+    pub avatar: Handle<Image>,
+    pub avatar_death: Handle<Image>,
+    pub avatar_commander_dead: Handle<Image>,
+}
+
+/// 音效资源
+#[derive(Resource)]
+pub struct SoundResources {
+    pub explosion: Handle<AudioSource>,
+    pub brick_hit: Handle<AudioSource>,
+    pub hit: Handle<AudioSource>,
+    pub metal_crash: Handle<AudioSource>,
+    pub laser_charge: Handle<AudioSource>,
+    pub laser: Handle<AudioSource>,
+    pub commander_get_shot: Handle<AudioSource>,
+    pub commander_death: Handle<AudioSource>,
+}
+
+/// 特效纹理资源
+#[derive(Resource)]
+pub struct EffectResources {
+    pub explosion: Handle<Image>,
+    pub spark: Handle<Image>,
+    pub smoke: Handle<Image>,
+    pub bubble: Handle<Image>,
+    pub steel_hit: Handle<Image>,
+    pub forest_fire: Handle<Image>,
+}
