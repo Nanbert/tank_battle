@@ -457,16 +457,22 @@ pub fn init_game_resources(
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    // 初始化地形纹理图集布局
-    let sea_texture_atlas_layout =
-        TextureAtlasLayout::from_grid(UVec2::new(100, 100), 3, 1, None, None);
-    let sea_texture_atlas_layout = texture_atlas_layouts.add(sea_texture_atlas_layout);
-    let forest_texture_atlas_layout =
-        TextureAtlasLayout::from_grid(UVec2::new(131, 131), 10, 1, None, None);
-    let forest_texture_atlas_layout = texture_atlas_layouts.add(forest_texture_atlas_layout);
+    // 地形纹理图集布局
     commands.insert_resource(TerrainAtlasLayouts {
-        sea: sea_texture_atlas_layout,
-        forest: forest_texture_atlas_layout,
+        sea: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+            UVec2::new(100, 100),
+            3,
+            1,
+            None,
+            None,
+        )),
+        forest: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+            UVec2::new(131, 131),
+            10,
+            1,
+            None,
+            None,
+        )),
     });
 
     // 字体资源
