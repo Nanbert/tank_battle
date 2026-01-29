@@ -445,13 +445,18 @@ pub fn register_game_systems(app: &mut App) {
         );
 }
 
-pub fn setup(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
+pub fn setup(mut commands: Commands) {
     // 创建全局相机
     commands.spawn(Camera2d);
+}
 
+/// 初始化游戏资源
+/// 预加载常用的字体、纹理和音效，避免运行时重复加载
+pub fn init_game_resources(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
     // 初始化地形纹理图集布局
     let sea_texture_atlas_layout =
         TextureAtlasLayout::from_grid(UVec2::new(100, 100), 3, 1, None, None);
@@ -463,14 +468,7 @@ pub fn setup(
         sea: sea_texture_atlas_layout,
         forest: forest_texture_atlas_layout,
     });
-}
 
-/// 初始化游戏资源
-/// 预加载常用的字体、纹理和音效，避免运行时重复加载
-pub fn init_game_resources(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-) {
     // 字体资源
     commands.insert_resource(FontResources {
         cn: asset_server.load(FONT_CN),
