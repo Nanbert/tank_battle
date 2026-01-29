@@ -337,11 +337,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            hud_ui::update_player1_hud.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::update_player2_hud.run_if(in_state(GameState::Playing)),
+            hud_ui::update_player_hud.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

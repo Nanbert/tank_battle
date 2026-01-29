@@ -511,7 +511,7 @@ pub fn spawn_commander_fortress(
         asset_server,
         atlas_layouts,
         commander_top + brick_size / 2.0,
-        -brick_size / 2.0,
+        -COMMANDER_WIDTH / 2.0,
         brick_size,
         2,
         false,
