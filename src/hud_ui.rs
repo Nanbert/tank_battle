@@ -346,15 +346,7 @@ fn spawn_single_player_hud(
     commands.spawn((
         marker.clone(),
         ScoreText,
-        Text2d(format!(
-            "Scores{}: {}",
-            if player_type == TankType::Player1 {
-                "1"
-            } else {
-                "2"
-            },
-            stats.score
-        )),
+        Text2d(format!("Scores: {}", stats.score)),
         TextFont {
             font_size: 28.0,
             font: font.clone(),
@@ -538,11 +530,7 @@ fn update_bar(
 }
 
 /// 更新单个玩家的文本
-fn update_single_player_text(
-    stats: &PlayerStats,
-    player_number: usize,
-    text: &mut String,
-) {
+fn update_single_player_text(stats: &PlayerStats, text: &mut String) {
     if text.starts_with(HUD_PREFIX_SPEED) {
         *text = format!(
             "{}{}",
@@ -564,7 +552,7 @@ fn update_single_player_text(
     } else if text.starts_with(HUD_PREFIX_SHELLS) {
         *text = format!("{} {}", HUD_PREFIX_SHELLS, stats.shells);
     } else if text.starts_with("Scores") {
-        *text = format!("Scores{}: {}", player_number, stats.score);
+        *text = format!("Scores: {}", stats.score);
     } else if text.starts_with(HUD_PREFIX_AIR_CUSHION) {
         *text = format!("{}{}", HUD_PREFIX_AIR_CUSHION, format_bool_value(stats.air_cushion));
     } else if text.starts_with(HUD_PREFIX_PENETRATE) {
@@ -601,7 +589,7 @@ pub fn update_player_hud(
     // 更新玩家1文本
     for (mut text, is_p1, _is_p2) in text_query.iter_mut() {
         if is_p1.is_some() {
-            update_single_player_text(stats1, 1, &mut text.0);
+            update_single_player_text(stats1, &mut text.0);
         }
     }
 
@@ -640,7 +628,7 @@ pub fn update_player_hud(
             // 更新玩家2文本
             for (mut text, _is_p1, is_p2) in text_query.iter_mut() {
                 if is_p2.is_some() {
-                    update_single_player_text(stats2, 2, &mut text.0);
+                    update_single_player_text(stats2, &mut text.0);
                 }
             }
 
