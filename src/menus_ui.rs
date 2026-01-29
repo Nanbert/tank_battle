@@ -18,12 +18,9 @@ pub fn load_start_animation_assets(
 ) {
     // 使用3个较小的精灵图加载背景动画（15帧，每部分5帧）
     // 拆分以支持GPU纹理尺寸限制（最大16384）
-    let background_texture1: Handle<Image> =
-        asset_server.load("background/background_sprite_part1.png");
-    let background_texture2: Handle<Image> =
-        asset_server.load("background/background_sprite_part2.png");
-    let background_texture3: Handle<Image> =
-        asset_server.load("background/background_sprite_part3.png");
+    let background_texture1: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART1);
+    let background_texture2: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART2);
+    let background_texture3: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART3);
 
     let background_tile_size = UVec2::new(
         BACKGROUND_ANIMATION_TILE_WIDTH as u32,
@@ -300,8 +297,8 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
     ));
 
     // 加载收款码图片
-    let alipay_image: Handle<Image> = asset_server.load("alipay.png");
-    let wechat_image: Handle<Image> = asset_server.load("wechat.png");
+    let alipay_image: Handle<Image> = asset_server.load(IMAGE_ALIPAY);
+    let wechat_image: Handle<Image> = asset_server.load(IMAGE_WECHAT);
 
     // 图片大小统一为 400x400 像素
     let qr_size = PAYMENT_CODE_SIZE;

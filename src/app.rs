@@ -522,9 +522,9 @@ pub fn init_game_resources(
 
     // 子弹资源
     commands.insert_resource(BulletResources {
-        bullet_player1: asset_server.load("texture/bullets/bullet_player1.png"),
-        bullet_player2: asset_server.load("texture/bullets/bullet_player2.png"),
-        bullet_enemy: asset_server.load("texture/bullets/bullet_enemy.png"),
+        bullet_player1: asset_server.load(TEXTURE_BULLET_PLAYER1),
+        bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
+        bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
         brick_hit_sound: asset_server.load(SOUND_BRICK_HIT),
         hit_sound: asset_server.load(SOUND_HIT),
         metal_crash_sound: asset_server.load(SOUND_METAL_CRASH),

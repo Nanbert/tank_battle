@@ -213,7 +213,7 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Forest => {
-            let forest_texture: Handle<Image> = asset_server.load("maps/tree.png");
+            let forest_texture: Handle<Image> = asset_server.load(TEXTURE_TREE);
             let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
             commands
                 .spawn((

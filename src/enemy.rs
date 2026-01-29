@@ -135,7 +135,7 @@ pub fn animate_enemy_born_animation(
                 // 在动画播放到 2/3 时生成敌方坦克
                 if next_index == spawn_frame {
                     // 加载敌方坦克纹理和创建精灵图
-                    let enemy_texture = asset_server.load("enemy_tank/enemy_tank1_sprite.png");
+                    let enemy_texture = asset_server.load(TEXTURE_ENEMY_TANK1);
                     let enemy_tile_size =
                         UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
                     let enemy_texture_atlas =

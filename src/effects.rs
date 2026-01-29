@@ -61,7 +61,7 @@ pub fn spawn_forest_fire(
     position: Vec3,
 ) {
     // 使用预加载的纹理图集布局
-    let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
+    let forest_fire_texture: Handle<Image> = asset_server.load(TEXTURE_TREE_FIRE_SHEET);
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((

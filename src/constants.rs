@@ -24,11 +24,30 @@ pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 
+// 子弹纹理路径常量
+pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
+pub const TEXTURE_BULLET_PLAYER2: &str = "texture/bullets/bullet_player2.png";
+pub const TEXTURE_BULLET_ENEMY: &str = "texture/bullets/bullet_enemy.png";
+
+// 敌方坦克纹理路径常量
+pub const TEXTURE_ENEMY_TANK1: &str = "enemy_tank/enemy_tank1_sprite.png";
+
 // 地图纹理路径常量
 pub const TEXTURE_BARRIER: &str = "maps/barrier.png";
 pub const TEXTURE_BRICK: &str = "maps/brick.png";
 pub const TEXTURE_SEA: &str = "maps/sea_sheet.png";
 pub const TEXTURE_STEEL: &str = "maps/steel.png";
+pub const TEXTURE_TREE: &str = "maps/tree.png";
+pub const TEXTURE_TREE_FIRE_SHEET: &str = "maps/tree_fire_sheet.png";
+
+// 背景纹理路径常量
+pub const TEXTURE_BACKGROUND_PART1: &str = "background/background_sprite_part1.png";
+pub const TEXTURE_BACKGROUND_PART2: &str = "background/background_sprite_part2.png";
+pub const TEXTURE_BACKGROUND_PART3: &str = "background/background_sprite_part3.png";
+
+// 收款码路径常量
+pub const IMAGE_ALIPAY: &str = "alipay.png";
+pub const IMAGE_WECHAT: &str = "wechat.png";
 
 // 特效纹理路径常量
 pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
