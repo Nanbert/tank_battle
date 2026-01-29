@@ -140,7 +140,7 @@ pub fn handle_dash_collision(
 
         // 提取碰撞信息
         let Some((player_entity, brick_entity, steel_entity, enemy_entity)) =
-            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &player_tanks_with_transform, &player_avatars)
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &asset_server, &mut texture_atlas_layouts, &player_tanks_with_transform, &player_avatars)
         else { continue; };
 
         // 处理 brick 碰撞
@@ -205,6 +205,8 @@ fn extract_dash_collision_info(
     player_info: &ResMut<PlayerInfo>,
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
 ) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
@@ -221,6 +223,8 @@ fn extract_dash_collision_info(
             player_info,
             commands,
             effect_events,
+            asset_server,
+            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_avatars,
@@ -240,6 +244,8 @@ fn extract_dash_collision_info(
             player_info,
             commands,
             effect_events,
+            asset_server,
+            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_avatars,
@@ -263,6 +269,8 @@ fn handle_player_entity_collision(
     player_info: &ResMut<PlayerInfo>,
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
@@ -289,6 +297,8 @@ fn handle_player_entity_collision(
         handle_steel_collision(
             commands,
             effect_events,
+            asset_server,
+            texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
             player_info,
@@ -347,6 +357,44 @@ fn check_enemy_collision_none(
     None
 }
 
+/// 销毁玩家坦克
+fn kill_player_tank(
+    commands: &mut Commands,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
+    player_entity: Entity,
+    player_tank: &PlayerTank,
+) {
+    // 获取玩家坦克位置用于生成爆炸效果
+    if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
+        // 生成爆炸效果
+        effects::spawn_explosion(
+            commands,
+            asset_server,
+            texture_atlas_layouts,
+            tank_transform.translation,
+        );
+    }
+
+    // 销毁玩家坦克
+    let () = commands.entity(player_entity).try_despawn();
+
+    // 标记对应玩家的头像为死亡状态
+    for (avatar_entity, player_index) in player_avatars.iter() {
+        if player_index.player_type == player_tank.tank_type {
+            commands.entity(avatar_entity).insert(PlayerDead);
+        }
+    }
+
+    // 启动 Game Over 延迟计时器
+    commands.spawn((
+        GameOverTimer,
+        AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
+    ));
+}
+
 /// 处理砖块碰撞
 fn handle_brick_collision(
     commands: &mut Commands,
@@ -364,13 +412,9 @@ fn handle_brick_collision(
 ) {
     // 获取玩家坦克信息
     let player_tank = player_tanks
-        .iter()
-        .find_map(
-            |(e, pt, _)| {
-                if e == player_entity { Some(pt) } else { None }
-            },
-        )
-        .unwrap();
+        .get(player_entity)
+        .expect("Player entity should exist in player_tanks query")
+        .1;
 
     // 获取 brick 位置用于生成效果
     if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
@@ -419,32 +463,15 @@ fn handle_brick_collision(
 
     // 检查玩家是否死亡
     if player_stats.life_points == 0 {
-        // 获取玩家坦克位置用于生成爆炸效果
-        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            // 生成爆炸效果
-            effects::spawn_explosion(
-                commands,
-                asset_server,
-                texture_atlas_layouts,
-                tank_transform.translation,
-            );
-        }
-
-        // 销毁玩家坦克
-        let () = commands.entity(player_entity).try_despawn();
-
-        // 标记对应玩家的头像为死亡状态
-        for (avatar_entity, player_index) in player_avatars.iter() {
-            if player_index.player_type == player_tank.tank_type {
-                commands.entity(avatar_entity).insert(PlayerDead);
-            }
-        }
-
-        // 启动 Game Over 延迟计时器（1.2秒）
-        commands.spawn((
-            GameOverTimer,
-            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-        ));
+        kill_player_tank(
+            commands,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks_with_transform,
+            player_avatars,
+            player_entity,
+            player_tank,
+        );
     }
 }
 
@@ -453,6 +480,8 @@ fn handle_brick_collision(
 fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
+    asset_server: &Res<AssetServer>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &ResMut<PlayerInfo>,
@@ -461,13 +490,9 @@ fn handle_steel_collision(
 ) {
     // 获取玩家坦克信息
     let player_tank = player_tanks
-        .iter()
-        .find_map(
-            |(e, pt, _)| {
-                if e == player_entity { Some(pt) } else { None }
-            },
-        )
-        .unwrap();
+        .get(player_entity)
+        .expect("Player entity should exist in player_tanks query")
+        .1;
 
     // 检查 protection 是否为 100%
     let can_break_steel = match player_tank.tank_type {
@@ -497,21 +522,15 @@ fn handle_steel_collision(
             });
         }
 
-        // 销毁玩家坦克
-        let () = commands.entity(player_entity).try_despawn();
-
-        // 标记对应玩家的头像为死亡状态
-        for (avatar_entity, player_index) in player_avatars.iter() {
-            if player_index.player_type == player_tank.tank_type {
-                commands.entity(avatar_entity).insert(PlayerDead);
-            }
-        }
-
-        // 启动 Game Over 延迟计时器（1.2秒）
-        commands.spawn((
-            GameOverTimer,
-            AnimationTimer(Timer::from_seconds(1.2, TimerMode::Once)),
-        ));
+        kill_player_tank(
+            commands,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks_with_transform,
+            player_avatars,
+            player_entity,
+            player_tank,
+        );
     }
 }
 
@@ -551,7 +570,8 @@ fn handle_dash_enemy_tank_collision(
     dash_damage_tracker: &mut DashDamageTracker,
 ) {
     // 获取玩家坦克信息
-    let (_, player_tank, _) = player_tanks.get(player_entity).unwrap();
+    let (_, player_tank, _) = player_tanks.get(player_entity)
+        .expect("Player entity should exist in player_tanks query");
 
     // 获取敌方坦克位置用于生成爆炸效果
     if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
@@ -601,31 +621,14 @@ fn handle_dash_enemy_tank_collision(
 
     // 检查玩家是否死亡
     if player_stats.life_points == 0 {
-        // 获取玩家坦克位置用于生成爆炸效果
-        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            // 生成爆炸效果
-            effects::spawn_explosion(
-                commands,
-                asset_server,
-                texture_atlas_layouts,
-                tank_transform.translation,
-            );
-        }
-
-        // 销毁玩家坦克
-        let () = commands.entity(player_entity).try_despawn();
-
-        // 标记对应玩家的头像为死亡状态
-        for (avatar_entity, player_index) in player_avatars.iter() {
-            if player_index.player_type == player_tank.tank_type {
-                commands.entity(avatar_entity).insert(PlayerDead);
-            }
-        }
-
-        // 启动 Game Over 延迟计时器（1.2秒）
-        commands.spawn((
-            GameOverTimer,
-            AnimationTimer(Timer::from_seconds(GAME_OVER_DELAY, TimerMode::Once)),
-        ));
+        kill_player_tank(
+            commands,
+            asset_server,
+            texture_atlas_layouts,
+            player_tanks_with_transform,
+            player_avatars,
+            player_entity,
+            player_tank,
+        );
     }
 }
