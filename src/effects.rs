@@ -34,7 +34,7 @@ pub fn spawn_explosion(
                 layout: explosion_texture_atlas_layout,
                 index: explosion_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(300.0, 300.0)),
+            custom_size: Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
             ..default()
         },
         Transform::from_translation(position),
@@ -62,9 +62,11 @@ pub fn spawn_forest_fire(
 ) {
     // 加载树林燃烧精灵图（10帧，每帧131x131，1.5秒播完）
     let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
-    let forest_fire_tile_size = UVec2::new(131, 131);
-    let forest_fire_texture_atlas =
-        TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
+    let forest_fire_tile_size = UVec2::new(
+            FOREST_FIRE_TILE_SIZE as u32,
+            FOREST_FIRE_TILE_SIZE as u32,
+        );
+        let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
     let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas);
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
@@ -114,7 +116,7 @@ pub fn spawn_spark(
                 layout: spark_texture_atlas_layout,
                 index: spark_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(200.0, 200.0)),
+            custom_size: Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
             ..default()
         },
         Transform::from_translation(position),

@@ -15,14 +15,37 @@ use crate::resources::{
     StatType,
 };
 
+/// 坦克半宽（用于边界计算）
+const TANK_HALF_WIDTH: f32 = TANK_WIDTH / 2.0;
+
+/// 坦克半高（用于边界计算）
+const TANK_HALF_HEIGHT: f32 = TANK_HEIGHT / 2.0;
+
 /// 玩家1初始X坐标（左侧）
-const PLAYER1_START_X: f32 = -TANK_WIDTH / 2.0 - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
+const PLAYER1_START_X: f32 = -TANK_HALF_WIDTH - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
 
 /// 玩家2初始X坐标（右侧）
-const PLAYER2_START_X: f32 = TANK_WIDTH / 2.0 + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
+const PLAYER2_START_X: f32 = TANK_HALF_WIDTH + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
 
 /// 玩家初始Y坐标（底部）
-const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + TANK_HEIGHT / 2.0;
+const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + TANK_HALF_HEIGHT;
+
+/// 屏障伤害冷却时间（秒）
+const BARRIER_DAMAGE_COOLDOWN: f32 = 2.0;
+
+/// 最大生命值
+const MAX_LIFE_POINTS: usize = 3;
+
+/// 最大能量值
+const MAX_ENERGY_POINTS: usize = 3;
+
+/// 计算两个角度之间的最小角度差（范围：-π 到 π）
+fn calculate_angle_difference(target_angle: f32, current_angle: f32) -> f32 {
+    let diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_angle)
+        % (std::f32::consts::PI * 2.0)
+        - std::f32::consts::PI;
+    diff
+}
 
 /// 生成玩家坦克
 pub fn spawn_player_tank(
@@ -32,7 +55,7 @@ pub fn spawn_player_tank(
     animation_indices: AnimationIndices,
     tank_type: TankType,
 ) -> Entity {
-    let (x_pos, custom_size, collider_half) = match tank_type {
+    let (x_pos, display_size, collider_half) = match tank_type {
         TankType::Player1 => (
             PLAYER1_START_X,
             Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
@@ -41,7 +64,7 @@ pub fn spawn_player_tank(
         TankType::Player2 => (
             PLAYER2_START_X,
             Vec2::new(80.0, 90.0),
-            TANK_WIDTH / 2.0,
+            TANK_HALF_WIDTH,
         ),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
@@ -61,7 +84,7 @@ pub fn spawn_player_tank(
                 layout: texture_atlas_layout,
                 index: animation_indices.first,
             }),
-            custom_size: Some(custom_size),
+            custom_size: Some(display_size),
             ..default()
         })
         .insert(Transform::from_xyz(
@@ -173,9 +196,7 @@ pub fn move_player_tank(
             let target_angle = angle - ANGLE_OFFSET_DEGREES.to_radians();
 
             let current_euler = target_rotation.angle;
-            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler)
-                % (std::f32::consts::PI * 2.0)
-                - std::f32::consts::PI;
+            let angle_diff = calculate_angle_difference(target_angle, current_euler);
 
             if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
                 target_rotation.angle = target_angle;
@@ -193,8 +214,8 @@ pub fn move_player_tank(
         };
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
-        // 获取玩家的 speed 百分比加成
-        let speed_bonus = match player_tank.tank_type {
+        // 获取玩家的 speed 百分比
+        let speed_percent = match player_tank.tank_type {
             TankType::Player1 => player_info.player1.speed as f32 / 100.0,
             TankType::Player2 => player_info
                 .player2
@@ -204,7 +225,7 @@ pub fn move_player_tank(
         };
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
-        let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_bonus);
+        let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_percent);
         let speed = if needs_rotation {
             base_speed * ROTATION_SPEED_FACTOR
         } else {
@@ -242,9 +263,7 @@ pub fn move_player_tank(
             // 平滑旋转
             let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
             let target_angle = target_rotation.angle;
-            let angle_diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_euler)
-                % (std::f32::consts::PI * 2.0)
-                - std::f32::consts::PI;
+            let angle_diff = calculate_angle_difference(target_angle, current_euler);
 
             if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
                 // 计算旋转进度（0.0 到 1.0）
@@ -263,12 +282,12 @@ pub fn move_player_tank(
 
         // 限制坦克在地图边界内
         transform.translation.x = transform.translation.x.clamp(
-            MAP_LEFT_X + TANK_WIDTH / 2.0,
-            MAP_RIGHT_X - TANK_WIDTH / 2.0,
+            MAP_LEFT_X + TANK_HALF_WIDTH,
+            MAP_RIGHT_X - TANK_HALF_WIDTH,
         );
         transform.translation.y = transform.translation.y.clamp(
-            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-            MAP_TOP_Y - TANK_HEIGHT / 2.0,
+            MAP_BOTTOM_Y + TANK_HALF_HEIGHT,
+            MAP_TOP_Y - TANK_HALF_HEIGHT,
         );
     }
 }
@@ -490,7 +509,7 @@ pub fn update_recall_progress_bars(
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_pos.x;
             progress_transform.translation.y =
-                player_pos.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET;
+                player_pos.y + TANK_HALF_HEIGHT + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -530,6 +549,30 @@ pub fn reset_player_positions(
     }
 }
 
+/// 安全地获取玩家统计数据，返回 None 表示玩家不存在（仅适用于 Player2）
+fn get_player_stats<'a>(
+    player_info: &'a PlayerInfo,
+    tank_type: TankType,
+) -> Option<&'a PlayerStats> {
+    match tank_type {
+        TankType::Player1 => Some(&player_info.player1),
+        TankType::Player2 => player_info.player2.as_ref(),
+        TankType::Enemy => unreachable!(),
+    }
+}
+
+/// 安全地获取可变玩家统计数据，返回 None 表示玩家不存在（仅适用于 Player2）
+fn get_player_stats_mut<'a>(
+    player_info: &'a mut PlayerInfo,
+    tank_type: TankType,
+) -> Option<&'a mut PlayerStats> {
+    match tank_type {
+        TankType::Player1 => Some(&mut player_info.player1),
+        TankType::Player2 => player_info.player2.as_mut(),
+        TankType::Enemy => unreachable!(),
+    }
+}
+
 /// 处理屏障碰撞
 pub fn handle_barrier_collision(
     time: Res<Time>,
@@ -563,10 +606,9 @@ pub fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let player_stats = match player_tank.tank_type {
-                        TankType::Player1 => &player_info.player1,
-                        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-                        TankType::Enemy => unreachable!(),
+                    let Some(player_stats) = get_player_stats(&player_info, player_tank.tank_type) else {
+                        // 单人模式下 Player2 不存在，跳过
+                        continue;
                     };
 
                     if player_stats.track_chain {
@@ -574,16 +616,18 @@ pub fn handle_barrier_collision(
                         continue;
                     }
 
-                    // 设置 2 秒冷却
+                    // 设置屏障伤害冷却时间
                     barrier_damage_tracker
                         .cooldowns
-                        .insert(player_entity, Timer::from_seconds(2.0, TimerMode::Once));
+                        .insert(
+                            player_entity,
+                            Timer::from_seconds(BARRIER_DAMAGE_COOLDOWN, TimerMode::Once),
+                        );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    let player_stats = match player_tank.tank_type {
-                        TankType::Player1 => &mut player_info.player1,
-                        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-                        TankType::Enemy => unreachable!(),
+                    let Some(player_stats) = get_player_stats_mut(&mut player_info, player_tank.tank_type) else {
+                        // 单人模式下 Player2 不存在，跳过
+                        continue;
                     };
                     player_stats.speed = player_stats
                         .speed
@@ -646,8 +690,8 @@ fn spawn_players(
                 track_chain: false,
                 air_cushion: false,
                 fire_shell: false,
-                life_points: 3,
-                energy_points: 3,
+                life_points: MAX_LIFE_POINTS,
+                energy_points: MAX_ENERGY_POINTS,
                 score: 0,
             };
             player_info.player2 = None;
@@ -674,35 +718,34 @@ fn spawn_players(
             // 初始化玩家1信息
             player_info.player1 = PlayerStats {
                 name: "Li Yun Long".to_string(),
-                speed: 40,
-                fire_speed: 40,
-                protection: 40,
+                speed: INITIAL_ATTRIBUTE_VALUE,
+                fire_speed: INITIAL_ATTRIBUTE_VALUE,
+                protection: INITIAL_ATTRIBUTE_VALUE,
                 shells: 1,
                 penetrate: false,
                 track_chain: false,
                 air_cushion: false,
                 fire_shell: false,
-                life_points: 3,
-                energy_points: 3,
+                life_points: MAX_LIFE_POINTS,
+                energy_points: MAX_ENERGY_POINTS,
                 score: 0,
             };
 
             // 初始化玩家2信息
             player_info.player2 = Some(PlayerStats {
                 name: "Chu Yun Fei".to_string(),
-                speed: 40,
-                fire_speed: 40,
-                protection: 40,
+                speed: INITIAL_ATTRIBUTE_VALUE,
+                fire_speed: INITIAL_ATTRIBUTE_VALUE,
+                protection: INITIAL_ATTRIBUTE_VALUE,
                 shells: 1,
                 penetrate: false,
                 track_chain: false,
                 air_cushion: false,
                 fire_shell: false,
-                life_points: 3,
-                energy_points: 3,
-                    score: 0,
-                },
-            );
+                life_points: MAX_LIFE_POINTS,
+                energy_points: MAX_ENERGY_POINTS,
+                score: 0,
+            });
         }
     }
 }

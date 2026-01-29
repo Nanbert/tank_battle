@@ -11,15 +11,6 @@ use crate::constants::*;
 use crate::resources::*;
 
 // ============================================================================
-// HUD Constants
-// ============================================================================
-
-/// 血条和蓝条的总宽度
-const HUD_BAR_WIDTH: f32 = 150.0;
-/// 血条和蓝条的高度
-const HUD_BAR_HEIGHT: f32 = 15.0;
-
-// ============================================================================
 // HUD Marker Components
 // ============================================================================
 
@@ -363,7 +354,10 @@ let stats = match player_type {
 
     // 玩家头像（使用精灵图）
     let player_avatar_texture: Handle<Image> = asset_server.load(TEXTURE_AVATAR);
-    let player_avatar_tile_size = UVec2::new(160, 147);
+    let player_avatar_tile_size = UVec2::new(
+        PLAYER_AVATAR_TILE_WIDTH as u32,
+        PLAYER_AVATAR_TILE_HEIGHT as u32,
+    );
     let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
     let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
@@ -376,7 +370,7 @@ let stats = match player_type {
                 layout: player_avatar_texture_atlas_layout,
                 index: 0,
             }),
-            custom_size: Some(Vec2::new(160.0, 147.0)),
+            custom_size: Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT)),
             ..default()
         },
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - 150.0, Z_UI),
@@ -773,7 +767,7 @@ fn spawn_top_hud(mut commands: Commands, asset_server: &Res<AssetServer>, stage_
         CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
         Sprite {
             color: COLOR_RED,
-            custom_size: Some(Vec2::new(160.0, 10.0)),
+            custom_size: Some(Vec2::new(COMMANDER_BAR_WIDTH, COMMANDER_BAR_HEIGHT)),
             ..default()
         },
         Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
@@ -841,7 +835,7 @@ pub fn update_commander_health_bar(
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
         let health_width = (commander_life.life_points as f32 / 3.0) * COMMANDER_BAR_WIDTH;
-        sprite.custom_size = Some(Vec2::new(health_width, BAR_HEIGHT));
+        sprite.custom_size = Some(Vec2::new(health_width, HUD_BAR_HEIGHT));
         transform.translation.x = original_pos.0 - (COMMANDER_BAR_WIDTH - health_width) / 2.0;
     }
 }

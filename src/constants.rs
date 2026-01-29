@@ -475,16 +475,41 @@ pub const PLAYER_TILE_HEIGHT: f32 = 328.0; // 玩家坦克瓦片高度
 pub const BULLET_WIDTH: f32 = 60.0; // 子弹宽度
 pub const BULLET_HEIGHT: f32 = 40.0; // 子弹高度
 
-// 特效
-pub const SMOKE_SIZE: f32 = 100.0; // 烟雾尺寸
+// 特效纹理瓦片尺寸
 pub const EXPLOSION_TILE_SIZE: f32 = 512.0; // 爆炸瓦片尺寸
 pub const SPARK_TILE_SIZE: f32 = 1024.0; // 火花瓦片尺寸
+pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
+pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
 
-// 地形
+// 特效显示尺寸
+pub const SMOKE_DISPLAY_SIZE: f32 = 100.0; // 烟雾显示尺寸
+pub const EXPLOSION_DISPLAY_SIZE: f32 = 300.0; // 爆炸显示尺寸
+pub const SPARK_DISPLAY_SIZE: f32 = 200.0; // 火花显示尺寸
+
+// 地形纹理和显示尺寸
 pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
 pub const COMMANDER_BRICK_SIZE: f32 = 50.0; // 司令官砖块大小
 pub const COMMANDER_TILE_WIDTH: f32 = 140.0; // 指挥官瓦片宽度
 pub const COMMANDER_TILE_HEIGHT: f32 = 120.0; // 指挥官瓦片高度
+pub const COMMANDER_DISPLAY_WIDTH: f32 = 100.0; // 指挥官显示宽度
+pub const COMMANDER_DISPLAY_HEIGHT: f32 = 100.0; // 指挥官显示高度
+pub const COMMANDER_MUSIC_TILE_WIDTH: f32 = 140.0; // 指挥官音乐瓦片宽度
+pub const COMMANDER_MUSIC_TILE_HEIGHT: f32 = 120.0; // 指挥官音乐瓦片高度
+pub const COMMANDER_MUSIC_DISPLAY_WIDTH: f32 = 70.0; // 指挥官音乐显示宽度
+pub const COMMANDER_MUSIC_DISPLAY_HEIGHT: f32 = 60.0; // 指挥官音乐显示高度
+
+// 激光尺寸
+pub const LASER_DISPLAY_WIDTH: f32 = 512.0; // 激光显示宽度
+pub const LASER_TILE_WIDTH: f32 = 512.0; // 激光瓦片宽度
+pub const LASER_TILE_HEIGHT: f32 = 683.0; // 激光瓦片高度
+
+// UI 尺寸
+pub const PLAYER_AVATAR_TILE_WIDTH: f32 = 160.0; // 玩家头像瓦片宽度
+pub const PLAYER_AVATAR_TILE_HEIGHT: f32 = 147.0; // 玩家头像瓦片高度
+pub const PLAYER_AVATAR_DISPLAY_WIDTH: f32 = 160.0; // 玩家头像显示宽度
+pub const PLAYER_AVATAR_DISPLAY_HEIGHT: f32 = 147.0; // 玩家头像显示高度
+pub const HUD_BAR_HEIGHT: f32 = 15.0; // HUD 血条/蓝条高度
+pub const HUD_BAR_WIDTH: f32 = 150.0; // HUD 血条/蓝条宽度
 
 // UI
 pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸
@@ -492,8 +517,8 @@ pub const BACKGROUND_ANIMATION_TILE_WIDTH: f32 = 2060.0; // 背景动画瓦片�
 pub const BACKGROUND_ANIMATION_TILE_HEIGHT: f32 = 1300.0; // 背景动画瓦片高度
 
 // 血条/蓝条
-pub const BAR_HEIGHT: f32 = 10.0; // 血条/蓝条高度
 pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度
+pub const COMMANDER_BAR_HEIGHT: f32 = 15.0; // 司令官血条高度
 
 // ==================== 速度和角度常量 ====================
 pub const ANGLE_DIFF_THRESHOLD: f32 = 0.01; // 角度差阈值

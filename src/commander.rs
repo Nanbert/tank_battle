@@ -54,7 +54,7 @@ pub fn spawn_commander(
                 layout: commander_texture_atlas_layout,
                 index: commander_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(COMMANDER_WIDTH, COMMANDER_HEIGHT)),
+            custom_size: Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
             ..default()
         },
         Transform::from_xyz(commander_x, commander_y, 0.0),
@@ -71,7 +71,10 @@ pub fn spawn_commander(
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
     let music_texture: Handle<Image> = asset_server.load(TEXTURE_MUSIC_NOTE);
-    let music_tile_size = UVec2::new(140, 120);
+    let music_tile_size = UVec2::new(
+        COMMANDER_MUSIC_TILE_WIDTH as u32,
+        COMMANDER_MUSIC_TILE_HEIGHT as u32,
+    );
     let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
     let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
     let music_animation_indices = AnimationIndices { first: 0, last: 9 };
@@ -85,7 +88,7 @@ pub fn spawn_commander(
                 layout: music_texture_atlas_layout,
                 index: music_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(70.0, 60.0)),
+            custom_size: Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),
             ..default()
         },
         Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)), // z=1.0 使动画在 Commander 上方

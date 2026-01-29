@@ -30,7 +30,7 @@ pub fn spawn_laser(
         TankType::Player2 => asset_server.load(TEXTURE_LASER_RED),
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
-    let laser_tile_size = UVec2::new(512, 683);
+    let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
     let laser_texture_atlas = TextureAtlasLayout::from_grid(laser_tile_size, 4, 3, None, None);
     let laser_texture_atlas_layout = texture_atlas_layouts.add(laser_texture_atlas);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
@@ -61,7 +61,7 @@ pub fn spawn_laser(
                     layout: laser_texture_atlas_layout,
                     index: laser_animation_indices.first,
                 }),
-                custom_size: Some(Vec2::new(512.0, LASER_HEIGHT)), // 原本长度
+                custom_size: Some(Vec2::new(LASER_DISPLAY_WIDTH, LASER_HEIGHT)), // 原本长度
                 ..default()
             },
             Transform {
@@ -527,9 +527,8 @@ pub fn animate_laser(
                 for (despawn_entity, transform) in despawn_entities.iter() {
                     // 在被销毁实体的位置播放烟雾效果
                     let smoke_texture: Handle<Image> = asset_server.load(TEXTURE_SMOKE);
-                    let smoke_tile_size = UVec2::new(100, 100);
-                    let smoke_texture_atlas =
-                        TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
+                    let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
+                        let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
                     let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);
                     let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
 
@@ -542,7 +541,7 @@ pub fn animate_laser(
                                 layout: smoke_texture_atlas_layout,
                                 index: smoke_animation_indices.first,
                             }),
-                            custom_size: Some(Vec2::new(SMOKE_SIZE, SMOKE_SIZE)),
+                            custom_size: Some(Vec2::new(SMOKE_DISPLAY_SIZE, SMOKE_DISPLAY_SIZE)),
                             ..default()
                         },
                         Transform::from_xyz(
