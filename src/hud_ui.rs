@@ -78,6 +78,36 @@ pub struct HealthBar;
 #[derive(Component)]
 pub struct BlueBar;
 
+/// 血条前景标记
+#[derive(Component)]
+pub struct HealthBarForeground;
+
+/// 蓝条前景标记
+#[derive(Component)]
+pub struct BlueBarForeground;
+
+// ============================================================================
+// HUD Text Prefix Constants
+// ============================================================================
+
+/// HUD 文本前缀常量
+const HUD_PREFIX_SPEED: &str = "Speed:";
+const HUD_PREFIX_FIRE_SPEED: &str = "Fire Speed:";
+const HUD_PREFIX_PROTECTION: &str = "Protection:";
+const HUD_PREFIX_SHELLS: &str = "Shells:";
+const HUD_PREFIX_SCORES: &str = "Scores";
+const HUD_PREFIX_PENETRATE: &str = "Penetrate:";
+const HUD_PREFIX_TRACK_CHAIN: &str = "Track Chain:";
+const HUD_PREFIX_AIR_CUSHION: &str = "Air Cushion:";
+const HUD_PREFIX_FIRE_SHELL: &str = "Fire Shell:";
+
+/// HUD 魔法数字常量
+const HUD_MAX_PERCENT: usize = 100;
+const HUD_MAX_LIFE_POINTS: f32 = 3.0;
+const HUD_MAX_SHELLS: usize = 2;
+const HUD_BAR_Y_OFFSET_HEALTH: f32 = 235.0;
+const HUD_BAR_Y_OFFSET_BLUE: f32 = 250.0;
+
 // ============================================================================
 // HUD Spawn Functions
 // ============================================================================
@@ -137,25 +167,7 @@ fn spawn_single_player_hud(
     x_pos: f32,
     marker: impl Component + Clone,
 ) {
-    let default_stats = PlayerStats {
-    name: String::new(),
-    speed: 0,
-    fire_speed: 0,
-    protection: 0,
-    shells: 0,
-    penetrate: false,
-    track_chain: false,
-    air_cushion: false,
-    fire_shell: false,
-    life_points: 0,
-    energy_points: 0,
-    score: 0,
-};
-let stats = match player_type {
-    TankType::Player1 => &player_info.player1,
-    TankType::Player2 => player_info.player2.as_ref().unwrap_or(&default_stats),
-    TankType::Enemy => &default_stats,
-};
+    let stats = get_player_stats_for_spawn(player_info, player_type);
 
     // 玩家名称
     commands.spawn((
@@ -380,53 +392,61 @@ let stats = match player_type {
     ));
 
     // 血条背景
-    commands.spawn((
+    spawn_bar(
+        commands,
         marker.clone(),
-        HealthBar,
-        Sprite {
-            color: COLOR_GRAY,
-            custom_size: Some(Vec2::new(HUD_BAR_WIDTH, HUD_BAR_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 235.0, Z_UI),
-    ));
+        COLOR_GRAY,
+        x_pos,
+        WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_HEALTH,
+        HUD_BAR_WIDTH,
+        Z_UI,
+    );
 
     // 血条前景（红色）
-    let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / 3.0);
+    let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
     commands.spawn((
         marker.clone(),
         HealthBar,
+        HealthBarForeground,
         Sprite {
             color: COLOR_RED,
             custom_size: Some(Vec2::new(health_width, HUD_BAR_HEIGHT)),
             ..default()
         },
-        Transform::from_xyz(x_pos - HUD_BAR_WIDTH / 2.0 + health_width / 2.0, WINDOW_TOP_Y - 235.0, Z_UI + 0.1),
+        Transform::from_xyz(
+            x_pos - HUD_BAR_WIDTH / 2.0 + health_width / 2.0,
+            WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_HEALTH,
+            Z_UI + 0.1,
+        ),
     ));
 
     // 蓝条背景
-    commands.spawn((
+    spawn_bar(
+        commands,
         marker.clone(),
-        BlueBar,
-        Sprite {
-            color: COLOR_GRAY,
-            custom_size: Some(Vec2::new(HUD_BAR_WIDTH, HUD_BAR_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - 250.0, Z_UI),
-    ));
+        COLOR_GRAY,
+        x_pos,
+        WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_BLUE,
+        HUD_BAR_WIDTH,
+        Z_UI,
+    );
 
     // 蓝条前景（蓝色）
-    let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / 3.0);
+    let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
     commands.spawn((
         marker.clone(),
         BlueBar,
+        BlueBarForeground,
         Sprite {
             color: COLOR_BLUE,
             custom_size: Some(Vec2::new(blue_width, HUD_BAR_HEIGHT)),
             ..default()
         },
-        Transform::from_xyz(x_pos - HUD_BAR_WIDTH / 2.0 + blue_width / 2.0, WINDOW_TOP_Y - 250.0, Z_UI + 0.1),
+        Transform::from_xyz(
+            x_pos - HUD_BAR_WIDTH / 2.0 + blue_width / 2.0,
+            WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_BLUE,
+            Z_UI + 0.1,
+        ),
     ));
 }
 
@@ -444,6 +464,44 @@ pub fn despawn_hud(
     // 销毁玩家 HUD
     for entity in player_hud_query.iter() {
         let () = commands.entity(entity).try_despawn();
+    }
+}
+
+// ============================================================================
+// HUD Helper Functions
+// ============================================================================
+
+/// 生成血条或蓝条
+fn spawn_bar<T: Component + Clone>(
+    commands: &mut Commands,
+    marker: T,
+    color: Color,
+    x: f32,
+    y: f32,
+    width: f32,
+    z: f32,
+) {
+    commands.spawn((
+        marker,
+        Sprite {
+            color,
+            custom_size: Some(Vec2::new(width, HUD_BAR_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(x, y, z),
+    ));
+}
+
+/// 获取玩家统计数据（用于 spawn_single_player_hud）
+fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -> PlayerStats {
+    match player_type {
+        TankType::Player1 => player_info.player1.clone(),
+        TankType::Player2 => player_info
+            .player2
+            .as_ref()
+            .cloned()
+            .unwrap_or_default(),
+        TankType::Enemy => PlayerStats::default(),
     }
 }
 
@@ -479,6 +537,45 @@ fn update_bar(
     transform.translation.x = base_x - bar_width / 2.0 + width / 2.0;
 }
 
+/// 更新单个玩家的文本
+fn update_single_player_text(
+    stats: &PlayerStats,
+    player_number: usize,
+    text: &mut String,
+) {
+    if text.starts_with(HUD_PREFIX_SPEED) {
+        *text = format!(
+            "{}{}",
+            HUD_PREFIX_SPEED,
+            format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT)
+        );
+    } else if text.starts_with(HUD_PREFIX_FIRE_SPEED) {
+        *text = format!(
+            "{}{}",
+            HUD_PREFIX_FIRE_SPEED,
+            format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT)
+        );
+    } else if text.starts_with(HUD_PREFIX_PROTECTION) {
+        *text = format!(
+            "{}{}",
+            HUD_PREFIX_PROTECTION,
+            format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT)
+        );
+    } else if text.starts_with(HUD_PREFIX_SHELLS) {
+        *text = format!("{} {}", HUD_PREFIX_SHELLS, stats.shells);
+    } else if text.starts_with("Scores") {
+        *text = format!("Scores{}: {}", player_number, stats.score);
+    } else if text.starts_with(HUD_PREFIX_AIR_CUSHION) {
+        *text = format!("{}{}", HUD_PREFIX_AIR_CUSHION, format_bool_value(stats.air_cushion));
+    } else if text.starts_with(HUD_PREFIX_PENETRATE) {
+        *text = format!("{} {}", HUD_PREFIX_PENETRATE, format_bool_value(stats.penetrate));
+    } else if text.starts_with(HUD_PREFIX_TRACK_CHAIN) {
+        *text = format!("{}{}", HUD_PREFIX_TRACK_CHAIN, format_bool_value(stats.track_chain));
+    } else if text.starts_with(HUD_PREFIX_FIRE_SHELL) {
+        *text = format!("{}{}", HUD_PREFIX_FIRE_SHELL, format_bool_value(stats.fire_shell));
+    }
+}
+
 // ============================================================================
 // HUD Update Functions
 // ============================================================================
@@ -488,46 +585,49 @@ pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
     mut text_query: Query<(&mut Text2d, Option<&Player1Hud>, Option<&Player2Hud>)>,
-    mut bar_query: Query<(&mut Sprite, &mut Transform, Option<&HealthBar>, Option<&BlueBar>, Option<&Player1Hud>, Option<&Player2Hud>)>,
+    mut bar_query: Query<(
+        &mut Sprite,
+        &mut Transform,
+        Option<&HealthBarForeground>,
+        Option<&BlueBarForeground>,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
 ) {
     // 更新玩家1 HUD
     let stats1 = &player_info.player1;
     let x_pos1 = WINDOW_LEFT_X + 115.0;
-    
+
     // 更新玩家1文本
     for (mut text, is_p1, _is_p2) in text_query.iter_mut() {
         if is_p1.is_some() {
-            // 玩家1 HUD 文本更新逻辑
-            if text.0.starts_with("Speed:") {
-                text.0 = format!("Speed:{}", format_percent_value(stats1.speed, stats1.speed >= 100));
-            } else if text.0.starts_with("Fire Speed:") {
-                text.0 = format!("Fire Speed:{}", format_percent_value(stats1.fire_speed, stats1.fire_speed >= 100));
-            } else if text.0.starts_with("Protection:") {
-                text.0 = format!("Protection:{}", format_percent_value(stats1.protection, stats1.protection >= 100));
-            } else if text.0.starts_with("Shells:") {
-                text.0 = format!("Shells: {}", stats1.shells);
-            } else if text.0.starts_with("Scores1:") {
-                text.0 = format!("Scores1: {}", stats1.score);
-            } else if text.0.starts_with("Air Cushion:") {
-                text.0 = format!("Air Cushion:{}", format_bool_value(stats1.air_cushion));
-            } else if text.0.starts_with("Penetrate:") {
-                text.0 = format!("Penetrate: {}", format_bool_value(stats1.penetrate));
-            } else if text.0.starts_with("Track Chain:") {
-                text.0 = format!("Track Chain:{}", format_bool_value(stats1.track_chain));
-            } else if text.0.starts_with("Fire Shell:") {
-                text.0 = format!("Fire Shell:{}", format_bool_value(stats1.fire_shell));
-            }
+            update_single_player_text(stats1, 1, &mut text.0);
         }
     }
 
     // 更新玩家1血条和蓝条
-    for (mut sprite, mut transform, is_health_bar, is_blue_bar, is_p1, _is_p2) in bar_query.iter_mut() {
+    for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, _is_p2) in
+        bar_query.iter_mut()
+    {
         if is_p1.is_some() {
-            let color = sprite.color.to_srgba();
-            if is_health_bar.is_some() && color.red > 0.5 {
-                update_bar(&mut sprite, &mut transform, stats1.life_points as f32, 3.0, x_pos1, HUD_BAR_WIDTH);
-            } else if is_blue_bar.is_some() && color.blue > 0.5 {
-                update_bar(&mut sprite, &mut transform, stats1.energy_points as f32, 3.0, x_pos1, HUD_BAR_WIDTH);
+            if is_health_foreground.is_some() {
+                update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats1.life_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos1,
+                    HUD_BAR_WIDTH,
+                );
+            } else if is_blue_foreground.is_some() {
+                update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats1.energy_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos1,
+                    HUD_BAR_WIDTH,
+                );
             }
         }
     }
@@ -536,41 +636,37 @@ pub fn update_player_hud(
     if *game_mode == GameMode::TwoPlayers {
         if let Some(stats2) = &player_info.player2 {
             let x_pos2 = WINDOW_RIGHT_X - 115.0;
-            
+
             // 更新玩家2文本
             for (mut text, _is_p1, is_p2) in text_query.iter_mut() {
                 if is_p2.is_some() {
-                    // 玩家2 HUD 文本更新逻辑
-                    if text.0.starts_with("Speed:") {
-                        text.0 = format!("Speed:{}", format_percent_value(stats2.speed, stats2.speed >= 100));
-                    } else if text.0.starts_with("Fire Speed:") {
-                        text.0 = format!("Fire Speed:{}", format_percent_value(stats2.fire_speed, stats2.fire_speed >= 100));
-                    } else if text.0.starts_with("Protection:") {
-                        text.0 = format!("Protection:{}", format_percent_value(stats2.protection, stats2.protection >= 100));
-                    } else if text.0.starts_with("Shells:") {
-                        text.0 = format!("Shells: {}", stats2.shells);
-                    } else if text.0.starts_with("Scores2:") {
-                        text.0 = format!("Scores2: {}", stats2.score);
-                    } else if text.0.starts_with("Air Cushion:") {
-                        text.0 = format!("Air Cushion:{}", format_bool_value(stats2.air_cushion));
-                    } else if text.0.starts_with("Penetrate:") {
-                        text.0 = format!("Penetrate: {}", format_bool_value(stats2.penetrate));
-                    } else if text.0.starts_with("Track Chain:") {
-                        text.0 = format!("Track Chain:{}", format_bool_value(stats2.track_chain));
-                    } else if text.0.starts_with("Fire Shell:") {
-                        text.0 = format!("Fire Shell:{}", format_bool_value(stats2.fire_shell));
-                    }
+                    update_single_player_text(stats2, 2, &mut text.0);
                 }
             }
 
             // 更新玩家2血条和蓝条
-            for (mut sprite, mut transform, is_health_bar, is_blue_bar, _is_p1, is_p2) in bar_query.iter_mut() {
+            for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, _is_p1, is_p2) in
+                bar_query.iter_mut()
+            {
                 if is_p2.is_some() {
-                    let color = sprite.color.to_srgba();
-                    if is_health_bar.is_some() && color.red > 0.5 {
-                        update_bar(&mut sprite, &mut transform, stats2.life_points as f32, 3.0, x_pos2, HUD_BAR_WIDTH);
-                    } else if is_blue_bar.is_some() && color.blue > 0.5 {
-                        update_bar(&mut sprite, &mut transform, stats2.energy_points as f32, 3.0, x_pos2, HUD_BAR_WIDTH);
+                    if is_health_foreground.is_some() {
+                        update_bar(
+                            &mut sprite,
+                            &mut transform,
+                            stats2.life_points as f32,
+                            HUD_MAX_LIFE_POINTS,
+                            x_pos2,
+                            HUD_BAR_WIDTH,
+                        );
+                    } else if is_blue_foreground.is_some() {
+                        update_bar(
+                            &mut sprite,
+                            &mut transform,
+                            stats2.energy_points as f32,
+                            HUD_MAX_LIFE_POINTS,
+                            x_pos2,
+                            HUD_BAR_WIDTH,
+                        );
                     }
                 }
             }
@@ -634,16 +730,17 @@ pub fn animate_hud_text(
             &mut PlayerInfoBlinkTimer,
             &mut TextColor,
             &Text2d,
+            Option<&Player1Hud>,
+            Option<&Player2Hud>,
         ),
-        Or<(With<Player1Hud>, With<Player2Hud>)>,
     >,
     player_info: Res<PlayerInfo>,
 ) {
-    for (entity, mut timer, mut color, text) in &mut query {
+    for (entity, mut timer, mut color, text, is_p1, is_p2) in &mut query {
         timer.tick(time.delta());
 
         // 判断是否达到最大值或On状态
-        let is_max = is_hud_stat_at_max_value(&text.0, &player_info);
+        let is_max = is_hud_stat_at_max_value(&text.0, &player_info, is_p1, is_p2);
 
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
@@ -672,60 +769,60 @@ pub fn animate_hud_text(
 /// 获取 HUD 属性类型对应的前缀
 fn get_hud_stat_prefix(stat_type: StatType) -> &'static str {
     match stat_type {
-        StatType::Speed => "Speed:",
-        StatType::Protection => "Protection:",
-        StatType::FireSpeed => "Fire Speed:",
-        StatType::FireShell => "Fire Shell:",
-        StatType::TrackChain => "Track Chain:",
-        StatType::Penetrate => "Penetrate:",
-        StatType::AirCushion => "Air Cushion:",
-        StatType::Shell => "Shells:",
-        StatType::Score => "Scores",
+        StatType::Speed => HUD_PREFIX_SPEED,
+        StatType::Protection => HUD_PREFIX_PROTECTION,
+        StatType::FireSpeed => HUD_PREFIX_FIRE_SPEED,
+        StatType::FireShell => HUD_PREFIX_FIRE_SHELL,
+        StatType::TrackChain => HUD_PREFIX_TRACK_CHAIN,
+        StatType::Penetrate => HUD_PREFIX_PENETRATE,
+        StatType::AirCushion => HUD_PREFIX_AIR_CUSHION,
+        StatType::Shell => HUD_PREFIX_SHELLS,
+        StatType::Score => HUD_PREFIX_SCORES,
     }
 }
 
-/// 判断 HUD 属性是否达到最大值或On状态
-fn is_hud_stat_at_max_value(text: &str, player_info: &PlayerInfo) -> bool {
-    // 检查玩家1和玩家2的属性
-    let players = [&player_info.player1]
-        .into_iter()
-        .chain(player_info.player2.as_ref().into_iter());
-    for player_stats in players {
-        if text.starts_with("Shells:") {
-            if player_stats.shells >= 2 {
-                return true;
-            }
-        } else if text.starts_with("Speed:") {
-            if player_stats.speed >= 100 {
-                return true;
-            }
-        } else if text.starts_with("Protection:") {
-            if player_stats.protection >= 100 {
-                return true;
-            }
-        } else if text.starts_with("Fire Speed:") {
-            if player_stats.fire_speed >= 100 {
-                return true;
-            }
-        } else if text.starts_with("Fire Shell:") {
-            if player_stats.fire_shell {
-                return true;
-            }
-        } else if text.starts_with("Air Cushion:") {
-            if player_stats.air_cushion {
-                return true;
-            }
-        } else if text.starts_with("Track Chain:") {
-            if player_stats.track_chain {
-                return true;
-            }
-        } else if text.starts_with("Penetrate:") {
-            if player_stats.penetrate {
-                return true;
-            }
-        }
+/// 判断单个玩家 HUD 属性是否达到最大值或On状态
+fn is_player_stat_at_max(text: &str, stats: &PlayerStats) -> bool {
+    if text.starts_with(HUD_PREFIX_SHELLS) {
+        stats.shells >= HUD_MAX_SHELLS
+    } else if text.starts_with(HUD_PREFIX_SPEED) {
+        stats.speed >= HUD_MAX_PERCENT
+    } else if text.starts_with(HUD_PREFIX_PROTECTION) {
+        stats.protection >= HUD_MAX_PERCENT
+    } else if text.starts_with(HUD_PREFIX_FIRE_SPEED) {
+        stats.fire_speed >= HUD_MAX_PERCENT
+    } else if text.starts_with(HUD_PREFIX_FIRE_SHELL) {
+        stats.fire_shell
+    } else if text.starts_with(HUD_PREFIX_AIR_CUSHION) {
+        stats.air_cushion
+    } else if text.starts_with(HUD_PREFIX_TRACK_CHAIN) {
+        stats.track_chain
+    } else if text.starts_with(HUD_PREFIX_PENETRATE) {
+        stats.penetrate
+    } else {
+        false
     }
-    false
+}
+
+/// 判断 HUD 属性是否达到最大值或On状态（用于动画系统）
+fn is_hud_stat_at_max_value(
+    text: &str,
+    player_info: &PlayerInfo,
+    player_hud: Option<&Player1Hud>,
+    player_hud2: Option<&Player2Hud>,
+) -> bool {
+    // 根据所属玩家选择对应的数据
+    if player_hud.is_some() {
+        is_player_stat_at_max(text, &player_info.player1)
+    } else if player_hud2.is_some() {
+        if let Some(stats2) = &player_info.player2 {
+            is_player_stat_at_max(text, stats2)
+        } else {
+            false
+        }
+    } else {
+        false
+    }
 }
 
 /// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
