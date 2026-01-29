@@ -77,7 +77,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
         .init_resource::<BulletTracker>()
-        .add_systems(Startup, (setup, crate::levels::load_level_assets))
+        .add_systems(Startup, (setup, crate::levels::load_level_assets, bullet::init_bullet_resources))
         .add_systems(
             OnEnter(GameState::StartScreen),
             (

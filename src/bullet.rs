@@ -14,6 +14,37 @@ use crate::constants::*;
 use crate::resources::{BulletTracker, PlayerInfo, PlayerStatChanged, PlayerStats, StatType};
 use bevy::audio::Volume;
 
+/// 获取玩家统计数据的不可变引用
+fn get_player_stats_ref<'a>(
+    player_info: &'a PlayerInfo,
+    player_type: TankType,
+) -> &'a PlayerStats {
+    match player_type {
+        TankType::Player1 => &player_info.player1,
+        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!("Enemy tank should not request player stats"),
+    }
+}
+
+/// 获取玩家统计数据的可变引用
+fn get_player_stats_mut<'a>(
+    player_info: &'a mut PlayerInfo,
+    player_type: TankType,
+) -> &'a mut PlayerStats {
+    match player_type {
+        TankType::Player1 => &mut player_info.player1,
+        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
+        TankType::Enemy => unreachable!("Enemy tank should not request player stats"),
+    }
+}
+
+/// 碰撞类型枚举
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CollisionType {
+    PlayerBulletHitEnemy,
+    EnemyBulletHitPlayer,
+}
+
 /// 特效事件枚举
 /// 用于解耦碰撞逻辑和特效生成
 #[derive(Event, Clone, Copy, Message)]
@@ -21,6 +52,39 @@ pub enum EffectEvent {
     Explosion { position: Vec3 },
     Spark { position: Vec3 },
     ForestFire { position: Vec3 },
+}
+
+/// 子弹资源缓存
+/// 用于预加载子弹纹理和音效，避免重复加载
+#[derive(Resource)]
+pub struct BulletResources {
+    /// 玩家1子弹纹理
+    pub bullet_player1: Handle<Image>,
+    /// 玩家2子弹纹理
+    pub bullet_player2: Handle<Image>,
+    /// 敌方子弹纹理
+    pub bullet_enemy: Handle<Image>,
+    /// 砖块击中音效
+    pub brick_hit_sound: Handle<AudioSource>,
+    /// 击中音效
+    pub hit_sound: Handle<AudioSource>,
+    /// 金属碰撞音效
+    pub metal_crash_sound: Handle<AudioSource>,
+}
+
+/// 初始化子弹资源
+pub fn init_bullet_resources(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+) {
+    commands.insert_resource(BulletResources {
+        bullet_player1: asset_server.load("texture/bullets/bullet_player1.png"),
+        bullet_player2: asset_server.load("texture/bullets/bullet_player2.png"),
+        bullet_enemy: asset_server.load("texture/bullets/bullet_enemy.png"),
+        brick_hit_sound: asset_server.load(SOUND_BRICK_HIT),
+        hit_sound: asset_server.load(SOUND_HIT),
+        metal_crash_sound: asset_server.load(SOUND_METAL_CRASH),
+    });
 }
 
 /// 子弹实体标记组件
@@ -33,9 +97,6 @@ pub struct BulletOwner {
     pub owner_type: TankType,
 }
 
-/// 子弹销毁标记组件
-
-
 /// 子弹生成参数
 pub struct BulletSpawnParams {
     pub position: Vec3,
@@ -47,14 +108,14 @@ pub struct BulletSpawnParams {
 /// 生成子弹实体
 pub fn spawn_bullet(
     commands: &mut Commands,
-    asset_server: &AssetServer,
+    bullet_resources: &BulletResources,
     params: BulletSpawnParams,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = match params.owner_type {
-        TankType::Player1 => asset_server.load("texture/bullets/bullet_player1.png"),
-        TankType::Player2 => asset_server.load("texture/bullets/bullet_player2.png"),
-        TankType::Enemy => asset_server.load("texture/bullets/bullet_enemy.png"),
+        TankType::Player1 => bullet_resources.bullet_player1.clone(),
+        TankType::Player2 => bullet_resources.bullet_player2.clone(),
+        TankType::Enemy => bullet_resources.bullet_enemy.clone(),
     };
 
     // 计算子弹旋转角度（纹理是横向的，需要根据射击方向旋转）
@@ -98,7 +159,7 @@ pub fn spawn_bullet(
 /// 敌方坦克射击系统
 pub fn enemy_shoot_system(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    bullet_resources: Res<BulletResources>,
     mut query: Query<
         (
             Entity,
@@ -133,7 +194,7 @@ pub fn enemy_shoot_system(
             // 生成子弹
             let bullet_entity = spawn_bullet(
                 &mut commands,
-                &asset_server,
+                &bullet_resources,
                 BulletSpawnParams {
                     position: bullet_pos,
                     direction,
@@ -151,7 +212,7 @@ pub fn enemy_shoot_system(
 /// 玩家坦克射击系统
 pub fn player_shoot_system(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    bullet_resources: Res<BulletResources>,
     time: Res<Time>,
     mut query: Query<
         (
@@ -220,7 +281,7 @@ pub fn player_shoot_system(
         // 生成子弹
         let bullet_entity = spawn_bullet(
             &mut commands,
-            &asset_server,
+            &bullet_resources,
             BulletSpawnParams {
                 position: bullet_pos,
                 direction,
@@ -237,6 +298,12 @@ pub fn player_shoot_system(
     }
 }
 
+/// 销毁子弹实体并清理所有者引用
+fn despawn_bullet(commands: &mut Commands, bullet_tracker: &mut BulletTracker, bullet_entity: Entity) {
+    bullet_tracker.remove_bullet(bullet_entity);
+    let () = commands.entity(bullet_entity).try_despawn();
+}
+
 /// 子弹边界检查系统
 pub fn bullet_bounds_check_system(
     mut commands: Commands,
@@ -249,10 +316,7 @@ pub fn bullet_bounds_check_system(
 
         // 检查子弹是否超出游戏窗口边界
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x) || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y) {
-            // 清理所有者引用，允许坦克再次射击
-            bullet_tracker.remove_bullet(entity);
-            // 销毁子弹实体
-            let () = commands.entity(entity).try_despawn();
+            despawn_bullet(&mut commands, &mut bullet_tracker, entity);
         }
     }
 }
@@ -262,7 +326,7 @@ pub fn find_bullet_and_tank_in_collision(
     e1: Entity,
     e2: Entity,
     bullets: &Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
-    enemy_tanks: &Query<(), With<EnemyTank>>,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
 ) -> Option<(Entity, Entity)> {
     if bullets.get(e1).is_ok() && (enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok()) {
@@ -275,34 +339,38 @@ pub fn find_bullet_and_tank_in_collision(
     None
 }
 
-/// 判断子弹是否应该销毁
-pub fn should_bullet_destroy(
+/// 获取碰撞类型
+/// 返回 None 表示子弹应该穿过（不销毁）
+fn get_collision_type(
     bullet_owner_type: TankType,
     tank_entity: Entity,
-    enemy_tanks: &Query<(), With<EnemyTank>>,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
-) -> bool {
+) -> Option<CollisionType> {
     let is_player_tank = player_tanks.get(tank_entity).is_ok();
     let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
 
     let is_player_bullet = matches!(bullet_owner_type, TankType::Player1 | TankType::Player2);
-    let is_enemy_bullet = matches!(bullet_owner_type, TankType::Enemy);
 
     // 规则：
     // 1. 玩家子弹打到敌方坦克 -> 子弹消失
     // 2. 敌方子弹打到玩家坦克 -> 子弹消失
     // 3. 敌方子弹打到敌方坦克 -> 子弹穿过（不消失）
     // 4. 玩家子弹打到玩家坦克 -> 子弹穿过（不消失）
-    (is_player_bullet && is_enemy_tank) || (is_enemy_bullet && is_player_tank)
+    match (is_player_bullet, is_enemy_tank, is_player_tank) {
+        (true, true, false) => Some(CollisionType::PlayerBulletHitEnemy),
+        (false, false, true) => Some(CollisionType::EnemyBulletHitPlayer),
+        _ => None,
+    }
 }
 
 /// 子弹与地形碰撞检测系统
-/// 使用 Rapier 碰撞事件替代手动距离判断，性能从 O(n²) 提升到 O(n log n)
+/// 使用 Rapier 碰撞事件进行碰撞检测
 pub fn bullet_terrain_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    asset_server: Res<AssetServer>,
+    bullet_resources: Res<BulletResources>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
     bricks: Query<(), With<Brick>>,
@@ -328,7 +396,7 @@ pub fn bullet_terrain_collision_system(
         handle_terrain_collision(
             &mut commands,
             &mut effect_events,
-            &asset_server,
+            &bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
@@ -361,7 +429,7 @@ fn extract_bullet_and_terrain(
 fn handle_terrain_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    asset_server: &Res<AssetServer>,
+    bullet_resources: &Res<BulletResources>,
     terrain_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
@@ -379,7 +447,7 @@ fn handle_terrain_collision(
             effect_events,
             forest_entity,
             forest_transform,
-            &bullet_owner.owner_type,
+            bullet_owner.owner_type,
             player_info,
         );
         return;
@@ -390,7 +458,7 @@ fn handle_terrain_collision(
         handle_brick_collision(
             commands,
             effect_events,
-            asset_server,
+            bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
@@ -404,11 +472,11 @@ fn handle_terrain_collision(
         handle_steel_collision(
             commands,
             effect_events,
-            asset_server,
+            bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
-            &bullet_owner.owner_type,
+            bullet_owner.owner_type,
             player_info,
             bullet_tracker,
         );
@@ -421,7 +489,7 @@ fn handle_forest_collision(
     effect_events: &mut MessageWriter<EffectEvent>,
     forest_entity: Entity,
     forest_transform: &Transform,
-    owner_type: &TankType,
+    owner_type: TankType,
     player_info: &Res<PlayerInfo>,
 ) {
     let is_player_bullet = !matches!(owner_type, TankType::Enemy);
@@ -429,11 +497,7 @@ fn handle_forest_collision(
         return;
     }
 
-    let player_stats = match *owner_type {
-        TankType::Player1 => &player_info.player1,
-        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = get_player_stats_ref(&player_info, owner_type);
 
     if !player_stats.fire_shell {
         return;
@@ -449,15 +513,14 @@ fn handle_forest_collision(
 fn handle_brick_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    asset_server: &Res<AssetServer>,
+    bullet_resources: &Res<BulletResources>,
     brick_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
     bullet_tracker: &mut BulletTracker,
 ) {
-    let brick_hit_sound: Handle<AudioSource> = asset_server.load(SOUND_BRICK_HIT);
     commands.spawn((
-        AudioPlayer::new(brick_hit_sound),
+        AudioPlayer::new(bullet_resources.brick_hit_sound.clone()),
         PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
     ));
 
@@ -466,21 +529,18 @@ fn handle_brick_collision(
     });
 
     let () = commands.entity(brick_entity).try_despawn();
-    // 清理所有者引用，允许坦克再次射击
-    bullet_tracker.remove_bullet(bullet_entity);
-    // 销毁子弹实体
-    let () = commands.entity(bullet_entity).try_despawn();
+    despawn_bullet(commands, bullet_tracker, bullet_entity);
 }
 
 /// 处理钢铁碰撞
 fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    asset_server: &Res<AssetServer>,
+    bullet_resources: &Res<BulletResources>,
     steel_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
-    owner_type: &TankType,
+    owner_type: TankType,
     player_info: &Res<PlayerInfo>,
     bullet_tracker: &mut BulletTracker,
 ) {
@@ -489,34 +549,21 @@ fn handle_steel_collision(
     });
 
     if matches!(owner_type, TankType::Enemy) {
-        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-        commands.spawn(AudioPlayer::new(hit_sound));
-        // 清理所有者引用，允许坦克再次射击
-        bullet_tracker.remove_bullet(bullet_entity);
-        // 销毁子弹实体
-        let () = commands.entity(bullet_entity).try_despawn();
+        commands.spawn(AudioPlayer::new(bullet_resources.hit_sound.clone()));
+        despawn_bullet(commands, bullet_tracker, bullet_entity);
         return;
     }
 
-    let player_stats = match *owner_type {
-        TankType::Player1 => &player_info.player1,
-        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = get_player_stats_ref(&player_info, owner_type);
 
     if player_stats.penetrate {
-        let metal_crash_sound: Handle<AudioSource> = asset_server.load(SOUND_METAL_CRASH);
-        commands.spawn(AudioPlayer::new(metal_crash_sound));
+        commands.spawn(AudioPlayer::new(bullet_resources.metal_crash_sound.clone()));
         let () = commands.entity(steel_entity).try_despawn();
     } else {
-        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-        commands.spawn(AudioPlayer::new(hit_sound));
+        commands.spawn(AudioPlayer::new(bullet_resources.hit_sound.clone()));
     }
 
-    // 清理所有者引用，允许坦克再次射击
-    bullet_tracker.remove_bullet(bullet_entity);
-    // 销毁子弹实体
-    let () = commands.entity(bullet_entity).try_despawn();
+    despawn_bullet(commands, bullet_tracker, bullet_entity);
 }
 
 /// 子弹与坦克碰撞检测系统
@@ -527,7 +574,6 @@ pub fn bullet_tank_collision_system(
     asset_server: Res<AssetServer>,
     mut bullet_tracker: ResMut<BulletTracker>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
@@ -542,58 +588,52 @@ pub fn bullet_tank_collision_system(
 
         // 提取子弹和坦克实体
         let Some((bullet_entity, tank_entity)) =
-            find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &enemy_tanks, &player_tanks)
+            find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &enemy_tanks_with_transform, &player_tanks)
         else { continue; };
 
-        let bullet_owner_info = bullets.get(bullet_entity).unwrap().1;
+        let bullet_owner_info = bullets.get(bullet_entity).expect("Bullet should exist in bullets query").1;
 
-        // 卫语句：检查子弹是否应该销毁
-        if !should_bullet_destroy(
+        // 获取碰撞类型，如果返回 None 则子弹穿过（不销毁）
+        let collision_type = match get_collision_type(
             bullet_owner_info.owner_type,
             tank_entity,
-            &enemy_tanks,
+            &enemy_tanks_with_transform,
             &player_tanks,
         ) {
-            continue;
+            Some(ct) => ct,
+            None => continue,
+        };
+
+        match collision_type {
+            CollisionType::PlayerBulletHitEnemy => {
+                handle_player_bullet_hit_enemy(
+                    &mut commands,
+                    &mut effect_events,
+                    &enemy_tanks_with_transform,
+                    &mut player_info,
+                    &mut stat_changed_events,
+                    bullet_owner_info.owner_type,
+                    tank_entity,
+                );
+            }
+            CollisionType::EnemyBulletHitPlayer => {
+                let player_index = player_tanks.get(tank_entity).expect("PlayerTank should have tank_type").tank_type;
+                handle_enemy_bullet_hit_player(
+                    &mut commands,
+                    &mut effect_events,
+                    &asset_server,
+                    &player_tanks_with_transform,
+                    &player_avatars,
+                    &mut player_info,
+                    &mut stat_changed_events,
+                    &mut controllers,
+                    player_index,
+                    tank_entity,
+                );
+            }
         }
 
-        let is_player_bullet = matches!(
-            bullet_owner_info.owner_type,
-            TankType::Player1 | TankType::Player2
-        );
-        let is_enemy_tank = enemy_tanks.get(tank_entity).is_ok();
-        let is_player_tank = player_tanks.get(tank_entity).is_ok();
-
-        if is_player_bullet && is_enemy_tank {
-            handle_player_bullet_hit_enemy(
-                &mut commands,
-                &mut effect_events,
-                &enemy_tanks_with_transform,
-                &mut player_info,
-                &mut stat_changed_events,
-                bullet_owner_info.owner_type,
-                tank_entity,
-            );
-        } else if !is_player_bullet && is_player_tank {
-            let player_index = player_tanks.get(tank_entity).unwrap().tank_type;
-            handle_enemy_bullet_hit_player(
-                &mut commands,
-                &mut effect_events,
-                &asset_server,
-                &player_tanks_with_transform,
-                &player_avatars,
-                &mut player_info,
-                &mut stat_changed_events,
-                &mut controllers,
-                player_index,
-                tank_entity,
-            );
-        }
-
-        // 清理所有者引用，允许坦克再次射击
-        bullet_tracker.remove_bullet(bullet_entity);
-        // 销毁子弹实体
-        let () = commands.entity(bullet_entity).try_despawn();
+        despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
     }
 }
 
@@ -602,7 +642,7 @@ fn handle_player_bullet_hit_enemy(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
     enemy_tanks_with_transform: &Query<(Entity, &Transform), With<EnemyTank>>,
-    player_info: &mut ResMut<PlayerInfo>,
+    mut player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_type: TankType,
     tank_entity: Entity,
@@ -623,11 +663,7 @@ fn handle_player_bullet_hit_enemy(
     let () = commands.entity(tank_entity).try_despawn();
 
     // 增加分数
-    let player_stats = match player_type {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = get_player_stats_mut(&mut player_info, player_type);
     player_stats.score += 100;
     stat_changed_events.write(PlayerStatChanged {
         player_type,
@@ -642,7 +678,7 @@ fn handle_enemy_bullet_hit_player(
     asset_server: &Res<AssetServer>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI)>,
-    player_info: &mut ResMut<PlayerInfo>,
+    mut player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     controllers: &mut Query<&mut KinematicCharacterController>,
     player_index: TankType,
@@ -659,12 +695,8 @@ fn handle_enemy_bullet_hit_player(
         });
     }
 
-    // 扣除对应玩家的生命值
-    let player_stats = match player_index {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    // 获取玩家统计数据
+    let player_stats = get_player_stats_mut(&mut player_info, player_index);
 
     // 检查玩家是否有特效或额外子弹
     let has_fire_shell = player_stats.fire_shell;
@@ -700,6 +732,7 @@ fn handle_enemy_bullet_hit_player(
 }
 
 /// 移除玩家道具
+/// 按优先级移除：fire_shell > track_chain > penetrate > air_cushion > shells
 fn remove_player_powerup(
     player_stats: &mut PlayerStats,
     player_index: TankType,
@@ -818,7 +851,6 @@ pub fn handle_effect_events(
 }
 
 /// 司令官与敌方子弹碰撞检测系统
-/// 使用简单的 AABB 碰撞检测
 pub fn bullet_commander_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
@@ -830,80 +862,54 @@ pub fn bullet_commander_collision_system(
     mut bullet_tracker: ResMut<BulletTracker>,
 ) {
     for event in collision_events.read() {
-        if let CollisionEvent::Started(e1, e2, _) = event {
-            // 判断是否是子弹与司令官的碰撞
-            let (bullet_entity, commander_entity) =
-                if bullets.get(*e1).is_ok() && commanders.get(*e2).is_ok() {
-                    (*e1, *e2)
-                } else if bullets.get(*e2).is_ok() && commanders.get(*e1).is_ok() {
-                    (*e2, *e1)
-                } else {
-                    continue;
-                };
+        let CollisionEvent::Started(e1, e2, _) = event else { continue };
 
-            // 获取子弹信息
-            let Ok((_, bullet_owner_info, _)) = bullets.get(bullet_entity) else {
+        // 判断是否是子弹与司令官的碰撞
+        let (bullet_entity, commander_entity) =
+            if bullets.get(*e1).is_ok() && commanders.get(*e2).is_ok() {
+                (*e1, *e2)
+            } else if bullets.get(*e2).is_ok() && commanders.get(*e1).is_ok() {
+                (*e2, *e1)
+            } else {
                 continue;
             };
 
-            // 只处理敌方子弹击中司令官的情况
-            if bullet_owner_info.owner_type != TankType::Enemy {
-                continue;
-            }
+        // 获取子弹信息
+        let Ok((_, bullet_owner_info, bullet_transform)) = bullets.get(bullet_entity) else {
+            continue;
+        };
 
-            // 获取司令官位置
-            let Ok((_, commander_transform)) = commanders.get(commander_entity) else {
-                continue;
-            };
-
-            // 使用 AABB 碰撞检测验证碰撞
-            let Ok((_, _, bullet_transform)) = bullets.get(bullet_entity) else {
-                continue;
-            };
-
-            // 简单的 AABB 碰撞检测
-            let commander_half_size = Vec2::new(
-                crate::constants::COMMANDER_WIDTH / 2.0,
-                crate::constants::COMMANDER_HEIGHT / 2.0,
-            );
-            let bullet_half_size = Vec2::new(BULLET_WIDTH / 2.0, BULLET_HEIGHT / 2.0); // 子弹尺寸的一半
-
-            let commander_min = commander_transform.translation.truncate() - commander_half_size;
-            let commander_max = commander_transform.translation.truncate() + commander_half_size;
-            let bullet_min = bullet_transform.translation.truncate() - bullet_half_size;
-            let bullet_max = bullet_transform.translation.truncate() + bullet_half_size;
-
-            if commander_min.x <= bullet_max.x
-                && commander_max.x >= bullet_min.x
-                && commander_min.y <= bullet_max.y
-                && commander_max.y >= bullet_min.y
-            {
-                // 碰撞确认，播放受击音效
-                let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_GET_SHOT);
-                commands.spawn(AudioPlayer::new(hit_sound));
-
-                // 发送火花特效事件
-                effect_events.write(EffectEvent::Spark {
-                    position: bullet_transform.translation,
-                });
-
-                // 减少司令官生命值
-                if commander_life.life_points > 0 {
-                    commander_life.life_points -= 1;
-                }
-
-                // 检查是否是致命伤（生命值归零）
-                if commander_life.life_points == 0 {
-                    // 播放死亡音效
-                    let death_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_DEATH);
-                    commands.spawn(AudioPlayer::new(death_sound));
-                }
-
-                // 清理所有者引用，允许坦克再次射击
-                bullet_tracker.remove_bullet(bullet_entity);
-                // 销毁子弹实体
-                let () = commands.entity(bullet_entity).try_despawn();
-            }
+        // 只处理敌方子弹击中司令官的情况
+        if bullet_owner_info.owner_type != TankType::Enemy {
+            continue;
         }
+
+        // 获取司令官位置
+        let Ok((_, _commander_transform)) = commanders.get(commander_entity) else {
+            continue;
+        };
+
+        // 碰撞确认，播放受击音效
+        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_GET_SHOT);
+        commands.spawn(AudioPlayer::new(hit_sound));
+
+        // 发送火花特效事件
+        effect_events.write(EffectEvent::Spark {
+            position: bullet_transform.translation,
+        });
+
+        // 减少司令官生命值
+        if commander_life.life_points > 0 {
+            commander_life.life_points -= 1;
+        }
+
+        // 检查是否是致命伤（生命值归零）
+        if commander_life.life_points == 0 {
+            // 播放死亡音效
+            let death_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_DEATH);
+            commands.spawn(AudioPlayer::new(death_sound));
+        }
+
+        despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
     }
 }
