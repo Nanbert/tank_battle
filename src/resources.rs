@@ -234,6 +234,7 @@ pub struct DashDamageTracker {
 pub struct TerrainAtlasLayouts {
     pub sea: Handle<TextureAtlasLayout>,
     pub forest: Handle<TextureAtlasLayout>,
+    pub forest_fire: Handle<TextureAtlasLayout>,
 }
 
 // ==================== 游戏资源管理 ====================

@@ -473,6 +473,13 @@ pub fn init_game_resources(
             None,
             None,
         )),
+        forest_fire: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+            UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32),
+            10,
+            1,
+            None,
+            None,
+        )),
     });
 
     // 字体资源

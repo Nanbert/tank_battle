@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::effects;
 
 use crate::constants::*;
-use crate::resources::{BulletTracker, PlayerInfo, PlayerStatChanged, PlayerStats, StatType};
+use crate::resources::{BulletTracker, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts};
 use bevy::audio::Volume;
 
 /// 获取玩家统计数据的不可变引用
@@ -819,6 +819,8 @@ pub fn handle_effect_events(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    effect_resources: Res<EffectResources>,
+    terrain_atlas_layouts: Res<TerrainAtlasLayouts>,
 ) {
     for event in events.read() {
         match event {
@@ -841,8 +843,9 @@ pub fn handle_effect_events(
             EffectEvent::ForestFire { position } => {
                 effects::spawn_forest_fire(
                     &mut commands,
+                    &effect_resources,
+                    &terrain_atlas_layouts,
                     &asset_server,
-                    &mut texture_atlas_layouts,
                     *position,
                 );
             }

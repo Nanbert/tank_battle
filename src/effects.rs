@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::PlayerInfo;
+use crate::resources::{EffectResources, PlayerInfo, TerrainAtlasLayouts};
 
 pub fn spawn_explosion(
     commands: &mut Commands,
@@ -56,18 +56,13 @@ pub fn spawn_explosion(
 
 pub fn spawn_forest_fire(
     commands: &mut Commands,
+    effect_resources: &EffectResources,
+    terrain_atlas_layouts: &TerrainAtlasLayouts,
     asset_server: &AssetServer,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) {
-    // 加载树林燃烧精灵图（10帧，每帧131x131，1.5秒播完）
-    let forest_fire_texture: Handle<Image> = asset_server.load("maps/tree_fire_sheet.png");
-    let forest_fire_tile_size = UVec2::new(
-            FOREST_FIRE_TILE_SIZE as u32,
-            FOREST_FIRE_TILE_SIZE as u32,
-        );
-        let forest_fire_texture_atlas = TextureAtlasLayout::from_grid(forest_fire_tile_size, 10, 1, None, None);
-    let forest_fire_texture_atlas_layout = texture_atlas_layouts.add(forest_fire_texture_atlas);
+    // 使用预加载的纹理和纹理图集布局
+    let forest_fire_texture = effect_resources.forest_fire.clone();
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((
@@ -76,7 +71,7 @@ pub fn spawn_forest_fire(
         Sprite::from_atlas_image(
             forest_fire_texture,
             TextureAtlas {
-                layout: forest_fire_texture_atlas_layout,
+                layout: terrain_atlas_layouts.forest_fire.clone(),
                 index: forest_fire_animation_indices.first,
             },
         ),
