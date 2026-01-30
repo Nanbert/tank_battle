@@ -42,8 +42,22 @@ pub fn configure_window_plugin() -> WindowPlugin {
 }
 
 pub fn configure_asset_plugin() -> AssetPlugin {
+    // 检查是否从系统安装位置运行
+    let asset_path = if std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .as_deref()
+        == Some(std::path::Path::new("/usr/bin"))
+    {
+        // 系统安装位置：资源在 /usr/share/tank-battle/assets
+        "/usr/share/tank-battle/assets".to_string()
+    } else {
+        // 开发环境或从压缩包运行：资源在当前目录的 assets
+        "assets".to_string()
+    };
+
     AssetPlugin {
-        file_path: "assets".to_string(),
+        file_path: asset_path,
         ..default()
     }
 }
