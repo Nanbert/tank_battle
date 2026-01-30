@@ -377,7 +377,7 @@ fn spawn_map_terrain(
     commands: &mut Commands,
     map_resources: &Res<MapResources>,
     atlas_layouts: &Res<TerrainAtlasLayouts>,
-    level_assets: &crate::levels::LevelAssets,
+    level_assets: &mut crate::levels::LevelAssets,
     stage_level: usize,
 ) {
     let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
@@ -409,7 +409,7 @@ pub fn spawn_map(
     mut commands: Commands,
     map_resources: Res<MapResources>,
     atlas_layouts: Res<TerrainAtlasLayouts>,
-    level_assets: Res<crate::levels::LevelAssets>,
+    mut level_assets: ResMut<crate::levels::LevelAssets>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
     bricks: Query<Entity, With<Brick>>,
@@ -435,7 +435,7 @@ pub fn spawn_map(
         &mut commands,
         &map_resources,
         &atlas_layouts,
-        &level_assets,
+        &mut level_assets,
         stage_level.0,
     );
 
