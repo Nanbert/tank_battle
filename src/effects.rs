@@ -9,16 +9,17 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{EffectResources, PlayerInfo, TerrainAtlasLayouts};
+use crate::resources::{AmbienceResources, EffectResources, PlayerInfo, TerrainAtlasLayouts, SoundResources};
 
 pub fn spawn_explosion(
     commands: &mut Commands,
-    asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    effect_resources: &EffectResources,
+    sound_resources: &SoundResources,
     position: Vec3,
 ) {
-    // 加载爆炸精灵图（8x8，共64帧，每帧512x512）
-    let explosion_texture: Handle<Image> = asset_server.load(TEXTURE_EXPLOSION);
+    // 使用预加载的爆炸纹理
+    let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
     let explosion_texture_atlas =
         TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
@@ -46,10 +47,9 @@ pub fn spawn_explosion(
         CurrentAnimationFrame(0),
     ));
 
-    // 播放爆炸音效
-    let explosion_sound: Handle<AudioSource> = asset_server.load(SOUND_EXPLOSION);
+    // 使用预加载的爆炸音效
     commands.spawn((
-        AudioPlayer::new(explosion_sound),
+        AudioPlayer::new(sound_resources.explosion.clone()),
         PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
     ));
 }
@@ -57,11 +57,12 @@ pub fn spawn_explosion(
 pub fn spawn_forest_fire(
     commands: &mut Commands,
     terrain_atlas_layouts: &TerrainAtlasLayouts,
-    asset_server: &AssetServer,
+    effect_resources: &EffectResources,
+    ambience_resources: &AmbienceResources,
     position: Vec3,
 ) {
     // 使用预加载的纹理图集布局
-    let forest_fire_texture: Handle<Image> = asset_server.load(TEXTURE_TREE_FIRE_SHEET);
+    let forest_fire_texture = effect_resources.forest_fire.clone();
     let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((
@@ -84,18 +85,17 @@ pub fn spawn_forest_fire(
     ));
 
     // 播放树林燃烧音效
-    let burn_tree_sound: Handle<AudioSource> = asset_server.load(SOUND_BURN_TREE);
-    commands.spawn(AudioPlayer::new(burn_tree_sound));
+    commands.spawn(AudioPlayer::new(ambience_resources.burn_tree.clone()));
 }
 
 pub fn spawn_spark(
     commands: &mut Commands,
-    asset_server: &AssetServer,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    effect_resources: &EffectResources,
     position: Vec3,
 ) {
-    // 加载打击效果图片（4x4，共16帧，每帧1024x1024）
-    let spark_texture: Handle<Image> = asset_server.load(TEXTURE_STEEL_HIT);
+    // 使用预加载的打击效果纹理
+    let spark_texture = effect_resources.spark.clone();
     let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
     let spark_texture_atlas = TextureAtlasLayout::from_grid(spark_tile_size, 4, 4, None, None);
     let spark_texture_atlas_layout = texture_atlas_layouts.add(spark_texture_atlas);
@@ -283,10 +283,10 @@ pub fn animate_spark(
 /// 更新气垫效果
 pub fn update_air_cushion_effect(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
     bubble_effects: Query<&crate::constants::BubbleEffect>,
     player_info: Res<PlayerInfo>,
+    effect_resources: Res<EffectResources>,
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 air_cushion 能力
@@ -306,8 +306,8 @@ pub fn update_air_cushion_effect(
             });
 
             if !has_bubble_sprite {
-                // 加载气泡纹理并缩放到 100x100
-                let bubble_texture: Handle<Image> = asset_server.load(TEXTURE_BUBBLE);
+                // 使用预加载的气泡纹理
+                let bubble_texture = effect_resources.bubble.clone();
 
                 // 创建气泡特效实体
                 commands.entity(entity).with_children(|parent| {
@@ -338,10 +338,10 @@ pub fn update_air_cushion_effect(
     }
 }
 
-/// 播放海的环境音效
+/// 播放海洋的环境音效
 pub fn play_sea_ambience(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    ambience_resources: Res<AmbienceResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     seas: Query<&Transform, With<Sea>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<SeaAmbiencePlayer>>,
@@ -367,7 +367,7 @@ pub fn play_sea_ambience(
     if is_near_sea {
         // 如果在海附近但没有播放音效，则播放
         if ambience_players.is_empty() {
-            let sea_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_SEA_AMBIENCE);
+            let sea_ambience_sound = ambience_resources.sea_ambience.clone();
             commands.spawn((
                 AudioPlayer::new(sea_ambience_sound),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
@@ -385,7 +385,7 @@ pub fn play_sea_ambience(
 /// 播放司令官的环境音效
 pub fn play_commander_ambience(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    ambience_resources: Res<AmbienceResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     commander: Query<&Transform, With<Commander>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<CommanderAmbiencePlayer>>,
@@ -413,15 +413,15 @@ pub fn play_commander_ambience(
         if ambience_players.is_empty() {
             // 从 commander_music_000 到 commander_music_003 中随机选择
             let music_files = [
-                SOUND_COMMANDER_MUSIC_000,
-                SOUND_COMMANDER_MUSIC_001,
-                SOUND_COMMANDER_MUSIC_002,
-                SOUND_COMMANDER_MUSIC_003,
+                &ambience_resources.commander_music_000,
+                &ambience_resources.commander_music_001,
+                &ambience_resources.commander_music_002,
+                &ambience_resources.commander_music_003,
             ];
             let mut rng = rand::rng();
             let random_music = music_files[rng.random_range(0..music_files.len())];
 
-            let commander_music_sound: Handle<AudioSource> = asset_server.load(random_music);
+            let commander_music_sound = random_music.clone();
             commands.spawn((
                 AudioPlayer::new(commander_music_sound),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_COMMANDER_MUSIC)),
@@ -439,7 +439,7 @@ pub fn play_commander_ambience(
 /// 播放森林的环境音效
 pub fn play_tree_ambience(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    ambience_resources: Res<AmbienceResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     forests: Query<&Transform, With<Forest>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
@@ -465,7 +465,7 @@ pub fn play_tree_ambience(
     if is_near_forest {
         // 如果在森林附近但没有播放音效，则播放
         if ambience_players.is_empty() {
-            let tree_ambience_sound: Handle<AudioSource> = asset_server.load(SOUND_TREE_AMBIENCE);
+            let tree_ambience_sound = ambience_resources.tree_ambience.clone();
             commands.spawn((
                 AudioPlayer::new(tree_ambience_sound),
                 PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),

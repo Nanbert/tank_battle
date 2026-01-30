@@ -8,13 +8,13 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::EnemySpawnState;
+use crate::resources::{EnemyResources, EnemySpawnState};
 
 /// 敌方坦克出生动画系统
 pub fn enemy_spawn_system(
     time: Res<Time>,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    enemy_resources: Res<EnemyResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
     enemy_tanks: Query<(), With<EnemyTank>>,
@@ -37,7 +37,7 @@ pub fn enemy_spawn_system(
         let position = ENEMY_BORN_PLACES[random_index];
         spawn_enemy_born_animation(
             &mut commands,
-            &asset_server,
+            &enemy_resources,
             &mut texture_atlas_layouts,
             position,
         );
@@ -53,11 +53,11 @@ pub fn enemy_spawn_system(
 /// 生成敌方坦克出生动画
 pub fn spawn_enemy_born_animation(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
+    enemy_resources: &Res<EnemyResources>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) -> Entity {
-    let enemy_born_texture: Handle<Image> = asset_server.load(TEXTURE_ENEMY_BORN);
+    let enemy_born_texture = enemy_resources.enemy_born.clone();
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
     let enemy_born_texture_atlas =
         TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
@@ -110,7 +110,7 @@ pub fn animate_enemy_born_animation(
         ),
         With<EnemyBornAnimation>,
     >,
-    asset_server: Res<AssetServer>,
+    enemy_resources: Res<EnemyResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
@@ -135,7 +135,7 @@ pub fn animate_enemy_born_animation(
                 // 在动画播放到 2/3 时生成敌方坦克
                 if next_index == spawn_frame {
                     // 加载敌方坦克纹理和创建精灵图
-                    let enemy_texture = asset_server.load(TEXTURE_ENEMY_TANK1);
+                    let enemy_texture = enemy_resources.enemy_tank.clone();
                     let enemy_tile_size =
                         UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
                     let enemy_texture_atlas =

@@ -9,7 +9,7 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, StatType};
+use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, PowerUpResources, SoundResources, StatType};
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -19,9 +19,6 @@ pub const POWERUP_BUBBLE_SIZE: f32 = 100.0;
 
 /// 道具属性增加量
 pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;
-
-/// 道具音效路径
-pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 
 /// 道具类型枚举
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
@@ -89,7 +86,7 @@ pub fn animate_powerup(
 /// 道具碰撞检测和拾取系统
 pub fn handle_powerup_collision(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    sound_resources: Res<SoundResources>,
     powerups: Query<(Entity, &Transform, &PowerUp)>,
     player_tanks: Query<(&Transform, &PlayerTank, Entity), With<PlayerTank>>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -114,7 +111,7 @@ pub fn handle_powerup_collision(
             let powerup_entity = powerup_entity_to_despawn.unwrap();
 
             // 播放道具音效
-            let powerup_sound: Handle<AudioSource> = asset_server.load(SOUND_POWERUP);
+            let powerup_sound = sound_resources.hit.clone();
             commands.spawn(AudioPlayer::new(powerup_sound));
             let () = commands.entity(powerup_entity).try_despawn();
 
@@ -211,7 +208,7 @@ pub fn handle_powerup_collision(
 /// 第一关强制生成 shell 道具
 pub fn spawn_power_ups_air_cushion(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let powerup_type = PowerUp::Shell;
@@ -230,7 +227,7 @@ pub fn spawn_power_ups_air_cushion(
 
     spawn_powerup_batch(
         &mut commands,
-        &asset_server,
+        &powerup_resources,
         &mut texture_atlas_layouts,
         powerup_type,
         powerup_type.texture_path(),
@@ -241,7 +238,7 @@ pub fn spawn_power_ups_air_cushion(
 /// 随机生成道具
 pub fn spawn_power_ups_random(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let powerup_types = [
@@ -273,7 +270,7 @@ pub fn spawn_power_ups_random(
 
     spawn_powerup_batch(
         &mut commands,
-        &asset_server,
+        &powerup_resources,
         &mut texture_atlas_layouts,
         powerup_type,
         powerup_type.texture_path(),
@@ -287,20 +284,31 @@ pub fn spawn_power_ups_random(
 ///
 /// 参数：
 /// - commands: 命令队列
-/// - asset_server: 资源服务器
+/// - powerup_resources: 道具资源
 /// - texture_atlas_layouts: 纹理图集布局资源
 /// - powerup_type: 道具类型
 /// - texture_path: 道具纹理路径
 /// - positions: 生成位置数组
 fn spawn_powerup_batch(
     commands: &mut Commands,
-    asset_server: &AssetServer,
+    powerup_resources: &PowerUpResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     powerup_type: PowerUp,
-    texture_path: &'static str,
+    _texture_path: &'static str,
     positions: &[Vec3],
 ) {
-    let texture: Handle<Image> = asset_server.load(texture_path);
+    let texture = match powerup_type {
+        PowerUp::SpeedUp => powerup_resources.speed_up.clone(),
+        PowerUp::Protection => powerup_resources.protection.clone(),
+        PowerUp::FireSpeed => powerup_resources.fire_speed.clone(),
+        PowerUp::FireShell => powerup_resources.fire_shell.clone(),
+        PowerUp::TrackChain => powerup_resources.track_chain.clone(),
+        PowerUp::Penetrate => powerup_resources.penetrate.clone(),
+        PowerUp::Repair => powerup_resources.repair.clone(),
+        PowerUp::Hamburger => powerup_resources.hamburger.clone(),
+        PowerUp::AirCushion => powerup_resources.air_cushion.clone(),
+        PowerUp::Shell => powerup_resources.shell.clone(),
+    };
     let tile_size = UVec2::new(87, 69);
     let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);

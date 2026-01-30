@@ -12,32 +12,17 @@ use crate::powerup;
 use crate::resources::{
     BarrierDamageTracker, BlueBarRegenTimer,
     GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers,
-    StatType,
+    StatType, PlayerTankResources,
 };
 
-/// 坦克半宽（用于边界计算）
-const TANK_HALF_WIDTH: f32 = TANK_WIDTH / 2.0;
-
-/// 坦克半高（用于边界计算）
-const TANK_HALF_HEIGHT: f32 = TANK_HEIGHT / 2.0;
-
 /// 玩家1初始X坐标（左侧）
-const PLAYER1_START_X: f32 = -TANK_HALF_WIDTH - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
+const PLAYER1_START_X: f32 = -PLAYER_COLLIDER_HALF - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
 
 /// 玩家2初始X坐标（右侧）
-const PLAYER2_START_X: f32 = TANK_HALF_WIDTH + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
+const PLAYER2_START_X: f32 = PLAYER_COLLIDER_HALF + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
 
 /// 玩家初始Y坐标（底部）
-const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + TANK_HALF_HEIGHT;
-
-/// 屏障伤害冷却时间（秒）
-const BARRIER_DAMAGE_COOLDOWN: f32 = 2.0;
-
-/// 最大生命值
-const MAX_LIFE_POINTS: usize = 3;
-
-/// 最大能量值
-const MAX_ENERGY_POINTS: usize = 3;
+const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF;
 
 /// 计算两个角度之间的最小角度差（范围：-π 到 π）
 fn calculate_angle_difference(target_angle: f32, current_angle: f32) -> f32 {
@@ -63,8 +48,8 @@ pub fn spawn_player_tank(
         ),
         TankType::Player2 => (
             PLAYER2_START_X,
-            Vec2::new(80.0, 90.0),
-            TANK_HALF_WIDTH,
+            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
+            PLAYER_COLLIDER_HALF,
         ),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
@@ -282,12 +267,12 @@ pub fn move_player_tank(
 
         // 限制坦克在地图边界内
         transform.translation.x = transform.translation.x.clamp(
-            MAP_LEFT_X + TANK_HALF_WIDTH,
-            MAP_RIGHT_X - TANK_HALF_WIDTH,
+            MAP_LEFT_X + PLAYER_COLLIDER_HALF,
+            MAP_RIGHT_X - PLAYER_COLLIDER_HALF,
         );
         transform.translation.y = transform.translation.y.clamp(
-            MAP_BOTTOM_Y + TANK_HALF_HEIGHT,
-            MAP_TOP_Y - TANK_HALF_HEIGHT,
+            MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF,
+            MAP_TOP_Y - PLAYER_COLLIDER_HALF,
         );
     }
 }
@@ -509,7 +494,7 @@ pub fn update_recall_progress_bars(
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_pos.x;
             progress_transform.translation.y =
-                player_pos.y + TANK_HALF_HEIGHT + PROGRESS_BAR_Y_OFFSET;
+                player_pos.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -654,14 +639,14 @@ pub fn handle_barrier_collision(
 /// 生成玩家坦克和信息
 fn spawn_players(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     game_mode: GameMode,
     player_info: &mut ResMut<PlayerInfo>,
+    player_tank_resources: &PlayerTankResources,
 ) {
-    // 加载玩家坦克纹理和创建精灵图
-    let player1_texture = asset_server.load(TEXTURE_PLAYER_TANK1);
-    let player2_texture = asset_server.load(TEXTURE_PLAYER_TANK2);
+    // 使用预加载的玩家坦克纹理
+    let player1_texture = player_tank_resources.player1.clone();
+    let player2_texture = player_tank_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
     let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
     let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
@@ -818,11 +803,11 @@ pub fn recover_energy(
 /// 初始化玩家坦克
 pub fn init_players(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     game_mode: Res<GameMode>,
     mut player_info: ResMut<PlayerInfo>,
     existing_players: Query<Entity, With<PlayerTank>>,
+    player_tank_resources: Res<PlayerTankResources>,
 ) {
     // 防御性编程：先清理可能存在的旧玩家坦克和信息
     for entity in existing_players.iter() {
@@ -833,12 +818,12 @@ pub fn init_players(
     // 生成新玩家
     spawn_players(
         &mut commands,
-        &asset_server,
         &mut texture_atlas_layouts,
         match *game_mode {
             GameMode::OnePlayer => GameMode::OnePlayer,
             GameMode::TwoPlayers => GameMode::TwoPlayers,
         },
         &mut player_info,
+        &player_tank_resources,
     );
 }

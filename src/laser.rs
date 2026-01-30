@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use crate::bullet::BulletOwner;
 use crate::constants::*;
-use crate::resources::PlayerInfo;
+use crate::resources::{LaserResources, PlayerInfo, EffectResources, SoundResources};
 
 /// 激光生成参数
 pub struct LaserSpawnParams {
@@ -20,14 +20,14 @@ pub struct LaserSpawnParams {
 /// 生成激光实体（像手电筒一样，瞬间出现，不移动）
 pub fn spawn_laser(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
+    laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     params: LaserSpawnParams,
 ) -> Entity {
     // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
-    let laser_texture: Handle<Image> = match params.owner_type {
-        TankType::Player1 => asset_server.load(TEXTURE_LASER_BLUE),
-        TankType::Player2 => asset_server.load(TEXTURE_LASER_RED),
+    let laser_texture = match params.owner_type {
+        TankType::Player1 => laser_resources.laser_blue.clone(),
+        TankType::Player2 => laser_resources.laser_red.clone(),
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
@@ -82,7 +82,7 @@ pub fn spawn_laser(
 /// 玩家激光射击系统（蓄力发射）
 pub fn player_laser_system(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    laser_resources: Res<LaserResources>,
     time: Res<Time>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<
@@ -100,6 +100,7 @@ pub fn player_laser_system(
     sound_query: Query<(Entity, &LaserChargeSound)>,
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    sound_resources: Res<SoundResources>,
 ) {
     for (entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
         // 卫语句：正在旋转则跳过
@@ -138,7 +139,7 @@ pub fn player_laser_system(
         if has_charge {
             update_charge(
                 &mut commands,
-                &asset_server,
+                &laser_resources,
                 &mut texture_atlas_layouts,
                 &mut player_info,
                 &mut progress_bar_query,
@@ -148,15 +149,16 @@ pub fn player_laser_system(
                 player_tank.tank_type,
                 &mut charge_query,
                 &time,
+                &sound_resources,
             );
         } else {
             start_charge(
                 &mut commands,
-                &asset_server,
                 &player_info,
                 entity,
                 transform,
                 player_tank.tank_type,
+                &sound_resources,
             );
         }
     }
@@ -206,11 +208,11 @@ fn cancel_charge(
 /// 开始蓄力
 fn start_charge(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
     player_info: &ResMut<PlayerInfo>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
+    sound_resources: &SoundResources,
 ) {
     let player_stats = match tank_type {
         TankType::Player1 => &player_info.player1,
@@ -230,8 +232,7 @@ fn start_charge(
     });
 
     // 播放蓄力音效
-    let charge_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER_CHARGE);
-    commands.spawn((AudioPlayer::new(charge_sound), LaserChargeSound));
+    commands.spawn((AudioPlayer::new(sound_resources.laser_charge.clone()), LaserChargeSound));
 
     // 创建蓄力进度条
     commands.spawn((
@@ -258,7 +259,7 @@ fn start_charge(
 /// 更新蓄力
 fn update_charge(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
+    laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
     progress_bar_query: &mut Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
@@ -268,6 +269,7 @@ fn update_charge(
     tank_type: TankType,
     charge_query: &mut Query<(Entity, &mut LaserCharge)>,
     time: &Res<Time>,
+    sound_resources: &SoundResources,
 ) {
     for (e, mut charge) in charge_query.iter_mut() {
         if e == entity && charge.tank_type == tank_type {
@@ -287,7 +289,7 @@ fn update_charge(
             if charge.timer.just_finished() {
                 fire_laser(
                     commands,
-                    asset_server,
+                    laser_resources,
                     texture_atlas_layouts,
                     player_info,
                     progress_bar_query,
@@ -295,6 +297,7 @@ fn update_charge(
                     entity,
                     transform,
                     tank_type,
+                    sound_resources,
                 );
             }
             break;
@@ -305,7 +308,7 @@ fn update_charge(
 /// 发射激光
 fn fire_laser(
     commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
+    laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
     progress_bar_query: &mut Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
@@ -313,6 +316,7 @@ fn fire_laser(
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
+    sound_resources: &SoundResources,
 ) {
     let player_stats = match tank_type {
         TankType::Player1 => &mut player_info.player1,
@@ -335,7 +339,7 @@ fn fire_laser(
     // 生成激光
     spawn_laser(
         commands,
-        asset_server,
+        laser_resources,
         texture_atlas_layouts,
         LaserSpawnParams {
             position: laser_pos,
@@ -345,8 +349,7 @@ fn fire_laser(
     );
 
     // 播放激光音效
-    let laser_sound: Handle<AudioSource> = asset_server.load(SOUND_LASER);
-    commands.spawn(AudioPlayer::new(laser_sound));
+    commands.spawn(AudioPlayer::new(sound_resources.laser.clone()));
 
     // 应用后坐力
     let recoil_distance = TANK_HEIGHT * RECOIL_DISTANCE_FACTOR;
@@ -504,7 +507,6 @@ pub fn handle_recoil_force(
 pub fn animate_laser(
     time: Res<Time>,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<
         (
@@ -517,6 +519,7 @@ pub fn animate_laser(
         With<Laser>,
     >,
     despawn_entities: Query<(Entity, &Transform), With<DespawnMarker>>,
+    effect_resources: Res<EffectResources>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
         timer.tick(time.delta());
@@ -525,8 +528,8 @@ pub fn animate_laser(
             if current >= indices.last {
                 // 动画播放完毕，销毁激光实体和所有标记的实体
                 for (despawn_entity, transform) in despawn_entities.iter() {
-                    // 在被销毁实体的位置播放烟雾效果
-                    let smoke_texture: Handle<Image> = asset_server.load(TEXTURE_SMOKE);
+                    // 使用预加载的烟雾纹理
+                    let smoke_texture = effect_resources.smoke.clone();
                     let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
                         let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
                     let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);

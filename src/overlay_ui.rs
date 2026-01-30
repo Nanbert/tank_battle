@@ -63,10 +63,11 @@ pub fn fade_out_screen(
 /// 生成关卡介绍界面
 pub fn spawn_stage_intro(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut stage_intro_timer: ResMut<StageIntroTimer>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
+    font_resources: Res<FontResources>,
+    language: Res<Language>,
 ) {
     // 设置背景色为白色
     clear_color.0 = COLOR_WHITE;
@@ -87,33 +88,54 @@ pub fn spawn_stage_intro(
         Transform::from_xyz(0.0, 0.0, Z_STAGE_INTRO_BG), // z=100.0 确保在所有游戏元素之上
     ));
 
-    // 加载字体
-    let en_font: Handle<Font> = asset_server.load(FONT_EN);
-    let zh_font: Handle<Font> = asset_server.load(FONT_CN);
+    // 使用预加载的字体
+    let en_font = font_resources.en.clone();
+    let zh_font = font_resources.cn.clone();
+
+    // 根据语言选择字体和文本
+    let (stage_text, quote_text, quote_font, stage_font) = match *language {
+        Language::Chinese => {
+            let mut rng = rand::rng();
+            let quote_index = rng.random_range(0..STAGE_QUOTES_CN.len());
+            (
+                format!("第 {} 关", stage_level.0),
+                STAGE_QUOTES_CN[quote_index].to_string(),
+                zh_font.clone(),
+                zh_font,
+            )
+        }
+        Language::English => {
+            let mut rng = rand::rng();
+            let quote_index = rng.random_range(0..STAGE_QUOTES_EN.len());
+            (
+                format!("Stage {}", stage_level.0),
+                STAGE_QUOTES_EN[quote_index].to_string(),
+                en_font.clone(),
+                en_font,
+            )
+        }
+    };
 
     // Stage 标题（显示在屏幕中心）
     commands.spawn((
         StageIntroUI,
-        Text2d(format!("Stage {}", stage_level.0)),
+        Text2d(stage_text),
         TextFont {
             font_size: FONT_SIZE_MENU,
-            font: en_font,
+            font: stage_font,
             ..default()
         },
         TextColor(COLOR_TRANSPARENT_BLACK), // 黑色，初始透明度为0
         Transform::from_xyz(0.0, 100.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
     ));
 
-    // 描述文字（随机选择一条俏皮话）
-    let mut rng = rand::rng();
-    let quote_index = rng.random_range(0..STAGE_QUOTES_CN.len());
-    let quote_text = STAGE_QUOTES_CN[quote_index];
+    // 描述文字（俏皮话）
     commands.spawn((
         StageIntroUI,
-        Text2d(quote_text.to_string()),
+        Text2d(quote_text),
         TextFont {
             font_size: FONT_SIZE_SCORE,
-            font: zh_font,
+            font: quote_font,
             ..default()
         },
         TextColor(COLOR_DARK_GRAY.with_alpha(0.0)), // 暗灰色，初始透明度为0
@@ -182,11 +204,15 @@ pub fn despawn_stage_intro(
 /// 生成暂停界面
 pub fn spawn_pause_ui(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    font_resources: Res<FontResources>,
+    language: Res<Language>,
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load(FONT_EN);
+    let font = match *language {
+        Language::Chinese => font_resources.cn.clone(),
+        Language::English => font_resources.en.clone(),
+    };
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {
@@ -198,9 +224,20 @@ pub fn spawn_pause_ui(
         velocity.linvel = Vec2::ZERO;
     }
 
+    let (title_text, instruction_text) = match *language {
+        Language::Chinese => (
+            "已暂停",
+            "按 SPACE 继续 | B 返回菜单 | ESC 退出",
+        ),
+        Language::English => (
+            "PAUSED",
+            "Press SPACE to resume | B to menu | ESC to exit",
+        ),
+    };
+
     commands.spawn((
         PauseUI,
-        Text2d("PAUSED".to_string()),
+        Text2d(title_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
@@ -212,7 +249,7 @@ pub fn spawn_pause_ui(
 
     commands.spawn((
         PauseUI,
-        Text2d("Press SPACE to resume | B to menu | ESC to exit".to_string()),
+        Text2d(instruction_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
             font,
@@ -269,11 +306,15 @@ pub fn handle_pause_input(
 /// 生成游戏结束界面
 pub fn spawn_game_over_ui(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    font_resources: Res<FontResources>,
+    language: Res<Language>,
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font: Handle<Font> = asset_server.load(FONT_EN);
+    let font = match *language {
+        Language::Chinese => font_resources.cn.clone(),
+        Language::English => font_resources.en.clone(),
+    };
 
     // 停止玩家坦克的移动
     for mut velocity in &mut player_velocity_query {
@@ -285,9 +326,26 @@ pub fn spawn_game_over_ui(
         velocity.linvel = Vec2::ZERO;
     }
 
+    let (title_text, option_restart, option_menu, option_exit, instruction_text) = match *language {
+        Language::Chinese => (
+            "游戏结束",
+            "重新开始",
+            "返回菜单",
+            "退出",
+            "W/S 选择 | SPACE 确认",
+        ),
+        Language::English => (
+            "GAME OVER",
+            "RESTART",
+            "BACK TO MENU",
+            "EXIT",
+            "W/S to select | SPACE to confirm",
+        ),
+    };
+
     commands.spawn((
         GameOverUI,
-        Text2d("GAME OVER".to_string()),
+        Text2d(title_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
@@ -300,7 +358,7 @@ pub fn spawn_game_over_ui(
     // Restart 选项
     commands.spawn((
         GameOverUI,
-        Text2d("RESTART".to_string()),
+        Text2d(option_restart.to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -314,7 +372,7 @@ pub fn spawn_game_over_ui(
     // Back to Menu 选项
     commands.spawn((
         GameOverUI,
-        Text2d("BACK TO MENU".to_string()),
+        Text2d(option_menu.to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -328,7 +386,7 @@ pub fn spawn_game_over_ui(
     // Exit 选项
     commands.spawn((
         GameOverUI,
-        Text2d("EXIT".to_string()),
+        Text2d(option_exit.to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -342,14 +400,14 @@ pub fn spawn_game_over_ui(
     // 操作说明
     commands.spawn((
         GameOverUI,
-        Text2d("W/S to select | SPACE to confirm".to_string()),
+        Text2d(instruction_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
             font,
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, -200.0, Z_UI),
+        Transform::from_xyz(0.0, -180.0, Z_UI),
     ));
 }
 

@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::effects;
 
 use crate::constants::*;
-use crate::resources::{BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts};
+use crate::resources::{AmbienceResources, BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts, SoundResources};
 use bevy::audio::Volume;
 
 /// 获取玩家统计数据的不可变引用
@@ -339,13 +339,13 @@ pub fn bullet_terrain_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    bullet_resources: Res<BulletResources>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
     bricks: Query<(), With<Brick>>,
     steels: Query<(), With<Steel>>,
     player_info: Res<PlayerInfo>,
     mut bullet_tracker: ResMut<BulletTracker>,
+    sound_resources: Res<SoundResources>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -365,7 +365,6 @@ pub fn bullet_terrain_collision_system(
         handle_terrain_collision(
             &mut commands,
             &mut effect_events,
-            &bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
@@ -375,6 +374,7 @@ pub fn bullet_terrain_collision_system(
             &steels,
             &player_info,
             &mut bullet_tracker,
+            &sound_resources,
         );
     }
 }
@@ -398,7 +398,6 @@ fn extract_bullet_and_terrain(
 fn handle_terrain_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    bullet_resources: &Res<BulletResources>,
     terrain_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
@@ -408,6 +407,7 @@ fn handle_terrain_collision(
     steels: &Query<(), With<Steel>>,
     player_info: &Res<PlayerInfo>,
     bullet_tracker: &mut BulletTracker,
+    sound_resources: &SoundResources,
 ) {
     // 处理森林碰撞
     if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
@@ -427,11 +427,11 @@ fn handle_terrain_collision(
         handle_brick_collision(
             commands,
             effect_events,
-            bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
             bullet_tracker,
+            sound_resources,
         );
         return;
     }
@@ -441,13 +441,13 @@ fn handle_terrain_collision(
         handle_steel_collision(
             commands,
             effect_events,
-            bullet_resources,
             terrain_entity,
             bullet_entity,
             bullet_transform,
             bullet_owner.owner_type,
             player_info,
             bullet_tracker,
+            sound_resources,
         );
     }
 }
@@ -482,14 +482,14 @@ fn handle_forest_collision(
 fn handle_brick_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    bullet_resources: &Res<BulletResources>,
     brick_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
     bullet_tracker: &mut BulletTracker,
+    sound_resources: &SoundResources,
 ) {
     commands.spawn((
-        AudioPlayer::new(bullet_resources.brick_hit_sound.clone()),
+        AudioPlayer::new(sound_resources.brick_hit.clone()),
         PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
     ));
 
@@ -498,6 +498,7 @@ fn handle_brick_collision(
     });
 
     let () = commands.entity(brick_entity).try_despawn();
+
     despawn_bullet(commands, bullet_tracker, bullet_entity);
 }
 
@@ -505,20 +506,20 @@ fn handle_brick_collision(
 fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    bullet_resources: &Res<BulletResources>,
     steel_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
     owner_type: TankType,
     player_info: &Res<PlayerInfo>,
     bullet_tracker: &mut BulletTracker,
+    sound_resources: &SoundResources,
 ) {
     effect_events.write(EffectEvent::Spark {
         position: bullet_transform.translation,
     });
 
     if matches!(owner_type, TankType::Enemy) {
-        commands.spawn(AudioPlayer::new(bullet_resources.hit_sound.clone()));
+        commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
         despawn_bullet(commands, bullet_tracker, bullet_entity);
         return;
     }
@@ -526,10 +527,10 @@ fn handle_steel_collision(
     let player_stats = get_player_stats_ref(&player_info, owner_type);
 
     if player_stats.penetrate {
-        commands.spawn(AudioPlayer::new(bullet_resources.metal_crash_sound.clone()));
+        commands.spawn(AudioPlayer::new(sound_resources.metal_crash.clone()));
         let () = commands.entity(steel_entity).try_despawn();
     } else {
-        commands.spawn(AudioPlayer::new(bullet_resources.hit_sound.clone()));
+        commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
     }
 
     despawn_bullet(commands, bullet_tracker, bullet_entity);
@@ -540,7 +541,6 @@ pub fn bullet_tank_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    asset_server: Res<AssetServer>,
     mut bullet_tracker: ResMut<BulletTracker>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
@@ -550,6 +550,7 @@ pub fn bullet_tank_collision_system(
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
+    sound_resources: Res<SoundResources>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -583,6 +584,7 @@ pub fn bullet_tank_collision_system(
                     &mut stat_changed_events,
                     bullet_owner_info.owner_type,
                     tank_entity,
+                    &sound_resources,
                 );
             }
             CollisionType::EnemyBulletHitPlayer => {
@@ -590,7 +592,7 @@ pub fn bullet_tank_collision_system(
                 handle_enemy_bullet_hit_player(
                     &mut commands,
                     &mut effect_events,
-                    &asset_server,
+                    &sound_resources,
                     &player_tanks_with_transform,
                     &player_avatars,
                     &mut player_info,
@@ -615,6 +617,7 @@ fn handle_player_bullet_hit_enemy(
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_type: TankType,
     tank_entity: Entity,
+    sound_resources: &SoundResources,
 ) {
     // 卫语句：敌方坦克不应该有这个分支
     if player_type == TankType::Enemy {
@@ -627,6 +630,9 @@ fn handle_player_bullet_hit_enemy(
             position: tank_transform.translation,
         });
     }
+
+    // 播放中弹音效
+    commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
 
     // 销毁敌方坦克
     let () = commands.entity(tank_entity).try_despawn();
@@ -644,7 +650,7 @@ fn handle_player_bullet_hit_enemy(
 fn handle_enemy_bullet_hit_player(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
-    asset_server: &Res<AssetServer>,
+    sound_resources: &SoundResources,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_avatars: &Query<(Entity, &PlayerUI)>,
     mut player_info: &mut ResMut<PlayerInfo>,
@@ -654,8 +660,7 @@ fn handle_enemy_bullet_hit_player(
     tank_entity: Entity,
 ) {
     // 播放中弹音效
-    let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_HIT);
-    commands.spawn(AudioPlayer::new(hit_sound));
+    commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
 
     // 发送火花特效事件
     if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
@@ -786,25 +791,28 @@ fn damage_player_tank(
 pub fn handle_effect_events(
     mut events: MessageReader<EffectEvent>,
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     terrain_atlas_layouts: Res<TerrainAtlasLayouts>,
+    effect_resources: Res<EffectResources>,
+    sound_resources: Res<SoundResources>,
+    ambience_resources: Res<AmbienceResources>,
 ) {
     for event in events.read() {
         match event {
             EffectEvent::Explosion { position } => {
                 effects::spawn_explosion(
                     &mut commands,
-                    &asset_server,
                     &mut texture_atlas_layouts,
+                    &effect_resources,
+                    &sound_resources,
                     *position,
                 );
             }
             EffectEvent::Spark { position } => {
                 effects::spawn_spark(
                     &mut commands,
-                    &asset_server,
                     &mut texture_atlas_layouts,
+                    &effect_resources,
                     *position,
                 );
             }
@@ -812,7 +820,8 @@ pub fn handle_effect_events(
                 effects::spawn_forest_fire(
                     &mut commands,
                     &terrain_atlas_layouts,
-                    &asset_server,
+                    &effect_resources,
+                    &ambience_resources,
                     *position,
                 );
             }
@@ -825,11 +834,11 @@ pub fn bullet_commander_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    asset_server: Res<AssetServer>,
     bullets: Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
     mut commander_life: ResMut<crate::resources::CommanderLife>,
     mut bullet_tracker: ResMut<BulletTracker>,
+    sound_resources: Res<SoundResources>,
 ) {
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else { continue };
@@ -860,8 +869,7 @@ pub fn bullet_commander_collision_system(
         };
 
         // 碰撞确认，播放受击音效
-        let hit_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_GET_SHOT);
-        commands.spawn(AudioPlayer::new(hit_sound));
+        commands.spawn(AudioPlayer::new(sound_resources.commander_get_shot.clone()));
 
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
@@ -876,8 +884,7 @@ pub fn bullet_commander_collision_system(
         // 检查是否是致命伤（生命值归零）
         if commander_life.life_points == 0 {
             // 播放死亡音效
-            let death_sound: Handle<AudioSource> = asset_server.load(SOUND_COMMANDER_DEATH);
-            commands.spawn(AudioPlayer::new(death_sound));
+            commands.spawn(AudioPlayer::new(sound_resources.commander_death.clone()));
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);

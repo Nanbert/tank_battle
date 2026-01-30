@@ -72,6 +72,13 @@ pub enum GameMode {
     TwoPlayers,
 }
 
+#[derive(Resource, Default, Clone, Copy, PartialEq, Eq)]
+pub enum Language {
+    #[default]
+    Chinese,
+    English,
+}
+
 #[derive(Resource)]
 pub struct EnemySpawnState {
     pub has_spawned: usize,    // 已生成数量
@@ -246,12 +253,6 @@ pub struct BulletResources {
     pub bullet_player2: Handle<Image>,
     /// 敌方子弹纹理
     pub bullet_enemy: Handle<Image>,
-    /// 砖块击中音效
-    pub brick_hit_sound: Handle<AudioSource>,
-    /// 击中音效
-    pub hit_sound: Handle<AudioSource>,
-    /// 金属碰撞音效
-    pub metal_crash_sound: Handle<AudioSource>,
 }
 
 // ==================== 游戏资源管理 ====================
@@ -300,5 +301,70 @@ pub struct EffectResources {
     pub spark: Handle<Image>,
     pub smoke: Handle<Image>,
     pub bubble: Handle<Image>,
-    pub steel_hit: Handle<Image>,
+    pub forest_fire: Handle<Image>,
+}
+
+/// 地图纹理资源
+#[derive(Resource)]
+pub struct MapResources {
+    pub brick: Handle<Image>,
+    pub steel: Handle<Image>,
+    pub tree: Handle<Image>,
+    pub sea: Handle<Image>,
+    pub barrier: Handle<Image>,
+}
+
+/// 敌方坦克资源
+#[derive(Resource)]
+pub struct EnemyResources {
+    pub enemy_born: Handle<Image>,
+    pub enemy_tank: Handle<Image>,
+}
+
+/// 道具纹理资源
+#[derive(Resource)]
+pub struct PowerUpResources {
+    pub speed_up: Handle<Image>,
+    pub protection: Handle<Image>,
+    pub fire_speed: Handle<Image>,
+    pub fire_shell: Handle<Image>,
+    pub track_chain: Handle<Image>,
+    pub penetrate: Handle<Image>,
+    pub repair: Handle<Image>,
+    pub hamburger: Handle<Image>,
+    pub air_cushion: Handle<Image>,
+    pub shell: Handle<Image>,
+}
+
+/// 激光纹理资源
+#[derive(Resource)]
+pub struct LaserResources {
+    pub laser_blue: Handle<Image>,
+    pub laser_red: Handle<Image>,
+}
+
+/// 菜单背景纹理资源
+#[derive(Resource)]
+pub struct MenuResources {
+    pub background_part1: Handle<Image>,
+    pub background_part2: Handle<Image>,
+    pub background_part3: Handle<Image>,
+}
+
+/// 司令官音乐纹理资源
+#[derive(Resource)]
+pub struct CommanderMusicResources {
+    pub music_note: Handle<Image>,
+}
+
+/// 环境音效资源
+#[derive(Resource)]
+pub struct AmbienceResources {
+    pub burn_tree: Handle<AudioSource>,
+    pub sea_ambience: Handle<AudioSource>,
+    pub commander_music_000: Handle<AudioSource>,
+    pub commander_music_001: Handle<AudioSource>,
+    pub commander_music_002: Handle<AudioSource>,
+    pub commander_music_003: Handle<AudioSource>,
+    pub tree_ambience: Handle<AudioSource>,
 }

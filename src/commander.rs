@@ -8,13 +8,13 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, CommanderResources};
+use crate::resources::{CommanderLife, CommanderMusicResources, CommanderResources};
 
 /// 生成司令官
 pub fn spawn_commander(
     mut commands: Commands,
     commander_resources: Res<CommanderResources>,
-    asset_server: Res<AssetServer>,
+    commander_music_resources: Res<CommanderMusicResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     commanders: Query<Entity, With<Commander>>,
     children: Query<&Children>,
@@ -71,7 +71,7 @@ pub fn spawn_commander(
     )).id();
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
-    let music_texture: Handle<Image> = asset_server.load(TEXTURE_MUSIC_NOTE);
+    let music_texture = commander_music_resources.music_note.clone();
     let music_tile_size = UVec2::new(
         COMMANDER_MUSIC_TILE_WIDTH as u32,
         COMMANDER_MUSIC_TILE_HEIGHT as u32,

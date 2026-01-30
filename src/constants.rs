@@ -146,21 +146,41 @@ pub const DASH_DISTANCE: f32 = TANK_HEIGHT * 2.0; // 冲刺距离（两个坦克
 pub const STAGE_QUOTES_CN: [&str; 17] = [
     "勇敢的司令官即使被击中也不会撤退。他会坚守原地，\n等待士兵们来营救他。",
     "当你转身射击时，炮弹可能不会直行！\n虽然控制炮弹轨迹确实很困难。",
-    "小心，敌方坦克也不是傻瓜——他们也能斜向射击。",
+    "小心，敌方坦克有时也会甩狙",
     "敌方和我方工厂都限制了我们的坦克只能直射，\n以提高命中率。毕竟，炮弹很贵。",
-    "所有坦克都直线移动，不像螃蟹一样。这是为了纪念\n上个世纪坦克大战中牺牲的无数坦克。",
+    "所有坦克都直线移动，这不是为了学习螃蟹。而是为了纪念\n上个世纪坦克大战中牺牲的无数坦克。",
     "狡猾的敌方坦克升级了他们的炮弹，\n使我们的炮弹无法拦截他们的炮弹。这真令人沮丧。",
-    "当你的所有属性都达到最大值时，请与你的队友分享道具，\n你这个贪婪的人。",
-    "我们的道具喷了隐形漆——只有你能看到它们，\n敌人看不到，即使它们就在旁边。",
+    "当你的所有属性都达到最大值时，请与你的队友分享道具，\n别做贪婪的人。",
+    "我们的补给品喷了隐形漆——只有你能看到它们，\n敌人看不到，即使它们就在旁边。",
     "据说在上个世纪的坦克大战中，有一段时间\n敌人也能捡起我们的道具。那真是一场灾难。",
-    "我们的炮弹经过特殊处理——当它们遇到司令官时，\n会穿过去而不伤害他。据说这是司令官强烈要求的，\n因为在上个世纪的坦克大战中，无数司令官死于自己人之手。真可怜。",
-    "我们的司令官已经提前调查了敌人的数量——\n最多只有几百个敌人。战争会有结束的一天。",
+    "我们的炮弹经过特殊处理——当它们遇到司令官时，\n会穿过去而不伤害他。据说这是司令官强烈要求的，\n因为在上个世纪的坦克大战中，无数司令官死于自己人之手。那是一个悲剧。",
+    "我们的司令官已经提前调查了敌人的数量——\n最多,额。。可能只有几百个敌人。战争会有结束的一天。",
     "在上个世纪的坦克大战中，敌人似乎无穷无尽，\n没有人活着看到战争的结束。",
     "在上个世纪的坦克大战中，超级炸弹道具会摧毁\n许多敌方坦克，但被摧毁的坦克不计入你的战斗记录。这真的很奇怪。",
     "当你独自一人时，可以向司令官要求一辆额外的坦克。\n你可以告诉司令官，额外的坦克可以帮你挡一些炮弹。",
     "冲刺时，你必须从正面或侧面攻击。从后面攻击时，\n你朝同一方向移动，所以冲击力可能不够。",
     "冲刺时，如果有障碍物或敌人，请确保保持一定距离，\n以更成功地触发冲刺破坏效果。",
     "被激光摧毁的敌人不计入你的分数。\n司令官的理由是激光会损坏花草树木。这真荒谬。",
+];
+
+pub const STAGE_QUOTES_EN: [&str; 17] = [
+    "The brave commander will not retreat even when hit.\nHe will hold his ground and wait for soldiers to rescue him.",
+    "When you turn to shoot, the shells may not go straight!\nAlthough controlling shell trajectory is indeed difficult.",
+    "Be careful, enemy tanks sometimes snap-shoot too.",
+    "Both enemy and our factories limited our tanks to direct fire\nto improve hit rates. After all, shells are expensive.",
+    "All tanks move in straight lines, not to learn to walk like crabs.\nBut to commemorate the countless tanks sacrificed in the last century's tank battle.",
+    "The cunning enemy tanks upgraded their shells,\nso our shells cannot intercept theirs. This is truly frustrating.",
+    "When all your attributes reach maximum value, please share power-ups with your teammate.\nDon't be greedy.",
+    "Our supplies were sprayed with invisible paint—only you can see them,\nenemies can't, even if they're right next to them.",
+    "It is said that in the last century's tank battle, for a while,\nenemies could also pick up our power-ups. That was truly a disaster.",
+    "Our shells are specially treated—when they encounter the commander,\nthey pass through without harming him. The commander strongly requested this,\nbecause in the last century's tank battle, countless commanders died at the hands of their own people. That was a tragedy.",
+    "Our commander has investigated the enemy count in advance—\nat most... well... maybe only a few hundred enemies. The war will have an end one day.",
+    "In the last century's tank battle, enemies seemed endless,\nand no one lived to see the end of the war.",
+    "In the last century's tank battle, super bomb power-ups would destroy\nmany enemy tanks, but destroyed tanks don't count towards your battle record. That's really strange.",
+    "When you're alone, you can ask the commander for an extra tank.\nYou can tell the commander that the extra tank can help block some shells for you.",
+    "When dashing, you must attack from the front or side. When attacking from behind,\nyou move in the same direction, so the impact force may not be enough.",
+    "When dashing, if there are obstacles or enemies, please ensure you maintain a certain distance,\nto more successfully trigger the dash destruction effect.",
+    "Enemies destroyed by lasers don't count towards your score.\nThe commander's reason is that lasers damage flowers and trees. That's absurd.",
 ];
 
 //Component
@@ -419,6 +439,11 @@ impl Default for TankFireConfig {
     }
 }
 pub const COMMANDER_LIFE_MAX: usize = 3;
+
+// ==================== 玩家常量 ====================
+pub const MAX_LIFE_POINTS: usize = 3; // 最大生命值
+pub const MAX_ENERGY_POINTS: usize = 3; // 最大能量值
+pub const BARRIER_DAMAGE_COOLDOWN: f32 = 2.0; // 屏障伤害冷却时间（秒）
 
 // 检测半径常量（用于海、司令官、森林的检测）
 pub const DETECTION_RADIUS: f32 = 100.0;

@@ -12,15 +12,15 @@ use crate::resources::*;
 
 /// 加载开始界面的动画资源
 pub fn load_start_animation_assets(
-    asset_server: &Res<AssetServer>,
+    menu_resources: &MenuResources,
     animation_frames: &mut ResMut<StartAnimationFrames>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) {
     // 使用3个较小的精灵图加载背景动画（15帧，每部分5帧）
     // 拆分以支持GPU纹理尺寸限制（最大16384）
-    let background_texture1: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART1);
-    let background_texture2: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART2);
-    let background_texture3: Handle<Image> = asset_server.load(TEXTURE_BACKGROUND_PART3);
+    let background_texture1 = menu_resources.background_part1.clone();
+    let background_texture2 = menu_resources.background_part2.clone();
+    let background_texture3 = menu_resources.background_part3.clone();
 
     let background_tile_size = UVec2::new(
         BACKGROUND_ANIMATION_TILE_WIDTH as u32,
@@ -78,96 +78,89 @@ pub fn spawn_start_screen_background(
 }
 
 /// 生成开始界面的标题和菜单选项
-pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>) {
+pub fn spawn_start_screen_title(commands: &mut Commands, font_en: Handle<Font>, font_cn: Handle<Font>, language: Language) {
+    let (title, menu_text, use_cn_font) = match language {
+        Language::Chinese => ("为了共产主义!!", vec![
+            "单人游戏",
+            "双人对战",
+            "语言 / Language",  // 双语显示
+            "关于",
+            "制作人员",
+            "退出",
+        ], true),
+        Language::English => ("For Communism!!", vec![
+            "1 Player",
+            "2 Player",
+            "语言 / Language",  // 双语显示
+            "About",
+            "Credits",
+            "EXIT",
+        ], false),
+    };
+
+    let title_font = if use_cn_font { font_cn.clone() } else { font_en.clone() };
+    let menu_font = if use_cn_font { font_cn.clone() } else { font_en.clone() };
+
     commands.spawn((
         StartScreenUI,
-        Text2d("For Communism!!".to_string()),
+        Text2d(title.to_string()),
         TextFont {
             font_size: FONT_SIZE_TITLE,
-            font: font.clone(),
+            font: title_font,
             ..default()
         },
         TextColor(COLOR_RED),
         Transform::from_xyz(0.0, 400.0, 1.0),
     ));
 
-    // 1 Player 选项
-    commands.spawn((
-        StartScreenUI,
-        Text2d("1 Player".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_YELLOW), // 初始选中，黄色
-        Transform::from_xyz(0.0, 50.0, 1.0),
-        MenuOption { index: 0 },
-    ));
+    // 菜单选项，从上到下 0-5
+    let y_positions = [100.0, 0.0, -100.0, -200.0, -300.0, -400.0];
+    for (i, text) in menu_text.iter().enumerate() {
+        // 语言选项使用英文字体（因为文本是双语的），其他选项使用对应语言的字体
+        let item_font = if i == 2 {
+            font_en.clone()
+        } else {
+            menu_font.clone()
+        };
 
-    // 2 Player 选项
-    commands.spawn((
-        StartScreenUI,
-        Text2d("2 Player".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
-        Transform::from_xyz(0.0, -50.0, 1.0),
-        MenuOption { index: 1 },
-    ));
-
-    // About 选项
-    commands.spawn((
-        StartScreenUI,
-        Text2d("About".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
-        Transform::from_xyz(0.0, -150.0, 1.0),
-        MenuOption { index: 2 },
-    ));
-
-    // Credits 选项
-    commands.spawn((
-        StartScreenUI,
-        Text2d("Credits".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
-        Transform::from_xyz(0.0, -250.0, 1.0),
-        MenuOption { index: 3 },
-    ));
-
-    // EXIT 选项
-    commands.spawn((
-        StartScreenUI,
-        Text2d("EXIT".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font,
-            ..default()
-        },
-        TextColor(Color::srgb(1.0, 1.0, 1.0)), // 白色
-        Transform::from_xyz(0.0, -350.0, 1.0),
-        MenuOption { index: 4 },
-    ));
+        commands.spawn((
+            StartScreenUI,
+            Text2d(text.to_string()),
+            TextFont {
+                font_size: FONT_SIZE_MENU,
+                font: item_font,
+                ..default()
+            },
+            TextColor(if i == 0 { COLOR_YELLOW } else { Color::srgb(1.0, 1.0, 1.0) }),
+            Transform::from_xyz(0.0, y_positions[i], 1.0),
+            MenuOption { index: i },
+        ));
+    }
 }
 
 /// 生成开始界面的操作说明
-pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Font>) {
+pub fn spawn_start_screen_instructions(commands: &mut Commands, font_en: &Handle<Font>, font_cn: &Handle<Font>, language: Language) {
+    let (p1_text, p2_text, general_text, use_cn_font) = match language {
+        Language::Chinese => (
+            "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光",
+            "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光",
+            "W/S 选择 | SPACE 确认/暂停 | ESC 退出",
+            true,
+        ),
+        Language::English => (
+            "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser",
+            "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser",
+            "W/S to select | SPACE to select/pause | ESC to exit",
+            false,
+        ),
+    };
+
+    let font = if use_cn_font { font_cn.clone() } else { font_en.clone() };
+
     // 玩家1操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser".to_string()),
+        Text2d(p1_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
@@ -181,7 +174,7 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
     // 玩家2操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser".to_string()),
+        Text2d(p2_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
@@ -195,10 +188,10 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
     // 添加通用操作说明
     commands.spawn((
         StartScreenUI,
-        Text2d("W/S to select | SPACE to select/pause | ESC to exit".to_string()),
+        Text2d(general_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INFO,
-            font: font.clone(),
+            font,
             font_smoothing: default(),
             line_height: default(),
         },
@@ -210,13 +203,28 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font: &Handle<Fo
 /// 生成完整的开始界面
 pub fn spawn_start_screen(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    menu_resources: Res<MenuResources>,
+    font_resources: Res<FontResources>,
     mut animation_frames: ResMut<StartAnimationFrames>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+    language: Res<Language>,
 ) {
+    // 检查资源是否已加载完成
+    let font_en_loaded = asset_server.is_loaded(&font_resources.en);
+    let font_cn_loaded = asset_server.is_loaded(&font_resources.cn);
+    let bg1_loaded = asset_server.is_loaded(&menu_resources.background_part1);
+    let bg2_loaded = asset_server.is_loaded(&menu_resources.background_part2);
+    let bg3_loaded = asset_server.is_loaded(&menu_resources.background_part3);
+
+    // 如果资源未完全加载，跳过生成（下次 Update 会重试）
+    if !font_en_loaded || !font_cn_loaded || !bg1_loaded || !bg2_loaded || !bg3_loaded {
+        return;
+    }
+
     // 加载所有动画帧
     load_start_animation_assets(
-        &asset_server,
+        &menu_resources,
         &mut animation_frames,
         &mut texture_atlas_layouts,
     );
@@ -224,20 +232,40 @@ pub fn spawn_start_screen(
     // 添加动画背景
     spawn_start_screen_background(&mut commands, &animation_frames);
 
-    // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
-
     // 添加标题文字
-    spawn_start_screen_title(&mut commands, custom_font.clone());
+    spawn_start_screen_title(&mut commands, font_resources.en.clone(), font_resources.cn.clone(), *language);
 
     // 添加操作说明
-    spawn_start_screen_instructions(&mut commands, &custom_font);
+    spawn_start_screen_instructions(&mut commands, &font_resources.en, &font_resources.cn, *language);
 }
 
 /// 生成关于界面
-pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_about_screen(mut commands: Commands, font_resources: Res<FontResources>, asset_server: Res<AssetServer>, language: Res<Language>) {
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
+    let cn_font = font_resources.cn.clone();
+    let en_font = font_resources.en.clone();
+
+    let (title, about_text, support_text, return_text, use_cn_font) = match *language {
+        Language::Chinese => (
+            "关于",
+            "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证",
+            "如果你喜欢这个游戏,\n请给我买杯咖啡! (咖啡是程序员的燃料)",
+            "按 SPACE 返回",
+            true,
+        ),
+        Language::English => (
+            "About",
+            "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License",
+            "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)",
+            "Press SPACE to return",
+            false,
+        ),
+    };
+
+    let title_font = if use_cn_font { cn_font.clone() } else { en_font.clone() };
+    let body_font = if use_cn_font { cn_font.clone() } else { en_font.clone() };
+    let label_font = if use_cn_font { cn_font.clone() } else { en_font.clone() };
+    let return_font = if use_cn_font { cn_font.clone() } else { en_font.clone() };
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -250,50 +278,45 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    // 添加标题
+    // 添加标题（位置不变）
     commands.spawn((
         AboutUI,
-        Text2d("About".to_string()),
+        Text2d(title.to_string()),
         TextFont {
             font_size: FONT_SIZE_CREDITS_TITLE,
-            font: custom_font.clone(),
+            font: title_font,
             ..default()
         },
         TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, 600.0, 1.0),
     ));
 
-    // 使用多行文本显示所有信息
-    let about_text = "Nanbert\n\n\n        Email: 2726905171@qq.com\n\n\n        Copyright © 2025 Nanbert\n        All rights reserved.\n\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n\n        Special thanks to iFlow for invaluable assistance.\n\n\n        License: MIT License";
-
+    // 显示信息（向下平移10像素）
     commands.spawn((
         AboutUI,
         Text2d(about_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
-            font: custom_font.clone(),
+            font: body_font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
         TextLayout::new_with_justify(bevy::text::Justify::Center),
-        Transform::from_xyz(0.0, 350.0, 1.0),
+        Transform::from_xyz(0.0, 340.0, 1.0),
     ));
 
-    // 添加收款码文案
-    let support_text =
-        "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)";
-
+    // 添加收款码文案（向下平移10像素）
     commands.spawn((
         AboutUI,
         Text2d(support_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_MEDIUM,
-            font: custom_font.clone(),
+            font: body_font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
         TextLayout::new_with_justify(bevy::text::Justify::Center),
-        Transform::from_xyz(0.0, 50.0, 1.0),
+        Transform::from_xyz(0.0, 40.0, 1.0),
     ));
 
     // 加载收款码图片
@@ -303,7 +326,7 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
     // 图片大小统一为 400x400 像素
     let qr_size = PAYMENT_CODE_SIZE;
 
-    // 支付宝收款码
+    // 支付宝收款码（向下平移10像素）
     commands.spawn((
         AboutUI,
         Sprite {
@@ -311,23 +334,26 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(-250.0, -250.0, 1.0),
+        Transform::from_xyz(-250.0, -260.0, 1.0),
     ));
 
-    // 支付宝标签
+    // 支付宝标签（向下平移10像素）
     commands.spawn((
         AboutUI,
-        Text2d("Alipay".to_string()),
+        Text2d(match *language {
+            Language::Chinese => "支付宝",
+            Language::English => "Alipay",
+        }.to_string()),
         TextFont {
             font_size: FONT_SIZE_SMALL,
-            font: custom_font.clone(),
+            font: label_font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
-        Transform::from_xyz(-250.0, -470.0, 1.0),
+        Transform::from_xyz(-250.0, -480.0, 1.0),
     ));
 
-    // 微信收款码
+    // 微信收款码（向下平移10像素）
     commands.spawn((
         AboutUI,
         Sprite {
@@ -335,33 +361,36 @@ pub fn spawn_about_screen(mut commands: Commands, asset_server: Res<AssetServer>
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(250.0, -250.0, 1.0),
+        Transform::from_xyz(250.0, -260.0, 1.0),
     ));
 
-    // 微信标签
+    // 微信标签（向下平移10像素）
     commands.spawn((
         AboutUI,
-        Text2d("WeChat".to_string()),
+        Text2d(match *language {
+            Language::Chinese => "微信",
+            Language::English => "WeChat",
+        }.to_string()),
         TextFont {
             font_size: FONT_SIZE_SMALL,
-            font: custom_font.clone(),
+            font: label_font,
             ..default()
         },
         TextColor(COLOR_BLACK),
-        Transform::from_xyz(250.0, -470.0, 1.0),
+        Transform::from_xyz(250.0, -480.0, 1.0),
     ));
 
-    // 添加返回提示
+    // 添加返回提示（向下平移10像素）
     commands.spawn((
         AboutUI,
-        Text2d("Press SPACE to return".to_string()),
+        Text2d(return_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_MEDIUM,
-            font: custom_font,
+            font: return_font,
             ..default()
         },
         TextColor(COLOR_BLACK),
-        Transform::from_xyz(0.0, -550.0, 1.0),
+        Transform::from_xyz(0.0, -560.0, 1.0),
     ));
 }
 
@@ -384,9 +413,9 @@ pub fn handle_about_input(
 }
 
 /// 生成致谢界面
-pub fn spawn_credits_screen(mut commands: Commands, asset_server: Res<AssetServer>) {
+pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<FontResources>) {
     // 加载自定义字体
-    let custom_font: Handle<Font> = asset_server.load(FONT_EN);
+    let custom_font = font_resources.en.clone();
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -466,6 +495,7 @@ pub fn handle_start_screen_input(
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
     mut game_mode: ResMut<GameMode>,
+    mut language: ResMut<Language>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
     // Esc 键退出游戏
@@ -478,33 +508,41 @@ pub fn handle_start_screen_input(
         menu_selection.selected_index = if menu_selection.selected_index > 0 {
             menu_selection.selected_index - 1
         } else {
-            4
+            5
         };
     }
     // S 键向下选择
     if keyboard_input.just_pressed(KeyCode::KeyS) {
-        menu_selection.selected_index = (menu_selection.selected_index + 1) % 5;
+        menu_selection.selected_index = (menu_selection.selected_index + 1) % 6;
     }
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
         match menu_selection.selected_index {
             0 => {
                 *game_mode = GameMode::OnePlayer;
-                next_state.set(GameState::FadingOut); // 1 Player
+                next_state.set(GameState::FadingOut); // 1 Player / 单人游戏
             }
             1 => {
                 *game_mode = GameMode::TwoPlayers;
-                next_state.set(GameState::FadingOut); // 2 Player
+                next_state.set(GameState::FadingOut); // 2 Player / 双人对战
             }
             2 => {
-                next_state.set(GameState::About); // About
+                // 切换语言
+                *language = match *language {
+                    Language::Chinese => Language::English,
+                    Language::English => Language::Chinese,
+                };
+                // 语言切换后重新生成菜单以更新文本
             }
             3 => {
-                next_state.set(GameState::Credits); // Credits
+                next_state.set(GameState::About); // About / 关于
             }
             4 => {
+                next_state.set(GameState::Credits); // Credits / 制作人员
+            }
+            5 => {
                 let _ = app_exit.write(AppExit::Success);
-            } // EXIT
+            } // EXIT / 退出
             _ => {}
         }
     }

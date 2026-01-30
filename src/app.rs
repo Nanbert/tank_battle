@@ -69,16 +69,58 @@ pub fn configure_game_resources(app: &mut App) {
             bullet_player1: Handle::default(),
             bullet_player2: Handle::default(),
             bullet_enemy: Handle::default(),
-            brick_hit_sound: Handle::default(),
-            hit_sound: Handle::default(),
-            metal_crash_sound: Handle::default(),
         })
         .insert_resource(EffectResources {
             explosion: Handle::default(),
             spark: Handle::default(),
             smoke: Handle::default(),
             bubble: Handle::default(),
-            steel_hit: Handle::default(),
+            forest_fire: Handle::default(),
+        })
+        .insert_resource(MapResources {
+            brick: Handle::default(),
+            steel: Handle::default(),
+            tree: Handle::default(),
+            sea: Handle::default(),
+            barrier: Handle::default(),
+        })
+        .insert_resource(EnemyResources {
+            enemy_born: Handle::default(),
+            enemy_tank: Handle::default(),
+        })
+        .insert_resource(PowerUpResources {
+            speed_up: Handle::default(),
+            protection: Handle::default(),
+            fire_speed: Handle::default(),
+            fire_shell: Handle::default(),
+            track_chain: Handle::default(),
+            penetrate: Handle::default(),
+            repair: Handle::default(),
+            hamburger: Handle::default(),
+            air_cushion: Handle::default(),
+            shell: Handle::default(),
+        })
+        .insert_resource(LaserResources {
+            laser_blue: Handle::default(),
+            laser_red: Handle::default(),
+        })
+        .insert_resource(MenuResources {
+            background_part1: Handle::default(),
+            background_part2: Handle::default(),
+            background_part3: Handle::default(),
+        })
+        .insert_resource(CommanderMusicResources {
+            music_note: Handle::default(),
+        })
+        .insert_resource(Language::default())
+        .insert_resource(AmbienceResources {
+            burn_tree: Handle::default(),
+            sea_ambience: Handle::default(),
+            commander_music_000: Handle::default(),
+            commander_music_001: Handle::default(),
+            commander_music_002: Handle::default(),
+            commander_music_003: Handle::default(),
+            tree_ambience: Handle::default(),
         })
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
@@ -128,9 +170,30 @@ pub fn register_game_systems(app: &mut App) {
                 },
                 hud_ui::despawn_hud,
                 game_state::reset_fading_out,
-                menus_ui::spawn_start_screen,
             )
                 .chain(),
+        )
+        .add_systems(
+            Update,
+            menus_ui::spawn_start_screen.run_if(
+                |query: Query<(), With<crate::constants::StartScreenUI>>| {
+                    query.is_empty()
+                }
+            ).run_if(in_state(GameState::StartScreen)),
+        )
+        .add_systems(
+            Update,
+            (
+                menus_ui::cleanup_start_screen_ui,
+                menus_ui::spawn_start_screen,
+            )
+                .chain()
+                .run_if(
+                    |language: Res<crate::resources::Language>| {
+                        language.is_changed()
+                    }
+                )
+                .run_if(in_state(GameState::StartScreen)),
         )
         .add_systems(
             OnEnter(GameState::About),
@@ -173,7 +236,9 @@ pub fn register_game_systems(app: &mut App) {
                 hud_ui::spawn_hud.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
-                hud_ui::update_stage_text,
+                hud_ui::update_stage_text.run_if(
+                    |stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1,
+                ),
                 player::reset_player_positions,
                 enemy::reset_enemy_spawn_state,
             )
@@ -517,7 +582,7 @@ pub fn init_game_resources(
         spark: asset_server.load(TEXTURE_STEEL_HIT),
         smoke: asset_server.load(TEXTURE_SMOKE),
         bubble: asset_server.load(TEXTURE_BUBBLE),
-        steel_hit: asset_server.load(TEXTURE_STEEL_HIT),
+        forest_fire: asset_server.load(TEXTURE_TREE_FIRE_SHEET),
     });
 
     // 子弹资源
@@ -525,8 +590,63 @@ pub fn init_game_resources(
         bullet_player1: asset_server.load(TEXTURE_BULLET_PLAYER1),
         bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
-        brick_hit_sound: asset_server.load(SOUND_BRICK_HIT),
-        hit_sound: asset_server.load(SOUND_HIT),
-        metal_crash_sound: asset_server.load(SOUND_METAL_CRASH),
+    });
+
+    // 地图纹理资源
+    commands.insert_resource(MapResources {
+        brick: asset_server.load(TEXTURE_BRICK),
+        steel: asset_server.load(TEXTURE_STEEL),
+        tree: asset_server.load(TEXTURE_TREE),
+        sea: asset_server.load(TEXTURE_SEA),
+        barrier: asset_server.load(TEXTURE_BARRIER),
+    });
+
+    // 敌方坦克资源
+    commands.insert_resource(EnemyResources {
+        enemy_born: asset_server.load(TEXTURE_ENEMY_BORN),
+        enemy_tank: asset_server.load(TEXTURE_ENEMY_TANK1),
+    });
+
+    // 道具纹理资源
+    commands.insert_resource(PowerUpResources {
+        speed_up: asset_server.load("power_up/speed_up.png"),
+        protection: asset_server.load("power_up/protection.png"),
+        fire_speed: asset_server.load("power_up/fire_speed.png"),
+        fire_shell: asset_server.load("power_up/fire_shell.png"),
+        track_chain: asset_server.load("power_up/track_chain.png"),
+        penetrate: asset_server.load("power_up/penetrate.png"),
+        repair: asset_server.load("power_up/repair.png"),
+        hamburger: asset_server.load("power_up/hamburger.png"),
+        air_cushion: asset_server.load("power_up/air_cushion.png"),
+        shell: asset_server.load("power_up/shell.png"),
+    });
+
+    // 激光纹理资源
+    commands.insert_resource(LaserResources {
+        laser_blue: asset_server.load(TEXTURE_LASER_BLUE),
+        laser_red: asset_server.load(TEXTURE_LASER_RED),
+    });
+
+    // 菜单背景纹理资源
+    commands.insert_resource(MenuResources {
+        background_part1: asset_server.load(TEXTURE_BACKGROUND_PART1),
+        background_part2: asset_server.load(TEXTURE_BACKGROUND_PART2),
+        background_part3: asset_server.load(TEXTURE_BACKGROUND_PART3),
+    });
+
+    // 司令官音乐纹理资源
+    commands.insert_resource(CommanderMusicResources {
+        music_note: asset_server.load(TEXTURE_MUSIC_NOTE),
+    });
+
+    // 环境音效资源
+    commands.insert_resource(AmbienceResources {
+        burn_tree: asset_server.load(SOUND_BURN_TREE),
+        sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
+        commander_music_000: asset_server.load(SOUND_COMMANDER_MUSIC_000),
+        commander_music_001: asset_server.load(SOUND_COMMANDER_MUSIC_001),
+        commander_music_002: asset_server.load(SOUND_COMMANDER_MUSIC_002),
+        commander_music_003: asset_server.load(SOUND_COMMANDER_MUSIC_003),
+        tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
     });
 }
