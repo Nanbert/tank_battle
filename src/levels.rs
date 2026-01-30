@@ -56,18 +56,36 @@ pub fn get_level_from_assets(level_assets: &LevelAssets, level: usize) -> LevelM
     [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
 }
 /// 加载所有关卡文件到资源中
-/// 关卡文件从当前工作目录的 levels 子目录加载
+/// 关卡文件从适当的路径加载：
+/// - 系统安装位置：/usr/share/tank-battle/levels/
+/// - 开发环境/压缩包：当前目录的 levels/
 /// 注意：这是同步加载，在生产环境中可以考虑使用 Bevy 的异步资源加载
 pub fn load_level_assets(mut level_assets: ResMut<LevelAssets>) {
+    // 检测运行环境，确定关卡文件路径
+    let levels_dir = if std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        .as_deref()
+        == Some(std::path::Path::new("/usr/bin"))
+    {
+        // 系统安装位置
+        "/usr/share/tank-battle/levels"
+    } else {
+        // 开发环境或压缩包
+        "levels"
+    };
+
     // 预加载前4个关卡
     for level in 1..=4 {
-        if let Ok(content) = std::fs::read_to_string(format!("levels/{level}.txt")) {
+        let level_path = format!("{levels_dir}/{level}.txt");
+        if let Ok(content) = std::fs::read_to_string(&level_path) {
             let map_data = parse_level_content(&content);
             if level_assets.levels.len() < level {
                 level_assets.levels.resize(level, None);
             }
             level_assets.levels[level - 1] = Some(map_data);
         } else {
+            warn!("无法加载关卡文件: {}", level_path);
         }
     }
 }
