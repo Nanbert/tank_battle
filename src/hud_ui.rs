@@ -86,19 +86,71 @@ pub struct HealthBarForeground;
 pub struct BlueBarForeground;
 
 // ============================================================================
-// HUD Text Prefix Constants
+// HUD Language Configuration
 // ============================================================================
 
-/// HUD 文本前缀常量
-const HUD_PREFIX_SPEED: &str = "Speed:";
-const HUD_PREFIX_FIRE_SPEED: &str = "Fire Speed:";
-const HUD_PREFIX_PROTECTION: &str = "Protection:";
-const HUD_PREFIX_SHELLS: &str = "Shells:";
-const HUD_PREFIX_SCORES: &str = "Scores";
-const HUD_PREFIX_PENETRATE: &str = "Penetrate:";
-const HUD_PREFIX_TRACK_CHAIN: &str = "Track Chain:";
-const HUD_PREFIX_AIR_CUSHION: &str = "Air Cushion:";
-const HUD_PREFIX_FIRE_SHELL: &str = "Fire Shell:";
+#[derive(Clone, Copy)]
+struct HudTextLabels {
+    player1_name: (&'static str, &'static str),      // (中文, 英文)
+    player2_name: (&'static str, &'static str),
+    effects_title: (&'static str, &'static str),
+    commander_life: (&'static str, &'static str),
+    on_off: (&'static str, &'static str),           // (开启, On)
+    off_label: (&'static str, &'static str),        // (关闭, Off)
+}
+
+#[derive(Clone, Copy)]
+struct HudStatLabels {
+    speed: (&'static str, &'static str),
+    fire_speed: (&'static str, &'static str),
+    protection: (&'static str, &'static str),
+    shells: (&'static str, &'static str),
+    fire_shell: (&'static str, &'static str),
+    penetrate: (&'static str, &'static str),
+    track_chain: (&'static str, &'static str),
+    air_cushion: (&'static str, &'static str),
+    score: (&'static str, &'static str),
+}
+
+const HUD_TEXT_LABELS: HudTextLabels = HudTextLabels {
+    player1_name: ("李云龙", "Li Yun Long"),
+    player2_name: ("楚云飞", "Chu Yun Fei"),
+    effects_title: ("效果", "Effects"),
+    commander_life: ("司令官生命:", "Commander Life:"),
+    on_off: ("开启", "On"),
+    off_label: ("关闭", "Off"),
+};
+
+const HUD_STAT_LABELS: HudStatLabels = HudStatLabels {
+    speed: ("速度:", "Speed:"),
+    fire_speed: ("射速:", "Fire Speed:"),
+    protection: ("护盾:", "Protection:"),
+    shells: ("炮弹:", "Shells:"),
+    fire_shell: ("火焰炮弹", "Fire Shell"),
+    penetrate: ("穿透", "Penetrate"),
+    track_chain: ("履带链", "Track Chain"),
+    air_cushion: ("气垫", "Air Cushion"),
+    score: ("分数:", "Scores:"),
+};
+
+/// 辅助函数：根据语言选择文本
+fn get_label(labels: (&'static str, &'static str), language: Language) -> &'static str {
+    match language {
+        Language::Chinese => labels.0,
+        Language::English => labels.1,
+    }
+}
+
+/// 辅助函数：获取玩家名称
+fn get_player_name(player_type: TankType, language: Language) -> &'static str {
+    match (player_type, language) {
+        (TankType::Player1, Language::Chinese) => HUD_TEXT_LABELS.player1_name.0,
+        (TankType::Player1, Language::English) => HUD_TEXT_LABELS.player1_name.1,
+        (TankType::Player2, Language::Chinese) => HUD_TEXT_LABELS.player2_name.0,
+        (TankType::Player2, Language::English) => HUD_TEXT_LABELS.player2_name.1,
+        (TankType::Enemy, _) => "Enemy",
+    }
+}
 
 
 
@@ -171,20 +223,11 @@ fn spawn_single_player_hud(
 ) {
     let stats = get_player_stats_for_spawn(player_info, player_type);
 
-    // 获取对应语言的玩家名称
-    let player_name = match (player_type, language) {
-        (TankType::Player1, Language::Chinese) => "李云龙",
-        (TankType::Player1, Language::English) => "Li Yun Long",
-        (TankType::Player2, Language::Chinese) => "楚云飞",
-        (TankType::Player2, Language::English) => "Chu Yun Fei",
-        _ => &stats.name,
-    };
-
     // 玩家名称
     commands.spawn((
         marker.clone(),
         PlayerNameText,
-        Text2d(player_name.to_string()),
+        Text2d(get_player_name(player_type, language).to_string()),
         TextFont {
             font_size: 32.0,
             font: font.clone(),
@@ -194,37 +237,13 @@ fn spawn_single_player_hud(
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_NAME, Z_UI),
     ));
 
-    // 获取属性文本前缀
-    let (prefix_speed, prefix_fire_speed, prefix_protection, prefix_shells, prefix_penetrate, prefix_track_chain, prefix_air_cushion, prefix_fire_shell) = match language {
-        Language::Chinese => (
-            "速度:",
-            "射速:",
-            "护盾:",
-            "炮弹:",
-            "穿透:",
-            "履带链:",
-            "气垫:",
-            "火焰炮弹",
-        ),
-        Language::English => (
-            HUD_PREFIX_SPEED,
-            HUD_PREFIX_FIRE_SPEED,
-            HUD_PREFIX_PROTECTION,
-            HUD_PREFIX_SHELLS,
-            HUD_PREFIX_PENETRATE,
-            HUD_PREFIX_TRACK_CHAIN,
-            HUD_PREFIX_AIR_CUSHION,
-            "Fire Shell",
-        ),
-    };
-
     // 属性文本（百分比类型）
     spawn_percent_text(
         commands,
         marker.clone(),
         SpeedText,
         font,
-        prefix_speed,
+        get_label(HUD_STAT_LABELS.speed, language),
         stats.speed,
         HUD_Y_SPEED,
         x_pos,
@@ -234,7 +253,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         FireSpeedText,
         font,
-        prefix_fire_speed,
+        get_label(HUD_STAT_LABELS.fire_speed, language),
         stats.fire_speed,
         HUD_Y_FIRE_SPEED,
         x_pos,
@@ -244,7 +263,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         ProtectionText,
         font,
-        prefix_protection,
+        get_label(HUD_STAT_LABELS.protection, language),
         stats.protection,
         HUD_Y_PROTECTION,
         x_pos,
@@ -256,20 +275,16 @@ fn spawn_single_player_hud(
         marker.clone(),
         ShellsText,
         font,
-        &format!("{} {}", prefix_shells, stats.shells),
+        &format!("{} {}", get_label(HUD_STAT_LABELS.shells, language), stats.shells),
         HUD_Y_SHELLS,
         x_pos,
     );
 
     // 效果标题
-    let effects_title = match language {
-        Language::Chinese => "效果",
-        Language::English => "Effects",
-    };
     commands.spawn((
         marker.clone(),
         EffectsTitle,
-        Text2d(effects_title.to_string()),
+        Text2d(get_label(HUD_TEXT_LABELS.effects_title, language).to_string()),
         TextFont {
             font_size: 32.0,
             font: font.clone(),
@@ -285,51 +300,51 @@ fn spawn_single_player_hud(
         marker.clone(),
         FireShellText,
         font,
-        prefix_fire_shell,
+        get_label(HUD_STAT_LABELS.fire_shell, language),
         stats.fire_shell,
         HUD_Y_FIRE_SHELL,
         x_pos,
+        language,
     );
     spawn_effect_text(
         commands,
         marker.clone(),
         PenetrateText,
         font,
-        prefix_penetrate,
+        get_label(HUD_STAT_LABELS.penetrate, language),
         stats.penetrate,
         HUD_Y_PENETRATE,
         x_pos,
+        language,
     );
     spawn_effect_text(
         commands,
         marker.clone(),
         TrackChainText,
         font,
-        prefix_track_chain,
+        get_label(HUD_STAT_LABELS.track_chain, language),
         stats.track_chain,
         HUD_Y_TRACK_CHAIN,
         x_pos,
+        language,
     );
     spawn_effect_text(
         commands,
         marker.clone(),
         AirCushionText,
         font,
-        prefix_air_cushion,
+        get_label(HUD_STAT_LABELS.air_cushion, language),
         stats.air_cushion,
         HUD_Y_AIR_CUSHION,
         x_pos,
+        language,
     );
 
     // 分数
-    let scores_text = match language {
-        Language::Chinese => format!("分数: {}", stats.score),
-        Language::English => format!("Scores: {}", stats.score),
-    };
     commands.spawn((
         marker.clone(),
         ScoreText,
-        Text2d(scores_text),
+        Text2d(format!("{} {}", get_label(HUD_STAT_LABELS.score, language), stats.score)),
         TextFont {
             font_size: 28.0,
             font: font.clone(),
@@ -501,13 +516,19 @@ fn spawn_effect_text<T1: Component, T2: Component>(
     value: bool,
     y_offset: f32,
     x_pos: f32,
+    language: Language,
 ) {
+    let on_off_label = if value {
+        get_label(HUD_TEXT_LABELS.on_off, language)
+    } else {
+        get_label(HUD_TEXT_LABELS.off_label, language)
+    };
     spawn_stat_text(
         commands,
         marker1,
         marker2,
         font,
-        &format!("{}: {}", prefix, if value { "On" } else { "Off" }),
+        &format!("{}: {}", prefix, on_off_label),
         y_offset,
         x_pos,
     );
@@ -558,11 +579,6 @@ fn format_percent_value(value: usize, is_max: bool) -> String {
     }
 }
 
-/// 格式化布尔值
-fn format_bool_value(value: bool) -> &'static str {
-    if value { "On" } else { "Off" }
-}
-
 /// 更新血条或蓝条
 fn update_bar(
     sprite: &mut Sprite,
@@ -580,15 +596,10 @@ fn update_bar(
 /// 更新单个玩家的文本
 fn update_single_player_text(stats: &PlayerStats, text: &mut String, language: Language) {
     // 百分比属性
-    let (prefix_speed, prefix_fire_speed, prefix_protection) = match language {
-        Language::Chinese => ("速度:", "射速:", "护盾:"),
-        Language::English => (HUD_PREFIX_SPEED, HUD_PREFIX_FIRE_SPEED, HUD_PREFIX_PROTECTION),
-    };
-    
     let percent_attrs = [
-        (prefix_speed, stats.speed),
-        (prefix_fire_speed, stats.fire_speed),
-        (prefix_protection, stats.protection),
+        (get_label(HUD_STAT_LABELS.speed, language), stats.speed),
+        (get_label(HUD_STAT_LABELS.fire_speed, language), stats.fire_speed),
+        (get_label(HUD_STAT_LABELS.protection, language), stats.protection),
     ];
 
     for (prefix, value) in percent_attrs {
@@ -603,39 +614,30 @@ fn update_single_player_text(stats: &PlayerStats, text: &mut String, language: L
     }
 
     // 布尔效果属性
-    let (prefix_fire_shell, prefix_penetrate, prefix_track_chain, prefix_air_cushion) = match language {
-        Language::Chinese => ("火焰炮弹", "穿透", "履带链", "气垫"),
-        Language::English => (HUD_PREFIX_FIRE_SHELL, HUD_PREFIX_PENETRATE, HUD_PREFIX_TRACK_CHAIN, HUD_PREFIX_AIR_CUSHION),
-    };
-    
-    let (on_text, off_text) = match language {
-        Language::Chinese => ("开启", "关闭"),
-        Language::English => ("On", "Off"),
-    };
-    
     let effect_attrs = [
-        (prefix_fire_shell, stats.fire_shell),
-        (prefix_penetrate, stats.penetrate),
-        (prefix_track_chain, stats.track_chain),
-        (prefix_air_cushion, stats.air_cushion),
+        (get_label(HUD_STAT_LABELS.fire_shell, language), stats.fire_shell),
+        (get_label(HUD_STAT_LABELS.penetrate, language), stats.penetrate),
+        (get_label(HUD_STAT_LABELS.track_chain, language), stats.track_chain),
+        (get_label(HUD_STAT_LABELS.air_cushion, language), stats.air_cushion),
     ];
+
+    let on_label = get_label(HUD_TEXT_LABELS.on_off, language);
+    let off_label = get_label(HUD_TEXT_LABELS.off_label, language);
 
     for (prefix, value) in effect_attrs {
         if text.starts_with(prefix) {
-            *text = format!("{}: {}", prefix, if value { on_text } else { off_text });
+            *text = format!("{}: {}", prefix, if value { on_label } else { off_label });
             return;
         }
     }
 
     // 其他属性
-    let (prefix_shells, prefix_scores) = match language {
-        Language::Chinese => ("炮弹:", "分数:"),
-        Language::English => (HUD_PREFIX_SHELLS, "Scores:"),
-    };
-    
+    let prefix_shells = get_label(HUD_STAT_LABELS.shells, language);
+    let prefix_scores = get_label(HUD_STAT_LABELS.score, language);
+
     if text.starts_with(prefix_shells) {
         *text = format!("{} {}", prefix_shells, stats.shells);
-    } else if text.starts_with(prefix_scores) || text.starts_with("Scores") {
+    } else if text.starts_with(prefix_scores) {
         *text = format!("{} {}", prefix_scores, stats.score);
     }
 }
@@ -830,67 +832,40 @@ pub fn animate_hud_text(
 
 /// 获取 HUD 属性类型对应的前缀（支持多语言）
 fn get_hud_stat_prefixes(stat_type: StatType, language: Language) -> Vec<&'static str> {
-    match stat_type {
-        StatType::Speed => match language {
-            Language::Chinese => vec!["速度:"],
-            Language::English => vec![HUD_PREFIX_SPEED],
-        },
-        StatType::Protection => match language {
-            Language::Chinese => vec!["护盾:"],
-            Language::English => vec![HUD_PREFIX_PROTECTION],
-        },
-        StatType::FireSpeed => match language {
-            Language::Chinese => vec!["射速:"],
-            Language::English => vec![HUD_PREFIX_FIRE_SPEED],
-        },
-        StatType::FireShell => match language {
-            Language::Chinese => vec!["火焰炮弹"],
-            Language::English => vec![HUD_PREFIX_FIRE_SHELL],
-        },
-        StatType::TrackChain => match language {
-            Language::Chinese => vec!["履带链"],
-            Language::English => vec![HUD_PREFIX_TRACK_CHAIN],
-        },
-        StatType::Penetrate => match language {
-            Language::Chinese => vec!["穿透"],
-            Language::English => vec![HUD_PREFIX_PENETRATE],
-        },
-        StatType::AirCushion => match language {
-            Language::Chinese => vec!["气垫"],
-            Language::English => vec![HUD_PREFIX_AIR_CUSHION],
-        },
-        StatType::Shell => match language {
-            Language::Chinese => vec!["炮弹:"],
-            Language::English => vec![HUD_PREFIX_SHELLS],
-        },
-        StatType::Score => match language {
-            Language::Chinese => vec!["分数:"],
-            Language::English => vec!["Scores:"],
-        },
-    }
+    let label = match stat_type {
+        StatType::Speed => get_label(HUD_STAT_LABELS.speed, language),
+        StatType::Protection => get_label(HUD_STAT_LABELS.protection, language),
+        StatType::FireSpeed => get_label(HUD_STAT_LABELS.fire_speed, language),
+        StatType::FireShell => get_label(HUD_STAT_LABELS.fire_shell, language),
+        StatType::TrackChain => get_label(HUD_STAT_LABELS.track_chain, language),
+        StatType::Penetrate => get_label(HUD_STAT_LABELS.penetrate, language),
+        StatType::AirCushion => get_label(HUD_STAT_LABELS.air_cushion, language),
+        StatType::Shell => get_label(HUD_STAT_LABELS.shells, language),
+        StatType::Score => get_label(HUD_STAT_LABELS.score, language),
+    };
+    vec![label]
 }
 
 /// 判断单个玩家 HUD 属性是否达到最大值或On状态
 fn is_player_stat_at_max(text: &str, stats: &PlayerStats) -> bool {
-    if text.starts_with(HUD_PREFIX_SHELLS) || text.starts_with("炮弹:") {
-        stats.shells >= HUD_MAX_SHELLS
-    } else if text.starts_with(HUD_PREFIX_SPEED) || text.starts_with("速度:") {
-        stats.speed >= HUD_MAX_PERCENT
-    } else if text.starts_with(HUD_PREFIX_PROTECTION) || text.starts_with("护盾:") {
-        stats.protection >= HUD_MAX_PERCENT
-    } else if text.starts_with(HUD_PREFIX_FIRE_SPEED) || text.starts_with("射速:") {
-        stats.fire_speed >= HUD_MAX_PERCENT
-    } else if text.starts_with(HUD_PREFIX_FIRE_SHELL) || text.starts_with("火焰炮弹") {
-        stats.fire_shell
-    } else if text.starts_with(HUD_PREFIX_AIR_CUSHION) || text.starts_with("气垫") {
-        stats.air_cushion
-    } else if text.starts_with(HUD_PREFIX_TRACK_CHAIN) || text.starts_with("履带链") {
-        stats.track_chain
-    } else if text.starts_with(HUD_PREFIX_PENETRATE) || text.starts_with("穿透") {
-        stats.penetrate
-    } else {
-        false
+    // 检查所有可能的属性前缀（中英文）
+    let stat_labels = [
+        (HUD_STAT_LABELS.shells, stats.shells >= HUD_MAX_SHELLS),
+        (HUD_STAT_LABELS.speed, stats.speed >= HUD_MAX_PERCENT),
+        (HUD_STAT_LABELS.protection, stats.protection >= HUD_MAX_PERCENT),
+        (HUD_STAT_LABELS.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT),
+        (HUD_STAT_LABELS.fire_shell, stats.fire_shell),
+        (HUD_STAT_LABELS.air_cushion, stats.air_cushion),
+        (HUD_STAT_LABELS.track_chain, stats.track_chain),
+        (HUD_STAT_LABELS.penetrate, stats.penetrate),
+    ];
+
+    for (label, is_max) in stat_labels {
+        if text.starts_with(label.0) || text.starts_with(label.1) {
+            return is_max;
+        }
     }
+    false
 }
 
 /// 判断 HUD 属性是否达到最大值或On状态（用于动画系统）
@@ -915,7 +890,12 @@ fn is_hud_stat_at_max_value(
 }
 
 /// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
-fn spawn_top_hud(mut commands: Commands, font_resources: &FontResources, stage_level: &Res<StageLevel>, language: Language) {
+fn spawn_top_hud(
+    mut commands: Commands,
+    font_resources: &FontResources,
+    stage_level: &Res<StageLevel>,
+    language: Language,
+) {
     let font = match language {
         Language::Chinese => font_resources.cn.clone(),
         Language::English => font_resources.en.clone(),
@@ -942,10 +922,7 @@ fn spawn_top_hud(mut commands: Commands, font_resources: &FontResources, stage_l
     ));
 
     // Commander 文本和血条
-    let commander_text = match language {
-        Language::Chinese => "司令官生命:",
-        Language::English => "Commander Life:",
-    };
+    let commander_text = get_label(HUD_TEXT_LABELS.commander_life, language);
     // Commander 文字（在血条左侧）
     commands.spawn((
         PlayingEntity,
@@ -972,18 +949,18 @@ fn spawn_top_hud(mut commands: Commands, font_resources: &FontResources, stage_l
         Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
     ));
 
-    // 敌方剩余数量显示在右侧
+// 敌方剩余数量显示在右侧
     let enemy_count_text = match language {
-        Language::Chinese => "敌方剩余: 20/20",
-        Language::English => "Enemy Left: 20/20",
+        Language::Chinese => format!("敌方剩余: 20/20"),
+        Language::English => format!("Enemy Left: 20/20"),
     };
     commands.spawn((
         PlayingEntity,
         EnemyCountText,
-        Text2d(enemy_count_text.to_string()),
+        Text2d(enemy_count_text),
         TextFont {
             font_size: 28.0,
-            font: font,
+            font,
             ..default()
         },
         TextColor(COLOR_WHITE),

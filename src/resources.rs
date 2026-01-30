@@ -123,7 +123,6 @@ pub struct PlayerInfo {
 
 #[derive(Clone, Default)]
 pub struct PlayerStats {
-    pub name: String,
     pub speed: usize,
     pub fire_speed: usize,
     pub protection: usize,

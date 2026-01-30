@@ -666,7 +666,6 @@ fn spawn_players(
 
             // 初始化玩家1信息
             player_info.player1 = PlayerStats {
-                name: "Li Yun Long".to_string(),
                 speed: INITIAL_ATTRIBUTE_VALUE,
                 fire_speed: INITIAL_ATTRIBUTE_VALUE,
                 protection: INITIAL_ATTRIBUTE_VALUE,
@@ -702,7 +701,6 @@ fn spawn_players(
 
             // 初始化玩家1信息
             player_info.player1 = PlayerStats {
-                name: "Li Yun Long".to_string(),
                 speed: INITIAL_ATTRIBUTE_VALUE,
                 fire_speed: INITIAL_ATTRIBUTE_VALUE,
                 protection: INITIAL_ATTRIBUTE_VALUE,
@@ -718,7 +716,6 @@ fn spawn_players(
 
             // 初始化玩家2信息
             player_info.player2 = Some(PlayerStats {
-                name: "Chu Yun Fei".to_string(),
                 speed: INITIAL_ATTRIBUTE_VALUE,
                 fire_speed: INITIAL_ATTRIBUTE_VALUE,
                 protection: INITIAL_ATTRIBUTE_VALUE,
@@ -748,7 +745,6 @@ pub fn despawn_players(
 
     // 清空玩家信息
     player_info.player1 = PlayerStats {
-        name: "Player 1".to_string(),
         speed: 1,
         fire_speed: 1,
         protection: 0,
