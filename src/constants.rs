@@ -79,8 +79,6 @@ pub const LEFT_PADDING: f32 = 230.0; // 左侧留白
 pub const RIGHT_PADDING: f32 = 230.0; // 右侧留白
 pub const TOP_PADDING: f32 = 100.0; // 上方留白
 pub const BOTTOM_PADDING: f32 = 0.0; // 下方不留白
-pub const TANK_WIDTH: f32 = 87.0;
-pub const TANK_HEIGHT: f32 = 87.0;
 pub const TANK_SPEED: f32 = 200.0;
 pub const PLAYER_TANK_SPEED: f32 = 150.0;
 pub const BULLET_SPEED: f32 = 900.0;
@@ -103,14 +101,14 @@ pub const MAP_BOTTOM_Y: f32 = -MAP_HEIGHT / 2.0 + VERTICAL_OFFSET;
 
 pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
     Vec3::new(
-        MAP_LEFT_X + TANK_WIDTH / 2.0,
-        MAP_TOP_Y - TANK_HEIGHT / 2.0,
+        MAP_LEFT_X + ENEMY_TANK_DISPLAY_WIDTH / 2.0,
+        MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
         0.0,
     ),
-    Vec3::new(0.0, MAP_TOP_Y - TANK_HEIGHT / 2.0, 0.0),
+    Vec3::new(0.0, MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0, 0.0),
     Vec3::new(
-        MAP_RIGHT_X - TANK_WIDTH / 2.0,
-        MAP_TOP_Y - TANK_HEIGHT / 2.0,
+        MAP_RIGHT_X - ENEMY_TANK_DISPLAY_WIDTH / 2.0,
+        MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
         0.0,
     ),
 ];
@@ -140,7 +138,7 @@ pub const DIRECTIONS: [Vec2; 4] = [
 
 // 冲刺相关常量
 pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
-pub const DASH_DISTANCE: f32 = TANK_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
+pub const DASH_DISTANCE: f32 = PLAYER_TANK_DISPLAY_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
 
 // 关卡俏皮话中文版
 pub const STAGE_QUOTES_CN: [&str; 17] = [

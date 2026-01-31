@@ -250,7 +250,7 @@ fn start_charge(
         },
         Transform::from_xyz(
             transform.translation.x,
-            transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
+            transform.translation.y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
             Z_PROGRESS_BAR,
         ),
     ));
@@ -334,7 +334,7 @@ fn fire_laser(
 
     // 计算激光初始位置
     let laser_pos = transform.translation
-        + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
+        + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
 
     // 生成激光
     spawn_laser(
@@ -352,7 +352,7 @@ fn fire_laser(
     commands.spawn(AudioPlayer::new(sound_resources.laser.clone()));
 
     // 应用后坐力
-    let recoil_distance = TANK_HEIGHT * RECOIL_DISTANCE_FACTOR;
+    let recoil_distance = PLAYER_TANK_DISPLAY_HEIGHT * RECOIL_DISTANCE_FACTOR;
     let recoil_offset = direction * -recoil_distance;
     commands.entity(entity).insert(RecoilForce {
         original_pos: transform.translation,
@@ -404,7 +404,7 @@ pub fn laser_collision_system(
     for (_laser_entity, laser_transform, _, _) in &lasers {
         let laser_bounds = calculate_laser_bounds(laser_transform);
 
-        check_and_mark_collisions(&mut commands, &enemies, laser_bounds, TANK_WIDTH, TANK_HEIGHT);
+        check_and_mark_collisions(&mut commands, &enemies, laser_bounds, ENEMY_TANK_DISPLAY_WIDTH, ENEMY_TANK_DISPLAY_HEIGHT);
         check_and_mark_collisions(&mut commands, &bullets, laser_bounds, BULLET_SIZE, BULLET_SIZE);
         check_and_mark_collisions(&mut commands, &bricks, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
         check_and_mark_collisions(&mut commands, &steels, laser_bounds, BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT);
