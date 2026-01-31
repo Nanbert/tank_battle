@@ -292,12 +292,12 @@ pub fn move_enemy_tanks(
 
         // 限制敌方坦克在地图边界内
         transform.translation.x = transform.translation.x.clamp(
-            MAP_LEFT_X + TANK_WIDTH / 2.0,
-            MAP_RIGHT_X - TANK_WIDTH / 2.0,
+            MAP_LEFT_X + ENEMY_TANK_DISPLAY_WIDTH / 2.0,
+            MAP_RIGHT_X - ENEMY_TANK_DISPLAY_WIDTH / 2.0,
         );
         transform.translation.y = transform.translation.y.clamp(
-            MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-            MAP_TOP_Y - TANK_HEIGHT / 2.0,
+            MAP_BOTTOM_Y + ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
+            MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
         );
     }
 }

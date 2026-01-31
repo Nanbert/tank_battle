@@ -96,12 +96,12 @@ pub fn update_dash_movement(
 
             // 限制坦克在地图边界内
             transform.translation.x = transform.translation.x.clamp(
-                MAP_LEFT_X + TANK_WIDTH / 2.0,
-                MAP_RIGHT_X - TANK_WIDTH / 2.0,
+                MAP_LEFT_X + PLAYER_TANK_DISPLAY_WIDTH / 2.0,
+                MAP_RIGHT_X - PLAYER_TANK_DISPLAY_WIDTH / 2.0,
             );
             transform.translation.y = transform.translation.y.clamp(
-                MAP_BOTTOM_Y + TANK_HEIGHT / 2.0,
-                MAP_TOP_Y - TANK_HEIGHT / 2.0,
+                MAP_BOTTOM_Y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
+                MAP_TOP_Y - PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
             );
 
             // 检查是否完成

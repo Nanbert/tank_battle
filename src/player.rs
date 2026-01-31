@@ -325,7 +325,7 @@ pub fn handle_recall_input(
                 },
                 Transform::from_xyz(
                     transform.translation.x,
-                    transform.translation.y + TANK_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
+                    transform.translation.y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
                     Z_PROGRESS_BAR,
                 ), // 在坦克上方
             ));

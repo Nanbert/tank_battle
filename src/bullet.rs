@@ -158,7 +158,7 @@ pub fn enemy_shoot_system(
 
             // 计算子弹初始位置（坦克前方）
             let bullet_pos =
-                transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
+                transform.translation + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
 
             // 生成子弹
             let bullet_entity = spawn_bullet(
@@ -241,7 +241,7 @@ pub fn player_shoot_system(
 
         // 计算子弹初始位置（坦克前方）
         let bullet_pos =
-            transform.translation + direction.extend(0.0) * (TANK_HEIGHT / 2.0 + BULLET_SIZE);
+            transform.translation + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
 
         // 玩家子弹速度 = PLAYER_BULLET_SPEED × (1 + fire_speed百分比/100)
         let fire_speed_bonus = player_stats.fire_speed as f32 / 100.0;

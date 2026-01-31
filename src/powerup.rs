@@ -214,9 +214,9 @@ pub fn spawn_power_ups_air_cushion(
     let powerup_type = PowerUp::Shell;
 
     // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
+    // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
     // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
-    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
+    let top_forbidden_y = MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT;
     let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
@@ -258,9 +258,9 @@ pub fn spawn_power_ups_random(
     let powerup_type = powerup_types[rng.random_range(0..powerup_types.len())];
 
     // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - TANK_HEIGHT 到 MAP_TOP_Y）
+    // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
     // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
-    let top_forbidden_y = MAP_TOP_Y - TANK_HEIGHT;
+    let top_forbidden_y = MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT;
     let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
