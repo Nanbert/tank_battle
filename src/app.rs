@@ -89,6 +89,8 @@ pub fn configure_game_resources(app: &mut App) {
             spark: Handle::default(),
             smoke: Handle::default(),
             bubble: Handle::default(),
+            energy_blue_ball: Handle::default(),
+            energy_red_ball: Handle::default(),
             forest_fire: Handle::default(),
         })
         .insert_resource(MapResources {
@@ -399,6 +401,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            laser::animate_energy_ball.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             effects::animate_forest_fire.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -606,6 +612,8 @@ pub fn init_game_resources(
         spark: asset_server.load(TEXTURE_STEEL_HIT),
         smoke: asset_server.load(TEXTURE_SMOKE),
         bubble: asset_server.load(TEXTURE_BUBBLE),
+        energy_blue_ball: asset_server.load(TEXTURE_ENERGY_BLUE_BALL),
+        energy_red_ball: asset_server.load(TEXTURE_ENERGY_RED_BALL),
         forest_fire: asset_server.load(TEXTURE_TREE_FIRE_SHEET),
     });
 

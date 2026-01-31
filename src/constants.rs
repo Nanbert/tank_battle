@@ -52,6 +52,8 @@ pub const IMAGE_WECHAT: &str = "wechat.png";
 // 特效纹理路径常量
 pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
 pub const TEXTURE_ENEMY_BORN: &str = "effect/enemy_born.png";
+pub const TEXTURE_ENERGY_BLUE_BALL: &str = "effect/energy_blue_ball.png";
+pub const TEXTURE_ENERGY_RED_BALL: &str = "effect/energy_red_ball.png";
 pub const TEXTURE_EXPLOSION: &str = "effect/explosion.png";
 pub const TEXTURE_MUSIC_NOTE: &str = "effect/music_note_sheet.png";
 pub const TEXTURE_SMOKE: &str = "effect/smoke_sprite.png";
@@ -306,6 +308,9 @@ pub struct Spark;
 pub struct Smoke;
 
 #[derive(Component)]
+pub struct EnergyBall;
+
+#[derive(Component)]
 pub struct GameOverTimer;
 
 #[derive(Component)]
@@ -453,6 +458,7 @@ pub const ANIMATION_FRAME_LASER: f32 = 0.05; // 激光动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
+pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.05; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER_MUSIC: f32 = 0.1; // 指挥官音乐动画帧间隔
 pub const ANIMATION_FRAME_START_BACKGROUND: f32 = 0.15; // 开始界面背景动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
@@ -493,6 +499,7 @@ pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数
 pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
 pub const LASER_COLLIDER_HALF_WIDTH: f32 = 35.0; // 激光碰撞体半宽
 pub const LASER_COLLIDER_HALF_HEIGHT: f32 = 683.0; // 激光碰撞体半高
+#[allow(dead_code)]
 pub const LASER_CHARGE_PROGRESS_BAR_WIDTH: f32 = 100.0; // 激光蓄力进度条宽度
 
 // 敌方坦克
@@ -522,11 +529,15 @@ pub const EXPLOSION_TILE_SIZE: f32 = 512.0; // 爆炸瓦片尺寸
 pub const SPARK_TILE_SIZE: f32 = 1024.0; // 火花瓦片尺寸
 pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
 pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
+pub const ENERGY_BALL_TILE_WIDTH: f32 = 675.0; // 能量球瓦片宽度
+pub const ENERGY_BALL_TILE_HEIGHT: f32 = 488.0; // 能量球瓦片高度
 
 // 特效显示尺寸
 pub const SMOKE_DISPLAY_SIZE: f32 = 100.0; // 烟雾显示尺寸
 pub const EXPLOSION_DISPLAY_SIZE: f32 = 300.0; // 爆炸显示尺寸
 pub const SPARK_DISPLAY_SIZE: f32 = 200.0; // 火花显示尺寸
+pub const ENERGY_BALL_DISPLAY_WIDTH: f32 = 405.0; // 能量球显示宽度 (675 * 0.6)
+pub const ENERGY_BALL_DISPLAY_HEIGHT: f32 = 293.0; // 能量球显示高度 (488 * 0.6)
 
 // 地形纹理和显示尺寸
 pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
@@ -573,6 +584,7 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
 pub const LASER_COLLISION_FRAME_INTERVAL: u32 = 5; // 激光碰撞检测帧间隔
 pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
+pub const ENERGY_BALL_END_FRAME: usize = 84; // 能量球动画结束帧（85帧：0-84）
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数
 pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01; // 敌方坦克射击概率
 pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4; // 随机转向概率

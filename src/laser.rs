@@ -83,6 +83,7 @@ pub fn spawn_laser(
 pub fn player_laser_system(
     mut commands: Commands,
     laser_resources: Res<LaserResources>,
+    effect_resources: Res<EffectResources>,
     time: Res<Time>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<
@@ -155,6 +156,8 @@ pub fn player_laser_system(
             start_charge(
                 &mut commands,
                 &player_info,
+                &effect_resources,
+                &mut texture_atlas_layouts,
                 entity,
                 transform,
                 player_tank.tank_type,
@@ -209,6 +212,8 @@ fn cancel_charge(
 fn start_charge(
     commands: &mut Commands,
     player_info: &ResMut<PlayerInfo>,
+    effect_resources: &EffectResources,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
@@ -234,25 +239,57 @@ fn start_charge(
     // 播放蓄力音效
     commands.spawn((AudioPlayer::new(sound_resources.laser_charge.clone()), LaserChargeSound));
 
-    // 创建蓄力进度条
+    // 根据玩家类型选择能量球颜色
+    let energy_ball_texture = match tank_type {
+        TankType::Player1 => effect_resources.energy_blue_ball.clone(),
+        TankType::Player2 => effect_resources.energy_red_ball.clone(),
+        TankType::Enemy => unreachable!(),
+    };
+
+    let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
+    let energy_ball_texture_atlas = TextureAtlasLayout::from_grid(energy_ball_tile_size, 17, 5, None, None);
+    let energy_ball_texture_atlas_layout = texture_atlas_layouts.add(energy_ball_texture_atlas);
+    let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
+
+    // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
+    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
+    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
+    let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+
+    // 计算垂直向量（顺时针方向）：将方向向量旋转90度
+    // (x, y) 旋转90度顺时针得到 (y, -x)
+    let perp_direction = Vec2::new(direction.y, -direction.x);
+
+    let energy_ball_pos = transform.translation
+        + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE + 5.0)
+        + perp_direction.extend(0.0) * 7.0;
+
     commands.spawn((
         PlayingEntity,
+        EnergyBall,
         LaserChargeProgressBar {
             player_entity: entity,
         },
         Sprite {
-            color: COLOR_GREEN,
-            custom_size: Some(Vec2::new(
-                LASER_CHARGE_PROGRESS_BAR_WIDTH,
-                PROGRESS_BAR_HEIGHT,
-            )),
+            image: energy_ball_texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: energy_ball_texture_atlas_layout,
+                index: energy_ball_animation_indices.first,
+            }),
+            custom_size: Some(Vec2::new(ENERGY_BALL_DISPLAY_WIDTH, ENERGY_BALL_DISPLAY_HEIGHT)),
             ..default()
         },
-        Transform::from_xyz(
-            transform.translation.x,
-            transform.translation.y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
-            Z_PROGRESS_BAR,
-        ),
+        Transform {
+            translation: energy_ball_pos,
+            rotation: Quat::from_rotation_z(actual_angle - std::f32::consts::FRAC_PI_2),
+            scale: Vec3::ONE,
+        },
+        energy_ball_animation_indices,
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_ENERGY_BALL,
+            TimerMode::Repeating,
+        )),
+        CurrentAnimationFrame(0),
     ));
 }
 
@@ -274,16 +311,6 @@ fn update_charge(
     for (e, mut charge) in charge_query.iter_mut() {
         if e == entity && charge.tank_type == tank_type {
             charge.timer.tick(time.delta());
-
-            // 更新进度条
-            let progress = charge.timer.elapsed_secs() / charge.timer.duration().as_secs_f32();
-            let bar_width = LASER_CHARGE_PROGRESS_BAR_WIDTH * (1.0 - progress);
-
-            for (_, mut sprite, progress_bar) in progress_bar_query.iter_mut() {
-                if progress_bar.player_entity == entity {
-                    sprite.custom_size = Some(Vec2::new(bar_width, PROGRESS_BAR_HEIGHT));
-                }
-            }
 
             // 蓄力完成，发射激光
             if charge.timer.just_finished() {
@@ -563,6 +590,38 @@ pub fn animate_laser(
                     let () = commands.entity(despawn_entity).try_despawn();
                 }
                 let () = commands.entity(entity).try_despawn();
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+/// 处理能量球动画
+pub fn animate_energy_ball(
+    time: Res<Time>,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<EnergyBall>,
+    >,
+) {
+    for (_entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，保持在最后一帧（蓄力完成时会由 fire_laser 清理）
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = indices.last;
+                }
             } else if let Some(atlas) = &mut sprite.texture_atlas {
                 let next_index = current + 1;
                 current_frame.0 = next_index;

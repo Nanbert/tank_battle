@@ -300,6 +300,8 @@ pub struct EffectResources {
     pub spark: Handle<Image>,
     pub smoke: Handle<Image>,
     pub bubble: Handle<Image>,
+    pub energy_blue_ball: Handle<Image>,
+    pub energy_red_ball: Handle<Image>,
     pub forest_fire: Handle<Image>,
 }
 
