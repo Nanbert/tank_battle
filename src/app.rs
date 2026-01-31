@@ -189,6 +189,16 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            (
+                |mut commands: Commands, entities: Query<Entity, With<crate::constants::PlayingEntity>>| {
+                    for entity in entities.iter() {
+                        let () = commands.entity(entity).try_despawn();
+                    }
+                },
+            ).run_if(in_state(GameState::StartScreen)),
+        )
+        .add_systems(
+            Update,
             menus_ui::spawn_start_screen.run_if(
                 |query: Query<(), With<crate::constants::StartScreenUI>>| {
                     query.is_empty()
