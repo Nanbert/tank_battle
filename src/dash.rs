@@ -13,6 +13,7 @@ use crate::effects;
 use crate::constants::*;
 use crate::resources::{
     DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged, StatType, EffectResources, SoundResources,
+    InsufficientEnergyTracker,
 };
 
 /// 处理冲刺输入
@@ -22,7 +23,16 @@ pub fn handle_dash_input(
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     mut dash_timers: ResMut<DashTimers>,
     mut player_info: ResMut<PlayerInfo>,
+    mut energy_tracker: ResMut<InsufficientEnergyTracker>,
+    font_resources: Res<crate::resources::FontResources>,
+    language: Res<crate::resources::Language>,
+    time: Res<Time>,
 ) {
+    // 更新所有能量不足冷却计时器
+    for timer in energy_tracker.cooldowns.values_mut() {
+        timer.tick(time.delta());
+    }
+
     for (entity, transform, player_tank) in &query {
         // 检查是否正在冲刺
         let is_dashing = dash_timers.timers.contains_key(&entity);
@@ -59,6 +69,31 @@ pub fn handle_dash_input(
 
                 // 添加冲刺标记
                 commands.entity(entity).insert(IsDashing);
+            } else {
+                // 能量不足，检查冷却是否结束
+                let can_show_warning = energy_tracker
+                    .cooldowns
+                    .get(&entity)
+                    .is_none_or(bevy::prelude::Timer::is_finished);
+
+                if can_show_warning {
+                    // 设置能量不足提示冷却时间
+                    energy_tracker
+                        .cooldowns
+                        .insert(
+                            entity,
+                            Timer::from_seconds(INSUFFICIENT_ENERGY_DISPLAY_DURATION, TimerMode::Once),
+                        );
+
+                    // 触发能量不足提示
+                    crate::overlay_ui::spawn_insufficient_energy_warning(
+                        commands.reborrow(),
+                        font_resources.cn.clone(),
+                        font_resources.en.clone(),
+                        player_tank.tank_type,
+                        *language,
+                    );
+                }
             }
         }
     }

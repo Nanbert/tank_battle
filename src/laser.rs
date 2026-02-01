@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use crate::bullet::BulletOwner;
 use crate::constants::*;
-use crate::resources::{LaserResources, PlayerInfo, EffectResources, SoundResources};
+use crate::resources::{LaserResources, PlayerInfo, EffectResources, SoundResources, InsufficientEnergyTracker, Language};
 
 /// 激光生成参数
 pub struct LaserSpawnParams {
@@ -102,6 +102,9 @@ pub fn player_laser_system(
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
     sound_resources: Res<SoundResources>,
+    mut energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+    font_resources: Res<crate::resources::FontResources>,
+    language: Res<crate::resources::Language>,
 ) {
     for (entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
         // 卫语句：正在旋转则跳过
@@ -136,6 +139,11 @@ pub fn player_laser_system(
             continue;
         }
 
+        // 更新能量不足冷却计时器（必须在检查之前更新）
+        for timer in energy_tracker.cooldowns.values_mut() {
+            timer.tick(time.delta());
+        }
+
         // 处理蓄力逻辑
         if has_charge {
             update_charge(
@@ -162,6 +170,10 @@ pub fn player_laser_system(
                 transform,
                 player_tank.tank_type,
                 &sound_resources,
+                &mut energy_tracker,
+                &font_resources.cn,
+                &font_resources.en,
+                &language,
             );
         }
     }
@@ -218,6 +230,10 @@ fn start_charge(
     transform: &Transform,
     tank_type: TankType,
     sound_resources: &SoundResources,
+    energy_tracker: &mut InsufficientEnergyTracker,
+    font_cn: &Handle<Font>,
+    font_en: &Handle<Font>,
+    language: &Language,
 ) {
     let player_stats = match tank_type {
         TankType::Player1 => &player_info.player1,
@@ -227,6 +243,30 @@ fn start_charge(
 
     // 检查蓝量是否足够（需要3点蓝量）
     if player_stats.energy_points < 3 {
+        // 检查冷却是否结束
+        let can_show_warning = energy_tracker
+            .cooldowns
+            .get(&entity)
+            .is_none_or(bevy::prelude::Timer::is_finished);
+
+        if can_show_warning {
+            // 设置能量不足提示冷却时间
+            energy_tracker
+                .cooldowns
+                .insert(
+                    entity,
+                    Timer::from_seconds(INSUFFICIENT_ENERGY_DISPLAY_DURATION, TimerMode::Once),
+                );
+
+            // 触发能量不足提示
+            crate::overlay_ui::spawn_insufficient_energy_warning(
+                commands.reborrow(),
+                font_cn.clone(),
+                font_en.clone(),
+                tank_type,
+                *language,
+            );
+        }
         return;
     }
 

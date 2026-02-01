@@ -235,6 +235,12 @@ pub struct DashDamageTracker {
     pub has_taken_damage: HashSet<Entity>, // 记录本次 dash 已经扣血的玩家坦克
 }
 
+// 能量不足提示冷却追踪器，防止重复触发提示
+#[derive(Resource, Default)]
+pub struct InsufficientEnergyTracker {
+    pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的能量不足提示冷却计时器
+}
+
 // 地形纹理图集布局资源
 #[derive(Resource)]
 pub struct TerrainAtlasLayouts {

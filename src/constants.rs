@@ -138,6 +138,7 @@ pub const COLOR_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 灰色
 pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 暗灰色
 pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明白色
 pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
+pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
 
 pub const COMMANDER_WIDTH: f32 = 100.0;
 pub const COMMANDER_HEIGHT: f32 = 100.0;
@@ -447,6 +448,14 @@ pub struct LaserChargeSound;
 #[derive(Component, Deref, DerefMut)]
 pub struct PlayerInfoBlinkTimer(pub Timer);
 
+/// 能量不足提示文本组件
+#[derive(Component)]
+pub struct InsufficientEnergyText;
+
+/// 能量不足提示计时器
+#[derive(Component, Deref, DerefMut)]
+pub struct InsufficientEnergyTimer(pub Timer);
+
 /// 关卡信息文本标记
 #[derive(Component)]
 pub struct StageText;
@@ -505,6 +514,7 @@ pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改�
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间
 pub const LASER_CHARGE_TIME: f32 = 4.0; // 激光蓄力时间
 pub const BLUE_BAR_REGEN_INTERVAL: f32 = 5.0; // 蓝条恢复间隔
+pub const INSUFFICIENT_ENERGY_DISPLAY_DURATION: f32 = 2.0; // 能量不足提示显示时长（秒）
 
 // ==================== 尺寸常量 ====================
 // 进度条
@@ -651,6 +661,7 @@ pub const HUD_Y_FIRE_SHELL: f32 = 370.0; // 火焰炮弹效果
 pub const HUD_Y_PENETRATE: f32 = 420.0; // 穿透效果
 pub const HUD_Y_TRACK_CHAIN: f32 = 470.0; // 履带链效果
 pub const HUD_Y_AIR_CUSHION: f32 = 520.0; // 气垫效果
+pub const HUD_Y_INSUFFICIENT_ENERGY: f32 = 610.0; // 能量不足提示（在效果和名称中间，下移60像素）
 pub const HUD_Y_SCORE: f32 = 50.0; // 分数
 pub const HUD_Y_AVATAR: f32 = 150.0; // 玩家头像
 pub const HUD_BAR_Y_OFFSET_HEALTH: f32 = 235.0; // 血条 Y 偏移
@@ -673,3 +684,4 @@ pub const FONT_SIZE_TITLE: f32 = 60.0; // 标题字体
 pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体
 pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
+pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）

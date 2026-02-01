@@ -456,3 +456,95 @@ pub fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<Ga
         let () = commands.entity(entity).try_despawn();
     }
 }
+
+/// 生成能量不足提示
+pub fn spawn_insufficient_energy_warning(
+    mut commands: Commands,
+    font_cn: Handle<Font>,
+    font_en: Handle<Font>,
+    tank_type: TankType,
+    language: Language,
+) {
+    let font = match language {
+        Language::Chinese => font_cn,
+        Language::English => font_en,
+    };
+
+    let (text_cn, text_en) = match tank_type {
+        TankType::Player1 => ("能量不足!!", "Insufficient Energy!!"),
+        TankType::Player2 => ("能量不足!!", "Insufficient Energy!!"),
+        TankType::Enemy => unreachable!("敌方坦克不应该触发能量不足提示"),
+    };
+
+    let text = match language {
+        Language::Chinese => text_cn,
+        Language::English => text_en,
+    };
+
+    // 根据玩家类型选择 X 位置（玩家1在左侧，玩家2在右侧）
+    let x_pos = match tank_type {
+        TankType::Player1 => WINDOW_LEFT_X + 115.0,
+        TankType::Player2 => WINDOW_RIGHT_X - 115.0,
+        TankType::Enemy => unreachable!(),
+    };
+
+    // Y 位置在效果和名称中间
+    let y_pos = WINDOW_TOP_Y - HUD_Y_INSUFFICIENT_ENERGY;
+
+    // 使用金色字体
+    commands.spawn((
+        InsufficientEnergyText,
+        Text2d(text.to_string()),
+        TextFont {
+            font_size: FONT_SIZE_INSUFFICIENT_ENERGY,
+            font,
+            ..default()
+        },
+        TextColor(COLOR_GOLD),
+        Transform::from_xyz(x_pos, y_pos, Z_UI),
+        InsufficientEnergyTimer(Timer::from_seconds(
+            INSUFFICIENT_ENERGY_DISPLAY_DURATION,
+            TimerMode::Once,
+        )),
+    ));
+}
+
+/// 更新能量不足提示计时器
+pub fn update_insufficient_energy_warnings(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut InsufficientEnergyTimer, &mut TextColor)>,
+) {
+    for (entity, mut timer, mut color) in &mut query {
+        timer.tick(time.delta());
+
+        // 计算闪烁效果：2秒内闪烁2次
+        // 闪烁周期 = 2秒 / 2次 = 1秒
+        let elapsed = timer.elapsed_secs();
+        let blink_period = INSUFFICIENT_ENERGY_DISPLAY_DURATION / 2.0; // 1秒
+
+        // 计算当前在闪烁周期中的位置
+        let cycle_progress = (elapsed % blink_period) / blink_period;
+
+        // 前50%显示金色，后50%隐藏
+        if cycle_progress < 0.5 {
+            color.0 = COLOR_GOLD; // 显示金色
+        } else {
+            color.0 = COLOR_TRANSPARENT_BLACK; // 隐藏
+        }
+
+        if timer.just_finished() {
+            let () = commands.entity(entity).try_despawn();
+        }
+    }
+}
+
+/// 销毁所有能量不足提示
+pub fn despawn_insufficient_energy_warnings(
+    mut commands: Commands,
+    query: Query<Entity, With<InsufficientEnergyText>>,
+) {
+    for entity in query.iter() {
+        let () = commands.entity(entity).try_despawn();
+    }
+}

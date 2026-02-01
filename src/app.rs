@@ -152,6 +152,7 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(DashTimers::default())
         .insert_resource(DashDamageTracker::default())
         .insert_resource(BarrierDamageTracker::default())
+        .insert_resource(InsufficientEnergyTracker::default())
         .init_resource::<BlueBarRegenTimer>()
         .insert_resource(StartAnimationFrames::default())
         .insert_resource(FadingOut { alpha: 1.0 })
@@ -512,6 +513,14 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             Update,
             laser::handle_recoil_force.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            overlay_ui::update_insufficient_energy_warnings.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            OnExit(GameState::Paused),
+            (overlay_ui::despawn_pause_ui, overlay_ui::despawn_insufficient_energy_warnings).chain(),
         )
         .add_systems(
             Update,
