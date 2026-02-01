@@ -330,6 +330,7 @@ pub struct PowerUpResources {
     pub fire_speed: Handle<Image>,
     pub fire_shell: Handle<Image>,
     pub track_chain: Handle<Image>,
+    pub track_train: Handle<Image>,
     pub penetrate: Handle<Image>,
     pub repair: Handle<Image>,
     pub hamburger: Handle<Image>,

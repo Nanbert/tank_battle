@@ -203,15 +203,15 @@ pub fn handle_powerup_collision(
 
 /// 生成道具
 ///
-/// 根据关卡选择道具类型，第一关强制生成 shell 道具，其他关卡随机选择。
+/// 根据关卡选择道具类型，第一关强制生成 track_chain 道具，其他关卡随机选择。
 /// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
-/// 第一关强制生成 shell 道具
+/// 第一关强制生成 track_chain 道具
 pub fn spawn_power_ups_air_cushion(
     mut commands: Commands,
     powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let powerup_type = PowerUp::Shell;
+    let powerup_type = PowerUp::TrackChain;
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
@@ -337,5 +337,152 @@ fn spawn_powerup_batch(
 pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<PowerUp>>) {
     for entity in powerups.iter() {
         let () = commands.entity(entity).try_despawn();
+    }
+}
+
+/// 更新履带特效
+/// 根据玩家是否拥有 track_chain 能力，动态添加或移除履带子实体
+pub fn update_track_chain_effect(
+    mut commands: Commands,
+    player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
+    track_chain_effects: Query<&crate::constants::TrackChainEffect>,
+    player_info: Res<PlayerInfo>,
+    powerup_resources: Res<PowerUpResources>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    for (entity, children, player_tank) in player_tanks.iter() {
+        // 检查玩家是否有 track_chain 能力
+        let has_track_chain = match player_tank.tank_type {
+            TankType::Player1 => player_info.player1.track_chain,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .is_some_and(|stats| stats.track_chain),
+            TankType::Enemy => false,
+        };
+
+        if has_track_chain {
+            // 检查是否已经有履带特效子实体
+            let has_track_chain_sprite = children.is_some_and(|children| {
+                children.iter().any(|child| track_chain_effects.contains(child))
+            });
+
+            if !has_track_chain_sprite {
+                // 使用预加载的履带纹理
+                let track_train_texture = powerup_resources.track_train.clone();
+                let track_train_tile_size = UVec2::new(
+                    crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
+                    crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
+                );
+                let track_train_texture_atlas =
+                    TextureAtlasLayout::from_grid(track_train_tile_size, 2, 1, None, None);
+                let track_train_texture_atlas_layout =
+                    texture_atlas_layouts.add(track_train_texture_atlas);
+                let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
+
+                // 创建履带特效实体
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn((
+                        Sprite {
+                            image: track_train_texture,
+                            texture_atlas: Some(TextureAtlas {
+                                layout: track_train_texture_atlas_layout,
+                                index: track_train_animation_indices.first,
+                            }),
+                            custom_size: Some(Vec2::new(
+                                crate::constants::TRACK_CHAIN_DISPLAY_WIDTH,
+                                crate::constants::TRACK_CHAIN_DISPLAY_HEIGHT,
+                            )),
+                            ..default()
+                        },
+                        Transform::from_xyz(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1), // 略高于坦克
+                        track_train_animation_indices,
+                        AnimationTimer(Timer::from_seconds(
+                            crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
+                            TimerMode::Repeating,
+                        )),
+                        CurrentAnimationFrame(0),
+                        crate::constants::TrackChainEffect,
+                    ));
+                });
+            }
+        } else {
+            // 移除所有履带特效子实体
+            if let Some(children) = children {
+                for child in children.iter() {
+                    if track_chain_effects.contains(child) {
+                        let () = commands.entity(child).try_despawn();
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// 履带动画系统
+/// 仅在坦克移动时播放履带动画，静止时停止
+pub fn animate_track_chain(
+    time: Res<Time>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    player_tanks: Query<(&PlayerTank, &Children), With<PlayerTank>>,
+    mut track_chain_query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<TrackChainEffect>,
+    >,
+) {
+    // 先收集所有履带子实体及其父坦克的移动状态
+    let mut track_chain_moving = std::collections::HashMap::new();
+
+    for (player_tank, children) in player_tanks.iter() {
+        // 根据玩家类型检测键盘输入，判断是否在移动
+        let is_moving = if player_tank.tank_type == TankType::Player1 {
+            // 玩家1使用 WASD
+            keyboard_input.pressed(KeyCode::KeyW)
+                || keyboard_input.pressed(KeyCode::KeyS)
+                || keyboard_input.pressed(KeyCode::KeyA)
+                || keyboard_input.pressed(KeyCode::KeyD)
+        } else {
+            // 玩家2使用方向键
+            keyboard_input.pressed(KeyCode::ArrowUp)
+                || keyboard_input.pressed(KeyCode::ArrowDown)
+                || keyboard_input.pressed(KeyCode::ArrowLeft)
+                || keyboard_input.pressed(KeyCode::ArrowRight)
+        };
+
+        for child in children {
+            track_chain_moving.insert(child, is_moving);
+        }
+    }
+
+    // 更新履带动画
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in track_chain_query.iter_mut() {
+        // 检查父坦克是否在移动
+        let is_moving = track_chain_moving.get(&entity).copied().unwrap_or(false);
+
+        if is_moving {
+            // 移动时播放动画
+            timer.tick(time.delta());
+            if timer.just_finished() {
+                let current = current_frame.0;
+                let next_index = if current == indices.last {
+                    indices.first
+                } else {
+                    current + 1
+                };
+                current_frame.0 = next_index;
+                if let Some(atlas) = &mut sprite.texture_atlas {
+                    atlas.index = next_index;
+                }
+            }
+        } else {
+            // 静止时停止动画，重置计时器
+            timer.reset();
+        }
     }
 }

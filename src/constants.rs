@@ -115,6 +115,13 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
     ),
 ];
 
+// ==================== 履带道具常量 ====================
+pub const TRACK_CHAIN_TILE_WIDTH: f32 = 688.0; // 履带瓦片宽度 (1376 / 2帧)
+pub const TRACK_CHAIN_TILE_HEIGHT: f32 = 768.0; // 履带瓦片高度
+pub const TRACK_CHAIN_DISPLAY_WIDTH: f32 = 80.0; // 履带显示宽度
+pub const TRACK_CHAIN_DISPLAY_HEIGHT: f32 = 90.0; // 履带显示高度
+pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
+
 // ==================== 颜色常量 ====================
 pub const COLOR_BACKGROUND: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 黑色
@@ -294,6 +301,10 @@ pub struct IsDashing;
 // 玩家气垫船特效标记
 #[derive(Component)]
 pub struct BubbleEffect;
+
+// 玩家履带特效标记
+#[derive(Component)]
+pub struct TrackChainEffect;
 
 #[derive(Component)]
 pub struct Explosion;

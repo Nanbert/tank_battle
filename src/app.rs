@@ -110,6 +110,7 @@ pub fn configure_game_resources(app: &mut App) {
             fire_speed: Handle::default(),
             fire_shell: Handle::default(),
             track_chain: Handle::default(),
+            track_train: Handle::default(),
             penetrate: Handle::default(),
             repair: Handle::default(),
             hamburger: Handle::default(),
@@ -524,6 +525,14 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            powerup::update_track_chain_effect.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            powerup::animate_track_chain.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             game_state::update_menu_blink.run_if(in_state(GameState::StartScreen)),
         )
         .add_systems(
@@ -646,6 +655,7 @@ pub fn init_game_resources(
         fire_speed: asset_server.load("power_up/fire_speed.png"),
         fire_shell: asset_server.load("power_up/fire_shell.png"),
         track_chain: asset_server.load("power_up/track_chain.png"),
+        track_train: asset_server.load("texture/track_train.png"),
         penetrate: asset_server.load("power_up/penetrate.png"),
         repair: asset_server.load("power_up/repair.png"),
         hamburger: asset_server.load("power_up/hamburger.png"),
