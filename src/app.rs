@@ -71,6 +71,8 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(PlayerTankResources {
             player1: Handle::default(),
             player2: Handle::default(),
+            single_barrel: Handle::default(),
+            double_barrel: Handle::default(),
         })
         .insert_resource(CommanderResources {
             texture: Handle::default(),
@@ -362,6 +364,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            player::update_barrel_system.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -592,6 +598,8 @@ pub fn init_game_resources(
     commands.insert_resource(PlayerTankResources {
         player1: asset_server.load(TEXTURE_PLAYER_TANK1),
         player2: asset_server.load(TEXTURE_PLAYER_TANK2),
+        single_barrel: asset_server.load(TEXTURE_SINGLE_BARREL),
+        double_barrel: asset_server.load(TEXTURE_DOUBLE_BARREL),
     });
 
     // 司令官资源

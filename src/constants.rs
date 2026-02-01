@@ -65,8 +65,10 @@ pub const TEXTURE_LASER_RED: &str = "effect/texture_laser_red.png";
 pub const TEXTURE_COMMANDER: &str = "texture/commander.png";
 pub const TEXTURE_COMMANDER_DEAD: &str = "texture/commander_dead.png";
 pub const TEXTURE_AVATAR: &str = "texture/avatar.png";
-pub const TEXTURE_PLAYER_TANK1: &str = "texture/player_tank1_sprite.png";
-pub const TEXTURE_PLAYER_TANK2: &str = "texture/player_tank2_sprite.png";
+pub const TEXTURE_PLAYER_TANK1: &str = "texture/player_tank1.png";
+pub const TEXTURE_PLAYER_TANK2: &str = "texture/player_tank2.png";
+pub const TEXTURE_SINGLE_BARREL: &str = "texture/single_barrel.png";
+pub const TEXTURE_DOUBLE_BARREL: &str = "texture/double_barrel.png";
 pub const TEXTURE_AVATAR_DEATH: &str = "texture/avatar_death.png";
 pub const TEXTURE_AVATAR_COMMANDER_DEAD: &str = "texture/avatar_commander_dead.png";
 
@@ -306,6 +308,10 @@ pub struct BubbleEffect;
 #[derive(Component)]
 pub struct TrackChainEffect;
 
+// 炮管组件标记
+#[derive(Component)]
+pub struct Barrel;
+
 #[derive(Component)]
 pub struct Explosion;
 
@@ -530,6 +536,12 @@ pub const PLAYER_COLLIDER_HALF: f32 = 35.0; // 玩家坦克碰撞体半宽/高
 pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移
 pub const PLAYER_TILE_WIDTH: f32 = 293.0; // 玩家坦克瓦片宽度
 pub const PLAYER_TILE_HEIGHT: f32 = 328.0; // 玩家坦克瓦片高度
+
+// 炮管显示尺寸
+pub const SINGLE_BARREL_DISPLAY_WIDTH: f32 = 80.0; // 单管炮管显示宽度
+pub const SINGLE_BARREL_DISPLAY_HEIGHT: f32 = 90.0; // 单管炮管显示高度
+pub const DOUBLE_BARREL_DISPLAY_WIDTH: f32 = 80.0; // 双管炮管显示宽度
+pub const DOUBLE_BARREL_DISPLAY_HEIGHT: f32 = 90.0; // 双管炮管显示高度
 
 // 子弹
 pub const BULLET_WIDTH: f32 = 60.0; // 子弹宽度

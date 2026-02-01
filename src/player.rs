@@ -823,3 +823,80 @@ pub fn init_players(
         &player_tank_resources,
     );
 }
+
+/// 更新玩家坦克炮管
+/// 根据玩家 shells 数量动态添加或更新炮管纹理
+/// shells = 1: 单管炮管
+/// shells = 2: 双管炮管
+pub fn update_barrel_system(
+    mut commands: Commands,
+    player_tanks: Query<(Entity, Option<&Children>, &PlayerTank, &Transform), With<PlayerTank>>,
+    barrels: Query<(Entity, &Sprite), With<Barrel>>,
+    player_info: Res<PlayerInfo>,
+    player_tank_resources: Res<PlayerTankResources>,
+) {
+    for (entity, children, player_tank, _transform) in player_tanks.iter() {
+        // 获取玩家的 shells 数量
+        let shells = match player_tank.tank_type {
+            TankType::Player1 => player_info.player1.shells,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .map_or(1, |stats| stats.shells),
+            TankType::Enemy => 1,
+        };
+
+        // 根据 shells 数量选择炮管纹理和尺寸
+        let (barrel_texture, barrel_display_size) = if shells == 1 {
+            (
+                player_tank_resources.single_barrel.clone(),
+                Vec2::new(SINGLE_BARREL_DISPLAY_WIDTH, SINGLE_BARREL_DISPLAY_HEIGHT),
+            )
+        } else {
+            (
+                player_tank_resources.double_barrel.clone(),
+                Vec2::new(DOUBLE_BARREL_DISPLAY_WIDTH, DOUBLE_BARREL_DISPLAY_HEIGHT),
+            )
+        };
+
+        // 检查是否已经有炮管子实体
+        let mut barrel_entity: Option<Entity> = None;
+        if let Some(children) = children {
+            for child in children {
+                if barrels.get(*child).is_ok() {
+                    barrel_entity = Some(*child);
+                    break;
+                }
+            }
+        }
+
+        if let Some(barrel_ent) = barrel_entity {
+            // 如果已有炮管，只更新其纹理
+            // 炮管位置固定，作为子实体会自动跟随父实体旋转
+            if let Ok((_, sprite)) = barrels.get(barrel_ent) {
+                // 检查纹理是否已更改
+                if sprite.image != barrel_texture {
+                    commands.entity(barrel_ent).insert(Sprite {
+                        image: barrel_texture,
+                        custom_size: Some(barrel_display_size),
+                        ..default()
+                    });
+                }
+            }
+        } else {
+            // 如果没有炮管，添加炮管作为子实体
+            // 炮管位于坦克中心前方，会自动跟随坦克旋转
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn((
+                    Barrel,
+                    Sprite {
+                        image: barrel_texture,
+                        custom_size: Some(barrel_display_size),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, 0.1), // 炮管位于坦克中心
+                ));
+            });
+        }
+    }
+}

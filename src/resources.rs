@@ -268,6 +268,8 @@ pub struct FontResources {
 pub struct PlayerTankResources {
     pub player1: Handle<Image>,
     pub player2: Handle<Image>,
+    pub single_barrel: Handle<Image>,
+    pub double_barrel: Handle<Image>,
 }
 
 /// 司令官资源
