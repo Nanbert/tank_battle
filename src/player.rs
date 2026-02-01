@@ -900,3 +900,35 @@ pub fn update_barrel_system(
         }
     }
 }
+
+/// 处理炮管后坐力效果
+pub fn handle_barrel_recoil_force(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<(Entity, &mut Transform, &mut BarrelRecoilForce), With<Barrel>>,
+) {
+    for (entity, mut transform, mut recoil) in &mut query {
+        recoil.timer.tick(time.delta());
+
+        // 计算后坐力进度（0.0 到 1.0）
+        let progress = recoil.timer.elapsed_secs() / recoil.timer.duration().as_secs_f32();
+
+        if progress < 0.5 {
+            // 前半段：炮管向后移动
+            let recoil_progress = progress * 2.0; // 0.0 到 1.0
+            let offset = -BARREL_RECOIL_DISTANCE * recoil_progress;
+            transform.translation.y = offset;
+        } else {
+            // 后半段：炮管向前恢复
+            let recovery_progress = (progress - 0.5) * 2.0; // 0.0 到 1.0
+            let offset = -BARREL_RECOIL_DISTANCE * (1.0 - recovery_progress);
+            transform.translation.y = offset;
+        }
+
+        // 后坐力时间结束，移除组件并恢复位置
+        if recoil.timer.just_finished() {
+            transform.translation.y = 0.0;
+            commands.entity(entity).remove::<BarrelRecoilForce>();
+        }
+    }
+}

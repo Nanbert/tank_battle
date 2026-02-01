@@ -23,6 +23,8 @@ pub const SOUND_LASER: &str = "music/laser.ogg";
 pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
+pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
+pub const SOUND_ENEMY_SHOT: &str = "music/enemy_shot.ogg";
 
 // 子弹纹理路径常量
 pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
@@ -419,6 +421,12 @@ pub struct RecoilForce {
     pub timer: Timer,        // 后坐力持续时间
 }
 
+/// 炮管后坐力组件
+#[derive(Component)]
+pub struct BarrelRecoilForce {
+    pub timer: Timer, // 后坐力持续时间
+}
+
 /// 激光蓄力组件
 #[derive(Component)]
 pub struct LaserCharge {
@@ -512,7 +520,9 @@ pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_
 
 // 激光
 pub const LASER_POSITION_OFFSET: f32 = 30.0; // 激光位置偏移
-pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数
+pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
+pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
+pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
 pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
 pub const LASER_COLLIDER_HALF_WIDTH: f32 = 35.0; // 激光碰撞体半宽
 pub const LASER_COLLIDER_HALF_HEIGHT: f32 = 683.0; // 激光碰撞体半高

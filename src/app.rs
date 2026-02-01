@@ -368,6 +368,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            player::handle_barrel_recoil_force.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -621,6 +625,8 @@ pub fn init_game_resources(
         laser: asset_server.load(SOUND_LASER),
         commander_get_shot: asset_server.load(SOUND_COMMANDER_GET_SHOT),
         commander_death: asset_server.load(SOUND_COMMANDER_DEATH),
+        player_shot: asset_server.load(SOUND_PLAYER_SHOT),
+        enemy_shot: asset_server.load(SOUND_ENEMY_SHOT),
     });
 
     // 特效纹理资源

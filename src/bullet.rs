@@ -190,14 +190,17 @@ pub fn player_shoot_system(
             &RotationTimer,
             &PlayerTank,
             &mut TankFireConfig,
+            Option<&Children>,
         ),
         With<PlayerTank>,
     >,
     mut bullet_tracker: ResMut<BulletTracker>,
     player_info: Res<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    barrel_query: Query<(), With<Barrel>>,
+    sound_resources: Res<SoundResources>,
 ) {
-    for (entity, transform, rotation_timer, player_tank, mut fire_config) in &mut query {
+    for (entity, transform, rotation_timer, player_tank, mut fire_config, children) in &mut query {
         // 检查是否正在旋转
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
@@ -261,6 +264,24 @@ pub fn player_shoot_system(
 
         // 记录子弹的所有者
         bullet_tracker.add_bullet(bullet_entity, entity);
+
+        // 播放玩家射击音效，音量 0.4
+        commands.spawn((
+            AudioPlayer::new(sound_resources.player_shot.clone()),
+            PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(0.4)),
+        ));
+
+        // 给炮管添加后坐力效果
+        if let Some(children) = children {
+            for child in children {
+                if barrel_query.get(*child).is_ok() {
+                    commands.entity(*child).insert(BarrelRecoilForce {
+                        timer: Timer::from_seconds(BARREL_RECOIL_DURATION, TimerMode::Once),
+                    });
+                    break;
+                }
+            }
+        }
 
         // 重置冷却时间
         fire_config.cooldown.reset();
