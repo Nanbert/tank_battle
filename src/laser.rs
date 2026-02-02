@@ -92,7 +92,6 @@ pub fn player_laser_system(
             &Transform,
             &RotationTimer,
             &PlayerTank,
-            &mut TankFireConfig,
         ),
         With<PlayerTank>,
     >,
@@ -106,7 +105,7 @@ pub fn player_laser_system(
     font_resources: Res<crate::resources::FontResources>,
     language: Res<crate::resources::Language>,
 ) {
-    for (entity, transform, rotation_timer, player_tank, _fire_config) in &mut query {
+    for (entity, transform, rotation_timer, player_tank) in &mut query {
         // 卫语句：正在旋转则跳过
         if rotation_timer.0.elapsed() < rotation_timer.0.duration() {
             continue;
@@ -277,7 +276,10 @@ fn start_charge(
     });
 
     // 播放蓄力音效
-    commands.spawn((AudioPlayer::new(sound_resources.laser_charge.clone()), LaserChargeSound));
+    commands.spawn((
+        AudioPlayer::new(sound_resources.laser_charge.clone()),
+        LaserChargeSound,
+    ));
 
     // 根据玩家类型选择能量球颜色
     let energy_ball_texture = match tank_type {
@@ -416,7 +418,9 @@ fn fire_laser(
     );
 
     // 播放激光音效
-    commands.spawn(AudioPlayer::new(sound_resources.laser.clone()));
+    commands.spawn((
+        AudioPlayer::new(sound_resources.laser.clone()),
+    ));
 
     // 应用后坐力
     let recoil_distance = PLAYER_TANK_DISPLAY_HEIGHT * RECOIL_DISTANCE_FACTOR;

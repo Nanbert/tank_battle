@@ -207,6 +207,7 @@ pub fn cleanup_effects_and_bullets(
     forest_fires: Query<Entity, With<crate::constants::ForestFire>>,
     energy_balls: Query<Entity, With<crate::constants::EnergyBall>>,
     lasers: Query<Entity, With<crate::constants::Laser>>,
+    audio_players: Query<Entity, With<bevy::audio::AudioPlayer>>,
     mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
 ) {
     // 清理所有子弹
@@ -245,9 +246,44 @@ pub fn cleanup_effects_and_bullets(
         let () = commands.entity(laser).try_despawn();
     }
 
+    // 清理所有音效播放器
+    for audio_player in audio_players.iter() {
+        let () = commands.entity(audio_player).try_despawn();
+    }
+
     // 强制重置 BulletTracker，防止状态不同步
     bullet_tracker.active_bullets.clear();
     bullet_tracker.bullet_to_tank.clear();
+}
+
+/// 清理所有追踪器和计时器
+/// 在进入 StageIntro 状态时调用，确保没有残留的追踪数据
+pub fn cleanup_trackers_and_timers(
+    mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
+    mut recall_timers: ResMut<crate::resources::RecallTimers>,
+    mut dash_timers: ResMut<crate::resources::DashTimers>,
+    mut dash_damage_tracker: ResMut<crate::resources::DashDamageTracker>,
+    mut barrier_damage_tracker: ResMut<crate::resources::BarrierDamageTracker>,
+    mut insufficient_energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+) {
+    // 清理 BulletTracker
+    bullet_tracker.active_bullets.clear();
+    bullet_tracker.bullet_to_tank.clear();
+
+    // 清理 RecallTimers
+    recall_timers.timers.clear();
+
+    // 清理 DashTimers
+    dash_timers.timers.clear();
+
+    // 清理 DashDamageTracker
+    dash_damage_tracker.has_taken_damage.clear();
+
+    // 清理 BarrierDamageTracker
+    barrier_damage_tracker.cooldowns.clear();
+
+    // 清理 InsufficientEnergyTracker
+    insufficient_energy_tracker.cooldowns.clear();
 }
 
 // 文本更新函数类型

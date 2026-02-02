@@ -98,6 +98,6 @@ pub fn load_level_file(level: usize) -> Option<LevelMap> {
 }
 
 /// 初始化关卡资源（不再预加载）
-pub fn load_level_assets(mut _level_assets: ResMut<LevelAssets>) {
+pub fn load_level_assets() {
     // 不再预加载关卡文件，改为按需加载
 }

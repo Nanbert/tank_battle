@@ -366,6 +366,7 @@ fn spawn_single_player_hud(
     commands.spawn((
         marker.clone(),
         PlayerAvatar,
+        PlayerUI { player_type },
         Sprite {
             image: player_avatar_texture,
             texture_atlas: Some(TextureAtlas {
@@ -1054,14 +1055,13 @@ pub fn animate_player_avatar(
             &mut Sprite,
             &AnimationIndices,
             &mut CurrentAnimationFrame,
-            Has<PlayerDead>,
         ),
         With<PlayerAvatar>,
     >,
 ) {
-    for (mut timer, mut sprite, indices, mut current_frame, is_dead) in &mut query {
-        // 玩家已死亡，不播放动画
-        if is_dead {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        // 只有当纹理图集存在时才播放动画（死亡头像没有纹理图集）
+        if sprite.texture_atlas.is_none() {
             continue;
         }
 
@@ -1085,14 +1085,44 @@ pub fn animate_player_avatar(
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(
     commander_resources: Res<CommanderResources>,
-    mut query: Query<(&mut Sprite, Has<PlayerDead>), With<PlayerAvatar>>,
+    player_info: Res<PlayerInfo>,
+    mut player_avatars: Query<(&mut Sprite, &PlayerUI), With<PlayerAvatar>>,
+    mut has_handled_player1: Local<bool>,
+    mut has_handled_player2: Local<bool>,
 ) {
-    for (mut sprite, is_dead) in &mut query {
-        if is_dead {
-            // 切换到死亡头像纹理
-            sprite.image = commander_resources.avatar_death.clone();
-            sprite.texture_atlas = None; // 死亡头像不需要动画
-            sprite.custom_size = Some(Vec2::new(160.0, 147.0));
+    // 处理玩家1头像
+    let player1_dead = player_info.player1.life_points == 0;
+    if player1_dead && !*has_handled_player1 {
+        for (mut sprite, player_ui) in &mut player_avatars {
+            if player_ui.player_type == TankType::Player1 {
+                sprite.image = commander_resources.avatar_death.clone();
+                sprite.texture_atlas = None; // 死亡头像不需要动画
+                sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
+                println!("[DEBUG] Player 1 avatar updated to death texture");
+                break;
+            }
+        }
+        *has_handled_player1 = true;
+    } else if !player1_dead && *has_handled_player1 {
+        *has_handled_player1 = false; // 重置状态，以便下次死亡时再次处理
+    }
+
+    // 处理玩家2头像（如果存在）
+    if let Some(ref player2_stats) = player_info.player2 {
+        let player2_dead = player2_stats.life_points == 0;
+        if player2_dead && !*has_handled_player2 {
+            for (mut sprite, player_ui) in &mut player_avatars {
+                if player_ui.player_type == TankType::Player2 {
+                    sprite.image = commander_resources.avatar_death.clone();
+                    sprite.texture_atlas = None; // 死亡头像不需要动画
+                    sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
+                    println!("[DEBUG] Player 2 avatar updated to death texture");
+                    break;
+                }
+            }
+            *has_handled_player2 = true;
+        } else if !player2_dead && *has_handled_player2 {
+            *has_handled_player2 = false; // 重置状态，以便下次死亡时再次处理
         }
     }
 }
@@ -1101,9 +1131,10 @@ pub fn handle_player_avatar_death(
 pub fn handle_commander_death(
     commander_resources: Res<CommanderResources>,
     commander_life: Res<CommanderLife>,
+    player_info: Res<PlayerInfo>,
     mut queries: ParamSet<(
         Query<&mut Sprite, With<Commander>>,
-        Query<&mut Sprite, With<PlayerAvatar>>,
+        Query<(&mut Sprite, &PlayerUI), With<PlayerAvatar>>,
         Query<&mut AnimationTimer, With<Commander>>,
         Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
     )>,
@@ -1139,10 +1170,25 @@ pub fn handle_commander_death(
         timer.pause();
     }
 
-    // 更换所有玩家头像为死亡头像
-    for mut sprite in &mut queries.p1() {
-        sprite.image = commander_resources.avatar_commander_dead.clone();
-        // 移除纹理图集，因为死亡头像纹理是单张图片
+    // 只将还活着的玩家头像设置为悲伤图片，已经死亡的玩家头像保持死亡图片
+    for (mut sprite, player_ui) in &mut queries.p1() {
+        let player_dead = match player_ui.player_type {
+            TankType::Player1 => player_info.player1.life_points == 0,
+            TankType::Player2 => player_info
+                .player2
+                .as_ref()
+                .map(|p| p.life_points == 0)
+                .unwrap_or(false),
+            _ => false,
+        };
+
+        // 如果玩家已经死亡，保持死亡图片；否则设置为悲伤图片
+        if player_dead {
+            sprite.image = commander_resources.avatar_death.clone();
+        } else {
+            sprite.image = commander_resources.avatar_commander_dead.clone();
+        }
+        // 移除纹理图集，因为这些头像纹理都是单张图片
         sprite.texture_atlas = None;
     }
 }

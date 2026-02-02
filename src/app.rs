@@ -254,13 +254,12 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StageIntro),
             (
-                game_state::cleanup_effects_and_bullets,
                 player::init_players.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
                 map::spawn_map,
                 powerup::despawn_powerups,
-                powerup::spawn_power_ups_air_cushion.run_if(
+                powerup::spawn_test_powerup_stage1.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
                 powerup::spawn_power_ups_random.run_if(
@@ -276,6 +275,13 @@ pub fn register_game_systems(app: &mut App) {
                 enemy::reset_enemy_spawn_state,
             )
                 .chain(),
+        )
+        .add_systems(
+            Update,
+            (
+                game_state::cleanup_effects_and_bullets,
+                game_state::cleanup_trackers_and_timers,
+            ).run_if(in_state(GameState::StageIntro)),
         )
         .add_systems(
             OnEnter(GameState::StageIntro),
@@ -646,7 +652,6 @@ pub fn init_game_resources(
         commander_get_shot: asset_server.load(SOUND_COMMANDER_GET_SHOT),
         commander_death: asset_server.load(SOUND_COMMANDER_DEATH),
         player_shot: asset_server.load(SOUND_PLAYER_SHOT),
-        enemy_shot: asset_server.load(SOUND_ENEMY_SHOT),
     });
 
     // 特效纹理资源

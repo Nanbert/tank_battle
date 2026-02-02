@@ -168,7 +168,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.1), // 略高于子弹
                     rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转 90 度
-                    scale: Vec3::splat(0.7), // 缩小到 70%
+                    scale: Vec3::splat(1.65), // 放大到 165% (因为纹理缩小到33%)
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(
@@ -221,7 +221,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.2), // 略高于火焰特效
                     rotation: Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2), // 旋转 -90 度
-                    scale: Vec3::splat(0.15), // 缩放 0.15 倍
+                    scale: Vec3::splat(0.3), // 放大到 0.3 倍 (因为纹理缩小到33%)
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(
@@ -658,7 +658,9 @@ fn handle_steel_collision(
     });
 
     if matches!(owner_type, TankType::Enemy) {
-        commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
+        commands.spawn((
+            AudioPlayer::new(sound_resources.hit.clone()),
+        ));
         despawn_bullet(commands, bullet_tracker, bullet_entity);
         return;
     }
@@ -666,10 +668,14 @@ fn handle_steel_collision(
     let player_stats = get_player_stats_ref(&player_info, owner_type);
 
     if player_stats.penetrate {
-        commands.spawn(AudioPlayer::new(sound_resources.metal_crash.clone()));
+        commands.spawn((
+            AudioPlayer::new(sound_resources.metal_crash.clone()),
+        ));
         let () = commands.entity(steel_entity).try_despawn();
     } else {
-        commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
+        commands.spawn((
+            AudioPlayer::new(sound_resources.hit.clone()),
+        ));
     }
 
     despawn_bullet(commands, bullet_tracker, bullet_entity);
@@ -685,7 +691,6 @@ pub fn bullet_tank_collision_system(
     enemy_tanks_with_transform: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<&PlayerTank, With<PlayerTank>>,
     player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: Query<(Entity, &PlayerUI)>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -733,7 +738,6 @@ pub fn bullet_tank_collision_system(
                     &mut effect_events,
                     &sound_resources,
                     &player_tanks_with_transform,
-                    &player_avatars,
                     &mut player_info,
                     &mut stat_changed_events,
                     &mut controllers,
@@ -771,7 +775,9 @@ fn handle_player_bullet_hit_enemy(
     }
 
     // 播放中弹音效
-    commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
+    commands.spawn((
+        AudioPlayer::new(sound_resources.hit.clone()),
+    ));
 
     // 销毁敌方坦克
     let () = commands.entity(tank_entity).try_despawn();
@@ -791,7 +797,6 @@ fn handle_enemy_bullet_hit_player(
     effect_events: &mut MessageWriter<EffectEvent>,
     sound_resources: &SoundResources,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: &Query<(Entity, &PlayerUI)>,
     mut player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     controllers: &mut Query<&mut KinematicCharacterController>,
@@ -799,7 +804,9 @@ fn handle_enemy_bullet_hit_player(
     tank_entity: Entity,
 ) {
     // 播放中弹音效
-    commands.spawn(AudioPlayer::new(sound_resources.hit.clone()));
+    commands.spawn((
+        AudioPlayer::new(sound_resources.hit.clone()),
+    ));
 
     // 发送火花特效事件
     if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
@@ -836,9 +843,7 @@ fn handle_enemy_bullet_hit_player(
             commands,
             effect_events,
             player_tanks_with_transform,
-            player_avatars,
             player_stats,
-            player_index,
             tank_entity,
         );
     }
@@ -899,9 +904,7 @@ fn damage_player_tank(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: &Query<(Entity, &PlayerUI)>,
     player_stats: &mut PlayerStats,
-    player_index: TankType,
     tank_entity: Entity,
 ) {
     if player_stats.life_points > 0 {
@@ -916,12 +919,6 @@ fn damage_player_tank(
         }
 
         let () = commands.entity(tank_entity).try_despawn();
-
-        for (avatar_entity, player_idx) in player_avatars.iter() {
-            if player_idx.player_type == player_index {
-                commands.entity(avatar_entity).insert(PlayerDead);
-            }
-        }
     }
 }
 
@@ -1008,7 +1005,9 @@ pub fn bullet_commander_collision_system(
         };
 
         // 碰撞确认，播放受击音效
-        commands.spawn(AudioPlayer::new(sound_resources.commander_get_shot.clone()));
+        commands.spawn((
+            AudioPlayer::new(sound_resources.commander_get_shot.clone()),
+        ));
 
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
@@ -1023,7 +1022,9 @@ pub fn bullet_commander_collision_system(
         // 检查是否是致命伤（生命值归零）
         if commander_life.life_points == 0 {
             // 播放死亡音效
-            commands.spawn(AudioPlayer::new(sound_resources.commander_death.clone()));
+            commands.spawn((
+                AudioPlayer::new(sound_resources.commander_death.clone()),
+            ));
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);

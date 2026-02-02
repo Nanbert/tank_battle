@@ -164,7 +164,6 @@ pub fn handle_dash_collision(
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
     mut player_info: ResMut<PlayerInfo>,
-    player_avatars: Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut dash_damage_tracker: ResMut<DashDamageTracker>,
     effect_resources: Res<EffectResources>,
@@ -176,7 +175,7 @@ pub fn handle_dash_collision(
 
         // 提取碰撞信息
         let Some((player_entity, brick_entity, steel_entity, enemy_entity)) =
-            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &mut texture_atlas_layouts, &player_tanks_with_transform, &player_avatars, &effect_resources, &sound_resources)
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &mut texture_atlas_layouts, &player_tanks_with_transform, &effect_resources, &sound_resources)
         else { continue; };
 
         // 处理 brick 碰撞
@@ -189,7 +188,6 @@ pub fn handle_dash_collision(
                 &player_tanks_with_transform,
                 &bricks,
                 &mut player_info,
-                &player_avatars,
                 player_entity,
                 b_entity,
                 &mut dash_damage_tracker,
@@ -220,7 +218,6 @@ pub fn handle_dash_collision(
                 &player_tanks_with_transform,
                 &enemy_tanks,
                 &mut player_info,
-                &player_avatars,
                 &mut stat_changed_events,
                 player_entity,
                 e_entity,
@@ -245,7 +242,6 @@ fn extract_dash_collision_info(
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
@@ -265,7 +261,6 @@ fn extract_dash_collision_info(
             texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
-            player_avatars,
             effect_resources,
             sound_resources,
         );
@@ -287,7 +282,6 @@ fn extract_dash_collision_info(
             texture_atlas_layouts,
             player_tanks,
             player_tanks_with_transform,
-            player_avatars,
             effect_resources,
             sound_resources,
         );
@@ -313,7 +307,6 @@ fn handle_player_entity_collision(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
@@ -343,7 +336,6 @@ fn handle_player_entity_collision(
             player_tanks,
             player_tanks_with_transform,
             player_info,
-            player_avatars,
             player_entity,
             effect_resources,
             sound_resources,
@@ -405,9 +397,7 @@ fn kill_player_tank(
     commands: &mut Commands,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     player_entity: Entity,
-    player_tank: &PlayerTank,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) {
@@ -425,13 +415,6 @@ fn kill_player_tank(
 
     // 销毁玩家坦克
     let () = commands.entity(player_entity).try_despawn();
-
-    // 标记对应玩家的头像为死亡状态
-    for (avatar_entity, player_index) in player_avatars.iter() {
-        if player_index.player_type == player_tank.tank_type {
-            commands.entity(avatar_entity).insert(PlayerDead);
-        }
-    }
 }
 
 /// 处理砖块碰撞
@@ -443,7 +426,6 @@ fn handle_brick_collision(
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     player_info: &mut ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     player_entity: Entity,
     brick_entity: Entity,
     dash_damage_tracker: &mut DashDamageTracker,
@@ -506,9 +488,7 @@ fn handle_brick_collision(
             commands,
             texture_atlas_layouts,
             player_tanks_with_transform,
-            player_avatars,
             player_entity,
-            player_tank,
             effect_resources,
             sound_resources,
         );
@@ -524,7 +504,6 @@ fn handle_steel_collision(
     player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     player_entity: Entity,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
@@ -567,9 +546,7 @@ fn handle_steel_collision(
             commands,
             texture_atlas_layouts,
             player_tanks_with_transform,
-            player_avatars,
             player_entity,
-            player_tank,
             effect_resources,
             sound_resources,
         );
@@ -604,7 +581,6 @@ fn handle_dash_enemy_tank_collision(
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     player_info: &mut ResMut<PlayerInfo>,
-    player_avatars: &Query<(Entity, &PlayerUI), With<PlayerAvatar>>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_entity: Entity,
     enemy_entity: Entity,
@@ -668,9 +644,7 @@ fn handle_dash_enemy_tank_collision(
             commands,
             texture_atlas_layouts,
             player_tanks_with_transform,
-            player_avatars,
             player_entity,
-            player_tank,
             effect_resources,
             sound_resources,
         );

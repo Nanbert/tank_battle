@@ -64,6 +64,7 @@ pub fn spawn_start_screen_background(
                 layout: texture_atlas_layout,
                 index: 0,
             }),
+            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)), // 设置为窗口大小
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),

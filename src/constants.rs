@@ -24,7 +24,6 @@ pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
-pub const SOUND_ENEMY_SHOT: &str = "music/enemy_shot.ogg";
 
 // 子弹纹理路径常量
 pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
@@ -33,26 +32,24 @@ pub const TEXTURE_BULLET_ENEMY: &str = "texture/bullets/bullet_enemy.png";
 pub const TEXTURE_BULLET_FIRE_EFFECT: &str = "texture/bullets/fire_effect.png";
 
 // 火焰特效精灵图常量（叠加在子弹上的火焰特效）
-// fire_effect.png 实际尺寸：960 x 1344 像素
-// 7行5列网格，每帧 192 x 192 像素
-pub const FIRE_EFFECT_TILE_WIDTH: f32 = 192.0; // 火焰特效瓦片宽度（960/5）
-pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 192.0; // 火焰特效瓦片高度（1344/7）
+// fire_effect.png 实际尺寸：320 x 448 像素
+// 7行5列网格，每帧 64 x 64 像素
+pub const FIRE_EFFECT_TILE_WIDTH: f32 = 64.0; // 火焰特效瓦片宽度（320/5）
+pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 火焰特效瓦片高度（448/7）
 pub const FIRE_EFFECT_COLUMNS: usize = 5; // 火焰特效列数
 pub const FIRE_EFFECT_ROWS: usize = 7; // 火焰特效行数
 pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最后一行只有2帧）
 pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间隔
-pub const FIRE_EFFECT_DISPLAY_SIZE: f32 = 80.0; // 火焰特效显示尺寸（比子弹略大）
 
 // 穿透效果精灵图常量（叠加在子弹上的穿透特效）
-// penetrate_effect.png 实际尺寸：1800 x 300 像素
-// 1行6列网格，每帧 300 x 300 像素
-pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 300.0; // 穿透特效瓦片宽度（1800/6）
-pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 300.0; // 穿透特效瓦片高度（300/1）
+// penetrate_effect.png 实际尺寸：600 x 150 像素
+// 1行6列网格，每帧 100 x 100 像素
+pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 100.0; // 穿透特效瓦片宽度（600/6）
+pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 100.0; // 穿透特效瓦片高度（150/1）
 pub const PENETRATE_EFFECT_COLUMNS: usize = 6; // 穿透特效列数
 pub const PENETRATE_EFFECT_ROWS: usize = 1; // 穿透特效行数
 pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 6; // 穿透特效总帧数
 pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05; // 穿透特效动画帧间隔
-pub const PENETRATE_EFFECT_DISPLAY_SIZE: f32 = 70.0; // 穿透特效显示尺寸（与子弹相近）
 
 // 敌方坦克纹理路径常量
 pub const TEXTURE_ENEMY_TANK1: &str = "enemy_tank/enemy_tank1_sprite.png";
@@ -143,8 +140,8 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 ];
 
 // ==================== 履带道具常量 ====================
-pub const TRACK_CHAIN_TILE_WIDTH: f32 = 688.0; // 履带瓦片宽度 (1376 / 2帧)
-pub const TRACK_CHAIN_TILE_HEIGHT: f32 = 768.0; // 履带瓦片高度
+pub const TRACK_CHAIN_TILE_WIDTH: f32 = 69.0; // 履带瓦片宽度 (138 / 2帧)
+pub const TRACK_CHAIN_TILE_HEIGHT: f32 = 77.0; // 履带瓦片高度
 pub const TRACK_CHAIN_DISPLAY_WIDTH: f32 = 80.0; // 履带显示宽度
 pub const TRACK_CHAIN_DISPLAY_HEIGHT: f32 = 90.0; // 履带显示高度
 pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
@@ -310,17 +307,11 @@ pub struct PlayerTank {
     pub tank_type: TankType, // TankType::Player1 或 TankType::Player2
 }
 
-#[derive(Component)]
-pub struct PlayerAvatar;
-
 //用来标记，文字，头像等信息属于哪个玩家
 #[derive(Component)]
 pub struct PlayerUI {
     pub player_type: TankType,
 }
-
-#[derive(Component)]
-pub struct PlayerDead;
 
 // 玩家正在冲刺标记
 #[derive(Component)]
@@ -640,8 +631,8 @@ pub const HUD_BAR_WIDTH: f32 = 150.0; // HUD 血条/蓝条宽度
 
 // UI
 pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸
-pub const BACKGROUND_ANIMATION_TILE_WIDTH: f32 = 2060.0; // 背景动画瓦片宽度
-pub const BACKGROUND_ANIMATION_TILE_HEIGHT: f32 = 1300.0; // 背景动画瓦片高度
+pub const BACKGROUND_ANIMATION_TILE_WIDTH: f32 = 515.0; // 背景动画瓦片宽度 (2575/5)
+pub const BACKGROUND_ANIMATION_TILE_HEIGHT: f32 = 325.0; // 背景动画瓦片高度
 
 // 血条/蓝条
 pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度

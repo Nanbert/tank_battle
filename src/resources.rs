@@ -304,7 +304,6 @@ pub struct SoundResources {
     pub commander_get_shot: Handle<AudioSource>,
     pub commander_death: Handle<AudioSource>,
     pub player_shot: Handle<AudioSource>,
-    pub enemy_shot: Handle<AudioSource>,
 }
 
 /// 特效纹理资源

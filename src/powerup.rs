@@ -35,23 +35,6 @@ pub enum PowerUp {
     Shell,
 }
 
-impl PowerUp {
-    pub const fn texture_path(self) -> &'static str {
-        match self {
-            Self::SpeedUp => "power_up/speed_up.png",
-            Self::Protection => "power_up/protection.png",
-            Self::FireSpeed => "power_up/fire_speed.png",
-            Self::FireShell => "power_up/fire_shell.png",
-            Self::TrackChain => "power_up/track_chain.png",
-            Self::Penetrate => "power_up/penetrate.png",
-            Self::Repair => "power_up/repair.png",
-            Self::Hamburger => "power_up/hamburger.png",
-            Self::AirCushion => "power_up/air_cushion.png",
-            Self::Shell => "power_up/shell.png",
-        }
-    }
-}
-
 /// 道具动画系统
 pub fn animate_powerup(
     time: Res<Time>,
@@ -112,7 +95,9 @@ pub fn handle_powerup_collision(
 
             // 播放道具音效
             let powerup_sound = sound_resources.hit.clone();
-            commands.spawn(AudioPlayer::new(powerup_sound));
+            commands.spawn((
+                AudioPlayer::new(powerup_sound),
+            ));
             let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
@@ -201,17 +186,16 @@ pub fn handle_powerup_collision(
     }
 }
 
-/// 生成道具
+/// 第一关测试道具生成
 ///
-/// 根据关卡选择道具类型，第一关强制生成 penetrate 道具，其他关卡随机选择。
+/// 第一关固定生成 fire_shell 道具用于测试火焰特效效果。
 /// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
-/// 第一关强制生成 penetrate 道具
-pub fn spawn_power_ups_air_cushion(
+pub fn spawn_test_powerup_stage1(
     mut commands: Commands,
     powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let powerup_type = PowerUp::Penetrate;
+    let powerup_type = PowerUp::FireShell; // 第一关测试用：改为 fire_shell
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
@@ -230,7 +214,6 @@ pub fn spawn_power_ups_air_cushion(
         &powerup_resources,
         &mut texture_atlas_layouts,
         powerup_type,
-        powerup_type.texture_path(),
         &[position],
     );
 }
@@ -273,7 +256,6 @@ pub fn spawn_power_ups_random(
         &powerup_resources,
         &mut texture_atlas_layouts,
         powerup_type,
-        powerup_type.texture_path(),
         &[position],
     );
 }
@@ -294,7 +276,6 @@ fn spawn_powerup_batch(
     powerup_resources: &PowerUpResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     powerup_type: PowerUp,
-    _texture_path: &'static str,
     positions: &[Vec3],
 ) {
     let texture = match powerup_type {

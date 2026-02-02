@@ -85,7 +85,9 @@ pub fn spawn_forest_fire(
     ));
 
     // 播放树林燃烧音效
-    commands.spawn(AudioPlayer::new(ambience_resources.burn_tree.clone()));
+    commands.spawn((
+        AudioPlayer::new(ambience_resources.burn_tree.clone()),
+    ));
 }
 
 pub fn spawn_spark(
