@@ -588,7 +588,7 @@ pub const BULLET_WIDTH: f32 = 60.0; // 子弹宽度
 pub const BULLET_HEIGHT: f32 = 40.0; // 子弹高度
 
 // 特效纹理瓦片尺寸
-pub const EXPLOSION_TILE_SIZE: f32 = 64.0; // 爆炸瓦片尺寸 (10x10 网格，100帧)
+pub const EXPLOSION_TILE_SIZE: f32 = 256.0; // 爆炸瓦片尺寸
 pub const SPARK_TILE_SIZE: f32 = 256.0; // 火花瓦片尺寸
 pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
 pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
