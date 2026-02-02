@@ -178,10 +178,14 @@ pub fn check_stage_complete(
     game_mode: Res<GameMode>,
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
+    mut delay_timer: ResMut<StageCompleteDelayTimer>,
+    time: Res<Time>,
 ) {
     // 卫语句：检查是否完成关卡
     let current_enemy_count = enemies.iter().count();
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count || current_enemy_count > 0 {
+        // 如果还有敌人，重置延迟计时器
+        delay_timer.timer.reset();
         return;
     }
 
@@ -191,9 +195,15 @@ pub fn check_stage_complete(
         return;
     }
 
-    // 进入下一关
-    stage_level.0 += 1;
-    next_state.set(GameState::StageIntro);
+    // 更新延迟计时器
+    delay_timer.timer.tick(time.delta());
+
+    // 检查延迟是否完成
+    if delay_timer.timer.just_finished() {
+        // 进入下一关
+        stage_level.0 += 1;
+        next_state.set(GameState::StageIntro);
+    }
 }
 
 /// 清理所有 effect 和 bullet 实体
@@ -265,6 +275,7 @@ pub fn cleanup_trackers_and_timers(
     mut dash_damage_tracker: ResMut<crate::resources::DashDamageTracker>,
     mut barrier_damage_tracker: ResMut<crate::resources::BarrierDamageTracker>,
     mut insufficient_energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+    mut stage_complete_delay: ResMut<StageCompleteDelayTimer>,
 ) {
     // 清理 BulletTracker
     bullet_tracker.active_bullets.clear();
@@ -284,6 +295,9 @@ pub fn cleanup_trackers_and_timers(
 
     // 清理 InsufficientEnergyTracker
     insufficient_energy_tracker.cooldowns.clear();
+
+    // 重置关卡完成延迟计时器
+    stage_complete_delay.timer.reset();
 }
 
 // 文本更新函数类型

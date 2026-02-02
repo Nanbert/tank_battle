@@ -115,6 +115,20 @@ pub struct StageIntroTimer {
     pub fade_out: Timer,
 }
 
+/// 关卡完成延迟计时器（消灭所有敌方坦克后延迟2秒进入下一关）
+#[derive(Resource)]
+pub struct StageCompleteDelayTimer {
+    pub timer: Timer,
+}
+
+impl Default for StageCompleteDelayTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(2.0, TimerMode::Once),
+        }
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct PlayerInfo {
     pub player1: PlayerStats,
