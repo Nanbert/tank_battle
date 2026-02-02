@@ -60,7 +60,7 @@ pub fn spawn_enemy_born_animation(
     let enemy_born_texture = enemy_resources.enemy_born.clone();
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
     let enemy_born_texture_atlas =
-        TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 4, None, None);
+        TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 3, None, None);
     let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
     let enemy_born_animation_indices = AnimationIndices {
         first: 0,

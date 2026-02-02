@@ -33,6 +33,7 @@ pub fn fade_out_screen(
     menu_selection: Res<CurrentMenuSelection>,
     mut sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
     mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
+    start_screen_query: Query<Entity, With<StartScreenUI>>,
 ) {
     // 减少透明度
     fading_out.alpha -= time.delta_secs() * (1.0 / FADE_OUT_SPEED); // 淡出速度，1.5秒完成
@@ -56,7 +57,7 @@ pub fn fade_out_screen(
     // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
         next_state.set(GameState::StageIntro);
-        crate::menus_ui::cleanup_start_screen_ui(commands, sprite_query, text_query);
+        crate::menus_ui::cleanup_start_screen_ui(commands, start_screen_query);
     }
 }
 

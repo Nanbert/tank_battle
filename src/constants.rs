@@ -63,9 +63,20 @@ pub const TEXTURE_TREE: &str = "maps/tree.png";
 pub const TEXTURE_TREE_FIRE_SHEET: &str = "maps/tree_fire_sheet.png";
 
 // 背景纹理路径常量
-pub const TEXTURE_BACKGROUND_PART1: &str = "background/background_sprite_part1.png";
-pub const TEXTURE_BACKGROUND_PART2: &str = "background/background_sprite_part2.png";
-pub const TEXTURE_BACKGROUND_PART3: &str = "background/background_sprite_part3.png";
+pub const TEXTURE_BACKGROUND: &str = "background/background.png";
+
+// 开始界面背景精灵图常量
+// background.jpg: 9600 x 960 像素, 1行10列
+// 每帧: 960 x 960 像素
+pub const BACKGROUND_TILE_WIDTH: f32 = 960.0; // 背景瓦片宽度 (9600/10)
+pub const BACKGROUND_TILE_HEIGHT: f32 = 960.0; // 背景瓦片高度 (960/1)
+pub const BACKGROUND_COLUMNS: usize = 10; // 背景列数（宽度方向）
+pub const BACKGROUND_ROWS: usize = 1; // 背景行数（高度方向）
+pub const BACKGROUND_TOTAL_FRAMES: usize = 10; // 背景总帧数 (1*10)
+pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.1; // 背景动画帧间隔
+
+// 开始界面背景色常量（与精灵图第一帧左上角像素颜色相同）
+pub const START_SCREEN_BACKGROUND_COLOR_GRAY: Color = Color::srgb(146.0 / 255.0, 159.0 / 255.0, 167.0 / 255.0);
 
 // 收款码路径常量
 pub const IMAGE_ALIPAY: &str = "alipay.png";
@@ -516,7 +527,6 @@ pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧�
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
 pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.05; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER_MUSIC: f32 = 0.1; // 指挥官音乐动画帧间隔
-pub const ANIMATION_FRAME_START_BACKGROUND: f32 = 0.15; // 开始界面背景动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
 pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
@@ -567,7 +577,7 @@ pub const ENEMY_COLLIDER_HALF_HEIGHT: f32 = 43.0; // 敌方坦克碰撞体半高
 pub const ENEMY_BORN_ANIMATION_SIZE: f32 = 100.0; // 敌方坦克出生动画尺寸
 pub const ENEMY_TILE_WIDTH: f32 = 137.0; // 敌方坦克纹理瓦片宽度
 pub const ENEMY_TILE_HEIGHT: f32 = 183.0; // 敌方坦克纹理瓦片高度
-pub const ENEMY_BORN_TILE_SIZE: f32 = 192.0; // 敌方出生动画瓦片尺寸
+pub const ENEMY_BORN_TILE_SIZE: f32 = 340.0; // 敌方出生动画瓦片尺寸
 
 // 玩家坦克
 pub const PLAYER_TANK_DISPLAY_WIDTH: f32 = 80.0; // 玩家坦克显示宽度
@@ -629,8 +639,6 @@ pub const HUD_BAR_WIDTH: f32 = 150.0; // HUD 血条/蓝条宽度
 
 // UI
 pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸
-pub const BACKGROUND_ANIMATION_TILE_WIDTH: f32 = 515.0; // 背景动画瓦片宽度 (2575/5)
-pub const BACKGROUND_ANIMATION_TILE_HEIGHT: f32 = 325.0; // 背景动画瓦片高度
 
 // 血条/蓝条
 pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度

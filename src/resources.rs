@@ -43,12 +43,6 @@ impl BulletTracker {
     }
 }
 
-#[derive(Resource, Default)]
-pub struct StartAnimationFrames {
-    pub textures: Vec<Handle<Image>>,
-    pub texture_atlas_layouts: Vec<Handle<TextureAtlasLayout>>,
-}
-
 #[derive(Resource)]
 pub struct FadingOut {
     pub alpha: f32,
@@ -263,6 +257,12 @@ pub struct TerrainAtlasLayouts {
     pub forest_fire: Handle<TextureAtlasLayout>,
 }
 
+// 背景精灵图纹理图集布局资源
+#[derive(Resource)]
+pub struct BackgroundAtlasLayout {
+    pub layout: Handle<TextureAtlasLayout>,
+}
+
 // 子弹资源
 #[derive(Resource)]
 pub struct BulletResources {
@@ -375,9 +375,7 @@ pub struct LaserResources {
 /// 菜单背景纹理资源
 #[derive(Resource)]
 pub struct MenuResources {
-    pub background_part1: Handle<Image>,
-    pub background_part2: Handle<Image>,
-    pub background_part3: Handle<Image>,
+    pub background: Handle<Image>,
 }
 
 /// 司令官音乐纹理资源

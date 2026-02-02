@@ -1,4 +1,4 @@
-# Tank Battle - For Communism!
+# Steel Command - 钢铁指令
 
 一个使用 Rust 和 Bevy 游戏引擎开发的经典坦克大战（Battle City 1990）简化版实现。
 

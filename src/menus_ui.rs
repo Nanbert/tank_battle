@@ -10,78 +10,37 @@ use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
 
-/// 加载开始界面的动画资源
-pub fn load_start_animation_assets(
-    menu_resources: &MenuResources,
-    animation_frames: &mut ResMut<StartAnimationFrames>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-) {
-    // 使用3个较小的精灵图加载背景动画（15帧，每部分5帧）
-    // 拆分以支持GPU纹理尺寸限制（最大16384）
-    let background_texture1 = menu_resources.background_part1.clone();
-    let background_texture2 = menu_resources.background_part2.clone();
-    let background_texture3 = menu_resources.background_part3.clone();
-
-    let background_tile_size = UVec2::new(
-        BACKGROUND_ANIMATION_TILE_WIDTH as u32,
-        BACKGROUND_ANIMATION_TILE_HEIGHT as u32,
-    ); // 每帧的尺寸（窗口大小）
-
-    // 创建3个纹理图集，每个5帧
-    let atlas1 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
-    let atlas2 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
-    let atlas3 = TextureAtlasLayout::from_grid(background_tile_size, 5, 1, None, None);
-
-    let layout1 = texture_atlas_layouts.add(atlas1);
-    let layout2 = texture_atlas_layouts.add(atlas2);
-    let layout3 = texture_atlas_layouts.add(atlas3);
-
-    // 存储到资源中
-    animation_frames.texture_atlas_layouts = vec![layout1, layout2, layout3];
-    animation_frames.textures = vec![
-        background_texture1,
-        background_texture2,
-        background_texture3,
-    ];
-}
-
 /// 生成开始界面的背景动画
 pub fn spawn_start_screen_background(
     commands: &mut Commands,
-    animation_frames: &ResMut<StartAnimationFrames>,
+    menu_resources: &MenuResources,
+    background_atlas_layout: &BackgroundAtlasLayout,
 ) {
-    let animation_indices = AnimationIndices { first: 0, last: 14 };
-
-    // 使用第一个纹理和图集初始化
-    let texture_atlas_layout = animation_frames.texture_atlas_layouts[0].clone();
-    let texture = animation_frames.textures[0].clone();
-
     commands.spawn((
         StartScreenUI,
         Sprite {
-            image: texture,
+            image: menu_resources.background.clone(),
             texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
+                layout: background_atlas_layout.layout.clone(),
                 index: 0,
             }),
-            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)), // 设置为窗口大小
+            // 不设置 custom_size，使用精灵图原始尺寸 960x960
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_START_BACKGROUND,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
+        AnimationIndices {
+            first: 0,
+            last: BACKGROUND_TOTAL_FRAMES - 1,
+        },
+        AnimationTimer(Timer::from_seconds(BACKGROUND_ANIMATION_FRAME, TimerMode::Repeating)),
     ));
 }
 
 /// 生成开始界面的标题和菜单选项
 pub fn spawn_start_screen_title(commands: &mut Commands, font_en: Handle<Font>, font_cn: Handle<Font>, language: Language) {
     let (title, menu_text, use_cn_font) = match language {
-        Language::Chinese => ("为了共产主义!!", vec![
+        Language::Chinese => ("钢铁指令", vec![
             "单人游戏",
             "双人对战",
             "语言 / Language",  // 双语显示
@@ -89,7 +48,7 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font_en: Handle<Font>, 
             "制作人员",
             "退出",
         ], true),
-        Language::English => ("For Communism!!", vec![
+        Language::English => ("Steel Command", vec![
             "1 Player",
             "2 Player",
             "语言 / Language",  // 双语显示
@@ -132,7 +91,7 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font_en: Handle<Font>, 
                 font: item_font,
                 ..default()
             },
-            TextColor(if i == 0 { COLOR_YELLOW } else { Color::srgb(1.0, 1.0, 1.0) }),
+            TextColor(if i == 0 { COLOR_YELLOW } else { COLOR_WHITE }),
             Transform::from_xyz(0.0, y_positions[i], 1.0),
             MenuOption { index: i },
         ));
@@ -205,33 +164,24 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font_en: &Handle
 pub fn spawn_start_screen(
     mut commands: Commands,
     menu_resources: Res<MenuResources>,
+    background_atlas_layout: Res<BackgroundAtlasLayout>,
     font_resources: Res<FontResources>,
-    mut animation_frames: ResMut<StartAnimationFrames>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     asset_server: Res<AssetServer>,
     language: Res<Language>,
 ) {
     // 检查资源是否已加载完成
     let font_en_loaded = asset_server.is_loaded(&font_resources.en);
     let font_cn_loaded = asset_server.is_loaded(&font_resources.cn);
-    let bg1_loaded = asset_server.is_loaded(&menu_resources.background_part1);
-    let bg2_loaded = asset_server.is_loaded(&menu_resources.background_part2);
-    let bg3_loaded = asset_server.is_loaded(&menu_resources.background_part3);
+    let bg_loaded = asset_server.is_loaded(&menu_resources.background);
 
     // 如果资源未完全加载，跳过生成（下次 Update 会重试）
-    if !font_en_loaded || !font_cn_loaded || !bg1_loaded || !bg2_loaded || !bg3_loaded {
+    // 注意：background_atlas_layout.layout 是动态创建的资源，不需要检查 is_loaded
+    if !font_en_loaded || !font_cn_loaded || !bg_loaded {
         return;
     }
 
-    // 加载所有动画帧
-    load_start_animation_assets(
-        &menu_resources,
-        &mut animation_frames,
-        &mut texture_atlas_layouts,
-    );
-
-    // 添加动画背景
-    spawn_start_screen_background(&mut commands, &animation_frames);
+    // 添加动态背景
+    spawn_start_screen_background(&mut commands, &menu_resources, &background_atlas_layout);
 
     // 添加标题文字
     spawn_start_screen_title(&mut commands, font_resources.en.clone(), font_resources.cn.clone(), *language);
@@ -549,49 +499,6 @@ pub fn handle_start_screen_input(
     }
 }
 
-/// 动画化开始界面的背景
-pub fn animate_start_screen(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &AnimationIndices,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &mut CurrentAnimationFrame,
-        ),
-        With<StartScreenUI>,
-    >,
-    animation_frames: Res<StartAnimationFrames>,
-) {
-    for (indices, mut timer, mut sprite, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-
-            // 计算使用哪个纹理图集（每个图集5帧）
-            let atlas_index = next_index / 5;
-            let frame_in_atlas = next_index % 5;
-
-            // 更新纹理和图集
-            if atlas_index < animation_frames.textures.len() {
-                sprite.image = animation_frames.textures[atlas_index].clone();
-                if let Some(texture_atlas) = &mut sprite.texture_atlas {
-                    texture_atlas.layout =
-                        animation_frames.texture_atlas_layouts[atlas_index].clone();
-                    texture_atlas.index = frame_in_atlas;
-                }
-            }
-        }
-    }
-}
-
 /// 更新菜单选项的颜色
 pub fn update_option_colors(
     menu_selection: Res<CurrentMenuSelection>,
@@ -610,13 +517,28 @@ pub fn update_option_colors(
 /// 清理开始界面的UI元素
 pub fn cleanup_start_screen_ui(
     mut commands: Commands,
-    sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
-    text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
+    query: Query<Entity, With<StartScreenUI>>,
 ) {
-    for (entity, _) in sprite_query.iter() {
+    for entity in query.iter() {
         let () = commands.entity(entity).try_despawn();
     }
-    for (entity, _, _) in text_query.iter() {
-        let () = commands.entity(entity).try_despawn();
+}
+
+/// 开始界面背景动画系统
+pub fn animate_start_screen_background(
+    time: Res<Time>,
+    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices), With<StartScreenUI>>,
+) {
+    for (mut timer, mut sprite, indices) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            if let Some(ref mut atlas) = sprite.texture_atlas {
+                atlas.index = if atlas.index < indices.last {
+                    atlas.index + 1
+                } else {
+                    indices.first
+                };
+            }
+        }
     }
 }

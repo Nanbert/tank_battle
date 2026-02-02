@@ -28,8 +28,8 @@ use crate::powerup;
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
         primary_window: Some(Window {
-            title: "For Communism!!".to_string(),
-            name: Some("tank_battle".to_string()),
+            title: "Steel Command".to_string(),
+            name: Some("steel_command".to_string()),
             resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT),
             present_mode: PresentMode::AutoVsync,
             resizable: false,
@@ -63,7 +63,7 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 }
 
 pub fn configure_game_resources(app: &mut App) {
-    app.insert_resource(ClearColor(COLOR_BLACK))
+    app.insert_resource(ClearColor(crate::constants::START_SCREEN_BACKGROUND_COLOR_GRAY))
         .insert_resource(FontResources {
             cn: Handle::default(),
             en: Handle::default(),
@@ -126,9 +126,7 @@ pub fn configure_game_resources(app: &mut App) {
             laser_red: Handle::default(),
         })
         .insert_resource(MenuResources {
-            background_part1: Handle::default(),
-            background_part2: Handle::default(),
-            background_part3: Handle::default(),
+            background: Handle::default(),
         })
         .insert_resource(CommanderMusicResources {
             music_note: Handle::default(),
@@ -156,7 +154,6 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(BarrierDamageTracker::default())
         .insert_resource(InsufficientEnergyTracker::default())
         .init_resource::<BlueBarRegenTimer>()
-        .insert_resource(StartAnimationFrames::default())
         .insert_resource(FadingOut { alpha: 1.0 })
         .insert_resource(CurrentMenuSelection { selected_index: 0 })
         .insert_resource(AnimationIndices { first: 0, last: 14 })
@@ -193,6 +190,9 @@ pub fn register_game_systems(app: &mut App) {
                 },
                 hud_ui::despawn_hud,
                 game_state::reset_fading_out,
+                |mut clear_color: ResMut<ClearColor>| {
+                    clear_color.0 = crate::constants::START_SCREEN_BACKGROUND_COLOR_GRAY;
+                },
             )
                 .chain(),
         )
@@ -505,14 +505,14 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             hud_ui::handle_commander_death.run_if(in_state(GameState::Playing)),
         ) // 测试司令官阵亡处理
+        
         .add_systems(
             Update,
-            menus_ui::animate_start_screen.run_if(not(in_state(GameState::Playing))),
-        )
-        .add_systems(
-            Update,
-            (menus_ui::handle_start_screen_input, menus_ui::update_option_colors)
-                .run_if(in_state(GameState::StartScreen)),
+            (
+                menus_ui::handle_start_screen_input,
+                menus_ui::update_option_colors,
+                menus_ui::animate_start_screen_background,
+            ).run_if(in_state(GameState::StartScreen)),
         )
         .add_systems(
             Update,
@@ -619,6 +619,17 @@ pub fn init_game_resources(
         )),
     });
 
+    // 背景纹理图集布局
+    commands.insert_resource(BackgroundAtlasLayout {
+        layout: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+            UVec2::new(BACKGROUND_TILE_WIDTH as u32, BACKGROUND_TILE_HEIGHT as u32),
+            BACKGROUND_COLUMNS as u32,
+            BACKGROUND_ROWS as u32,
+            None,
+            None,
+        )),
+    });
+
     // 字体资源
     commands.insert_resource(FontResources {
         cn: asset_server.load(FONT_CN),
@@ -713,9 +724,7 @@ pub fn init_game_resources(
 
     // 菜单背景纹理资源
     commands.insert_resource(MenuResources {
-        background_part1: asset_server.load(TEXTURE_BACKGROUND_PART1),
-        background_part2: asset_server.load(TEXTURE_BACKGROUND_PART2),
-        background_part3: asset_server.load(TEXTURE_BACKGROUND_PART3),
+        background: asset_server.load(TEXTURE_BACKGROUND),
     });
 
     // 司令官音乐纹理资源

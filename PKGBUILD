@@ -2,7 +2,7 @@
 pkgname=tank-battle
 pkgver=0.2.0
 pkgrel=1
-pkgdesc="Classic tank battle game (Battle City 1990 clone)"
+pkgdesc="Steel Command - Classic tank battle game (Battle City 1990 clone)"
 arch=('x86_64')
 url="https://github.com/Nanbert/tank_battle"
 license=('MIT')
