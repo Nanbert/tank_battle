@@ -203,15 +203,15 @@ pub fn handle_powerup_collision(
 
 /// 生成道具
 ///
-/// 根据关卡选择道具类型，第一关强制生成 fire_shell 道具，其他关卡随机选择。
+/// 根据关卡选择道具类型，第一关强制生成 penetrate 道具，其他关卡随机选择。
 /// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
-/// 第一关强制生成 fire_shell 道具
+/// 第一关强制生成 penetrate 道具
 pub fn spawn_power_ups_air_cushion(
     mut commands: Commands,
     powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let powerup_type = PowerUp::FireShell;
+    let powerup_type = PowerUp::Penetrate;
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
