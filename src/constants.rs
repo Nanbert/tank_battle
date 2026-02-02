@@ -591,7 +591,7 @@ pub const BULLET_HEIGHT: f32 = 40.0; // 子弹高度
 
 // 特效纹理瓦片尺寸
 pub const EXPLOSION_TILE_SIZE: f32 = 512.0; // 爆炸瓦片尺寸
-pub const SPARK_TILE_SIZE: f32 = 1024.0; // 火花瓦片尺寸
+pub const SPARK_TILE_SIZE: f32 = 256.0; // 火花瓦片尺寸
 pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
 pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
 pub const ENERGY_BALL_TILE_WIDTH: f32 = 675.0; // 能量球瓦片宽度
