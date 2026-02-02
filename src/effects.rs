@@ -22,9 +22,9 @@ pub fn spawn_explosion(
     let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
     let explosion_texture_atlas =
-        TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
+        TextureAtlasLayout::from_grid(explosion_tile_size, 10, 10, None, None);
     let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
-    let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
+    let explosion_animation_indices = AnimationIndices { first: 0, last: 99 };
 
     commands.spawn((
         Explosion,
