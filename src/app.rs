@@ -86,6 +86,7 @@ pub fn configure_game_resources(app: &mut App) {
             bullet_player2: Handle::default(),
             bullet_enemy: Handle::default(),
             bullet_fire_effect: Handle::default(),
+            bullet_penetrate_effect: Handle::default(),
         })
         .insert_resource(EffectResources {
             explosion: Handle::default(),
@@ -661,6 +662,7 @@ pub fn init_game_resources(
         bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
         bullet_fire_effect: asset_server.load(TEXTURE_BULLET_FIRE_EFFECT),
+        bullet_penetrate_effect: asset_server.load("texture/bullets/penetrate_effect.png"),
     });
 
     // 地图纹理资源

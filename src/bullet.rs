@@ -180,6 +180,59 @@ pub fn spawn_bullet(
         });
     }
 
+    // 检查玩家是否拥有 penetrate 能力
+    let has_penetrate = match params.owner_type {
+        TankType::Player1 => player_info.player1.penetrate,
+        TankType::Player2 => player_info
+            .player2
+            .as_ref()
+            .map_or(false, |stats| stats.penetrate),
+        TankType::Enemy => false,
+    };
+
+    // 如果玩家有 penetrate 效果，添加穿透特效子实体
+    if has_penetrate {
+        let penetrate_effect_atlas_layout = TextureAtlasLayout::from_grid(
+            UVec2::new(
+                crate::constants::PENETRATE_EFFECT_TILE_WIDTH as u32,
+                crate::constants::PENETRATE_EFFECT_TILE_HEIGHT as u32,
+            ),
+            crate::constants::PENETRATE_EFFECT_COLUMNS as u32,
+            crate::constants::PENETRATE_EFFECT_ROWS as u32,
+            None,
+            None,
+        );
+        let penetrate_effect_atlas = texture_atlas_layouts.add(penetrate_effect_atlas_layout);
+        let animation_indices = AnimationIndices {
+            first: 0,
+            last: crate::constants::PENETRATE_EFFECT_TOTAL_FRAMES - 1,
+        };
+
+        commands.entity(bullet_entity).with_children(|parent| {
+            parent.spawn((
+                PenetrateEffect,
+                Sprite::from_atlas_image(
+                    bullet_resources.bullet_penetrate_effect.clone(),
+                    TextureAtlas {
+                        layout: penetrate_effect_atlas,
+                        index: animation_indices.first,
+                    },
+                ),
+                Transform {
+                    translation: Vec3::new(0.0, 0.0, 0.2), // 略高于火焰特效
+                    rotation: Quat::IDENTITY, // 不旋转
+                    scale: Vec3::splat(1.0), // 保持原尺寸
+                },
+                animation_indices,
+                AnimationTimer(Timer::from_seconds(
+                    crate::constants::PENETRATE_EFFECT_ANIMATION_FRAME,
+                    TimerMode::Repeating,
+                )),
+                CurrentAnimationFrame(0),
+            ));
+        });
+    }
+
     bullet_entity
 }
 

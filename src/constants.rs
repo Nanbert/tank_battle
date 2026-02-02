@@ -43,6 +43,17 @@ pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最�
 pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间隔
 pub const FIRE_EFFECT_DISPLAY_SIZE: f32 = 80.0; // 火焰特效显示尺寸（比子弹略大）
 
+// 穿透效果精灵图常量（叠加在子弹上的穿透特效）
+// penetrate_effect.png 实际尺寸：1800 x 300 像素
+// 1行6列网格，每帧 300 x 300 像素
+pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 300.0; // 穿透特效瓦片宽度（1800/6）
+pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 300.0; // 穿透特效瓦片高度（300/1）
+pub const PENETRATE_EFFECT_COLUMNS: usize = 6; // 穿透特效列数
+pub const PENETRATE_EFFECT_ROWS: usize = 1; // 穿透特效行数
+pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 6; // 穿透特效总帧数
+pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05; // 穿透特效动画帧间隔
+pub const PENETRATE_EFFECT_DISPLAY_SIZE: f32 = 70.0; // 穿透特效显示尺寸（与子弹相近）
+
 // 敌方坦克纹理路径常量
 pub const TEXTURE_ENEMY_TANK1: &str = "enemy_tank/enemy_tank1_sprite.png";
 
@@ -326,6 +337,10 @@ pub struct TrackChainEffect;
 // 火焰特效标记（叠加在子弹上的火焰特效）
 #[derive(Component)]
 pub struct FireEffect;
+
+// 穿透特效标记（叠加在子弹上的穿透特效）
+#[derive(Component)]
+pub struct PenetrateEffect;
 
 // 炮管组件标记
 #[derive(Component)]
