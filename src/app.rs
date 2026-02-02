@@ -408,6 +408,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            bullet::animate_penetrate_bullet.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             laser::player_laser_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(

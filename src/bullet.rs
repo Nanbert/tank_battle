@@ -1061,3 +1061,35 @@ pub fn animate_fire_shell_bullet(
         }
     }
 }
+
+/// 穿透特效动画系统
+/// 播放叠加在子弹上的穿透特效精灵图动画
+pub fn animate_penetrate_bullet(
+    time: Res<Time>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<crate::constants::PenetrateEffect>,
+    >,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
+    }
+}
