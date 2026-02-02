@@ -23,10 +23,10 @@
 
 ## Enemy Born Animation (敌方坦克出生动画)
 - **文件**: assets/effect/enemy_born.png
-- **来源**: https://opengameart.org/content/alot-of-particles-flashburst-special-effect-alotofparticles15
-- **许可**: CC-BY 4.0 (Creative Commons Attribution 4.0 International)
-- **作者**: JoesAlotofthings
-- **说明**: 粒子特效精灵图，4行5列布局，每帧192x192像素，共13帧
+- **来源**: https://opengameart.org/content/sci-fi-effects
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: Skorpio
+- **说明**: 粒子特效精灵图，5行3列布局，每帧340x340像素，共15帧
 
 ## Player Tank Sprites (玩家坦克纹理)
 - **文件**: assets/texture/player_tank1_sprite.png, assets/texture/player_tank2_sprite.png

@@ -76,7 +76,7 @@ pub const BACKGROUND_TOTAL_FRAMES: usize = 10; // 背景总帧数 (1*10)
 pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.1; // 背景动画帧间隔
 
 // 开始界面背景色常量（与精灵图第一帧左上角像素颜色相同）
-pub const START_SCREEN_BACKGROUND_COLOR_GRAY: Color = Color::srgb(146.0 / 255.0, 159.0 / 255.0, 167.0 / 255.0);
+// 使用 COLOR_GRAY
 
 // 收款码路径常量
 pub const IMAGE_ALIPAY: &str = "alipay.png";
@@ -165,8 +165,8 @@ pub const COLOR_RED: Color = Color::srgb(1.0, 0.0, 0.0); // 红色
 pub const COLOR_GREEN: Color = Color::srgb(0.0, 1.0, 0.0); // 绿色
 pub const COLOR_BLUE: Color = Color::srgb(0.0, 0.5, 1.0); // 蓝色
 pub const COLOR_YELLOW: Color = Color::srgb(1.0, 1.0, 0.0); // 黄色
-pub const COLOR_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 灰色
-pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 暗灰色
+pub const COLOR_GRAY: Color = Color::srgb(146.0 / 255.0, 159.0 / 255.0, 167.0 / 255.0); // 开始界面背景色
+pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 血条空槽背景色（深灰）
 pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明白色
 pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
 pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色

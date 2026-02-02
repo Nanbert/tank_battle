@@ -63,7 +63,7 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 }
 
 pub fn configure_game_resources(app: &mut App) {
-    app.insert_resource(ClearColor(crate::constants::START_SCREEN_BACKGROUND_COLOR_GRAY))
+    app.insert_resource(ClearColor(crate::constants::COLOR_GRAY))
         .insert_resource(FontResources {
             cn: Handle::default(),
             en: Handle::default(),
@@ -191,7 +191,7 @@ pub fn register_game_systems(app: &mut App) {
                 hud_ui::despawn_hud,
                 game_state::reset_fading_out,
                 |mut clear_color: ResMut<ClearColor>| {
-                    clear_color.0 = crate::constants::START_SCREEN_BACKGROUND_COLOR_GRAY;
+                    clear_color.0 = crate::constants::COLOR_GRAY;
                 },
             )
                 .chain(),

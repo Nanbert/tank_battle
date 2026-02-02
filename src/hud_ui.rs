@@ -386,7 +386,7 @@ fn spawn_single_player_hud(
     spawn_bar(
         commands,
         marker.clone(),
-        COLOR_GRAY,
+        COLOR_DARK_GRAY,
         x_pos,
         WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_HEALTH,
         HUD_BAR_WIDTH,
@@ -415,7 +415,7 @@ fn spawn_single_player_hud(
     spawn_bar(
         commands,
         marker.clone(),
-        COLOR_GRAY,
+        COLOR_DARK_GRAY,
         x_pos,
         WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_BLUE,
         HUD_BAR_WIDTH,
