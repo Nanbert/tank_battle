@@ -85,6 +85,7 @@ pub fn configure_game_resources(app: &mut App) {
             bullet_player1: Handle::default(),
             bullet_player2: Handle::default(),
             bullet_enemy: Handle::default(),
+            bullet_fire_effect: Handle::default(),
         })
         .insert_resource(EffectResources {
             explosion: Handle::default(),
@@ -252,6 +253,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             OnEnter(GameState::StageIntro),
             (
+                game_state::cleanup_effects_and_bullets,
                 player::init_players.run_if(
                     |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
                 ),
@@ -398,6 +400,10 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             Update,
             bullet::handle_effect_events.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            bullet::animate_fire_shell_bullet.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -654,6 +660,7 @@ pub fn init_game_resources(
         bullet_player1: asset_server.load(TEXTURE_BULLET_PLAYER1),
         bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
+        bullet_fire_effect: asset_server.load(TEXTURE_BULLET_FIRE_EFFECT),
     });
 
     // 地图纹理资源

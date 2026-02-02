@@ -30,6 +30,18 @@ pub const SOUND_ENEMY_SHOT: &str = "music/enemy_shot.ogg";
 pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
 pub const TEXTURE_BULLET_PLAYER2: &str = "texture/bullets/bullet_player2.png";
 pub const TEXTURE_BULLET_ENEMY: &str = "texture/bullets/bullet_enemy.png";
+pub const TEXTURE_BULLET_FIRE_EFFECT: &str = "texture/bullets/fire_effect.png";
+
+// 火焰特效精灵图常量（叠加在子弹上的火焰特效）
+// fire_effect.png 实际尺寸：960 x 1344 像素
+// 7行5列网格，每帧 192 x 192 像素
+pub const FIRE_EFFECT_TILE_WIDTH: f32 = 192.0; // 火焰特效瓦片宽度（960/5）
+pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 192.0; // 火焰特效瓦片高度（1344/7）
+pub const FIRE_EFFECT_COLUMNS: usize = 5; // 火焰特效列数
+pub const FIRE_EFFECT_ROWS: usize = 7; // 火焰特效行数
+pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最后一行只有2帧）
+pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间隔
+pub const FIRE_EFFECT_DISPLAY_SIZE: f32 = 80.0; // 火焰特效显示尺寸（比子弹略大）
 
 // 敌方坦克纹理路径常量
 pub const TEXTURE_ENEMY_TANK1: &str = "enemy_tank/enemy_tank1_sprite.png";
@@ -310,6 +322,10 @@ pub struct BubbleEffect;
 // 玩家履带特效标记
 #[derive(Component)]
 pub struct TrackChainEffect;
+
+// 火焰特效标记（叠加在子弹上的火焰特效）
+#[derive(Component)]
+pub struct FireEffect;
 
 // 炮管组件标记
 #[derive(Component)]

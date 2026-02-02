@@ -79,6 +79,8 @@ pub fn spawn_bullet(
     commands: &mut Commands,
     bullet_resources: &BulletResources,
     params: BulletSpawnParams,
+    player_info: &Res<PlayerInfo>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = match params.owner_type {
@@ -87,12 +89,23 @@ pub fn spawn_bullet(
         TankType::Enemy => bullet_resources.bullet_enemy.clone(),
     };
 
+    // 检查玩家是否拥有 fire_shell 能力
+    let has_fire_shell = match params.owner_type {
+        TankType::Player1 => player_info.player1.fire_shell,
+        TankType::Player2 => player_info
+            .player2
+            .as_ref()
+            .map_or(false, |stats| stats.fire_shell),
+        TankType::Enemy => false,
+    };
+
     // 计算子弹旋转角度（纹理是横向的，需要根据射击方向旋转）
     // 假设纹理默认向右（0度），需要根据方向计算旋转角度
     let angle = params.direction.y.atan2(params.direction.x);
     let rotation = Quat::from_rotation_z(angle);
 
-    commands
+    // 生成子弹实体
+    let bullet_entity = commands
         .spawn((
             Bullet,
             PlayingEntity,
@@ -122,13 +135,60 @@ pub fn spawn_bullet(
                 | ActiveCollisionTypes::KINEMATIC_KINEMATIC
                 | ActiveCollisionTypes::KINEMATIC_STATIC,
         ))
-        .id()
+        .id();
+
+    // 如果玩家有 fire_shell 效果，添加火焰特效子实体
+    if has_fire_shell {
+        let fire_effect_atlas_layout = TextureAtlasLayout::from_grid(
+            UVec2::new(
+                crate::constants::FIRE_EFFECT_TILE_WIDTH as u32,
+                crate::constants::FIRE_EFFECT_TILE_HEIGHT as u32,
+            ),
+            crate::constants::FIRE_EFFECT_COLUMNS as u32,
+            crate::constants::FIRE_EFFECT_ROWS as u32,
+            None,
+            None,
+        );
+        let fire_effect_atlas = texture_atlas_layouts.add(fire_effect_atlas_layout);
+        let animation_indices = AnimationIndices {
+            first: 0,
+            last: crate::constants::FIRE_EFFECT_TOTAL_FRAMES - 1,
+        };
+
+        commands.entity(bullet_entity).with_children(|parent| {
+            parent.spawn((
+                crate::constants::FireEffect,
+                Sprite::from_atlas_image(
+                    bullet_resources.bullet_fire_effect.clone(),
+                    TextureAtlas {
+                        layout: fire_effect_atlas,
+                        index: animation_indices.first,
+                    },
+                ),
+                Transform {
+                    translation: Vec3::new(0.0, 0.0, 0.1), // 略高于子弹
+                    rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转 90 度
+                    scale: Vec3::splat(0.5), // 缩小 2 倍
+                },
+                animation_indices,
+                AnimationTimer(Timer::from_seconds(
+                    crate::constants::FIRE_EFFECT_ANIMATION_FRAME,
+                    TimerMode::Repeating,
+                )),
+                CurrentAnimationFrame(0),
+            ));
+        });
+    }
+
+    bullet_entity
 }
 
 /// 敌方坦克射击系统
 pub fn enemy_shoot_system(
     mut commands: Commands,
     bullet_resources: Res<BulletResources>,
+    player_info: Res<PlayerInfo>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<
         (
             Entity,
@@ -170,6 +230,8 @@ pub fn enemy_shoot_system(
                     speed: BULLET_SPEED,
                     owner_type: TankType::Enemy,
                 },
+                &player_info,
+                &mut texture_atlas_layouts,
             );
 
             // 记录子弹的所有者
@@ -183,6 +245,7 @@ pub fn player_shoot_system(
     mut commands: Commands,
     bullet_resources: Res<BulletResources>,
     time: Res<Time>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<
         (
             Entity,
@@ -260,6 +323,8 @@ pub fn player_shoot_system(
                 speed: bullet_speed,
                 owner_type: player_tank.tank_type,
             },
+            &player_info,
+            &mut texture_atlas_layouts,
         );
 
         // 记录子弹的所有者
@@ -909,5 +974,37 @@ pub fn bullet_commander_collision_system(
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+    }
+}
+
+/// 火焰特效动画系统
+/// 播放叠加在子弹上的火焰特效精灵图动画
+pub fn animate_fire_shell_bullet(
+    time: Res<Time>,
+    mut query: Query<
+        (
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<crate::constants::FireEffect>,
+    >,
+) {
+    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+
+        if timer.just_finished() {
+            let current = current_frame.0;
+            let next_index = if current == indices.last {
+                indices.first
+            } else {
+                current + 1
+            };
+            current_frame.0 = next_index;
+            if let Some(atlas) = &mut sprite.texture_atlas {
+                atlas.index = next_index;
+            }
+        }
     }
 }

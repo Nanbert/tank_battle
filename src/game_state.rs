@@ -196,4 +196,58 @@ pub fn check_stage_complete(
     next_state.set(GameState::StageIntro);
 }
 
+/// 清理所有 effect 和 bullet 实体
+/// 在进入 StageIntro 状态时调用，确保场景中没有残留的特效和子弹
+pub fn cleanup_effects_and_bullets(
+    mut commands: Commands,
+    bullets: Query<Entity, With<crate::bullet::Bullet>>,
+    explosions: Query<Entity, With<crate::constants::Explosion>>,
+    sparks: Query<Entity, With<crate::constants::Spark>>,
+    smokes: Query<Entity, With<crate::constants::Smoke>>,
+    forest_fires: Query<Entity, With<crate::constants::ForestFire>>,
+    energy_balls: Query<Entity, With<crate::constants::EnergyBall>>,
+    lasers: Query<Entity, With<crate::constants::Laser>>,
+    mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
+) {
+    // 清理所有子弹
+    for bullet in bullets.iter() {
+        bullet_tracker.remove_bullet(bullet);
+        let () = commands.entity(bullet).try_despawn();
+    }
+
+    // 清理所有爆炸特效
+    for explosion in explosions.iter() {
+        let () = commands.entity(explosion).try_despawn();
+    }
+
+    // 清理所有火花特效
+    for spark in sparks.iter() {
+        let () = commands.entity(spark).try_despawn();
+    }
+
+    // 清理所有烟雾特效
+    for smoke in smokes.iter() {
+        let () = commands.entity(smoke).try_despawn();
+    }
+
+    // 清理所有森林燃烧特效
+    for forest_fire in forest_fires.iter() {
+        let () = commands.entity(forest_fire).try_despawn();
+    }
+
+    // 清理所有能量球
+    for energy_ball in energy_balls.iter() {
+        let () = commands.entity(energy_ball).try_despawn();
+    }
+
+    // 清理所有激光
+    for laser in lasers.iter() {
+        let () = commands.entity(laser).try_despawn();
+    }
+
+    // 强制重置 BulletTracker，防止状态不同步
+    bullet_tracker.active_bullets.clear();
+    bullet_tracker.bullet_to_tank.clear();
+}
+
 // 文本更新函数类型

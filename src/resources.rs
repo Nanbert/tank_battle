@@ -258,6 +258,8 @@ pub struct BulletResources {
     pub bullet_player2: Handle<Image>,
     /// 敌方子弹纹理
     pub bullet_enemy: Handle<Image>,
+    /// 火焰特效纹理（精灵图，叠加在子弹上）
+    pub bullet_fire_effect: Handle<Image>,
 }
 
 // ==================== 游戏资源管理 ====================
