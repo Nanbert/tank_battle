@@ -558,8 +558,6 @@ pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（�
 pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
 pub const LASER_COLLIDER_HALF_WIDTH: f32 = 35.0; // 激光碰撞体半宽
 pub const LASER_COLLIDER_HALF_HEIGHT: f32 = 683.0; // 激光碰撞体半高
-#[allow(dead_code)]
-pub const LASER_CHARGE_PROGRESS_BAR_WIDTH: f32 = 100.0; // 激光蓄力进度条宽度
 
 // 敌方坦克
 pub const ENEMY_TANK_DISPLAY_WIDTH: f32 = 80.0; // 敌方坦克显示宽度
