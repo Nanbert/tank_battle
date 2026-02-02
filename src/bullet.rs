@@ -168,7 +168,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.1), // 略高于子弹
                     rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转 90 度
-                    scale: Vec3::splat(0.5), // 缩小 2 倍
+                    scale: Vec3::splat(0.7), // 缩小到 70%
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(

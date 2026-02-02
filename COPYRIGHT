@@ -35,6 +35,27 @@
 - **作者**: irmirx
 - **说明**: 玩家坦克纹理
 
+## Player Tank Textures (玩家坦克纹理)
+- **文件**: assets/texture/player_tank1.png, assets/texture/player_tank2.png, assets/texture/player_tank1_sprite.png
+- **来源**: https://opengameart.org/content/top-down-vehicle
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: irmirx
+- **说明**: 玩家坦克纹理，586x328像素
+
+## Barrel Textures (炮管纹理)
+- **文件**: assets/texture/single_barrel.png, assets/texture/double_barrel.png
+- **来源**: https://opengameart.org/content/top-down-vehicle
+- **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
+- **作者**: irmirx
+- **说明**: 炮管纹理，250x241像素
+
+## Track Train (履带纹理)
+- **文件**: assets/texture/track_train.png
+- **来源**: 通义千问生成
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 通义千问
+- **说明**: 履带纹理，任何人可以自由使用、修改和分发，无需署名
+
 ## Background (背景图片)
 - **文件**: assets/background/background_sprite_15frames.png
 - **来源**: 通义千问生成
@@ -119,6 +140,13 @@
 - **许可**: CC0 1.0 (Public Domain Dedication)
 - **作者**: Wenrexa
 - **说明**: 激光子弹素材包，免费使用，无需署名
+
+## Fire Effect (火焰特效)
+- **文件**: assets/texture/bullets/fire_effect.png
+- **来源**: https://opengameart.org/content/alot-of-particles-torch-fire-special-effect-alotofparticle22
+- **许可**: CC-BY 4.0 (Creative Commons Attribution 4.0 International)
+- **作者**: JoesAlotofthings
+- **说明**: 火焰粒子特效精灵图，7行5列布局，每帧192x192像素，共32帧
 
 ## 许可说明
 CC-BY 3.0 许可证要求：
