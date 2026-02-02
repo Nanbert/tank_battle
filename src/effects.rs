@@ -125,10 +125,42 @@ pub fn spawn_spark(
     ));
 }
 
-pub fn animate_explosion(
+/// 通用一次性动画系统
+/// 用于播放只播放一次后销毁的动画（如爆炸、烟雾、打击效果等）
+pub fn animate_sprite_once<T: Component>(
     time: Res<Time>,
     mut commands: Commands,
     mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+        ),
+        With<T>,
+    >,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let current = current_frame.0;
+            if current >= indices.last {
+                // 动画播放完毕，销毁实体
+                let () = commands.entity(entity).try_despawn();
+            } else if let Some(atlas) = &mut sprite.texture_atlas {
+                let next_index = current + 1;
+                current_frame.0 = next_index;
+                atlas.index = next_index;
+            }
+        }
+    }
+}
+
+pub fn animate_explosion(
+    time: Res<Time>,
+    commands: Commands,
+    query: Query<
         (
             Entity,
             &mut AnimationTimer,
@@ -139,27 +171,14 @@ pub fn animate_explosion(
         With<Explosion>,
     >,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let current = current_frame.0;
-            if current >= indices.last {
-                // 动画播放完毕，销毁爆炸实体
-                let () = commands.entity(entity).try_despawn();
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
-            }
-        }
-    }
+    animate_sprite_once::<Explosion>(time, commands, query);
 }
 
 /// 处理烟雾动画
 pub fn animate_smoke(
     time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<
+    commands: Commands,
+    query: Query<
         (
             Entity,
             &mut AnimationTimer,
@@ -170,27 +189,14 @@ pub fn animate_smoke(
         With<Smoke>,
     >,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let current = current_frame.0;
-            if current >= indices.last {
-                // 动画播放完毕，销毁烟雾实体
-                let () = commands.entity(entity).try_despawn();
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
-            }
-        }
-    }
+    animate_sprite_once::<Smoke>(time, commands, query);
 }
 
 /// 森林燃烧动画
 pub fn animate_forest_fire(
     time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<
+    commands: Commands,
+    query: Query<
         (
             Entity,
             &mut AnimationTimer,
@@ -201,20 +207,7 @@ pub fn animate_forest_fire(
         With<ForestFire>,
     >,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let current = current_frame.0;
-            if current >= indices.last {
-                // 动画播放完毕，销毁森林燃烧实体
-                let () = commands.entity(entity).try_despawn();
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
-            }
-        }
-    }
+    animate_sprite_once::<ForestFire>(time, commands, query);
 }
 
 /// 通用循环动画系统
@@ -251,8 +244,8 @@ pub fn animate_looping_sprite<T: Component>(
 
 pub fn animate_spark(
     time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<
+    commands: Commands,
+    query: Query<
         (
             Entity,
             &mut AnimationTimer,
@@ -263,23 +256,7 @@ pub fn animate_spark(
         With<Spark>,
     >,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let current = current_frame.0;
-            if current >= indices.last {
-                // 动画播放完毕，销毁实体
-                let () = commands.entity(entity).try_despawn();
-            } else {
-                // 继续播放动画
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                if let Some(atlas) = &mut sprite.texture_atlas {
-                    atlas.index = next_index;
-                }
-            }
-        }
-    }
+    animate_sprite_once::<Spark>(time, commands, query);
 }
 
 /// 更新气垫效果
