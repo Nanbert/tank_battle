@@ -6,7 +6,7 @@
 
 use bevy::prelude::*;
 
-use crate::bullet::BulletOwner;
+use crate::bullet::Bullet;
 use crate::constants::*;
 use crate::resources::{LaserResources, PlayerInfo, EffectResources, SoundResources, InsufficientEnergyTracker, Language};
 use crate::utils;
@@ -49,13 +49,17 @@ pub fn spawn_laser(
     let laser_position = params.position
         + params.direction.extend(0.0) * (laser_half_height - LASER_POSITION_OFFSET);
 
+    let bullet_type = if matches!(params.owner_type, TankType::Enemy) {
+        Bullet::Enemy
+    } else {
+        Bullet::Player(params.owner_type)
+    };
+
     commands
         .spawn((
             Laser,
             PlayingEntity,
-            BulletOwner {
-                owner_type: params.owner_type,
-            },
+            bullet_type,
             Sprite {
                 image: laser_texture,
                 texture_atlas: Some(TextureAtlas {
@@ -413,7 +417,7 @@ pub fn laser_collision_system(
         With<Laser>,
     >,
     enemies: Query<(Entity, &Transform), With<EnemyTank>>,
-    bullets: Query<(Entity, &Transform), With<BulletOwner>>,
+    bullets: Query<(Entity, &Transform), With<Bullet>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
