@@ -119,8 +119,8 @@ pub fn player_laser_system(
         // 卫语句：敌方坦克没有激光
         let key_bindings = player_tank.tank_type.get_key_bindings();
 
-        // 使用 recall 键作为激光键
-        let laser_key = key_bindings.recall;
+        // 使用 laser 键
+        let laser_key = key_bindings.laser;
 
         // 检查蓄力状态和打断状态
         let has_charge = charge_query

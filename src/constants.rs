@@ -250,10 +250,11 @@ pub struct PlayerKeyBindings {
     pub shoot: KeyCode,
     pub dash: KeyCode,
     pub recall: KeyCode,
+    pub laser: KeyCode,
 }
 
 impl PlayerKeyBindings {
-    /// 玩家1按键绑定 (WASD + J/K/I)
+    /// 玩家1按键绑定 (WASD + J/K/I/L)
     pub fn player1() -> Self {
         Self {
             up: KeyCode::KeyW,
@@ -263,6 +264,7 @@ impl PlayerKeyBindings {
             shoot: KeyCode::KeyJ,
             dash: KeyCode::KeyK,
             recall: KeyCode::KeyI,
+            laser: KeyCode::KeyL,
         }
     }
 
@@ -276,6 +278,7 @@ impl PlayerKeyBindings {
             shoot: KeyCode::Numpad1,
             dash: KeyCode::Numpad2,
             recall: KeyCode::Numpad4,
+            laser: KeyCode::Numpad3,
         }
     }
 
