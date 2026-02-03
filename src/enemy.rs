@@ -301,96 +301,91 @@ pub fn move_enemy_tanks(
 }
 
 /// 检测边界碰撞
+/// 返回碰撞法线方向（指向边界外部）
 fn check_boundary_collision(
     transform: &Transform,
     collider_half_width: f32,
     collider_half_height: f32,
     current_direction: Vec2,
 ) -> Option<Vec2> {
-    const BOUNDARY_BUFFER: f32 = 20.0; // 边界缓冲距离（增加到20像素）
+    const BOUNDARY_BUFFER: f32 = 20.0;
 
     let x = transform.translation.x;
     let y = transform.translation.y;
 
-    // 检查左边界：只有当朝左且距离左边界过近时才触发
+    // 左边界：朝左且距离过近
     if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER && current_direction.x < -0.5 {
-        return Some(Vec2::new(1.0, 0.0)); // 指向右
+        return Some(DIRECTIONS[1]); // 返回右方向
     }
 
-    // 检查右边界：只有当朝右且距离右边界过近时才触发
+    // 右边界：朝右且距离过近
     if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER && current_direction.x > 0.5 {
-        return Some(Vec2::new(-1.0, 0.0)); // 指向左
+        return Some(DIRECTIONS[2]); // 返回左方向
     }
 
-    // 检查上边界：只有当朝上且距离上边界过近时才触发
+    // 上边界：朝上且距离过近
     if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER && current_direction.y > 0.5 {
-        return Some(Vec2::new(0.0, -1.0)); // 指向下
+        return Some(DIRECTIONS[0]); // 返回下方向
     }
 
-    // 检查下边界：只有当朝下且距离下边界过近时才触发
+    // 下边界：朝下且距离过近
     if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER && current_direction.y < -0.5 {
-        return Some(Vec2::new(0.0, 1.0)); // 指向上
+        return Some(DIRECTIONS[3]); // 返回上方向
     }
 
     None
 }
 
 /// 检测敌方坦克碰撞
+/// 返回第一个有效碰撞的法线方向
 fn detect_enemy_tank_collision(entity: Entity, rapier_context: &RapierContext) -> Option<Vec2> {
     for contact_pair in rapier_context.contact_pairs_with(entity) {
+        // 跳过无碰撞的接触对
         if !contact_pair.has_any_active_contact() {
             continue;
         }
 
+        // 遍历 manifold 查找有效接触
         for manifold in contact_pair.manifolds() {
             if manifold.find_deepest_contact().is_some() {
-                // 获取碰撞法线方向
-                return Some(if contact_pair.collider1() == Some(entity) {
-                    -manifold.normal()
-                } else {
-                    manifold.normal()
-                });
+                // 根据碰撞顺序确定法线方向
+                let normal = manifold.normal();
+                let is_collider1 = contact_pair.collider1() == Some(entity);
+                return Some(if is_collider1 { -normal } else { normal });
             }
         }
     }
     None
 }
 
-/// 获取被阻挡的方向
-fn get_blocked_direction(collision_normal: Vec2) -> Vec2 {
-    let abs_x = collision_normal.x.abs();
-    let abs_y = collision_normal.y.abs();
+/// 根据碰撞法线获取新的移动方向
+/// 分析碰撞法线，选择一个可用的移动方向（避免碰撞方向）
+fn get_new_direction(collision_normal: Vec2) -> Vec2 {
+    let mut rng = rand::rng();
 
-    if abs_x > abs_y {
-        if collision_normal.x > 0.0 {
-            Vec2::new(1.0, 0.0) // 碰撞来自右侧，不能向右
-        } else {
-            Vec2::new(-1.0, 0.0) // 碰撞来自左侧，不能向左
-        }
+    // 比较绝对值，确定主要碰撞方向
+    let x_abs = collision_normal.x.abs();
+    let y_abs = collision_normal.y.abs();
+
+    // 确定被阻挡的方向索引
+    let blocked_index = if x_abs > y_abs {
+        // 水平方向碰撞
+        if collision_normal.x > 0.0 { 1 } else { 2 }
     } else {
-        if collision_normal.y > 0.0 {
-            Vec2::new(0.0, 1.0) // 碰撞来自上方，不能向上
-        } else {
-            Vec2::new(0.0, -1.0) // 碰撞来自下方，不能向下
-        }
-    }
-}
+        // 垂直方向碰撞
+        if collision_normal.y > 0.0 { 3 } else { 0 }
+    };
 
-/// 选择可用方向
-fn choose_available_direction(blocked_direction: Vec2) -> Vec2 {
-    let available_directions: Vec<Vec2> = DIRECTIONS
-        .iter()
-        .filter(|dir| **dir != blocked_direction)
-        .copied()
-        .collect();
+    // 从三个可用方向中随机选择一个
+    // 可用索引：0,1,2,3 中除了 blocked_index 的三个
+    let available: [usize; 3] = [0, 1, 2, 3]
+        .into_iter()
+        .filter(|&i| i != blocked_index)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap_or([0, 1, 2]);
 
-    if available_directions.is_empty() {
-        blocked_direction
-    } else {
-        let mut rng = rand::rng();
-        let random_index = rng.random_range(0..available_directions.len());
-        available_directions[random_index]
-    }
+    DIRECTIONS[available[rng.random_range(0..3)]]
 }
 
 /// 处理敌方坦克碰撞
@@ -411,8 +406,7 @@ fn handle_enemy_tank_collision(
         collider_half_height,
         enemy_tank.direction,
     ) {
-        let blocked_direction = get_blocked_direction(boundary_normal);
-        enemy_tank.direction = choose_available_direction(blocked_direction);
+        enemy_tank.direction = get_new_direction(boundary_normal);
         direction_timer.reset();
         collision_cooldown.reset();
         return;
@@ -420,8 +414,7 @@ fn handle_enemy_tank_collision(
 
     // 检测物理碰撞
     if let Some(collision_normal) = detect_enemy_tank_collision(entity, rapier_context) {
-        let blocked_direction = get_blocked_direction(collision_normal);
-        enemy_tank.direction = choose_available_direction(blocked_direction);
+        enemy_tank.direction = get_new_direction(collision_normal);
         direction_timer.reset();
         collision_cooldown.reset();
     }
