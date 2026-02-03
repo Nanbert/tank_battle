@@ -538,10 +538,6 @@ pub fn register_game_systems(app: &mut App) {
         
         .add_systems(
             Update,
-            laser::laser_collision_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
             powerup::animate_powerup.run_if(in_state(GameState::Playing)),
         )
         .add_systems(

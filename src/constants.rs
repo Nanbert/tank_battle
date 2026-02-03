@@ -446,6 +446,14 @@ pub struct OneShotAnimation;
 #[derive(Component)]
 pub struct Laser;
 
+/// 激光方向
+#[derive(Component)]
+pub struct LaserDirection(pub Vec2);
+
+/// 激光发射起点
+#[derive(Component)]
+pub struct LaserStartPoint(pub Vec3);
+
 #[derive(Component)]
 pub struct Spark;
 
@@ -613,7 +621,7 @@ pub const DETECTION_RADIUS: f32 = 100.0;
 // ==================== 动画时间常量 ====================
 pub const ANIMATION_FRAME_EXPLOSION: f32 = 0.01; // 爆炸动画帧间隔
 pub const ANIMATION_FRAME_SPARK: f32 = 0.02; // 火花动画帧间隔
-pub const ANIMATION_FRAME_LASER: f32 = 0.05; // 激光动画帧间隔
+pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共0.72秒
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
@@ -653,13 +661,11 @@ pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max
 pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
 
 // 激光
-pub const LASER_POSITION_OFFSET: f32 = 30.0; // 激光位置偏移
+pub const LASER_POSITION_OFFSET: f32 = -80.0; // 激光位置偏移（炮口向前的距离）
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
 pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
-pub const LASER_COLLIDER_HALF_WIDTH: f32 = 35.0; // 激光碰撞体半宽
-pub const LASER_COLLIDER_HALF_HEIGHT: f32 = 683.0; // 激光碰撞体半高
 
 // 敌方坦克
 pub const ENEMY_TANK_DISPLAY_WIDTH: f32 = 80.0; // 敌方坦克显示宽度
@@ -720,6 +726,7 @@ pub const COMMANDER_MUSIC_DISPLAY_HEIGHT: f32 = 60.0; // 指挥官音乐显示�
 pub const LASER_DISPLAY_WIDTH: f32 = 512.0; // 激光显示宽度
 pub const LASER_TILE_WIDTH: f32 = 512.0; // 激光瓦片宽度
 pub const LASER_TILE_HEIGHT: f32 = 683.0; // 激光瓦片高度
+pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）
 
 // UI 尺寸
 pub const PLAYER_AVATAR_TILE_WIDTH: f32 = 160.0; // 玩家头像瓦片宽度
@@ -745,7 +752,6 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 
 // ==================== 游戏数值常量 ====================
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
-pub const LASER_COLLISION_FRAME_INTERVAL: u32 = 5; // 激光碰撞检测帧间隔
 pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
 pub const ENERGY_BALL_END_FRAME: usize = 84; // 能量球动画结束帧（85帧：0-84）
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数

@@ -407,6 +407,7 @@ pub fn bullet_terrain_collision_system(
     forests: Query<(Entity, &Transform), With<Forest>>,
     bricks: Query<(), With<Brick>>,
     steels: Query<(), With<Steel>>,
+    despawned_entities: Query<(), With<DespawnMarker>>,
     player_info: Res<PlayerInfo>,
     mut bullet_tracker: ResMut<BulletTracker>,
     sound_resources: Res<SoundResources>,
@@ -424,6 +425,11 @@ pub fn bullet_terrain_collision_system(
             } else {
                 continue;
             };
+
+        // 跳过已被标记销毁的实体（被激光击中的）
+        if despawned_entities.contains(terrain_entity) {
+            continue;
+        }
 
         // 处理森林碰撞
         if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
@@ -484,6 +490,7 @@ pub fn bullet_tank_collision_system(
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<(&PlayerTank, &Transform), With<PlayerTank>>,
+    despawned_entities: Query<(), With<DespawnMarker>>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -497,6 +504,11 @@ pub fn bullet_tank_collision_system(
         let Some((bullet_entity, tank_entity, bullet)) =
             find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &enemy_tanks, &player_tanks)
         else { continue; };
+
+        // 跳过已被标记销毁的实体（被激光击中的）
+        if despawned_entities.contains(tank_entity) {
+            continue;
+        }
 
         // 玩家子弹击中敌方坦克
         if bullet.is_player() && enemy_tanks.get(tank_entity).is_ok() {
@@ -637,14 +649,14 @@ pub fn bullet_commander_collision_system(
         let CollisionEvent::Started(e1, e2, _) = event else { continue };
 
         // 判断是否是子弹与司令官的碰撞，同时获取子弹和司令官信息
-        let (bullet_entity, _commander_entity, bullet, bullet_transform) = if let (Ok((_, b, t)), Ok(_)) =
+        let (bullet_entity, bullet, bullet_transform) = if let (Ok((_, b, t)), Ok(_)) =
             (bullets.get(*e1), commanders.get(*e2))
         {
-            (*e1, *e2, b, t)
+            (*e1, b, t)
         } else if let (Ok((_, b, t)), Ok(_)) =
             (bullets.get(*e2), commanders.get(*e1))
         {
-            (*e2, *e1, b, t)
+            (*e2, b, t)
         } else {
             continue;
         };
