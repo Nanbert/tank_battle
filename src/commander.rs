@@ -39,8 +39,7 @@ pub fn spawn_commander(
     let commander_texture = commander_resources.texture.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas_layout = utils::create_texture_atlas(commander_tile_size, 10, 10);
-    let commander_texture_atlas = texture_atlas_layouts.add(commander_texture_atlas_layout);
+    let commander_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, commander_tile_size, 10, 10);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
@@ -76,8 +75,7 @@ pub fn spawn_commander(
         COMMANDER_MUSIC_TILE_WIDTH as u32,
         COMMANDER_MUSIC_TILE_HEIGHT as u32,
     );
-    let music_texture_atlas_layout = utils::create_texture_atlas(music_tile_size, 10, 1);
-    let music_texture_atlas = texture_atlas_layouts.add(music_texture_atlas_layout);
+    let music_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, music_tile_size, 10, 1);
     let music_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((
@@ -122,20 +120,7 @@ pub fn animate_commander(
     }
 
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }
 

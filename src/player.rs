@@ -478,11 +478,18 @@ pub fn handle_barrier_collision(
 
     // 检测玩家坦克与 barrier 的距离
     for (player_entity, player_transform, player_tank) in player_tanks.iter() {
-        // 一次性获取玩家统计数据，避免重复查询
-        let Some(player_stats) = player_info.get_stats_mut(player_tank.tank_type) else {
-            // 单人模式下 Player2 不存在，跳过
+        let tank_type = player_tank.tank_type;
+        let mut has_track_chain = false;
+
+        // 检查玩家是否有 track_chain，如果有则免疫伤害
+        player_info.with_stats_mut(tank_type, |player_stats| {
+            has_track_chain = player_stats.track_chain;
+        });
+
+        if has_track_chain {
+            // 拥有 track_chain，免疫伤害，跳过此玩家
             continue;
-        };
+        }
 
         for (barrier_transform, _barrier_entity) in barriers.iter() {
             // 计算距离
@@ -497,12 +504,6 @@ pub fn handle_barrier_collision(
                     .is_none_or(bevy::prelude::Timer::is_finished);
 
                 if can_take_damage {
-                    // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    if player_stats.track_chain {
-                        // 拥有 track_chain，免疫伤害，直接跳过
-                        continue;
-                    }
-
                     // 设置屏障伤害冷却时间
                     barrier_damage_tracker
                         .cooldowns
@@ -512,20 +513,22 @@ pub fn handle_barrier_collision(
                         );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    player_stats.speed = player_stats
-                        .speed
-                        .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
-                    player_stats.protection = player_stats
-                        .protection
-                        .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                    player_info.with_stats_mut(tank_type, |player_stats| {
+                        player_stats.speed = player_stats
+                            .speed
+                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                        player_stats.protection = player_stats
+                            .protection
+                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                    });
 
                     // 发送 speed 和 protection 变更事件
                     stat_changed_events.write(PlayerStatChanged {
-                        player_type: player_tank.tank_type,
+                        player_type: tank_type,
                         stat_type: StatType::Speed,
                     });
                     stat_changed_events.write(PlayerStatChanged {
-                        player_type: player_tank.tank_type,
+                        player_type: tank_type,
                         stat_type: StatType::Protection,
                     });
                 }
@@ -537,7 +540,7 @@ pub fn handle_barrier_collision(
 /// 生成玩家坦克和信息
 fn spawn_players(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     game_mode: GameMode,
     player_info: &mut ResMut<PlayerInfo>,
     player_tank_resources: &PlayerTankResources,
@@ -546,8 +549,7 @@ fn spawn_players(
     let player1_texture = player_tank_resources.player1.clone();
     let player2_texture = player_tank_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas_layout = utils::create_texture_atlas(player_tile_size, 2, 1);
-    let player_texture_atlas = texture_atlas_layouts.add(player_texture_atlas_layout);
+    let player_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, player_tile_size, 2, 1);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 
     // 根据游戏模式生成玩家

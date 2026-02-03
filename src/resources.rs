@@ -195,6 +195,22 @@ impl PlayerInfo {
         self.player1.energy_points < crate::constants::MAX_ENERGY_POINTS
             || self.player2.as_ref().is_some_and(|p| p.energy_points < crate::constants::MAX_ENERGY_POINTS)
     }
+
+    /// 对指定玩家的统计数据执行操作
+    ///
+    /// 如果玩家存在，则对玩家的统计数据执行给定的闭包操作
+    ///
+    /// # 参数
+    /// - `tank_type`: 玩家类型
+    /// - `f`: 对 PlayerStats 执行操作的闭包
+    pub fn with_stats_mut<F>(&mut self, tank_type: TankType, f: F)
+    where
+        F: FnOnce(&mut PlayerStats),
+    {
+        if let Some(stats) = self.get_stats_mut(tank_type) {
+            f(stats);
+        }
+    }
 }
 
 #[derive(Clone, Default)]

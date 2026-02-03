@@ -4,6 +4,7 @@
 
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
+use std::time::Duration;
 
 use crate::constants::*;
 
@@ -58,4 +59,58 @@ pub fn play_looping_sound(commands: &mut Commands, audio_source: Handle<AudioSou
         AudioPlayer::new(audio_source),
         PlaybackSettings::LOOP.with_volume(bevy::audio::Volume::Linear(volume)),
     )).id()
+}
+
+/// 处理精灵图动画播放
+///
+/// 更新动画计时器，并在计时器完成时切换到下一帧
+///
+/// # 参数
+/// - `timer`: 动画计时器引用
+/// - `sprite`: 精灵图引用
+/// - `indices`: 动画索引配置
+/// - `current_frame`: 当前帧引用
+/// - `delta`: 时间增量
+pub fn animate_sprite(
+    timer: &mut AnimationTimer,
+    sprite: &mut Sprite,
+    indices: &AnimationIndices,
+    current_frame: &mut CurrentAnimationFrame,
+    delta: Duration,
+) {
+    timer.tick(delta);
+    if timer.just_finished() {
+        let current = current_frame.0;
+        let next_index = if current == indices.last {
+            indices.first
+        } else {
+            current + 1
+        };
+        current_frame.0 = next_index;
+        if let Some(atlas) = &mut sprite.texture_atlas {
+            atlas.index = next_index;
+        }
+    }
+}
+
+/// 添加纹理图集到资源管理器
+///
+/// 创建纹理图集布局并添加到 Assets 中，返回句柄
+///
+/// # 参数
+/// - `texture_atlas_layouts`: 纹理图集布局资源管理器
+/// - `tile_size`: 单个图块大小
+/// - `columns`: 列数
+/// - `rows`: 行数
+///
+/// # 返回值
+/// 纹理图集布局句柄
+pub fn add_texture_atlas(
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    tile_size: UVec2,
+    columns: u32,
+    rows: u32,
+) -> Handle<TextureAtlasLayout> {
+    let layout = create_texture_atlas(tile_size, columns, rows);
+    texture_atlas_layouts.add(layout)
 }

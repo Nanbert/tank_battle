@@ -22,7 +22,7 @@ pub struct LaserSpawnParams {
 pub fn spawn_laser(
     commands: &mut Commands,
     laser_resources: &LaserResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     params: LaserSpawnParams,
 ) -> Entity {
     // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
@@ -32,8 +32,7 @@ pub fn spawn_laser(
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
-    let laser_texture_atlas_layout = utils::create_texture_atlas(laser_tile_size, 4, 3);
-    let laser_texture_atlas = texture_atlas_layouts.add(laser_texture_atlas_layout);
+    let laser_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, laser_tile_size, 4, 3);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
@@ -209,7 +208,7 @@ fn start_charge(
     commands: &mut Commands,
     player_info: &ResMut<PlayerInfo>,
     effect_resources: &EffectResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
@@ -255,8 +254,7 @@ fn start_charge(
     };
 
     let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
-    let energy_ball_texture_atlas_layout = utils::create_texture_atlas(energy_ball_tile_size, 17, 5);
-    let energy_ball_texture_atlas = texture_atlas_layouts.add(energy_ball_texture_atlas_layout);
+    let energy_ball_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, energy_ball_tile_size, 17, 5);
     let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
 
     // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
@@ -353,10 +351,10 @@ fn fire_laser(
     tank_type: TankType,
     sound_resources: &SoundResources,
 ) {
-    let player_stats = player_info.get_stats_mut(tank_type).expect("Player should exist");
-
     // 消耗整个蓝条
-    player_stats.energy_points = 0;
+    player_info.with_stats_mut(tank_type, |stats| {
+        stats.energy_points = 0;
+    });
 
     // 计算激光发射方向
     let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
@@ -544,11 +542,11 @@ pub fn animate_laser(
     effect_resources: Res<EffectResources>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, laser_direction, laser_start) in &mut query {
-        timer.tick(time.delta());
-        let current = current_frame.0;
+        let prev_frame = current_frame.0;
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
 
-        if timer.just_finished() {
-            if current >= indices.last {
+        if prev_frame != current_frame.0 && timer.just_finished() {
+            if current_frame.0 >= indices.last {
                 // 动画播放完毕，执行一次碰撞检测
                 let hit_entities = check_laser_collision(
                     laser_start.0,
@@ -569,8 +567,7 @@ pub fn animate_laser(
                     // 使用预加载的烟雾纹理
                     let smoke_texture = effect_resources.smoke.clone();
                     let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
-                    let smoke_texture_atlas_layout = utils::create_texture_atlas(smoke_tile_size, 5, 3);
-                    let smoke_texture_atlas = texture_atlas_layouts.add(smoke_texture_atlas_layout);
+                    let smoke_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, smoke_tile_size, 5, 3);
                     let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
 
                     commands.spawn((
@@ -602,10 +599,6 @@ pub fn animate_laser(
                     let () = commands.entity(despawn_entity).try_despawn();
                 }
                 let () = commands.entity(entity).try_despawn();
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
             }
         }
     }

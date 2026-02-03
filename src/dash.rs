@@ -43,11 +43,18 @@ pub fn handle_dash_input(
 
         if is_dash_key_pressed && !is_dashing {
             // 检查蓝条是否足够（需要至少1点蓝条）
-            let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
+            let tank_type = player_tank.tank_type;
             let energy_cost = 1; // 1点蓝条（1/3蓝条）
-            if player_stats.energy_points >= energy_cost {
-                // 立即扣除蓝条
-                player_stats.energy_points -= energy_cost;
+            let mut has_enough_energy = false;
+
+            player_info.with_stats_mut(tank_type, |player_stats| {
+                if player_stats.energy_points >= energy_cost {
+                    player_stats.energy_points -= energy_cost;
+                    has_enough_energy = true;
+                }
+            });
+
+            if has_enough_energy {
 
                 // 计算坦克当前朝向
                 let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
@@ -408,14 +415,20 @@ fn handle_brick_collision(
     }
 
     // 根据 protection 百分比决定扣血量
-    let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
-    let health_cost = if player_stats.protection < 40 {
-        2 // 2/3血条
-    } else {
-        usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-    };
+    let tank_type = player_tank.tank_type;
+    let mut health_cost = 0;
+    let mut is_dead = false;
 
-    player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+    player_info.with_stats_mut(tank_type, |player_stats| {
+        health_cost = if player_stats.protection < 40 {
+            2 // 2/3血条
+        } else {
+            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
+        };
+
+        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+        is_dead = player_stats.life_points == 0;
+    });
 
     // 标记本次 dash 已经扣过血
     if health_cost > 0 {
@@ -423,7 +436,7 @@ fn handle_brick_collision(
     }
 
     // 检查玩家是否死亡
-    if player_stats.life_points == 0 {
+    if is_dead {
         let transform = Transform::from_translation(tank_position);
         kill_player_tank(
             commands,
@@ -532,23 +545,27 @@ fn handle_dash_enemy_tank_collision(
         return; // 已经扣过血，不再重复扣血
     }
 
-    // 增加分数
-    let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
-    player_stats.score += 100;
+    // 增加分数和根据 protection 百分比决定扣血量
+    let tank_type = player_tank.tank_type;
+    let mut health_cost = 0;
+    let mut is_dead = false;
+
+    player_info.with_stats_mut(tank_type, |player_stats| {
+        player_stats.score += 100;
+        health_cost = if player_stats.protection < 40 {
+            DASH_DAMAGE_COST_HIGH // 2/3血条
+        } else {
+            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
+        };
+        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+        is_dead = player_stats.life_points == 0;
+    });
 
     // 发送分数变更事件
     stat_changed_events.write(PlayerStatChanged {
-        player_type: player_tank.tank_type,
+        player_type: tank_type,
         stat_type: StatType::Score,
     });
-
-    // 根据 protection 百分比决定扣血量
-    let health_cost = if player_stats.protection < 40 {
-        DASH_DAMAGE_COST_HIGH // 2/3血条
-    } else {
-        usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-    };
-    player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
 
     // 标记本次 dash 已经扣过血
     if health_cost > 0 {
@@ -556,7 +573,7 @@ fn handle_dash_enemy_tank_collision(
     }
 
     // 检查玩家是否死亡
-    if player_stats.life_points == 0 {
+    if is_dead {
         let transform = Transform::from_translation(tank_position);
         kill_player_tank(
             commands,

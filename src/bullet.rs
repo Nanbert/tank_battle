@@ -65,7 +65,7 @@ pub fn spawn_bullet(
     bullet_resources: &BulletResources,
     params: BulletSpawnParams,
     player_info: &Res<PlayerInfo>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = match params.owner_type {
@@ -121,8 +121,7 @@ pub fn spawn_bullet(
     // 如果玩家有 fire_shell 效果，添加火焰特效子实体
     if has_fire_shell {
         let fire_effect_tile_size = UVec2::new(FIRE_EFFECT_TILE_WIDTH as u32, FIRE_EFFECT_TILE_HEIGHT as u32);
-        let fire_effect_atlas_layout = utils::create_texture_atlas(fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
-        let fire_effect_atlas = texture_atlas_layouts.add(fire_effect_atlas_layout);
+        let fire_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::FIRE_EFFECT_TOTAL_FRAMES - 1,
@@ -159,8 +158,7 @@ pub fn spawn_bullet(
     // 如果玩家有 penetrate 效果，添加穿透特效子实体
     if has_penetrate {
         let penetrate_effect_tile_size = UVec2::new(PENETRATE_EFFECT_TILE_WIDTH as u32, PENETRATE_EFFECT_TILE_HEIGHT as u32);
-        let penetrate_effect_atlas_layout = utils::create_texture_atlas(penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
-        let penetrate_effect_atlas = texture_atlas_layouts.add(penetrate_effect_atlas_layout);
+        let penetrate_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::PENETRATE_EFFECT_TOTAL_FRAMES - 1,
@@ -522,13 +520,13 @@ pub fn bullet_tank_collision_system(
             sound_resources.play(&mut commands, sound_resources.hit.clone(), 1.0);
             let () = commands.entity(tank_entity).try_despawn();
             // 增加分数
-            if let Some(player_stats) = player_info.get_stats_mut(player_type) {
+            player_info.with_stats_mut(player_type, |player_stats| {
                 player_stats.score += 100;
                 stat_changed_events.write(PlayerStatChanged {
                     player_type,
                     stat_type: StatType::Score,
                 });
-            }
+            });
             despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
             continue;
         }
@@ -537,13 +535,18 @@ pub fn bullet_tank_collision_system(
         if bullet.is_enemy() {
             if let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity) {
                 let player_type = player_tank.tank_type;
+                let tank_entity = tank_entity; // 提取到外部变量
 
                 sound_resources.play(&mut commands, sound_resources.hit.clone(), 1.0);
                 effect_events.write(EffectEvent::Spark {
                     position: tank_transform.translation,
                 });
 
-                if let Some(player_stats) = player_info.get_stats_mut(player_type) {
+                let mut need_update_filter_groups = false;
+                let mut need_despawn = false;
+                let mut explosion_position = None;
+
+                player_info.with_stats_mut(player_type, |player_stats| {
                     // 按优先级移除道具：fire_shell > track_chain > penetrate > air_cushion > shells
                     let has_fire_shell = player_stats.fire_shell;
                     let has_track_chain = player_stats.track_chain;
@@ -562,9 +565,7 @@ pub fn bullet_tank_collision_system(
                         stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::Penetrate });
                     } else if has_air_cushion {
                         player_stats.air_cushion = false;
-                        if let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                            controller.filter_groups = None;
-                        }
+                        need_update_filter_groups = true;
                         stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::AirCushion });
                     } else if has_shells {
                         player_stats.shells -= 1;
@@ -575,12 +576,27 @@ pub fn bullet_tank_collision_system(
                             player_stats.life_points -= 1;
                         }
                         if player_stats.life_points == 0 {
-                            effect_events.write(EffectEvent::Explosion {
-                                position: tank_transform.translation,
-                            });
-                            let () = commands.entity(tank_entity).try_despawn();
+                            explosion_position = Some(tank_transform.translation);
+                            need_despawn = true;
                         }
                     }
+                });
+
+                // 更新 filter_groups
+                if need_update_filter_groups {
+                    if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                        controller.filter_groups = None;
+                    }
+                }
+
+                // 销毁坦克
+                if need_despawn {
+                    if let Some(pos) = explosion_position {
+                        effect_events.write(EffectEvent::Explosion {
+                            position: pos,
+                        });
+                    }
+                    let () = commands.entity(tank_entity).try_despawn();
                 }
 
                 despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
@@ -704,20 +720,7 @@ pub fn animate_fire_shell_bullet(
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }
 
@@ -736,19 +739,6 @@ pub fn animate_penetrate_bullet(
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }

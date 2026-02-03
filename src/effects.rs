@@ -13,7 +13,7 @@ use crate::utils;
 
 pub fn spawn_explosion(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
     position: Vec3,
@@ -21,8 +21,7 @@ pub fn spawn_explosion(
     // 使用预加载的爆炸纹理
     let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_texture_atlas_layout = utils::create_texture_atlas(explosion_tile_size, 8, 8);
-    let explosion_texture_atlas = texture_atlas_layouts.add(explosion_texture_atlas_layout);
+    let explosion_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, explosion_tile_size, 8, 8);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
     commands.spawn((
@@ -90,15 +89,14 @@ pub fn spawn_forest_fire(
 
 pub fn spawn_spark(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &EffectResources,
     position: Vec3,
 ) {
     // 使用预加载的打击效果纹理
     let spark_texture = effect_resources.spark.clone();
     let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
-    let spark_texture_atlas_layout = utils::create_texture_atlas(spark_tile_size, 4, 4);
-    let spark_texture_atlas = texture_atlas_layouts.add(spark_texture_atlas_layout);
+    let spark_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, spark_tile_size, 4, 4);
     let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
 
     commands.spawn((
@@ -141,17 +139,11 @@ pub fn animate_one_shot_animations(
     >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let current = current_frame.0;
-            if current >= indices.last {
-                // 动画播放完毕，销毁实体
-                let () = commands.entity(entity).try_despawn();
-            } else if let Some(atlas) = &mut sprite.texture_atlas {
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
-            }
+        let prev_frame = current_frame.0;
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
+            // 动画播放完毕，销毁实体
+            let () = commands.entity(entity).try_despawn();
         }
     }
 }
@@ -171,20 +163,7 @@ pub fn animate_looping_sprite<T: Component>(
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }
 
@@ -192,7 +171,7 @@ pub fn animate_looping_sprite<T: Component>(
 pub fn update_air_cushion_effect(
     mut commands: Commands,
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
-    bubble_effects: Query<&crate::constants::BubbleEffect>,
+    bubble_entities: Query<(), With<crate::constants::BubbleEffect>>,
     player_info: Res<PlayerInfo>,
     effect_resources: Res<EffectResources>,
 ) {
@@ -200,37 +179,31 @@ pub fn update_air_cushion_effect(
         // 检查玩家是否有 air_cushion 能力
         let has_air_cushion = player_info.has_air_cushion(player_tank.tank_type);
 
-        if has_air_cushion {
-            // 检查是否已经有气泡特效子实体
-            let has_bubble_sprite = children.is_some_and(|children| {
-                children.iter().any(|child| bubble_effects.contains(child))
+        // 检查是否已经有气泡特效子实体
+        let has_bubble = children.is_some_and(|c| c.iter().any(|child| bubble_entities.contains(child)));
+
+        if has_air_cushion && !has_bubble {
+            // 创建气泡特效
+            let bubble_texture = effect_resources.bubble.clone();
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        image: bubble_texture,
+                        custom_size: Some(Vec2::new(
+                            crate::powerup::POWERUP_BUBBLE_SIZE,
+                            crate::powerup::POWERUP_BUBBLE_SIZE,
+                        )),
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, Z_DEFAULT),
+                    crate::constants::BubbleEffect,
+                ));
             });
-
-            if !has_bubble_sprite {
-                // 使用预加载的气泡纹理
-                let bubble_texture = effect_resources.bubble.clone();
-
-                // 创建气泡特效实体
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        Sprite {
-                            image: bubble_texture,
-                            custom_size: Some(Vec2::new(
-                                crate::powerup::POWERUP_BUBBLE_SIZE,
-                                crate::powerup::POWERUP_BUBBLE_SIZE,
-                            )),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, Z_DEFAULT), // 在坦克中心
-                        crate::constants::BubbleEffect,
-                    ));
-                });
-            }
-        } else {
+        } else if !has_air_cushion && has_bubble {
             // 移除所有气泡特效子实体
             if let Some(children) = children {
                 for child in children.iter() {
-                    if bubble_effects.contains(child) {
+                    if bubble_entities.contains(child) {
                         let () = commands.entity(child).try_despawn();
                     }
                 }

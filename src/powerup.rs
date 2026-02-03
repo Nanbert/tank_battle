@@ -50,20 +50,7 @@ pub fn animate_powerup(
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }
 
@@ -102,80 +89,92 @@ pub fn handle_powerup_collision(
             let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
-            let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
-            let stat_type = match powerup_type {
-                PowerUp::SpeedUp => {
-                    if player_stats.speed < MAX_ATTRIBUTE_VALUE {
-                        player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
-                            .min(MAX_ATTRIBUTE_VALUE);
+            let tank_type = player_tank.tank_type;
+            let mut stat_type = None;
+            let mut update_filter_groups = false;
+
+            player_info.with_stats_mut(tank_type, |player_stats| {
+                stat_type = match powerup_type {
+                    PowerUp::SpeedUp => {
+                        if player_stats.speed < MAX_ATTRIBUTE_VALUE {
+                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
+                        }
+                        Some(StatType::Speed)
                     }
-                    Some(StatType::Speed)
-                }
-                PowerUp::Protection => {
-                    if player_stats.protection < MAX_ATTRIBUTE_VALUE {
-                        player_stats.protection = (player_stats.protection
-                            + POWERUP_ATTRIBUTE_INCREASE)
-                            .min(MAX_ATTRIBUTE_VALUE);
+                    PowerUp::Protection => {
+                        if player_stats.protection < MAX_ATTRIBUTE_VALUE {
+                            player_stats.protection = (player_stats.protection
+                                + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
+                        }
+                        Some(StatType::Protection)
                     }
-                    Some(StatType::Protection)
-                }
-                PowerUp::FireSpeed => {
-                    if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
-                        player_stats.fire_speed = (player_stats.fire_speed
-                            + POWERUP_ATTRIBUTE_INCREASE)
-                            .min(MAX_ATTRIBUTE_VALUE);
+                    PowerUp::FireSpeed => {
+                        if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
+                            player_stats.fire_speed = (player_stats.fire_speed
+                                + POWERUP_ATTRIBUTE_INCREASE)
+                                .min(MAX_ATTRIBUTE_VALUE);
+                        }
+                        Some(StatType::FireSpeed)
                     }
-                    Some(StatType::FireSpeed)
-                }
-                PowerUp::FireShell => {
-                    player_stats.fire_shell = true;
-                    Some(StatType::FireShell)
-                }
-                PowerUp::TrackChain => {
-                    player_stats.track_chain = true;
-                    Some(StatType::TrackChain)
-                }
-                PowerUp::Penetrate => {
-                    player_stats.penetrate = true;
-                    Some(StatType::Penetrate)
-                }
-                PowerUp::Repair => {
-                    if player_stats.life_points < COMMANDER_LIFE_MAX {
-                        player_stats.life_points += 1;
+                    PowerUp::FireShell => {
+                        player_stats.fire_shell = true;
+                        Some(StatType::FireShell)
                     }
-                    None // 修理道具不需要闪烁文字
-                }
-                PowerUp::Hamburger => {
-                    if commander_life.life_points < COMMANDER_LIFE_MAX {
-                        commander_life.life_points += 1;
+                    PowerUp::TrackChain => {
+                        player_stats.track_chain = true;
+                        Some(StatType::TrackChain)
                     }
-                    None // 汉堡道具不影响玩家属性，不发送事件
-                }
-                PowerUp::AirCushion => {
-                    player_stats.air_cushion = true;
-                    // 更新 filter_groups，排除海（GROUP_2）
-                    // 玩家坦克不设置 memberships（默认所有组），filters 设置为不包含 GROUP_2
-                    if let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                        controller.filter_groups = Some(CollisionGroups::new(
-                            Group::all(),
-                            Group::all() & !SEA_GROUP,
-                        ));
+                    PowerUp::Penetrate => {
+                        player_stats.penetrate = true;
+                        Some(StatType::Penetrate)
                     }
-                    Some(StatType::AirCushion)
-                }
-                PowerUp::Shell => {
-                    // 增加 1 颗子弹，最多 2 颗
-                    if player_stats.shells < 2 {
-                        player_stats.shells += 1;
+                    PowerUp::Repair => {
+                        if player_stats.life_points < COMMANDER_LIFE_MAX {
+                            player_stats.life_points += 1;
+                        }
+                        None // 修理道具不需要闪烁文字
                     }
-                    Some(StatType::Shell)
+                    PowerUp::Hamburger => {
+                        None // 汉堡道具不影响玩家属性，不发送事件
+                    }
+                    PowerUp::AirCushion => {
+                        player_stats.air_cushion = true;
+                        update_filter_groups = true;
+                        Some(StatType::AirCushion)
+                    }
+                    PowerUp::Shell => {
+                        // 增加 1 颗子弹，最多 2 颗
+                        if player_stats.shells < 2 {
+                            player_stats.shells += 1;
+                        }
+                        Some(StatType::Shell)
+                    }
+                };
+            });
+
+            // 处理汉堡道具效果（修改 Commander 生命）
+            if let PowerUp::Hamburger = powerup_type {
+                if commander_life.life_points < COMMANDER_LIFE_MAX {
+                    commander_life.life_points += 1;
                 }
-            };
+            }
+
+            // 更新 filter_groups，排除海（GROUP_2）
+            if update_filter_groups {
+                if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                    controller.filter_groups = Some(CollisionGroups::new(
+                        Group::all(),
+                        Group::all() & !SEA_GROUP,
+                    ));
+                }
+            }
 
             // 发送属性变更事件（如果有）
             if let Some(st) = stat_type {
                 stat_changed_events.write(PlayerStatChanged {
-                    player_type: player_tank.tank_type,
+                    player_type: tank_type,
                     stat_type: st,
                 });
             }
@@ -271,7 +270,7 @@ pub fn spawn_power_ups_random(
 fn spawn_powerup_batch(
     commands: &mut Commands,
     powerup_resources: &PowerUpResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     powerup_type: PowerUp,
     positions: &[Vec3],
 ) {
@@ -288,8 +287,7 @@ fn spawn_powerup_batch(
         PowerUp::Shell => powerup_resources.shell.clone(),
     };
     let tile_size = UVec2::new(87, 69);
-    let texture_atlas_layout = utils::create_texture_atlas(tile_size, 3, 1);
-    let texture_atlas = texture_atlas_layouts.add(texture_atlas_layout);
+    let texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, tile_size, 3, 1);
     let animation_indices = AnimationIndices { first: 0, last: 2 };
 
     for pos in positions {
@@ -323,7 +321,7 @@ pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<Pow
 pub fn update_track_chain_effect(
     mut commands: Commands,
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
-    track_chain_effects: Query<&crate::constants::TrackChainEffect>,
+    track_chain_entities: Query<(), With<crate::constants::TrackChainEffect>>,
     player_info: Res<PlayerInfo>,
     powerup_resources: Res<PowerUpResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
@@ -332,54 +330,48 @@ pub fn update_track_chain_effect(
         // 检查玩家是否有 track_chain 能力
         let has_track_chain = player_info.get_stat_value(player_tank.tank_type, |stats| stats.track_chain as usize) > 0;
 
-        if has_track_chain {
-            // 检查是否已经有履带特效子实体
-            let has_track_chain_sprite = children.is_some_and(|children| {
-                children.iter().any(|child| track_chain_effects.contains(child))
-            });
+        // 检查是否已经有履带特效子实体
+        let has_track_chain_sprite = children.is_some_and(|c| c.iter().any(|child| track_chain_entities.contains(child)));
 
-            if !has_track_chain_sprite {
-                // 使用预加载的履带纹理
-                let track_train_texture = powerup_resources.track_train.clone();
-                let track_train_tile_size = UVec2::new(
-                    crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
-                    crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
-                );
-                let track_train_texture_atlas_layout = utils::create_texture_atlas(track_train_tile_size, 2, 1);
-                let track_train_texture_atlas = texture_atlas_layouts.add(track_train_texture_atlas_layout);
-                let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
+        if has_track_chain && !has_track_chain_sprite {
+            // 创建履带特效
+            let track_train_texture = powerup_resources.track_train.clone();
+            let track_train_tile_size = UVec2::new(
+                crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
+                crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
+            );
+            let track_train_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, track_train_tile_size, 2, 1);
+            let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
 
-                // 创建履带特效实体
-                commands.entity(entity).with_children(|parent| {
-                    parent.spawn((
-                        Sprite {
-                            image: track_train_texture,
-                            texture_atlas: Some(TextureAtlas {
-                                layout: track_train_texture_atlas,
-                                index: track_train_animation_indices.first,
-                            }),
-                            custom_size: Some(Vec2::new(
-                                crate::constants::TRACK_CHAIN_DISPLAY_WIDTH,
-                                crate::constants::TRACK_CHAIN_DISPLAY_HEIGHT,
-                            )),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1), // 略高于坦克
-                        track_train_animation_indices,
-                        AnimationTimer(Timer::from_seconds(
-                            crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
-                            TimerMode::Repeating,
+            commands.entity(entity).with_children(|parent| {
+                parent.spawn((
+                    Sprite {
+                        image: track_train_texture,
+                        texture_atlas: Some(TextureAtlas {
+                            layout: track_train_texture_atlas,
+                            index: track_train_animation_indices.first,
+                        }),
+                        custom_size: Some(Vec2::new(
+                            crate::constants::TRACK_CHAIN_DISPLAY_WIDTH,
+                            crate::constants::TRACK_CHAIN_DISPLAY_HEIGHT,
                         )),
-                        CurrentAnimationFrame(0),
-                        crate::constants::TrackChainEffect,
-                    ));
-                });
-            }
-        } else {
+                        ..default()
+                    },
+                    Transform::from_xyz(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1),
+                    track_train_animation_indices,
+                    AnimationTimer(Timer::from_seconds(
+                        crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
+                        TimerMode::Repeating,
+                    )),
+                    CurrentAnimationFrame(0),
+                    crate::constants::TrackChainEffect,
+                ));
+            });
+        } else if !has_track_chain && has_track_chain_sprite {
             // 移除所有履带特效子实体
             if let Some(children) = children {
                 for child in children.iter() {
-                    if track_chain_effects.contains(child) {
+                    if track_chain_entities.contains(child) {
                         let () = commands.entity(child).try_despawn();
                     }
                 }

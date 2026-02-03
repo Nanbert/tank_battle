@@ -215,7 +215,7 @@ fn spawn_single_player_hud(
     commands: &mut Commands,
     font: &Handle<Font>,
     commander_resources: &CommanderResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &PlayerInfo,
     player_type: TankType,
     x_pos: f32,
@@ -361,8 +361,7 @@ fn spawn_single_player_hud(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
     );
-    let player_avatar_texture_atlas_layout = utils::create_texture_atlas(player_avatar_tile_size, 13, 3);
-    let player_avatar_texture_atlas = texture_atlas_layouts.add(player_avatar_texture_atlas_layout);
+    let player_avatar_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, player_avatar_tile_size, 13, 3);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
     commands.spawn((
         marker.clone(),
@@ -1066,20 +1065,7 @@ pub fn animate_player_avatar(
             continue;
         }
 
-        timer.tick(time.delta());
-
-        if timer.just_finished() {
-            let current = current_frame.0;
-            let next_index = if current == indices.last {
-                indices.first
-            } else {
-                current + 1
-            };
-            current_frame.0 = next_index;
-            if let Some(atlas) = &mut sprite.texture_atlas {
-                atlas.index = next_index;
-            }
-        }
+        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
     }
 }
 
