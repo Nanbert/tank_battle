@@ -250,7 +250,51 @@ pub fn update_air_cushion_effect(
     }
 }
 
+/// 通用环境音效播放系统
+/// T: 地形组件标记 (Sea, Forest, Commander)
+/// P: 音效播放器标记 (SeaAmbiencePlayer, TreeAmbiencePlayer, CommanderAmbiencePlayer)
+#[allow(unused_mut)]
+pub fn play_ambience_generic<T, P>(
+    #[allow(unused_mut)] mut commands: Commands,
+    ambience_sound: Handle<AudioSource>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    terrain_entities: Query<&Transform, With<T>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<P>>,
+    volume: f32,
+) where
+    T: Component,
+    P: Component + Default,
+{
+    // 检查是否有玩家坦克在附近
+    let mut is_near = false;
+
+    for player_transform in player_tanks.iter() {
+        for terrain_transform in terrain_entities.iter() {
+            if player_transform.translation.distance(terrain_transform.translation) < DETECTION_RADIUS {
+                is_near = true;
+                break;
+            }
+        }
+        if is_near {
+            break;
+        }
+    }
+
+    if is_near && ambience_players.is_empty() {
+        commands.spawn((
+            AudioPlayer::new(ambience_sound),
+            PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)),
+            P::default(),
+        ));
+    } else if !is_near {
+        for (entity, _) in ambience_players.iter() {
+            let () = commands.entity(entity).try_despawn();
+        }
+    }
+}
+
 /// 播放海洋的环境音效
+#[allow(unused_mut)]
 pub fn play_sea_ambience(
     mut commands: Commands,
     ambience_resources: Res<AmbienceResources>,
@@ -258,67 +302,50 @@ pub fn play_sea_ambience(
     seas: Query<&Transform, With<Sea>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<SeaAmbiencePlayer>>,
 ) {
-    // 检查是否有玩家坦克在海附近
-    let mut is_near_sea = false;
+    play_ambience_generic::<Sea, SeaAmbiencePlayer>(
+        commands,
+        ambience_resources.sea_ambience.clone(),
+        player_tanks,
+        seas,
+        ambience_players,
+        VOLUME_HALF,
+    );
+}
 
-    for player_transform in player_tanks.iter() {
-        for sea_transform in seas.iter() {
-            let distance = player_transform
-                .translation
-                .distance(sea_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_sea = true;
-                break;
-            }
-        }
-        if is_near_sea {
-            break;
-        }
-    }
-
-    if is_near_sea {
-        // 如果在海附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            let sea_ambience_sound = ambience_resources.sea_ambience.clone();
-            commands.spawn((
-                AudioPlayer::new(sea_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
-                SeaAmbiencePlayer,
-            ));
-        }
-    } else {
-        // 如果不在海附近但有播放音效，则停止
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
+/// 播放森林的环境音效
+#[allow(unused_mut)]
+pub fn play_tree_ambience(
+    mut commands: Commands,
+    ambience_resources: Res<AmbienceResources>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    forests: Query<&Transform, With<Forest>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
+) {
+    play_ambience_generic::<Forest, TreeAmbiencePlayer>(
+        commands,
+        ambience_resources.tree_ambience.clone(),
+        player_tanks,
+        forests,
+        ambience_players,
+        VOLUME_HALF,
+    );
 }
 
 /// 播放司令官的环境音效
+#[allow(unused_mut)]
 pub fn play_commander_ambience(
-    mut commands: Commands,
+    #[allow(unused_mut)] mut commands: Commands,
     ambience_resources: Res<AmbienceResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     commander: Query<&Transform, With<Commander>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<CommanderAmbiencePlayer>>,
 ) {
     // 检查是否有玩家坦克在司令官附近
-    let mut is_near_commander = false;
-
-    for player_transform in player_tanks.iter() {
-        for commander_transform in commander.iter() {
-            let distance = player_transform
-                .translation
-                .distance(commander_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_commander = true;
-                break;
-            }
-        }
-        if is_near_commander {
-            break;
-        }
-    }
+    let is_near_commander = player_tanks.iter().any(|player_transform| {
+        commander.iter().any(|commander_transform| {
+            player_transform.translation.distance(commander_transform.translation) < DETECTION_RADIUS
+        })
+    });
 
     if is_near_commander {
         // 如果在司令官附近但没有播放音效，则播放
@@ -342,50 +369,6 @@ pub fn play_commander_ambience(
         }
     } else {
         // 如果不在司令官附近但有播放音效，则停止
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
-
-/// 播放森林的环境音效
-pub fn play_tree_ambience(
-    mut commands: Commands,
-    ambience_resources: Res<AmbienceResources>,
-    player_tanks: Query<&Transform, With<PlayerTank>>,
-    forests: Query<&Transform, With<Forest>>,
-    ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
-) {
-    // 检查是否有玩家坦克在森林附近
-    let mut is_near_forest = false;
-
-    for player_transform in player_tanks.iter() {
-        for forest_transform in forests.iter() {
-            let distance = player_transform
-                .translation
-                .distance(forest_transform.translation);
-            if distance < DETECTION_RADIUS {
-                is_near_forest = true;
-                break;
-            }
-        }
-        if is_near_forest {
-            break;
-        }
-    }
-
-    if is_near_forest {
-        // 如果在森林附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            let tree_ambience_sound = ambience_resources.tree_ambience.clone();
-            commands.spawn((
-                AudioPlayer::new(tree_ambience_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_HALF)),
-                TreeAmbiencePlayer,
-            ));
-        }
-    } else {
-        // 如果不在森林附近但有播放音效，则停止
         for (entity, _) in ambience_players.iter() {
             let () = commands.entity(entity).try_despawn();
         }

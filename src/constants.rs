@@ -462,16 +462,16 @@ pub struct Forest;
 #[derive(Component)]
 pub struct ForestFire;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct TreeAmbiencePlayer;
 
 #[derive(Component)]
 pub struct Sea;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct SeaAmbiencePlayer;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct CommanderAmbiencePlayer;
 
 #[derive(Component)]
