@@ -210,6 +210,61 @@ pub fn animate_enemy_born_animation(
     }
 }
 
+/// 收集敌方坦克碰撞事件
+/// 使用事件驱动模式，只在碰撞发生时处理，避免每帧主动查询
+pub fn collect_enemy_collisions(
+    mut events: MessageReader<CollisionEvent>,
+    mut collision_cache: ResMut<EnemyCollisionCache>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
+    player_tanks: Query<(), With<PlayerTank>>,
+) {
+    for event in events.read() {
+        // 只处理碰撞开始事件
+        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
+
+        // 判断是否是敌方坦克参与的碰撞
+        let (enemy_entity, other_entity) = if enemy_tanks.contains(*e1) {
+            (*e1, *e2)
+        } else if enemy_tanks.contains(*e2) {
+            (*e2, *e1)
+        } else {
+            continue;
+        };
+
+        // 跳过与玩家坦克的碰撞（特殊处理）
+        if player_tanks.contains(other_entity) {
+            continue;
+        }
+
+        // 缓存碰撞标记，具体法线从 ContactForceEvent 获取
+        collision_cache.insert(enemy_entity, Vec2::ZERO);
+    }
+}
+
+/// 收集接触力事件，获取碰撞法线
+/// ContactForceEvent 提供了详细的接触力信息，包括最大力的方向
+pub fn collect_contact_forces(
+    mut events: MessageReader<ContactForceEvent>,
+    mut collision_cache: ResMut<EnemyCollisionCache>,
+    enemy_tanks: Query<(), With<EnemyTank>>,
+) {
+    for event in events.read() {
+        let entity = event.collider1;
+
+        // 只处理敌方坦克的接触力
+        if !enemy_tanks.contains(entity) {
+            continue;
+        }
+
+        // 从接触力事件中获取最大力的方向作为碰撞法线
+        let direction = event.max_force_direction;
+        if direction.length() > 0.0 {
+            let normal = direction.normalize();
+            collision_cache.insert(entity, normal);
+        }
+    }
+}
+
 /// 敌方坦克移动系统
 #[allow(clippy::type_complexity)]
 pub fn move_enemy_tanks(
@@ -224,10 +279,8 @@ pub fn move_enemy_tanks(
         &mut RotationTimer,
         &mut TargetRotation,
     )>,
-    rapier_context: ReadRapierContext,
+    mut collision_cache: ResMut<EnemyCollisionCache>,
 ) {
-    let rapier_context = rapier_context.single().unwrap();
-
     for (
         entity,
         mut velocity,
@@ -244,16 +297,26 @@ pub fn move_enemy_tanks(
 
         // 只在冷却时间结束后才检测碰撞
         if collision_cooldown.is_finished() {
-            handle_enemy_tank_collision(
-                entity,
+            // 优先使用事件缓存（事件驱动模式）
+            if let Some(collision_normal) = collision_cache.take(entity) {
+                if collision_normal.length() > 0.0 {
+                    enemy_tank.direction = get_new_direction(collision_normal);
+                    direction_timer.reset();
+                    collision_cooldown.reset();
+                }
+            }
+
+            // 边界碰撞仍然需要手动检测（边界不是物理实体，无碰撞事件）
+            if let Some(boundary_normal) = check_boundary_collision(
                 &transform,
                 ENEMY_COLLIDER_HALF_WIDTH,
                 ENEMY_COLLIDER_HALF_HEIGHT,
-                &mut enemy_tank,
-                &mut direction_timer,
-                &mut collision_cooldown,
-                &rapier_context,
-            );
+                enemy_tank.direction,
+            ) {
+                enemy_tank.direction = get_new_direction(boundary_normal);
+                direction_timer.reset();
+                collision_cooldown.reset();
+            }
         }
 
         // 更新方向计时器
@@ -337,28 +400,6 @@ fn check_boundary_collision(
     None
 }
 
-/// 检测敌方坦克碰撞
-/// 返回第一个有效碰撞的法线方向
-fn detect_enemy_tank_collision(entity: Entity, rapier_context: &RapierContext) -> Option<Vec2> {
-    for contact_pair in rapier_context.contact_pairs_with(entity) {
-        // 跳过无碰撞的接触对
-        if !contact_pair.has_any_active_contact() {
-            continue;
-        }
-
-        // 遍历 manifold 查找有效接触
-        for manifold in contact_pair.manifolds() {
-            if manifold.find_deepest_contact().is_some() {
-                // 根据碰撞顺序确定法线方向
-                let normal = manifold.normal();
-                let is_collider1 = contact_pair.collider1() == Some(entity);
-                return Some(if is_collider1 { -normal } else { normal });
-            }
-        }
-    }
-    None
-}
-
 /// 根据碰撞法线获取新的移动方向
 /// 分析碰撞法线，选择一个可用的移动方向（避免碰撞方向）
 fn get_new_direction(collision_normal: Vec2) -> Vec2 {
@@ -387,38 +428,6 @@ fn get_new_direction(collision_normal: Vec2) -> Vec2 {
         .unwrap_or([0, 1, 2]);
 
     DIRECTIONS[available[rng.random_range(0..3)]]
-}
-
-/// 处理敌方坦克碰撞
-fn handle_enemy_tank_collision(
-    entity: Entity,
-    transform: &Transform,
-    collider_half_width: f32,
-    collider_half_height: f32,
-    enemy_tank: &mut EnemyTank,
-    direction_timer: &mut DirectionChangeTimer,
-    collision_cooldown: &mut CollisionCooldownTimer,
-    rapier_context: &RapierContext,
-) {
-    // 优先检测边界碰撞（传入当前朝向）
-    if let Some(boundary_normal) = check_boundary_collision(
-        transform,
-        collider_half_width,
-        collider_half_height,
-        enemy_tank.direction,
-    ) {
-        enemy_tank.direction = get_new_direction(boundary_normal);
-        direction_timer.reset();
-        collision_cooldown.reset();
-        return;
-    }
-
-    // 检测物理碰撞
-    if let Some(collision_normal) = detect_enemy_tank_collision(entity, rapier_context) {
-        enemy_tank.direction = get_new_direction(collision_normal);
-        direction_timer.reset();
-        collision_cooldown.reset();
-    }
 }
 
 /// 处理随机方向改变

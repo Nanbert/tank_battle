@@ -149,6 +149,7 @@ pub fn configure_game_resources(app: &mut App) {
         })
         .insert_resource(PlayerInfo::default())
         .insert_resource(EnemySpawnState::default())
+        .init_resource::<EnemyCollisionCache>()
         .insert_resource(RecallTimers::default())
         .insert_resource(DashTimers::default())
         .insert_resource(DashDamageTracker::default())
@@ -316,7 +317,11 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            enemy::move_enemy_tanks.run_if(in_state(GameState::Playing)),
+            (
+                enemy::collect_enemy_collisions,
+                enemy::collect_contact_forces,
+                enemy::move_enemy_tanks,
+            ).chain().run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

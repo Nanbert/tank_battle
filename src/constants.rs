@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use std::collections::HashMap;
 
 // 字体路径常量
 pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
@@ -453,6 +454,31 @@ pub struct LaserDirection(pub Vec2);
 /// 激光发射起点
 #[derive(Component)]
 pub struct LaserStartPoint(pub Vec3);
+
+/// 敌方坦克碰撞缓存
+/// 用于事件驱动模式，缓存碰撞事件和法线信息
+#[derive(Resource, Default)]
+pub struct EnemyCollisionCache {
+    /// 存储 Entity -> 碰撞法线的映射
+    pub collisions: HashMap<Entity, Vec2>,
+}
+
+impl EnemyCollisionCache {
+    /// 插入碰撞法线
+    pub fn insert(&mut self, entity: Entity, normal: Vec2) {
+        self.collisions.insert(entity, normal);
+    }
+
+    /// 取出并移除碰撞法线
+    pub fn take(&mut self, entity: Entity) -> Option<Vec2> {
+        self.collisions.remove(&entity)
+    }
+
+    /// 清空所有缓存
+    pub fn clear(&mut self) {
+        self.collisions.clear();
+    }
+}
 
 #[derive(Component)]
 pub struct Spark;
