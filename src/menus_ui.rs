@@ -24,7 +24,7 @@ pub fn spawn_start_screen_background(
                 layout: background_atlas_layout.layout.clone(),
                 index: 0,
             }),
-            // 不设置 custom_size，使用精灵图原始尺寸 960x960
+            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -70,11 +70,11 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font_en: Handle<Font>, 
             ..default()
         },
         TextColor(COLOR_RED),
-        Transform::from_xyz(0.0, 400.0, 1.0),
+        Transform::from_xyz(0.0, 550.0, 1.0),
     ));
 
     // 菜单选项，从上到下 0-5
-    let y_positions = [100.0, 0.0, -100.0, -200.0, -300.0, -400.0];
+    let y_positions = [250.0, 150.0, 50.0, -50.0, -150.0, -250.0];
     for (i, text) in menu_text.iter().enumerate() {
         // 语言选项使用英文字体（因为文本是双语的），其他选项使用对应语言的字体
         let item_font = if i == 2 {

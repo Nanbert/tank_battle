@@ -18,12 +18,13 @@ pub fn enemy_spawn_system(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
     enemy_tanks: Query<(), With<EnemyTank>>,
+    enemy_born_animations: Query<(), With<EnemyBornAnimation>>,
 ) {
     // 更新生成冷却时间
     enemy_spawn_state.spawn_cooldown.tick(time.delta());
 
-    // 动态获取当前场上敌方坦克数量
-    let current_enemy_count = enemy_tanks.iter().count();
+    // 动态获取当前场上敌方坦克数量（包括已生成的和正在出生动画中的）
+    let current_enemy_count = enemy_tanks.iter().count() + enemy_born_animations.iter().count();
 
     // 检查是否需要生成新敌人
     // 条件：未达到总数上限 + 场上敌人数量少于4个 + 冷却时间已结束
@@ -120,8 +121,7 @@ pub fn animate_enemy_born_animation(
             && let Some(atlas) = &mut sprite.texture_atlas
         {
             let current = current_frame.0;
-            let total_frames = indices.last - indices.first + 1;
-            let spawn_frame = indices.first + (total_frames / 2); // 1/2 处生成坦克
+            let spawn_frame = 10; // 第10帧生成坦克
 
             if current >= indices.last {
                 // 动画播放完毕，销毁出生动画实体

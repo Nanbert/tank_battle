@@ -63,17 +63,17 @@ pub const TEXTURE_TREE: &str = "maps/tree.png";
 pub const TEXTURE_TREE_FIRE_SHEET: &str = "maps/tree_fire_sheet.png";
 
 // 背景纹理路径常量
-pub const TEXTURE_BACKGROUND: &str = "background/background.png";
+pub const TEXTURE_BACKGROUND: &str = "texture/background.png";
 
 // 开始界面背景精灵图常量
-// background.jpg: 9600 x 960 像素, 1行10列
+// texture/background.png: 4800 x 4800 像素, 5行5列
 // 每帧: 960 x 960 像素
-pub const BACKGROUND_TILE_WIDTH: f32 = 960.0; // 背景瓦片宽度 (9600/10)
-pub const BACKGROUND_TILE_HEIGHT: f32 = 960.0; // 背景瓦片高度 (960/1)
-pub const BACKGROUND_COLUMNS: usize = 10; // 背景列数（宽度方向）
-pub const BACKGROUND_ROWS: usize = 1; // 背景行数（高度方向）
-pub const BACKGROUND_TOTAL_FRAMES: usize = 10; // 背景总帧数 (1*10)
-pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.1; // 背景动画帧间隔
+pub const BACKGROUND_TILE_WIDTH: f32 = 960.0; // 背景瓦片宽度 (4800/5)
+pub const BACKGROUND_TILE_HEIGHT: f32 = 960.0; // 背景瓦片高度 (4800/5)
+pub const BACKGROUND_COLUMNS: usize = 5; // 背景列数（宽度方向）
+pub const BACKGROUND_ROWS: usize = 5; // 背景行数（高度方向）
+pub const BACKGROUND_TOTAL_FRAMES: usize = 25; // 背景总帧数 (5*5)
+pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.03; // 背景动画帧间隔
 
 // 开始界面背景色常量（与精灵图第一帧左上角像素颜色相同）
 // 使用 COLOR_GRAY
