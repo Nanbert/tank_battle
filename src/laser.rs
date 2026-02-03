@@ -112,11 +112,13 @@ pub fn player_laser_system(
         }
 
         // 卫语句：敌方坦克没有激光
-        let laser_key = match player_tank.tank_type {
-            TankType::Player1 => KeyCode::KeyL,
-            TankType::Player2 => KeyCode::Numpad3,
+        let key_bindings = match player_tank.tank_type {
+            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
+            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
             TankType::Enemy => continue,
         };
+
+        let laser_key = key_bindings.laser;
 
         // 检查蓄力状态和打断状态
         let has_charge = charge_query
@@ -180,23 +182,12 @@ pub fn player_laser_system(
 
 /// 检查是否被打断（移动或射击）
 fn is_movement_interrupted(keyboard: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    match tank_type {
-        TankType::Player1 => {
-            keyboard.pressed(KeyCode::KeyW)
-                || keyboard.pressed(KeyCode::KeyS)
-                || keyboard.pressed(KeyCode::KeyA)
-                || keyboard.pressed(KeyCode::KeyD)
-                || keyboard.pressed(KeyCode::KeyJ)
-        }
-        TankType::Player2 => {
-            keyboard.pressed(KeyCode::ArrowUp)
-                || keyboard.pressed(KeyCode::ArrowDown)
-                || keyboard.pressed(KeyCode::ArrowLeft)
-                || keyboard.pressed(KeyCode::ArrowRight)
-                || keyboard.pressed(KeyCode::Numpad1)
-        }
-        TankType::Enemy => false,
-    }
+    let key_bindings = match tank_type {
+        TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
+        TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
+        TankType::Enemy => return false,
+    };
+    key_bindings.is_moving(keyboard) || key_bindings.is_shooting(keyboard)
 }
 
 /// 取消蓄力
@@ -234,11 +225,7 @@ fn start_charge(
     font_en: &Handle<Font>,
     language: &Language,
 ) {
-    let player_stats = match tank_type {
-        TankType::Player1 => &player_info.player1,
-        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = player_info.get_stats(tank_type).expect("Player should exist");
 
     // 检查蓝量是否足够（需要3点蓝量）
     if player_stats.energy_points < 3 {
@@ -387,11 +374,7 @@ fn fire_laser(
     tank_type: TankType,
     sound_resources: &SoundResources,
 ) {
-    let player_stats = match tank_type {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = player_info.get_stats_mut(tank_type).expect("Player should exist");
 
     // 消耗整个蓝条
     player_stats.energy_points = 0;
@@ -608,7 +591,8 @@ pub fn animate_laser(
 
                     commands.spawn((
                         PlayingEntity,
-                        Smoke,
+                        crate::constants::Smoke,
+                        crate::constants::OneShotAnimation,
                         Sprite {
                             image: smoke_texture,
                             texture_atlas: Some(TextureAtlas {

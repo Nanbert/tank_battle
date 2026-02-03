@@ -240,6 +240,90 @@ pub enum GameState {
     Credits,
 }
 
+/// 玩家按键绑定配置
+#[derive(Clone, Copy)]
+pub struct PlayerKeyBindings {
+    pub up: KeyCode,
+    pub down: KeyCode,
+    pub left: KeyCode,
+    pub right: KeyCode,
+    pub shoot: KeyCode,
+    pub dash: KeyCode,
+    pub recall: KeyCode,
+    #[allow(dead_code)]
+    pub laser: KeyCode,
+}
+
+impl PlayerKeyBindings {
+    /// 玩家1按键绑定 (WASD + J/K/I/L)
+    pub fn player1() -> Self {
+        Self {
+            up: KeyCode::KeyW,
+            down: KeyCode::KeyS,
+            left: KeyCode::KeyA,
+            right: KeyCode::KeyD,
+            shoot: KeyCode::KeyJ,
+            dash: KeyCode::KeyK,
+            recall: KeyCode::KeyI,
+            laser: KeyCode::KeyL,
+        }
+    }
+
+    /// 玩家2按键绑定 (方向键 + 小键盘)
+    pub fn player2() -> Self {
+        Self {
+            up: KeyCode::ArrowUp,
+            down: KeyCode::ArrowDown,
+            left: KeyCode::ArrowLeft,
+            right: KeyCode::ArrowRight,
+            shoot: KeyCode::Numpad1,
+            dash: KeyCode::Numpad2,
+            recall: KeyCode::Numpad4,
+            laser: KeyCode::Numpad3,
+        }
+    }
+
+    /// 检查是否在移动
+    pub fn is_moving(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.pressed(self.up)
+            || keyboard.pressed(self.down)
+            || keyboard.pressed(self.left)
+            || keyboard.pressed(self.right)
+    }
+
+    /// 获取移动方向
+    pub fn get_direction(&self, keyboard: &ButtonInput<KeyCode>) -> Vec2 {
+        match (
+            keyboard.pressed(self.up),
+            keyboard.pressed(self.down),
+            keyboard.pressed(self.left),
+            keyboard.pressed(self.right),
+        ) {
+            (true, false, false, false) => Vec2::new(0.0, 1.0),
+            (false, true, false, false) => Vec2::new(0.0, -1.0),
+            (false, false, true, false) => Vec2::new(-1.0, 0.0),
+            (false, false, false, true) => Vec2::new(1.0, 0.0),
+            _ => Vec2::ZERO,
+        }
+    }
+
+    /// 检查是否按下射击键
+    pub fn is_shooting(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.pressed(self.shoot)
+    }
+
+    /// 检查是否按下回城键
+    pub fn is_recalling(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.pressed(self.recall)
+    }
+
+    /// 检查是否按下激光键
+    #[allow(dead_code)]
+    pub fn is_lasering(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
+        keyboard.pressed(self.laser)
+    }
+}
+
 #[derive(Component)]
 pub struct StartScreenUI;
 
@@ -350,6 +434,9 @@ pub struct Barrel;
 
 #[derive(Component)]
 pub struct Explosion;
+
+#[derive(Component)]
+pub struct OneShotAnimation;
 
 #[derive(Component)]
 pub struct Laser;

@@ -146,34 +146,14 @@ pub fn move_player_tank(
         if is_dashing.is_some() {
             continue;
         }
-        // 根据玩家索引选择不同的控制键
-        let direction = if player_tank.tank_type == TankType::Player1 {
-            // 玩家1使用 WASD
-            let w_pressed = keyboard_input.pressed(KeyCode::KeyW);
-            let s_pressed = keyboard_input.pressed(KeyCode::KeyS);
-            let a_pressed = keyboard_input.pressed(KeyCode::KeyA);
-            let d_pressed = keyboard_input.pressed(KeyCode::KeyD);
-            match (w_pressed, s_pressed, a_pressed, d_pressed) {
-                (true, false, false, false) => Vec2::new(0.0, 1.0), // 上
-                (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
-                (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
-                (false, false, false, true) => Vec2::new(1.0, 0.0), // 右
-                _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
-            }
-        } else {
-            // 玩家2使用方向键
-            let up_pressed = keyboard_input.pressed(KeyCode::ArrowUp);
-            let down_pressed = keyboard_input.pressed(KeyCode::ArrowDown);
-            let left_pressed = keyboard_input.pressed(KeyCode::ArrowLeft);
-            let right_pressed = keyboard_input.pressed(KeyCode::ArrowRight);
-            match (up_pressed, down_pressed, left_pressed, right_pressed) {
-                (true, false, false, false) => Vec2::new(0.0, 1.0), // 上
-                (false, true, false, false) => Vec2::new(0.0, -1.0), // 下
-                (false, false, true, false) => Vec2::new(-1.0, 0.0), // 左
-                (false, false, false, true) => Vec2::new(1.0, 0.0), // 右
-                _ => Vec2::ZERO, // 其他情况（包括多个键同时按下）停止移动
-            }
+        // 根据玩家类型选择按键绑定
+        let key_bindings = match player_tank.tank_type {
+            TankType::Player1 => PlayerKeyBindings::player1(),
+            TankType::Player2 => PlayerKeyBindings::player2(),
+            TankType::Enemy => continue,
         };
+
+        let direction = key_bindings.get_direction(&keyboard_input);
 
         // 检查是否需要转向
         let needs_rotation = if direction.length() > 0.0 {
@@ -288,14 +268,14 @@ pub fn handle_recall_input(
         // 检查是否正在回城
         let is_recalling = recall_timers.timers.contains_key(&entity);
 
-        // 根据玩家索引选择不同的回城键
-        let is_recall_key_pressed = if player_tank.tank_type == TankType::Player1 {
-            // 玩家1使用 I 键回城
-            keyboard_input.pressed(KeyCode::KeyI)
-        } else {
-            // 玩家2使用小键盘4键回城
-            keyboard_input.pressed(KeyCode::Numpad4)
+        // 根据玩家类型选择按键绑定
+        let key_bindings = match player_tank.tank_type {
+            TankType::Player1 => PlayerKeyBindings::player1(),
+            TankType::Player2 => PlayerKeyBindings::player2(),
+            TankType::Enemy => continue,
         };
+
+        let is_recall_key_pressed = key_bindings.is_recalling(&keyboard_input);
 
         if is_recall_key_pressed && !is_recalling {
             // 计算初始位置
@@ -381,32 +361,22 @@ pub fn update_recall_timers(
 
 /// 检查是否按住回城键
 fn is_recall_key_pressed(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    match tank_type {
-        TankType::Player1 => keyboard_input.pressed(KeyCode::KeyI),
-        TankType::Player2 => keyboard_input.pressed(KeyCode::Numpad4),
-        TankType::Enemy => false,
-    }
+    let key_bindings = match tank_type {
+        TankType::Player1 => PlayerKeyBindings::player1(),
+        TankType::Player2 => PlayerKeyBindings::player2(),
+        TankType::Enemy => return false,
+    };
+    key_bindings.is_recalling(keyboard_input)
 }
 
 /// 检查是否被打断（移动或射击）
 fn is_movement_interrupted(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    match tank_type {
-        TankType::Player1 => {
-            keyboard_input.pressed(KeyCode::KeyW)
-                || keyboard_input.pressed(KeyCode::KeyS)
-                || keyboard_input.pressed(KeyCode::KeyA)
-                || keyboard_input.pressed(KeyCode::KeyD)
-                || keyboard_input.pressed(KeyCode::KeyJ)
-        }
-        TankType::Player2 => {
-            keyboard_input.pressed(KeyCode::ArrowUp)
-                || keyboard_input.pressed(KeyCode::ArrowDown)
-                || keyboard_input.pressed(KeyCode::ArrowLeft)
-                || keyboard_input.pressed(KeyCode::ArrowRight)
-                || keyboard_input.pressed(KeyCode::Numpad1)
-        }
-        TankType::Enemy => false,
-    }
+    let key_bindings = match tank_type {
+        TankType::Player1 => PlayerKeyBindings::player1(),
+        TankType::Player2 => PlayerKeyBindings::player2(),
+        TankType::Enemy => return false,
+    };
+    key_bindings.is_moving(keyboard_input) || key_bindings.is_shooting(keyboard_input)
 }
 
 /// 取消回城

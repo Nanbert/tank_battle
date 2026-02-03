@@ -329,22 +329,18 @@ pub fn player_shoot_system(
         }
 
         // 检查是否按下射击键
-        let shoot_key = match player_tank.tank_type {
-            TankType::Player1 => KeyCode::KeyJ,
-            TankType::Player2 => KeyCode::Numpad1,
+        let key_bindings = match player_tank.tank_type {
+            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
+            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
             TankType::Enemy => continue,
         };
 
-        if !keyboard.pressed(shoot_key) {
+        if !key_bindings.is_shooting(&keyboard) {
             continue;
         }
 
         // 获取玩家属性
-        let player_stats = match player_tank.tank_type {
-            TankType::Player1 => &player_info.player1,
-            TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-            TankType::Enemy => unreachable!(),
-        };
+        let player_stats = player_info.get_stats(player_tank.tank_type).expect("Player should exist");
 
         // 检查是否可以射击（使用 player_stats.shells 作为最大子弹数）
         if !bullet_tracker.can_fire(entity, player_stats.shells) {

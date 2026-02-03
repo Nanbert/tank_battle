@@ -129,6 +129,44 @@ pub struct PlayerInfo {
     pub player2: Option<PlayerStats>,
 }
 
+impl PlayerInfo {
+    /// 获取指定玩家类型的统计数据
+    pub fn get_stats(&self, tank_type: TankType) -> Option<&PlayerStats> {
+        match tank_type {
+            TankType::Player1 => Some(&self.player1),
+            TankType::Player2 => self.player2.as_ref(),
+            TankType::Enemy => None,
+        }
+    }
+
+    /// 获取指定玩家类型的可变统计数据
+    pub fn get_stats_mut(&mut self, tank_type: TankType) -> Option<&mut PlayerStats> {
+        match tank_type {
+            TankType::Player1 => Some(&mut self.player1),
+            TankType::Player2 => self.player2.as_mut(),
+            TankType::Enemy => None,
+        }
+    }
+
+    /// 获取指定玩家类型的某个属性值
+    pub fn get_stat_value<F>(&self, tank_type: TankType, getter: F) -> usize
+    where
+        F: FnOnce(&PlayerStats) -> usize,
+    {
+        self.get_stats(tank_type).map_or(0, getter)
+    }
+
+    /// 检查玩家是否存在
+    #[allow(dead_code)]
+    pub fn player_exists(&self, tank_type: TankType) -> bool {
+        match tank_type {
+            TankType::Player1 => true,
+            TankType::Player2 => self.player2.is_some(),
+            TankType::Enemy => false,
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct PlayerStats {
     pub speed: usize,

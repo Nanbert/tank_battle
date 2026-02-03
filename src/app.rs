@@ -423,7 +423,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::animate_explosion.run_if(in_state(GameState::Playing)),
+            effects::animate_one_shot_animations.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -433,10 +433,7 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             laser::animate_energy_ball.run_if(in_state(GameState::Playing)),
         )
-        .add_systems(
-            Update,
-            effects::animate_forest_fire.run_if(in_state(GameState::Playing)),
-        )
+        
         .add_systems(
             Update,
             effects::animate_looping_sprite::<Forest>.run_if(in_state(GameState::Playing)),
@@ -465,10 +462,7 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             effects::play_tree_ambience.run_if(in_state(GameState::Playing)),
         ) // 测试森林环绕声
-        .add_systems(
-            Update,
-            effects::animate_spark.run_if(in_state(GameState::Playing)),
-        )
+        
         .add_systems(
             Update,
             game_state::handle_game_over_delay.run_if(in_state(GameState::Playing)),
@@ -540,10 +534,7 @@ pub fn register_game_systems(app: &mut App) {
             OnExit(GameState::Paused),
             (overlay_ui::despawn_pause_ui, overlay_ui::despawn_insufficient_energy_warnings).chain(),
         )
-        .add_systems(
-            Update,
-            effects::animate_smoke.run_if(in_state(GameState::Playing)),
-        )
+        
         .add_systems(
             Update,
             laser::laser_collision_system.run_if(in_state(GameState::Playing)),

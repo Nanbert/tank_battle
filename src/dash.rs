@@ -37,22 +37,18 @@ pub fn handle_dash_input(
         // 检查是否正在冲刺
         let is_dashing = dash_timers.timers.contains_key(&entity);
 
-        // 根据玩家索引选择不同的冲刺键
-        let is_dash_key_pressed = if player_tank.tank_type == TankType::Player1 {
-            // 玩家1使用 K 键冲刺
-            keyboard_input.just_pressed(KeyCode::KeyK)
-        } else {
-            // 玩家2使用小键盘2键冲刺
-            keyboard_input.just_pressed(KeyCode::Numpad2)
+        // 根据玩家类型选择按键绑定
+        let key_bindings = match player_tank.tank_type {
+            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
+            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
+            TankType::Enemy => continue,
         };
+
+        let is_dash_key_pressed = keyboard_input.just_pressed(key_bindings.dash);
 
         if is_dash_key_pressed && !is_dashing {
             // 检查蓝条是否足够（需要至少1点蓝条）
-            let player_stats = match player_tank.tank_type {
-                TankType::Player1 => &mut player_info.player1,
-                TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-                TankType::Enemy => unreachable!(),
-            };
+            let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
             let energy_cost = 1; // 1点蓝条（1/3蓝条）
             if player_stats.energy_points >= energy_cost {
                 // 立即扣除蓝条
@@ -315,14 +311,7 @@ fn handle_player_entity_collision(
 
     // 处理 steel 碰撞
     if steels.get(other_entity).is_ok() {
-        let can_break_steel = match player_tank.tank_type {
-            TankType::Player1 => player_info.player1.protection >= 100,
-            TankType::Player2 => player_info
-                .player2
-                .as_ref()
-                .is_some_and(|p| p.protection >= 100),
-            TankType::Enemy => false,
-        };
+        let can_break_steel = player_info.get_stat_value(player_tank.tank_type, |p| p.protection) >= 100;
 
         if can_break_steel {
             return Some((player_entity, None, Some(other_entity), None));
@@ -464,11 +453,7 @@ fn handle_brick_collision(
     }
 
     // 根据 protection 百分比决定扣血量
-    let player_stats = match player_tank.tank_type {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
     let health_cost = if player_stats.protection < 40 {
         2 // 2/3血条
     } else {
@@ -515,14 +500,7 @@ fn handle_steel_collision(
         .1;
 
     // 检查 protection 是否为 100%
-    let can_break_steel = match player_tank.tank_type {
-        TankType::Player1 => player_info.player1.protection >= 100,
-        TankType::Player2 => player_info
-            .player2
-            .as_ref()
-            .is_some_and(|p| p.protection >= 100),
-        TankType::Enemy => false,
-    };
+    let can_break_steel = player_info.get_stat_value(player_tank.tank_type, |p| p.protection) >= 100;
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
@@ -612,11 +590,7 @@ fn handle_dash_enemy_tank_collision(
     }
 
     // 增加分数
-    let player_stats = match player_tank.tank_type {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!(),
-    };
+    let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
     player_stats.score += 100;
 
     // 发送分数变更事件

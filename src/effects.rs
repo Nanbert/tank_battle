@@ -28,6 +28,7 @@ pub fn spawn_explosion(
 
     commands.spawn((
         Explosion,
+        OneShotAnimation,
         PlayingEntity,
         Sprite {
             image: explosion_texture,
@@ -67,6 +68,7 @@ pub fn spawn_forest_fire(
 
     commands.spawn((
         ForestFire,
+        OneShotAnimation,
         PlayingEntity,
         Sprite::from_atlas_image(
             forest_fire_texture,
@@ -105,6 +107,7 @@ pub fn spawn_spark(
 
     commands.spawn((
         Spark,
+        OneShotAnimation,
         PlayingEntity,
         Sprite {
             image: spark_texture,
@@ -126,8 +129,8 @@ pub fn spawn_spark(
 }
 
 /// 通用一次性动画系统
-/// 用于播放只播放一次后销毁的动画（如爆炸、烟雾、打击效果等）
-pub fn animate_sprite_once<T: Component>(
+/// 处理所有播放一次后销毁的动画（爆炸、烟雾、火花、森林火焰等）
+pub fn animate_one_shot_animations(
     time: Res<Time>,
     mut commands: Commands,
     mut query: Query<
@@ -138,7 +141,7 @@ pub fn animate_sprite_once<T: Component>(
             &AnimationIndices,
             &mut CurrentAnimationFrame,
         ),
-        With<T>,
+        With<OneShotAnimation>,
     >,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
@@ -155,59 +158,6 @@ pub fn animate_sprite_once<T: Component>(
             }
         }
     }
-}
-
-pub fn animate_explosion(
-    time: Res<Time>,
-    commands: Commands,
-    query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<Explosion>,
-    >,
-) {
-    animate_sprite_once::<Explosion>(time, commands, query);
-}
-
-/// 处理烟雾动画
-pub fn animate_smoke(
-    time: Res<Time>,
-    commands: Commands,
-    query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<Smoke>,
-    >,
-) {
-    animate_sprite_once::<Smoke>(time, commands, query);
-}
-
-/// 森林燃烧动画
-pub fn animate_forest_fire(
-    time: Res<Time>,
-    commands: Commands,
-    query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<ForestFire>,
-    >,
-) {
-    animate_sprite_once::<ForestFire>(time, commands, query);
 }
 
 /// 通用循环动画系统
@@ -240,23 +190,6 @@ pub fn animate_looping_sprite<T: Component>(
             }
         }
     }
-}
-
-pub fn animate_spark(
-    time: Res<Time>,
-    commands: Commands,
-    query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<Spark>,
-    >,
-) {
-    animate_sprite_once::<Spark>(time, commands, query);
 }
 
 /// 更新气垫效果

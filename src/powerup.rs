@@ -101,11 +101,7 @@ pub fn handle_powerup_collision(
             let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
-            let player_stats = match player_tank.tank_type {
-                TankType::Player1 => &mut player_info.player1,
-                TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-                TankType::Enemy => unreachable!(),
-            };
+            let player_stats = player_info.get_stats_mut(player_tank.tank_type).expect("Player should exist");
             let stat_type = match powerup_type {
                 PowerUp::SpeedUp => {
                     if player_stats.speed < MAX_ATTRIBUTE_VALUE {
@@ -333,14 +329,7 @@ pub fn update_track_chain_effect(
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 track_chain 能力
-        let has_track_chain = match player_tank.tank_type {
-            TankType::Player1 => player_info.player1.track_chain,
-            TankType::Player2 => player_info
-                .player2
-                .as_ref()
-                .is_some_and(|stats| stats.track_chain),
-            TankType::Enemy => false,
-        };
+        let has_track_chain = player_info.get_stat_value(player_tank.tank_type, |stats| stats.track_chain as usize) > 0;
 
         if has_track_chain {
             // 检查是否已经有履带特效子实体
