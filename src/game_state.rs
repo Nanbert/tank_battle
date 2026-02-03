@@ -275,6 +275,7 @@ pub fn cleanup_trackers_and_timers(
     mut dash_damage_tracker: ResMut<crate::resources::DashDamageTracker>,
     mut barrier_damage_tracker: ResMut<crate::resources::BarrierDamageTracker>,
     mut insufficient_energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+    mut collision_cache: ResMut<crate::constants::EnemyCollisionCache>,
     mut stage_complete_delay: ResMut<StageCompleteDelayTimer>,
 ) {
     // 清理 BulletTracker
@@ -295,6 +296,9 @@ pub fn cleanup_trackers_and_timers(
 
     // 清理 InsufficientEnergyTracker
     insufficient_energy_tracker.cooldowns.clear();
+
+    // 清理 EnemyCollisionCache（事件驱动缓存）
+    collision_cache.clear();
 
     // 重置关卡完成延迟计时器
     stage_complete_delay.timer.reset();
