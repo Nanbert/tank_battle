@@ -503,12 +503,17 @@ pub fn handle_barrier_collision(
 
     // 检测玩家坦克与 barrier 的距离
     for (player_entity, player_transform, player_tank) in player_tanks.iter() {
+        // 一次性获取玩家统计数据，避免重复查询
+        let Some(player_stats) = player_info.get_stats_mut(player_tank.tank_type) else {
+            // 单人模式下 Player2 不存在，跳过
+            continue;
+        };
+
         for (barrier_transform, _barrier_entity) in barriers.iter() {
             // 计算距离
             let distance = (player_transform.translation - barrier_transform.translation).length();
 
             // 如果距离小于阈值，则认为碰撞
-
             if distance < COLLISION_THRESHOLD {
                 // 检查冷却是否结束
                 let can_take_damage = barrier_damage_tracker
@@ -518,11 +523,6 @@ pub fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let Some(player_stats) = player_info.get_stats(player_tank.tank_type) else {
-                        // 单人模式下 Player2 不存在，跳过
-                        continue;
-                    };
-
                     if player_stats.track_chain {
                         // 拥有 track_chain，免疫伤害，直接跳过
                         continue;
@@ -537,10 +537,6 @@ pub fn handle_barrier_collision(
                         );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    let Some(player_stats) = player_info.get_stats_mut(player_tank.tank_type) else {
-                        // 单人模式下 Player2 不存在，跳过
-                        continue;
-                    };
                     player_stats.speed = player_stats
                         .speed
                         .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);

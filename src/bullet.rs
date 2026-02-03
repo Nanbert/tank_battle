@@ -36,7 +36,7 @@ pub enum EffectEvent {
 pub struct Bullet;
 
 /// 子弹所有者组件
-#[derive(Component)]
+#[derive(Component, Copy, Clone)]
 pub struct BulletOwner {
     pub owner_type: TankType,
 }
@@ -363,20 +363,23 @@ pub fn bullet_bounds_check_system(
     }
 }
 
-/// 查找碰撞中的子弹和坦克
-pub fn find_bullet_and_tank_in_collision(
+/// 查找碰撞中的子弹和坦克，同时返回子弹的所有者信息
+pub fn find_bullet_and_tank_in_collision<'a>(
     e1: Entity,
     e2: Entity,
-    bullets: &Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
+    bullets: &'a Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: &Query<&PlayerTank, With<PlayerTank>>,
-) -> Option<(Entity, Entity)> {
-    if bullets.get(e1).is_ok() && (enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok()) {
-        return Some((e1, e2));
-    } else if bullets.get(e2).is_ok()
-        && (enemy_tanks.get(e1).is_ok() || player_tanks.get(e1).is_ok())
-    {
-        return Some((e2, e1));
+) -> Option<(Entity, Entity, &'a BulletOwner)> {
+    if let Ok((_, bullet_owner, _)) = bullets.get(e1) {
+        if enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok() {
+            return Some((e1, e2, bullet_owner));
+        }
+    }
+    if let Ok((_, bullet_owner, _)) = bullets.get(e2) {
+        if enemy_tanks.get(e1).is_ok() || player_tanks.get(e1).is_ok() {
+            return Some((e2, e1, bullet_owner));
+        }
     }
     None
 }
@@ -424,13 +427,10 @@ pub fn bullet_terrain_collision_system(
         // 卫语句：只处理 Started 事件
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
-        // 提取子弹和地形实体
-        let Some((bullet_entity, terrain_entity)) = extract_bullet_and_terrain(*e1, *e2, &bullets) else {
-            continue;
-        };
-
-        // 获取子弹信息
-        let Ok((_, bullet_owner, bullet_transform)) = bullets.get(bullet_entity) else {
+        // 提取子弹和地形实体，同时获取子弹信息
+        let Some((bullet_entity, terrain_entity, bullet_owner, bullet_transform)) =
+            extract_bullet_and_terrain(*e1, *e2, &bullets)
+        else {
             continue;
         };
 
@@ -441,7 +441,7 @@ pub fn bullet_terrain_collision_system(
             terrain_entity,
             bullet_entity,
             bullet_transform,
-            &bullet_owner,
+            *bullet_owner,
             &forests,
             &bricks,
             &steels,
@@ -452,19 +452,19 @@ pub fn bullet_terrain_collision_system(
     }
 }
 
-/// 提取子弹和地形实体
-fn extract_bullet_and_terrain(
+/// 提取子弹和地形实体，同时返回子弹的所有者和变换信息
+fn extract_bullet_and_terrain<'a>(
     e1: Entity,
     e2: Entity,
-    bullets: &Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
-) -> Option<(Entity, Entity)> {
-    if bullets.get(e1).is_ok() {
-        Some((e1, e2))
-    } else if bullets.get(e2).is_ok() {
-        Some((e2, e1))
-    } else {
-        None
+    bullets: &'a Query<(Entity, &BulletOwner, &Transform), With<Bullet>>,
+) -> Option<(Entity, Entity, &'a BulletOwner, &'a Transform)> {
+    if let Ok((_, bullet_owner, bullet_transform)) = bullets.get(e1) {
+        return Some((e1, e2, bullet_owner, bullet_transform));
     }
+    if let Ok((_, bullet_owner, bullet_transform)) = bullets.get(e2) {
+        return Some((e2, e1, bullet_owner, bullet_transform));
+    }
+    None
 }
 
 /// 处理地形碰撞
@@ -474,7 +474,7 @@ fn handle_terrain_collision(
     terrain_entity: Entity,
     bullet_entity: Entity,
     bullet_transform: &Transform,
-    bullet_owner: &BulletOwner,
+    bullet_owner: BulletOwner,
     forests: &Query<(Entity, &Transform), With<Forest>>,
     bricks: &Query<(), With<Brick>>,
     steels: &Query<(), With<Steel>>,
@@ -627,12 +627,10 @@ pub fn bullet_tank_collision_system(
         // 卫语句：只处理 Started 事件
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
-        // 提取子弹和坦克实体
-        let Some((bullet_entity, tank_entity)) =
+        // 提取子弹和坦克实体，同时获取子弹所有者信息
+        let Some((bullet_entity, tank_entity, bullet_owner_info)) =
             find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &enemy_tanks_with_transform, &player_tanks)
         else { continue; };
-
-        let bullet_owner_info = bullets.get(bullet_entity).expect("Bullet should exist in bullets query").1;
 
         // 获取碰撞类型，如果返回 None 则子弹穿过（不销毁）
         let collision_type = match get_collision_type(
@@ -902,18 +900,16 @@ pub fn bullet_commander_collision_system(
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else { continue };
 
-        // 判断是否是子弹与司令官的碰撞
-        let (bullet_entity, commander_entity) =
-            if bullets.get(*e1).is_ok() && commanders.get(*e2).is_ok() {
-                (*e1, *e2)
-            } else if bullets.get(*e2).is_ok() && commanders.get(*e1).is_ok() {
-                (*e2, *e1)
-            } else {
-                continue;
-            };
-
-        // 获取子弹信息
-        let Ok((_, bullet_owner_info, bullet_transform)) = bullets.get(bullet_entity) else {
+        // 判断是否是子弹与司令官的碰撞，同时获取子弹和司令官信息
+        let (bullet_entity, _commander_entity, bullet_owner_info, bullet_transform) = if let (Ok((_, bullet_owner, bullet_transform)), Ok(_)) =
+            (bullets.get(*e1), commanders.get(*e2))
+        {
+            (*e1, *e2, bullet_owner, bullet_transform)
+        } else if let (Ok((_, bullet_owner, bullet_transform)), Ok(_)) =
+            (bullets.get(*e2), commanders.get(*e1))
+        {
+            (*e2, *e1, bullet_owner, bullet_transform)
+        } else {
             continue;
         };
 
@@ -921,11 +917,6 @@ pub fn bullet_commander_collision_system(
         if bullet_owner_info.owner_type != TankType::Enemy {
             continue;
         }
-
-        // 获取司令官位置
-        let Ok((_, _commander_transform)) = commanders.get(commander_entity) else {
-            continue;
-        };
 
         // 碰撞确认，播放受击音效
         sound_resources.play(&mut commands, sound_resources.commander_get_shot.clone(), 1.0);
