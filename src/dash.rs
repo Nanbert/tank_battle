@@ -134,8 +134,7 @@ pub fn handle_dash_collision(
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<crate::bullet::EffectEvent>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    player_tanks: Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    player_tanks_with_transform: Query<(Entity, &Transform), With<PlayerTank>>,
+    player_tanks: Query<(Entity, &PlayerTank, &Transform, Option<&IsDashing>)>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
     steels: Query<(Entity, &Transform), With<Steel>>,
@@ -150,8 +149,8 @@ pub fn handle_dash_collision(
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
         // 提取碰撞信息
-        let Some((player_entity, brick_entity, steel_entity, enemy_entity)) =
-            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &player_info, &mut commands, &mut effect_events, &mut texture_atlas_layouts, &player_tanks_with_transform, &effect_resources, &sound_resources)
+        let Some((player_entity, brick_entity, steel_entity, enemy_entity, player_tank, tank_position)) =
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels, &mut player_info, &mut commands, &mut effect_events, &mut texture_atlas_layouts, &effect_resources, &sound_resources)
         else { continue; };
 
         // 处理 brick 碰撞
@@ -160,10 +159,10 @@ pub fn handle_dash_collision(
                 &mut commands,
                 &mut effect_events,
                 &mut texture_atlas_layouts,
-                &player_tanks,
-                &player_tanks_with_transform,
                 &bricks,
                 &mut player_info,
+                &player_tank,
+                tank_position,
                 player_entity,
                 b_entity,
                 &mut dash_damage_tracker,
@@ -190,11 +189,11 @@ pub fn handle_dash_collision(
                 &mut commands,
                 &mut effect_events,
                 &mut texture_atlas_layouts,
-                &player_tanks,
-                &player_tanks_with_transform,
                 &enemy_tanks,
                 &mut player_info,
                 &mut stat_changed_events,
+                &player_tank,
+                tank_position,
                 player_entity,
                 e_entity,
                 &mut dash_damage_tracker,
@@ -209,23 +208,23 @@ pub fn handle_dash_collision(
 fn extract_dash_collision_info(
     e1: Entity,
     e2: Entity,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks: &Query<(Entity, &PlayerTank, &Transform, Option<&IsDashing>)>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
-    player_info: &ResMut<PlayerInfo>,
+    player_info: &mut ResMut<PlayerInfo>,
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
-) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
+) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>, PlayerTank, Vec3)> {
     // 尝试从 e1 获取玩家坦克
-    if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(e1) {
-        return handle_player_entity_collision(
+    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1) {
+        if let Some((brick_entity, steel_entity, enemy_entity)) = handle_player_entity_collision(
             player_entity,
             player_tank,
+            tank_transform.translation,
             is_dashing,
             e2,
             enemy_tanks,
@@ -235,18 +234,19 @@ fn extract_dash_collision_info(
             commands,
             effect_events,
             texture_atlas_layouts,
-            player_tanks,
-            player_tanks_with_transform,
             effect_resources,
             sound_resources,
-        );
+        ) {
+            return Some((player_entity, brick_entity, steel_entity, enemy_entity, *player_tank, tank_transform.translation));
+        }
     }
 
     // 尝试从 e2 获取玩家坦克
-    if let Ok((player_entity, player_tank, is_dashing)) = player_tanks.get(e2) {
-        return handle_player_entity_collision(
+    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2) {
+        if let Some((brick_entity, steel_entity, enemy_entity)) = handle_player_entity_collision(
             player_entity,
             player_tank,
+            tank_transform.translation,
             is_dashing,
             e1,
             enemy_tanks,
@@ -256,22 +256,27 @@ fn extract_dash_collision_info(
             commands,
             effect_events,
             texture_atlas_layouts,
-            player_tanks,
-            player_tanks_with_transform,
             effect_resources,
             sound_resources,
-        );
+        ) {
+            return Some((player_entity, brick_entity, steel_entity, enemy_entity, *player_tank, tank_transform.translation));
+        }
     }
 
     // 检查是否是玩家坦克与敌方坦克的碰撞（玩家不在 e1 或 e2 中）
-    check_enemy_collision_none(e1, e2, player_tanks, enemy_tanks)
-        .map(|(pe, ee)| (pe, None, None, Some(ee)))
+    if let Some((player_entity, enemy_entity)) = check_enemy_collision_none(e1, e2, player_tanks, enemy_tanks) {
+        if let Ok((_, player_tank, tank_transform, _)) = player_tanks.get(player_entity) {
+            return Some((player_entity, None, None, Some(enemy_entity), *player_tank, tank_transform.translation));
+        }
+    }
+    None
 }
 
 /// 处理玩家实体碰撞
 fn handle_player_entity_collision(
     player_entity: Entity,
     player_tank: &PlayerTank,
+    tank_position: Vec3,
     is_dashing: Option<&IsDashing>,
     other_entity: Entity,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
@@ -281,11 +286,9 @@ fn handle_player_entity_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
-) -> Option<(Entity, Option<Entity>, Option<Entity>, Option<Entity>)> {
+) -> Option<(Option<Entity>, Option<Entity>, Option<Entity>)> {
     // 卫语句：不在冲刺状态则跳过
     let Some(_) = is_dashing else { return None };
 
@@ -294,7 +297,7 @@ fn handle_player_entity_collision(
         let can_break_steel = player_info.get_stat_value(player_tank.tank_type, |p| p.protection) >= 100;
 
         if can_break_steel {
-            return Some((player_entity, None, Some(other_entity), None));
+            return Some((None, Some(other_entity), None));
         }
 
         // protection < 100%，玩家死亡
@@ -302,9 +305,9 @@ fn handle_player_entity_collision(
             commands,
             effect_events,
             texture_atlas_layouts,
-            player_tanks,
-            player_tanks_with_transform,
             player_info,
+            player_tank,
+            tank_position,
             player_entity,
             effect_resources,
             sound_resources,
@@ -314,30 +317,14 @@ fn handle_player_entity_collision(
 
     // 处理 brick 碰撞
     if bricks.get(other_entity).is_ok() {
-        return Some((player_entity, Some(other_entity), None, None));
+        return Some((Some(other_entity), None, None));
     }
 
     // 处理敌方坦克碰撞
-    if let Some(enemy) = check_enemy_collision(player_entity, other_entity, player_tanks, enemy_tanks) {
-        return Some((player_entity, None, None, Some(enemy)));
+    if enemy_tanks.get(other_entity).is_ok() {
+        return Some((None, None, Some(other_entity)));
     }
 
-    None
-}
-
-/// 检查敌方坦克碰撞
-fn check_enemy_collision(
-    e1: Entity,
-    e2: Entity,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
-) -> Option<Entity> {
-    if let Ok((_, _, is_dashing)) = player_tanks.get(e1)
-        && is_dashing.is_some()
-        && enemy_tanks.get(e2).is_ok()
-    {
-        return Some(e2);
-    }
     None
 }
 
@@ -345,14 +332,14 @@ fn check_enemy_collision(
 fn check_enemy_collision_none(
     e1: Entity,
     e2: Entity,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
+    player_tanks: &Query<(Entity, &PlayerTank, &Transform, Option<&IsDashing>)>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
 ) -> Option<(Entity, Entity)> {
-    if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e1) {
+    if let Ok((player_entity, _, _, is_dashing)) = player_tanks.get(e1) {
         if is_dashing.is_some() && enemy_tanks.get(e2).is_ok() {
             return Some((player_entity, e2));
         }
-    } else if let Ok((player_entity, _, is_dashing)) = player_tanks.get(e2)
+    } else if let Ok((player_entity, _, _, is_dashing)) = player_tanks.get(e2)
         && is_dashing.is_some()
         && enemy_tanks.get(e1).is_ok()
     {
@@ -365,22 +352,19 @@ fn check_enemy_collision_none(
 fn kill_player_tank(
     commands: &mut Commands,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
+    tank_transform: &Transform,
     player_entity: Entity,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) {
-    // 获取玩家坦克位置用于生成爆炸效果
-    if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-        // 生成爆炸效果
-        effects::spawn_explosion(
-            commands,
-            texture_atlas_layouts,
-            effect_resources,
-            sound_resources,
-            tank_transform.translation,
-        );
-    }
+    // 生成爆炸效果
+    effects::spawn_explosion(
+        commands,
+        texture_atlas_layouts,
+        effect_resources,
+        sound_resources,
+        tank_transform.translation,
+    );
 
     // 销毁玩家坦克
     let () = commands.entity(player_entity).try_despawn();
@@ -391,22 +375,16 @@ fn handle_brick_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     player_info: &mut ResMut<PlayerInfo>,
+    player_tank: &PlayerTank,
+    tank_position: Vec3,
     player_entity: Entity,
     brick_entity: Entity,
     dash_damage_tracker: &mut DashDamageTracker,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) {
-    // 获取玩家坦克信息
-    let player_tank = player_tanks
-        .get(player_entity)
-        .expect("Player entity should exist in player_tanks query")
-        .1;
-
     // 获取 brick 位置用于生成效果
     if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
         // 播放砖块被击中的音效
@@ -446,10 +424,11 @@ fn handle_brick_collision(
 
     // 检查玩家是否死亡
     if player_stats.life_points == 0 {
+        let transform = Transform::from_translation(tank_position);
         kill_player_tank(
             commands,
             texture_atlas_layouts,
-            player_tanks_with_transform,
+            &transform,
             player_entity,
             effect_resources,
             sound_resources,
@@ -463,44 +442,35 @@ fn handle_steel_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     player_info: &ResMut<PlayerInfo>,
+    player_tank: &PlayerTank,
+    tank_position: Vec3,
     player_entity: Entity,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) {
-    // 获取玩家坦克信息
-    let player_tank = player_tanks
-        .get(player_entity)
-        .expect("Player entity should exist in player_tanks query")
-        .1;
-
     // 检查 protection 是否为 100%
     let can_break_steel = player_info.get_stat_value(player_tank.tank_type, |p| p.protection) >= 100;
 
     if can_break_steel {
         // protection = 100%，可以撞碎铁块，不扣血
         // 发送火花特效事件
-        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            effect_events.write(crate::bullet::EffectEvent::Spark {
-                position: tank_transform.translation,
-            });
-        }
+        effect_events.write(crate::bullet::EffectEvent::Spark {
+            position: tank_position,
+        });
         // 铁块被撞碎的效果（可以在这里添加更多效果）
     } else {
         // protection < 100%，玩家死亡
         // 发送爆炸特效事件
-        if let Ok((_, tank_transform)) = player_tanks_with_transform.get(player_entity) {
-            effect_events.write(crate::bullet::EffectEvent::Explosion {
-                position: tank_transform.translation,
-            });
-        }
+        effect_events.write(crate::bullet::EffectEvent::Explosion {
+            position: tank_position,
+        });
 
+        let transform = Transform::from_translation(tank_position);
         kill_player_tank(
             commands,
             texture_atlas_layouts,
-            player_tanks_with_transform,
+            &transform,
             player_entity,
             effect_resources,
             sound_resources,
@@ -532,21 +502,17 @@ fn handle_dash_enemy_tank_collision(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    player_tanks: &Query<(Entity, &PlayerTank, Option<&IsDashing>)>,
-    player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+    player_tank: &PlayerTank,
+    tank_position: Vec3,
     player_entity: Entity,
     enemy_entity: Entity,
     dash_damage_tracker: &mut DashDamageTracker,
     effect_resources: &EffectResources,
     sound_resources: &SoundResources,
 ) {
-    // 获取玩家坦克信息
-    let (_, player_tank, _) = player_tanks.get(player_entity)
-        .expect("Player entity should exist in player_tanks query");
-
     // 获取敌方坦克位置用于生成爆炸效果
     if let Ok((_, enemy_transform)) = enemy_tanks.get(enemy_entity) {
         // 发送爆炸特效事件
@@ -591,10 +557,11 @@ fn handle_dash_enemy_tank_collision(
 
     // 检查玩家是否死亡
     if player_stats.life_points == 0 {
+        let transform = Transform::from_translation(tank_position);
         kill_player_tank(
             commands,
             texture_atlas_layouts,
-            player_tanks_with_transform,
+            &transform,
             player_entity,
             effect_resources,
             sound_resources,

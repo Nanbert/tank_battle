@@ -411,28 +411,16 @@ fn complete_recall(
 
 /// 更新回城进度条位置
 pub fn update_recall_progress_bars(
-    mut param_set: ParamSet<(
-        Query<(Entity, &Transform)>,
-        Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
-    )>,
+    mut progress_bar_query: Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
+    player_tanks: Query<(Entity, &Transform), With<PlayerTank>>,
 ) {
-    let mut player_transforms: Vec<(Entity, Vec3)> = Vec::new();
-
-    // 先收集所有玩家的位置信息
-    for (entity, transform) in &param_set.p0() {
-        player_transforms.push((entity, transform.translation));
-    }
-
-    // 然后更新进度条位置
-    for (progress_bar, mut progress_transform) in &mut param_set.p1() {
-        if let Some((_, player_pos)) = player_transforms
-            .iter()
-            .find(|(e, _)| *e == progress_bar.player_entity)
-        {
+    // 直接更新进度条位置，通过 player_tanks 查询获取玩家位置
+    for (progress_bar, mut progress_transform) in progress_bar_query.iter_mut() {
+        if let Ok((_, player_transform)) = player_tanks.get(progress_bar.player_entity) {
             // 更新倒计时文本位置（跟随坦克）
-            progress_transform.translation.x = player_pos.x;
+            progress_transform.translation.x = player_transform.translation.x;
             progress_transform.translation.y =
-                player_pos.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
+                player_transform.translation.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }

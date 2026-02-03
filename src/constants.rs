@@ -402,6 +402,7 @@ impl TankType {
 }
 
 #[derive(Component)]
+#[derive(Clone, Copy)]
 pub struct PlayerTank {
     pub tank_type: TankType, // TankType::Player1 或 TankType::Player2
 }
