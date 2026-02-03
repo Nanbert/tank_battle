@@ -618,8 +618,8 @@ fn spawn_players(
     let player1_texture = player_tank_resources.player1.clone();
     let player2_texture = player_tank_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas = TextureAtlasLayout::from_grid(player_tile_size, 2, 1, None, None);
-    let player_texture_atlas_layout = texture_atlas_layouts.add(player_texture_atlas);
+    let player_texture_atlas_layout = create_texture_atlas(player_tile_size, 2, 1);
+    let player_texture_atlas = texture_atlas_layouts.add(player_texture_atlas_layout);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 
     // 根据游戏模式生成玩家
@@ -629,7 +629,7 @@ fn spawn_players(
             let _player1_tank_entity = spawn_player_tank(
                 commands,
                 player1_texture,
-                player_texture_atlas_layout,
+                player_texture_atlas,
                 player_animation_indices,
                 TankType::Player1,
             );
@@ -656,7 +656,7 @@ fn spawn_players(
             let _player1_tank_entity = spawn_player_tank(
                 commands,
                 player1_texture,
-                player_texture_atlas_layout.clone(),
+                player_texture_atlas.clone(),
                 player_animation_indices,
                 TankType::Player1,
             );
@@ -664,7 +664,7 @@ fn spawn_players(
             let _player2_tank_entity = spawn_player_tank(
                 commands,
                 player2_texture,
-                player_texture_atlas_layout,
+                player_texture_atlas,
                 player_animation_indices,
                 TankType::Player2,
             );

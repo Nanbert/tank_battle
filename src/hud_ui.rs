@@ -360,8 +360,8 @@ fn spawn_single_player_hud(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
     );
-    let player_avatar_texture_atlas = TextureAtlasLayout::from_grid(player_avatar_tile_size, 13, 3, None, None);
-    let player_avatar_texture_atlas_layout = texture_atlas_layouts.add(player_avatar_texture_atlas);
+    let player_avatar_texture_atlas_layout = create_texture_atlas(player_avatar_tile_size, 13, 3);
+    let player_avatar_texture_atlas = texture_atlas_layouts.add(player_avatar_texture_atlas_layout);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
     commands.spawn((
         marker.clone(),
@@ -370,7 +370,7 @@ fn spawn_single_player_hud(
         Sprite {
             image: player_avatar_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: player_avatar_texture_atlas_layout,
+                layout: player_avatar_texture_atlas,
                 index: 0,
             }),
             custom_size: Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT)),

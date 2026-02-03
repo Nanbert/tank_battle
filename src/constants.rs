@@ -35,7 +35,7 @@ pub const TEXTURE_BULLET_FIRE_EFFECT: &str = "texture/bullets/fire_effect.png";
 // fire_effect.png 实际尺寸：320 x 448 像素
 // 7行5列网格，每帧 64 x 64 像素
 pub const FIRE_EFFECT_TILE_WIDTH: f32 = 64.0; // 火焰特效瓦片宽度（320/5）
-pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 火焰特效瓦片高度（448/7）
+pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 火焰特效瓦片高度（320/5）
 pub const FIRE_EFFECT_COLUMNS: usize = 5; // 火焰特效列数
 pub const FIRE_EFFECT_ROWS: usize = 7; // 火焰特效行数
 pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最后一行只有2帧）
@@ -44,8 +44,8 @@ pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间�
 // 穿透效果精灵图常量（叠加在子弹上的穿透特效）
 // penetrate_effect.png 实际尺寸：600 x 150 像素
 // 1行6列网格，每帧 100 x 100 像素
-pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 100.0; // 穿透特效瓦片宽度（600/6）
-pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 100.0; // 穿透特效瓦片高度（150/1）
+pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 64.0; // 穿透特效瓦片宽度（320/5）
+pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 穿透特效瓦片高度（320/5）
 pub const PENETRATE_EFFECT_COLUMNS: usize = 6; // 穿透特效列数
 pub const PENETRATE_EFFECT_ROWS: usize = 1; // 穿透特效行数
 pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 6; // 穿透特效总帧数
@@ -800,3 +800,12 @@ pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体
 pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
 pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）
+
+/// 创建纹理图集布局的辅助函数
+pub fn create_texture_atlas(
+    tile_size: UVec2,
+    columns: u32,
+    rows: u32,
+) -> TextureAtlasLayout {
+    TextureAtlasLayout::from_grid(tile_size, columns, rows, None, None)
+}

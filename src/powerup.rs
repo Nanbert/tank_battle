@@ -287,8 +287,8 @@ fn spawn_powerup_batch(
         PowerUp::Shell => powerup_resources.shell.clone(),
     };
     let tile_size = UVec2::new(87, 69);
-    let texture_atlas = TextureAtlasLayout::from_grid(tile_size, 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(texture_atlas);
+    let texture_atlas_layout = create_texture_atlas(tile_size, 3, 1);
+    let texture_atlas = texture_atlas_layouts.add(texture_atlas_layout);
     let animation_indices = AnimationIndices { first: 0, last: 2 };
 
     for pos in positions {
@@ -298,7 +298,7 @@ fn spawn_powerup_batch(
             Sprite::from_atlas_image(
                 texture.clone(),
                 TextureAtlas {
-                    layout: texture_atlas_layout.clone(),
+                    layout: texture_atlas.clone(),
                     index: animation_indices.first,
                 },
             ),
@@ -344,10 +344,8 @@ pub fn update_track_chain_effect(
                     crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
                     crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
                 );
-                let track_train_texture_atlas =
-                    TextureAtlasLayout::from_grid(track_train_tile_size, 2, 1, None, None);
-                let track_train_texture_atlas_layout =
-                    texture_atlas_layouts.add(track_train_texture_atlas);
+                let track_train_texture_atlas_layout = create_texture_atlas(track_train_tile_size, 2, 1);
+                let track_train_texture_atlas = texture_atlas_layouts.add(track_train_texture_atlas_layout);
                 let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
 
                 // 创建履带特效实体
@@ -356,7 +354,7 @@ pub fn update_track_chain_effect(
                         Sprite {
                             image: track_train_texture,
                             texture_atlas: Some(TextureAtlas {
-                                layout: track_train_texture_atlas_layout,
+                                layout: track_train_texture_atlas,
                                 index: track_train_animation_indices.first,
                             }),
                             custom_size: Some(Vec2::new(

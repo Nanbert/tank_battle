@@ -31,8 +31,8 @@ pub fn spawn_laser(
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
-    let laser_texture_atlas = TextureAtlasLayout::from_grid(laser_tile_size, 4, 3, None, None);
-    let laser_texture_atlas_layout = texture_atlas_layouts.add(laser_texture_atlas);
+    let laser_texture_atlas_layout = create_texture_atlas(laser_tile_size, 4, 3);
+    let laser_texture_atlas = texture_atlas_layouts.add(laser_texture_atlas_layout);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
@@ -58,7 +58,7 @@ pub fn spawn_laser(
             Sprite {
                 image: laser_texture,
                 texture_atlas: Some(TextureAtlas {
-                    layout: laser_texture_atlas_layout,
+                    layout: laser_texture_atlas,
                     index: laser_animation_indices.first,
                 }),
                 custom_size: Some(Vec2::new(LASER_DISPLAY_WIDTH, LASER_HEIGHT)), // 原本长度
@@ -276,8 +276,8 @@ fn start_charge(
     };
 
     let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
-    let energy_ball_texture_atlas = TextureAtlasLayout::from_grid(energy_ball_tile_size, 17, 5, None, None);
-    let energy_ball_texture_atlas_layout = texture_atlas_layouts.add(energy_ball_texture_atlas);
+    let energy_ball_texture_atlas_layout = create_texture_atlas(energy_ball_tile_size, 17, 5);
+    let energy_ball_texture_atlas = texture_atlas_layouts.add(energy_ball_texture_atlas_layout);
     let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
 
     // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
@@ -302,7 +302,7 @@ fn start_charge(
         Sprite {
             image: energy_ball_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: energy_ball_texture_atlas_layout,
+                layout: energy_ball_texture_atlas,
                 index: energy_ball_animation_indices.first,
             }),
             custom_size: Some(Vec2::new(ENERGY_BALL_DISPLAY_WIDTH, ENERGY_BALL_DISPLAY_HEIGHT)),
@@ -585,9 +585,8 @@ pub fn animate_laser(
                     // 使用预加载的烟雾纹理
                     let smoke_texture = effect_resources.smoke.clone();
                     let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
-                        let smoke_texture_atlas = TextureAtlasLayout::from_grid(smoke_tile_size, 5, 3, None, None);
-                    let smoke_texture_atlas_layout = texture_atlas_layouts.add(smoke_texture_atlas);
-                    let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
+                        let smoke_texture_atlas_layout = create_texture_atlas(smoke_tile_size, 5, 3);
+                            let smoke_texture_atlas = texture_atlas_layouts.add(smoke_texture_atlas_layout);                    let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
 
                     commands.spawn((
                         PlayingEntity,
@@ -596,7 +595,7 @@ pub fn animate_laser(
                         Sprite {
                             image: smoke_texture,
                             texture_atlas: Some(TextureAtlas {
-                                layout: smoke_texture_atlas_layout,
+                                layout: smoke_texture_atlas,
                                 index: smoke_animation_indices.first,
                             }),
                             custom_size: Some(Vec2::new(SMOKE_DISPLAY_SIZE, SMOKE_DISPLAY_SIZE)),

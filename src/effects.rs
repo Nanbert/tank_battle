@@ -21,9 +21,8 @@ pub fn spawn_explosion(
     // 使用预加载的爆炸纹理
     let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_texture_atlas =
-        TextureAtlasLayout::from_grid(explosion_tile_size, 8, 8, None, None);
-    let explosion_texture_atlas_layout = texture_atlas_layouts.add(explosion_texture_atlas);
+    let explosion_texture_atlas_layout = create_texture_atlas(explosion_tile_size, 8, 8);
+    let explosion_texture_atlas = texture_atlas_layouts.add(explosion_texture_atlas_layout);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
     commands.spawn((
@@ -33,7 +32,7 @@ pub fn spawn_explosion(
         Sprite {
             image: explosion_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: explosion_texture_atlas_layout,
+                layout: explosion_texture_atlas,
                 index: explosion_animation_indices.first,
             }),
             custom_size: Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
@@ -101,8 +100,8 @@ pub fn spawn_spark(
     // 使用预加载的打击效果纹理
     let spark_texture = effect_resources.spark.clone();
     let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
-    let spark_texture_atlas = TextureAtlasLayout::from_grid(spark_tile_size, 4, 4, None, None);
-    let spark_texture_atlas_layout = texture_atlas_layouts.add(spark_texture_atlas);
+    let spark_texture_atlas_layout = create_texture_atlas(spark_tile_size, 4, 4);
+    let spark_texture_atlas = texture_atlas_layouts.add(spark_texture_atlas_layout);
     let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
 
     commands.spawn((
@@ -112,7 +111,7 @@ pub fn spawn_spark(
         Sprite {
             image: spark_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: spark_texture_atlas_layout,
+                layout: spark_texture_atlas,
                 index: spark_animation_indices.first,
             }),
             custom_size: Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),

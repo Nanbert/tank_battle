@@ -586,39 +586,29 @@ pub fn init_game_resources(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // 地形纹理图集布局
+    let sea_atlas_layout = create_texture_atlas(UVec2::new(100, 100), 3, 1);
+    let forest_atlas_layout = create_texture_atlas(UVec2::new(131, 131), 10, 1);
+    let forest_fire_atlas_layout = create_texture_atlas(
+        UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32),
+        10,
+        1,
+    );
+
     commands.insert_resource(TerrainAtlasLayouts {
-        sea: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
-            UVec2::new(100, 100),
-            3,
-            1,
-            None,
-            None,
-        )),
-        forest: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
-            UVec2::new(131, 131),
-            10,
-            1,
-            None,
-            None,
-        )),
-        forest_fire: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
-            UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32),
-            10,
-            1,
-            None,
-            None,
-        )),
+        sea: texture_atlas_layouts.add(sea_atlas_layout),
+        forest: texture_atlas_layouts.add(forest_atlas_layout),
+        forest_fire: texture_atlas_layouts.add(forest_fire_atlas_layout),
     });
 
     // 背景纹理图集布局
+    let background_atlas_layout = create_texture_atlas(
+        UVec2::new(BACKGROUND_TILE_WIDTH as u32, BACKGROUND_TILE_HEIGHT as u32),
+        BACKGROUND_COLUMNS as u32,
+        BACKGROUND_ROWS as u32,
+    );
+
     commands.insert_resource(BackgroundAtlasLayout {
-        layout: texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
-            UVec2::new(BACKGROUND_TILE_WIDTH as u32, BACKGROUND_TILE_HEIGHT as u32),
-            BACKGROUND_COLUMNS as u32,
-            BACKGROUND_ROWS as u32,
-            None,
-            None,
-        )),
+        layout: texture_atlas_layouts.add(background_atlas_layout),
     });
 
     // 字体资源

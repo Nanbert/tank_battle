@@ -38,9 +38,8 @@ pub fn spawn_commander(
     let commander_texture = commander_resources.texture.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas =
-        TextureAtlasLayout::from_grid(commander_tile_size, 10, 10, None, None);
-    let commander_texture_atlas_layout = texture_atlas_layouts.add(commander_texture_atlas);
+    let commander_texture_atlas_layout = create_texture_atlas(commander_tile_size, 10, 10);
+    let commander_texture_atlas = texture_atlas_layouts.add(commander_texture_atlas_layout);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
@@ -52,7 +51,7 @@ pub fn spawn_commander(
         Sprite {
             image: commander_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: commander_texture_atlas_layout,
+                layout: commander_texture_atlas,
                 index: commander_animation_indices.first,
             }),
             custom_size: Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
@@ -76,8 +75,8 @@ pub fn spawn_commander(
         COMMANDER_MUSIC_TILE_WIDTH as u32,
         COMMANDER_MUSIC_TILE_HEIGHT as u32,
     );
-    let music_texture_atlas = TextureAtlasLayout::from_grid(music_tile_size, 10, 1, None, None);
-    let music_texture_atlas_layout = texture_atlas_layouts.add(music_texture_atlas);
+    let music_texture_atlas_layout = create_texture_atlas(music_tile_size, 10, 1);
+    let music_texture_atlas = texture_atlas_layouts.add(music_texture_atlas_layout);
     let music_animation_indices = AnimationIndices { first: 0, last: 9 };
 
     commands.spawn((
@@ -86,7 +85,7 @@ pub fn spawn_commander(
         Sprite {
             image: music_texture,
             texture_atlas: Some(TextureAtlas {
-                layout: music_texture_atlas_layout,
+                layout: music_texture_atlas,
                 index: music_animation_indices.first,
             }),
             custom_size: Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),

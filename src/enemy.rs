@@ -60,9 +60,8 @@ pub fn spawn_enemy_born_animation(
 ) -> Entity {
     let enemy_born_texture = enemy_resources.enemy_born.clone();
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
-    let enemy_born_texture_atlas =
-        TextureAtlasLayout::from_grid(enemy_born_tile_size, 5, 3, None, None);
-    let enemy_born_texture_atlas_layout = texture_atlas_layouts.add(enemy_born_texture_atlas);
+    let enemy_born_texture_atlas_layout = create_texture_atlas(enemy_born_tile_size, 5, 3);
+    let enemy_born_texture_atlas = texture_atlas_layouts.add(enemy_born_texture_atlas_layout);
     let enemy_born_animation_indices = AnimationIndices {
         first: 0,
         last: ENEMY_BORN_END_FRAME,
@@ -75,7 +74,7 @@ pub fn spawn_enemy_born_animation(
             Sprite {
                 image: enemy_born_texture,
                 texture_atlas: Some(TextureAtlas {
-                    layout: enemy_born_texture_atlas_layout,
+                    layout: enemy_born_texture_atlas,
                     index: enemy_born_animation_indices.first,
                 }),
                 custom_size: Some(Vec2::new(
@@ -138,9 +137,8 @@ pub fn animate_enemy_born_animation(
                     let enemy_texture = enemy_resources.enemy_tank.clone();
                     let enemy_tile_size =
                         UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
-                    let enemy_texture_atlas =
-                        TextureAtlasLayout::from_grid(enemy_tile_size, 2, 1, None, None);
-                    let enemy_texture_atlas_layout = texture_atlas_layouts.add(enemy_texture_atlas);
+                    let enemy_texture_atlas_layout = create_texture_atlas(enemy_tile_size, 2, 1);
+                    let enemy_texture_atlas = texture_atlas_layouts.add(enemy_texture_atlas_layout);
                     let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 
                     // 生成敌方坦克
@@ -173,7 +171,7 @@ pub fn animate_enemy_born_animation(
                         .insert(Sprite {
                             image: enemy_texture,
                             texture_atlas: Some(TextureAtlas {
-                                layout: enemy_texture_atlas_layout,
+                                layout: enemy_texture_atlas,
                                 index: enemy_animation_indices.first,
                             }),
                             custom_size: Some(Vec2::new(
