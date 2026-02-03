@@ -9,6 +9,7 @@ use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{CommanderLife, CommanderMusicResources, CommanderResources};
+use crate::utils;
 
 /// 生成司令官
 pub fn spawn_commander(
@@ -38,7 +39,7 @@ pub fn spawn_commander(
     let commander_texture = commander_resources.texture.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas_layout = create_texture_atlas(commander_tile_size, 10, 10);
+    let commander_texture_atlas_layout = utils::create_texture_atlas(commander_tile_size, 10, 10);
     let commander_texture_atlas = texture_atlas_layouts.add(commander_texture_atlas_layout);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
@@ -75,7 +76,7 @@ pub fn spawn_commander(
         COMMANDER_MUSIC_TILE_WIDTH as u32,
         COMMANDER_MUSIC_TILE_HEIGHT as u32,
     );
-    let music_texture_atlas_layout = create_texture_atlas(music_tile_size, 10, 1);
+    let music_texture_atlas_layout = utils::create_texture_atlas(music_tile_size, 10, 1);
     let music_texture_atlas = texture_atlas_layouts.add(music_texture_atlas_layout);
     let music_animation_indices = AnimationIndices { first: 0, last: 9 };
 

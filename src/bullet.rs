@@ -9,9 +9,9 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::effects;
-
 use crate::constants::*;
 use crate::resources::{AmbienceResources, BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts, SoundResources};
+use crate::utils;
 
 /// 碰撞类型枚举
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -108,7 +108,7 @@ pub fn spawn_bullet(
     // 如果玩家有 fire_shell 效果，添加火焰特效子实体
     if has_fire_shell {
         let fire_effect_tile_size = UVec2::new(FIRE_EFFECT_TILE_WIDTH as u32, FIRE_EFFECT_TILE_HEIGHT as u32);
-        let fire_effect_atlas_layout = create_texture_atlas(fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
+        let fire_effect_atlas_layout = utils::create_texture_atlas(fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
         let fire_effect_atlas = texture_atlas_layouts.add(fire_effect_atlas_layout);
         let animation_indices = AnimationIndices {
             first: 0,
@@ -146,7 +146,7 @@ pub fn spawn_bullet(
     // 如果玩家有 penetrate 效果，添加穿透特效子实体
     if has_penetrate {
         let penetrate_effect_tile_size = UVec2::new(PENETRATE_EFFECT_TILE_WIDTH as u32, PENETRATE_EFFECT_TILE_HEIGHT as u32);
-        let penetrate_effect_atlas_layout = create_texture_atlas(penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
+        let penetrate_effect_atlas_layout = utils::create_texture_atlas(penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
         let penetrate_effect_atlas = texture_atlas_layouts.add(penetrate_effect_atlas_layout);
         let animation_indices = AnimationIndices {
             first: 0,

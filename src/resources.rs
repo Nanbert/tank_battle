@@ -6,6 +6,7 @@ use std::collections::{HashMap, HashSet};
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
 };
+use crate::utils;
 
 #[derive(Resource, Default)]
 pub struct BulletTracker {
@@ -166,36 +167,6 @@ impl PlayerInfo {
         self.get_stat_value(tank_type, |p| p.shells)
     }
 
-    /// 获取玩家的能量点数
-    #[allow(dead_code)]
-    pub fn get_energy_points(&self, tank_type: TankType) -> usize {
-        self.get_stat_value(tank_type, |p| p.energy_points)
-    }
-
-    /// 获取玩家的生命点数
-    #[allow(dead_code)]
-    pub fn get_life_points(&self, tank_type: TankType) -> usize {
-        self.get_stat_value(tank_type, |p| p.life_points)
-    }
-
-    /// 获取玩家的护盾值
-    #[allow(dead_code)]
-    pub fn get_protection(&self, tank_type: TankType) -> usize {
-        self.get_stat_value(tank_type, |p| p.protection)
-    }
-
-    /// 获取玩家的射击速度
-    #[allow(dead_code)]
-    pub fn get_fire_speed(&self, tank_type: TankType) -> usize {
-        self.get_stat_value(tank_type, |p| p.fire_speed)
-    }
-
-    /// 获取玩家的分数
-    #[allow(dead_code)]
-    pub fn get_score(&self, tank_type: TankType) -> usize {
-        self.get_stat_value(tank_type, |p| p.score)
-    }
-
     /// 检查玩家是否有火焰炮弹能力
     pub fn has_fire_shell(&self, tank_type: TankType) -> bool {
         self.get_stats(tank_type).map_or(false, |p| p.fire_shell)
@@ -206,25 +177,9 @@ impl PlayerInfo {
         self.get_stats(tank_type).map_or(false, |p| p.penetrate)
     }
 
-    /// 检查玩家是否有履带链能力
-    #[allow(dead_code)]
-    pub fn has_track_chain(&self, tank_type: TankType) -> bool {
-        self.get_stats(tank_type).map_or(false, |p| p.track_chain)
-    }
-
     /// 检查玩家是否有气垫能力
     pub fn has_air_cushion(&self, tank_type: TankType) -> bool {
         self.get_stats(tank_type).map_or(false, |p| p.air_cushion)
-    }
-
-    /// 检查玩家是否存在
-    #[allow(dead_code)]
-    pub fn player_exists(&self, tank_type: TankType) -> bool {
-        match tank_type {
-            TankType::Player1 => true,
-            TankType::Player2 => self.player2.is_some(),
-            TankType::Enemy => false,
-        }
     }
 
     /// 恢复所有玩家 1 点能量
@@ -508,10 +463,7 @@ impl SoundResources {
         audio_source: Handle<AudioSource>,
         volume: f32,
     ) {
-        commands.spawn((
-            AudioPlayer::new(audio_source),
-            PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(volume)),
-        ));
+        utils::play_one_shot_sound(commands, audio_source, volume);
     }
 }
 

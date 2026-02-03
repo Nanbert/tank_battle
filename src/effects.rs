@@ -4,12 +4,12 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::audio::Volume;
 use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::{AmbienceResources, EffectResources, PlayerInfo, TerrainAtlasLayouts, SoundResources};
+use crate::utils;
 
 pub fn spawn_explosion(
     commands: &mut Commands,
@@ -21,7 +21,7 @@ pub fn spawn_explosion(
     // 使用预加载的爆炸纹理
     let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_texture_atlas_layout = create_texture_atlas(explosion_tile_size, 8, 8);
+    let explosion_texture_atlas_layout = utils::create_texture_atlas(explosion_tile_size, 8, 8);
     let explosion_texture_atlas = texture_atlas_layouts.add(explosion_texture_atlas_layout);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
@@ -97,7 +97,7 @@ pub fn spawn_spark(
     // 使用预加载的打击效果纹理
     let spark_texture = effect_resources.spark.clone();
     let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
-    let spark_texture_atlas_layout = create_texture_atlas(spark_tile_size, 4, 4);
+    let spark_texture_atlas_layout = utils::create_texture_atlas(spark_tile_size, 4, 4);
     let spark_texture_atlas = texture_atlas_layouts.add(spark_texture_atlas_layout);
     let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
 
@@ -270,11 +270,8 @@ pub fn play_ambience_generic<T, P>(
     }
 
     if is_near && ambience_players.is_empty() {
-        commands.spawn((
-            AudioPlayer::new(ambience_sound),
-            PlaybackSettings::LOOP.with_volume(Volume::Linear(volume)),
-            P::default(),
-        ));
+        let entity = utils::play_looping_sound(&mut commands, ambience_sound, volume);
+        commands.entity(entity).insert(P::default());
     } else if !is_near {
         for (entity, _) in ambience_players.iter() {
             let () = commands.entity(entity).try_despawn();
@@ -350,11 +347,8 @@ pub fn play_commander_ambience(
             let random_music = music_files[rng.random_range(0..music_files.len())];
 
             let commander_music_sound = random_music.clone();
-            commands.spawn((
-                AudioPlayer::new(commander_music_sound),
-                PlaybackSettings::LOOP.with_volume(Volume::Linear(VOLUME_COMMANDER_MUSIC)),
-                CommanderAmbiencePlayer,
-            ));
+            let entity = utils::play_looping_sound(&mut commands, commander_music_sound, VOLUME_COMMANDER_MUSIC);
+            commands.entity(entity).insert(CommanderAmbiencePlayer);
         }
     } else {
         // 如果不在司令官附近但有播放音效，则停止

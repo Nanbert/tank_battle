@@ -10,6 +10,7 @@ use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, PowerUpResources, SoundResources, StatType};
+use crate::utils;
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -287,7 +288,7 @@ fn spawn_powerup_batch(
         PowerUp::Shell => powerup_resources.shell.clone(),
     };
     let tile_size = UVec2::new(87, 69);
-    let texture_atlas_layout = create_texture_atlas(tile_size, 3, 1);
+    let texture_atlas_layout = utils::create_texture_atlas(tile_size, 3, 1);
     let texture_atlas = texture_atlas_layouts.add(texture_atlas_layout);
     let animation_indices = AnimationIndices { first: 0, last: 2 };
 
@@ -344,7 +345,7 @@ pub fn update_track_chain_effect(
                     crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
                     crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
                 );
-                let track_train_texture_atlas_layout = create_texture_atlas(track_train_tile_size, 2, 1);
+                let track_train_texture_atlas_layout = utils::create_texture_atlas(track_train_tile_size, 2, 1);
                 let track_train_texture_atlas = texture_atlas_layouts.add(track_train_texture_atlas_layout);
                 let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
 

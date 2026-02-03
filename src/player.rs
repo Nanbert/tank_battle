@@ -14,6 +14,7 @@ use crate::resources::{
     GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers,
     StatType, PlayerTankResources,
 };
+use crate::utils;
 
 /// 玩家1初始X坐标（左侧）
 const PLAYER1_START_X: f32 = -PLAYER_COLLIDER_HALF - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
@@ -23,14 +24,6 @@ const PLAYER2_START_X: f32 = PLAYER_COLLIDER_HALF + COMMANDER_WIDTH / 2.0 + PLAY
 
 /// 玩家初始Y坐标（底部）
 const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF;
-
-/// 计算两个角度之间的最小角度差（范围：-π 到 π）
-fn calculate_angle_difference(target_angle: f32, current_angle: f32) -> f32 {
-    let diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_angle)
-        % (std::f32::consts::PI * 2.0)
-        - std::f32::consts::PI;
-    diff
-}
 
 /// 生成玩家坦克
 pub fn spawn_player_tank(
@@ -157,7 +150,7 @@ pub fn move_player_tank(
             let target_angle = angle - ANGLE_OFFSET_DEGREES.to_radians();
 
             let current_euler = target_rotation.angle;
-            let angle_diff = calculate_angle_difference(target_angle, current_euler);
+            let angle_diff = utils::calculate_angle_difference(target_angle, current_euler);
 
             if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
                 target_rotation.angle = target_angle;
@@ -217,7 +210,7 @@ pub fn move_player_tank(
             // 平滑旋转
             let current_euler = transform.rotation.to_euler(EulerRot::XYZ).2;
             let target_angle = target_rotation.angle;
-            let angle_diff = calculate_angle_difference(target_angle, current_euler);
+            let angle_diff = utils::calculate_angle_difference(target_angle, current_euler);
 
             if angle_diff.abs() > 0.01 && !rotation_timer.is_finished() {
                 // 计算旋转进度（0.0 到 1.0）
@@ -323,7 +316,7 @@ pub fn update_recall_timers(
         let Some(recall_timer) = recall_timers.timers.get_mut(&entity) else { continue; };
 
         let is_recall_key_pressed = is_recall_key_pressed(&keyboard_input, player_tank.tank_type);
-        let is_interrupted = is_movement_interrupted(&keyboard_input, player_tank.tank_type);
+        let is_interrupted = utils::is_movement_interrupted(&keyboard_input, player_tank.tank_type);
 
         // 卫语句：取消回城
         if !is_recall_key_pressed || is_interrupted {
@@ -352,12 +345,6 @@ fn is_recall_key_pressed(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: 
         TankType::Enemy => return false,
     };
     key_bindings.is_recalling(keyboard_input)
-}
-
-/// 检查是否被打断（移动或射击）
-fn is_movement_interrupted(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    let key_bindings = tank_type.get_key_bindings();
-    key_bindings.is_moving(keyboard_input) || key_bindings.is_shooting(keyboard_input)
 }
 
 /// 取消回城
@@ -571,7 +558,7 @@ fn spawn_players(
     let player1_texture = player_tank_resources.player1.clone();
     let player2_texture = player_tank_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas_layout = create_texture_atlas(player_tile_size, 2, 1);
+    let player_texture_atlas_layout = utils::create_texture_atlas(player_tile_size, 2, 1);
     let player_texture_atlas = texture_atlas_layouts.add(player_texture_atlas_layout);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 

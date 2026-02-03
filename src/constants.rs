@@ -250,12 +250,10 @@ pub struct PlayerKeyBindings {
     pub shoot: KeyCode,
     pub dash: KeyCode,
     pub recall: KeyCode,
-    #[allow(dead_code)]
-    pub laser: KeyCode,
 }
 
 impl PlayerKeyBindings {
-    /// 玩家1按键绑定 (WASD + J/K/I/L)
+    /// 玩家1按键绑定 (WASD + J/K/I)
     pub fn player1() -> Self {
         Self {
             up: KeyCode::KeyW,
@@ -265,7 +263,6 @@ impl PlayerKeyBindings {
             shoot: KeyCode::KeyJ,
             dash: KeyCode::KeyK,
             recall: KeyCode::KeyI,
-            laser: KeyCode::KeyL,
         }
     }
 
@@ -279,7 +276,6 @@ impl PlayerKeyBindings {
             shoot: KeyCode::Numpad1,
             dash: KeyCode::Numpad2,
             recall: KeyCode::Numpad4,
-            laser: KeyCode::Numpad3,
         }
     }
 
@@ -315,12 +311,6 @@ impl PlayerKeyBindings {
     /// 检查是否按下回城键
     pub fn is_recalling(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
         keyboard.pressed(self.recall)
-    }
-
-    /// 检查是否按下激光键
-    #[allow(dead_code)]
-    pub fn is_lasering(&self, keyboard: &ButtonInput<KeyCode>) -> bool {
-        keyboard.pressed(self.laser)
     }
 }
 
@@ -812,11 +802,4 @@ pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
 pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）
 
-/// 创建纹理图集布局的辅助函数
-pub fn create_texture_atlas(
-    tile_size: UVec2,
-    columns: u32,
-    rows: u32,
-) -> TextureAtlasLayout {
-    TextureAtlasLayout::from_grid(tile_size, columns, rows, None, None)
-}
+

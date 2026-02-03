@@ -9,6 +9,7 @@ use rand::Rng;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 use crate::resources::{EnemyResources, EnemySpawnState};
+use crate::utils;
 
 /// 敌方坦克出生动画系统
 pub fn enemy_spawn_system(
@@ -60,7 +61,7 @@ pub fn spawn_enemy_born_animation(
 ) -> Entity {
     let enemy_born_texture = enemy_resources.enemy_born.clone();
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
-    let enemy_born_texture_atlas_layout = create_texture_atlas(enemy_born_tile_size, 5, 3);
+    let enemy_born_texture_atlas_layout = utils::create_texture_atlas(enemy_born_tile_size, 5, 3);
     let enemy_born_texture_atlas = texture_atlas_layouts.add(enemy_born_texture_atlas_layout);
     let enemy_born_animation_indices = AnimationIndices {
         first: 0,
@@ -137,7 +138,7 @@ pub fn animate_enemy_born_animation(
                     let enemy_texture = enemy_resources.enemy_tank.clone();
                     let enemy_tile_size =
                         UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
-                    let enemy_texture_atlas_layout = create_texture_atlas(enemy_tile_size, 2, 1);
+                    let enemy_texture_atlas_layout = utils::create_texture_atlas(enemy_tile_size, 2, 1);
                     let enemy_texture_atlas = texture_atlas_layouts.add(enemy_texture_atlas_layout);
                     let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 

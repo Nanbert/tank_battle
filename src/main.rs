@@ -19,6 +19,7 @@ mod overlay_ui;
 mod player;
 mod powerup;
 mod resources;
+mod utils;
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;

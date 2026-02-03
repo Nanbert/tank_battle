@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
+use crate::utils;
 
 // ============================================================================
 // HUD Marker Components
@@ -360,7 +361,7 @@ fn spawn_single_player_hud(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
     );
-    let player_avatar_texture_atlas_layout = create_texture_atlas(player_avatar_tile_size, 13, 3);
+    let player_avatar_texture_atlas_layout = utils::create_texture_atlas(player_avatar_tile_size, 13, 3);
     let player_avatar_texture_atlas = texture_atlas_layouts.add(player_avatar_texture_atlas_layout);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
     commands.spawn((

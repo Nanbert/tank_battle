@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use crate::bullet::BulletOwner;
 use crate::constants::*;
 use crate::resources::{LaserResources, PlayerInfo, EffectResources, SoundResources, InsufficientEnergyTracker, Language};
+use crate::utils;
 
 /// 激光生成参数
 pub struct LaserSpawnParams {
@@ -31,7 +32,7 @@ pub fn spawn_laser(
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
-    let laser_texture_atlas_layout = create_texture_atlas(laser_tile_size, 4, 3);
+    let laser_texture_atlas_layout = utils::create_texture_atlas(laser_tile_size, 4, 3);
     let laser_texture_atlas = texture_atlas_layouts.add(laser_texture_atlas_layout);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
 
@@ -114,13 +115,14 @@ pub fn player_laser_system(
         // 卫语句：敌方坦克没有激光
         let key_bindings = player_tank.tank_type.get_key_bindings();
 
-        let laser_key = key_bindings.laser;
+        // 使用 recall 键作为激光键
+        let laser_key = key_bindings.recall;
 
         // 检查蓄力状态和打断状态
         let has_charge = charge_query
             .iter()
             .any(|(e, c)| e == entity && c.tank_type == player_tank.tank_type);
-        let is_interrupted = is_movement_interrupted(&keyboard, player_tank.tank_type);
+        let is_interrupted = utils::is_movement_interrupted(&keyboard, player_tank.tank_type);
 
         // 卫语句：被打断则取消蓄力
         if is_interrupted && has_charge {
@@ -174,12 +176,6 @@ pub fn player_laser_system(
             );
         }
     }
-}
-
-/// 检查是否被打断（移动或射击）
-fn is_movement_interrupted(keyboard: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    let key_bindings = tank_type.get_key_bindings();
-    key_bindings.is_moving(keyboard) || key_bindings.is_shooting(keyboard)
 }
 
 /// 取消蓄力
@@ -253,7 +249,7 @@ fn start_charge(
     };
 
     let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
-    let energy_ball_texture_atlas_layout = create_texture_atlas(energy_ball_tile_size, 17, 5);
+    let energy_ball_texture_atlas_layout = utils::create_texture_atlas(energy_ball_tile_size, 17, 5);
     let energy_ball_texture_atlas = texture_atlas_layouts.add(energy_ball_texture_atlas_layout);
     let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
 
@@ -560,7 +556,7 @@ pub fn animate_laser(
                     // 使用预加载的烟雾纹理
                     let smoke_texture = effect_resources.smoke.clone();
                     let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
-                        let smoke_texture_atlas_layout = create_texture_atlas(smoke_tile_size, 5, 3);
+                        let smoke_texture_atlas_layout = utils::create_texture_atlas(smoke_tile_size, 5, 3);
                             let smoke_texture_atlas = texture_atlas_layouts.add(smoke_texture_atlas_layout);                    let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
 
                     commands.spawn((
