@@ -12,31 +12,6 @@ use crate::effects;
 
 use crate::constants::*;
 use crate::resources::{AmbienceResources, BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, PlayerStats, StatType, TerrainAtlasLayouts, SoundResources};
-use bevy::audio::Volume;
-
-/// 获取玩家统计数据的不可变引用
-fn get_player_stats_ref<'a>(
-    player_info: &'a PlayerInfo,
-    player_type: TankType,
-) -> &'a PlayerStats {
-    match player_type {
-        TankType::Player1 => &player_info.player1,
-        TankType::Player2 => player_info.player2.as_ref().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!("Enemy tank should not request player stats"),
-    }
-}
-
-/// 获取玩家统计数据的可变引用
-fn get_player_stats_mut<'a>(
-    player_info: &'a mut PlayerInfo,
-    player_type: TankType,
-) -> &'a mut PlayerStats {
-    match player_type {
-        TankType::Player1 => &mut player_info.player1,
-        TankType::Player2 => player_info.player2.as_mut().expect("Player2 should exist"),
-        TankType::Enemy => unreachable!("Enemy tank should not request player stats"),
-    }
-}
 
 /// 碰撞类型枚举
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -90,14 +65,7 @@ pub fn spawn_bullet(
     };
 
     // 检查玩家是否拥有 fire_shell 能力
-    let has_fire_shell = match params.owner_type {
-        TankType::Player1 => player_info.player1.fire_shell,
-        TankType::Player2 => player_info
-            .player2
-            .as_ref()
-            .map_or(false, |stats| stats.fire_shell),
-        TankType::Enemy => false,
-    };
+    let has_fire_shell = player_info.has_fire_shell(params.owner_type);
 
     // 计算子弹旋转角度（纹理是横向的，需要根据射击方向旋转）
     // 假设纹理默认向右（0度），需要根据方向计算旋转角度
@@ -173,14 +141,7 @@ pub fn spawn_bullet(
     }
 
     // 检查玩家是否拥有 penetrate 能力
-    let has_penetrate = match params.owner_type {
-        TankType::Player1 => player_info.player1.penetrate,
-        TankType::Player2 => player_info
-            .player2
-            .as_ref()
-            .map_or(false, |stats| stats.penetrate),
-        TankType::Enemy => false,
-    };
+    let has_penetrate = player_info.has_penetrate(params.owner_type);
 
     // 如果玩家有 penetrate 效果，添加穿透特效子实体
     if has_penetrate {
@@ -313,11 +274,7 @@ pub fn player_shoot_system(
         }
 
         // 检查是否按下射击键
-        let key_bindings = match player_tank.tank_type {
-            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
-            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
-            TankType::Enemy => continue,
-        };
+        let key_bindings = player_tank.tank_type.get_key_bindings();
 
         if !key_bindings.is_shooting(&keyboard) {
             continue;
@@ -364,10 +321,7 @@ pub fn player_shoot_system(
         bullet_tracker.add_bullet(bullet_entity, entity);
 
         // 播放玩家射击音效，音量 0.4
-        commands.spawn((
-            AudioPlayer::new(sound_resources.player_shot.clone()),
-            PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(0.4)),
-        ));
+        sound_resources.play(&mut commands, sound_resources.player_shot.clone(), 0.4);
 
         // 给炮管添加后坐力效果
         if let Some(children) = children {
@@ -585,7 +539,7 @@ fn handle_forest_collision(
         return;
     }
 
-    let player_stats = get_player_stats_ref(&player_info, owner_type);
+    let player_stats = player_info.get_stats(owner_type).expect("Player should exist");
 
     if !player_stats.fire_shell {
         return;
@@ -607,10 +561,7 @@ fn handle_brick_collision(
     bullet_tracker: &mut BulletTracker,
     sound_resources: &SoundResources,
 ) {
-    commands.spawn((
-        AudioPlayer::new(sound_resources.brick_hit.clone()),
-        PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
-    ));
+    sound_resources.play(commands, sound_resources.brick_hit.clone(), VOLUME_HALF);
 
     effect_events.write(EffectEvent::Spark {
         position: bullet_transform.translation,
@@ -645,17 +596,13 @@ fn handle_steel_collision(
         return;
     }
 
-    let player_stats = get_player_stats_ref(&player_info, owner_type);
+    let player_stats = player_info.get_stats(owner_type).expect("Player should exist");
 
     if player_stats.penetrate {
-        commands.spawn((
-            AudioPlayer::new(sound_resources.metal_crash.clone()),
-        ));
+        sound_resources.play(commands, sound_resources.metal_crash.clone(), 1.0);
         let () = commands.entity(steel_entity).try_despawn();
     } else {
-        commands.spawn((
-            AudioPlayer::new(sound_resources.hit.clone()),
-        ));
+        sound_resources.play(commands, sound_resources.hit.clone(), 1.0);
     }
 
     despawn_bullet(commands, bullet_tracker, bullet_entity);
@@ -736,7 +683,7 @@ fn handle_player_bullet_hit_enemy(
     commands: &mut Commands,
     effect_events: &mut MessageWriter<EffectEvent>,
     enemy_tanks_with_transform: &Query<(Entity, &Transform), With<EnemyTank>>,
-    mut player_info: &mut ResMut<PlayerInfo>,
+    player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     player_type: TankType,
     tank_entity: Entity,
@@ -755,15 +702,13 @@ fn handle_player_bullet_hit_enemy(
     }
 
     // 播放中弹音效
-    commands.spawn((
-        AudioPlayer::new(sound_resources.hit.clone()),
-    ));
+    sound_resources.play(commands, sound_resources.hit.clone(), 1.0);
 
     // 销毁敌方坦克
     let () = commands.entity(tank_entity).try_despawn();
 
     // 增加分数
-    let player_stats = get_player_stats_mut(&mut player_info, player_type);
+    let player_stats = player_info.get_stats_mut(player_type).expect("Player should exist");
     player_stats.score += 100;
     stat_changed_events.write(PlayerStatChanged {
         player_type,
@@ -777,16 +722,14 @@ fn handle_enemy_bullet_hit_player(
     effect_events: &mut MessageWriter<EffectEvent>,
     sound_resources: &SoundResources,
     player_tanks_with_transform: &Query<(Entity, &Transform), With<PlayerTank>>,
-    mut player_info: &mut ResMut<PlayerInfo>,
+    player_info: &mut ResMut<PlayerInfo>,
     stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
     controllers: &mut Query<&mut KinematicCharacterController>,
     player_index: TankType,
     tank_entity: Entity,
 ) {
     // 播放中弹音效
-    commands.spawn((
-        AudioPlayer::new(sound_resources.hit.clone()),
-    ));
+    sound_resources.play(commands, sound_resources.hit.clone(), 1.0);
 
     // 发送火花特效事件
     if let Ok((_, tank_transform)) = player_tanks_with_transform.get(tank_entity) {
@@ -796,7 +739,7 @@ fn handle_enemy_bullet_hit_player(
     }
 
     // 获取玩家统计数据
-    let player_stats = get_player_stats_mut(&mut player_info, player_index);
+    let player_stats = player_info.get_stats_mut(player_index).expect("Player should exist");
 
     // 检查玩家是否有特效或额外子弹
     let has_fire_shell = player_stats.fire_shell;
@@ -985,9 +928,7 @@ pub fn bullet_commander_collision_system(
         };
 
         // 碰撞确认，播放受击音效
-        commands.spawn((
-            AudioPlayer::new(sound_resources.commander_get_shot.clone()),
-        ));
+        sound_resources.play(&mut commands, sound_resources.commander_get_shot.clone(), 1.0);
 
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
@@ -1002,9 +943,7 @@ pub fn bullet_commander_collision_system(
         // 检查是否是致命伤（生命值归零）
         if commander_life.life_points == 0 {
             // 播放死亡音效
-            commands.spawn((
-                AudioPlayer::new(sound_resources.commander_death.clone()),
-            ));
+            sound_resources.play(&mut commands, sound_resources.commander_death.clone(), 1.0);
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);

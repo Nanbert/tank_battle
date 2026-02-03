@@ -4,7 +4,6 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::audio::Volume;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
@@ -38,11 +37,7 @@ pub fn handle_dash_input(
         let is_dashing = dash_timers.timers.contains_key(&entity);
 
         // 根据玩家类型选择按键绑定
-        let key_bindings = match player_tank.tank_type {
-            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
-            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
-            TankType::Enemy => continue,
-        };
+        let key_bindings = player_tank.tank_type.get_key_bindings();
 
         let is_dash_key_pressed = keyboard_input.just_pressed(key_bindings.dash);
 
@@ -66,30 +61,15 @@ pub fn handle_dash_input(
                 // 添加冲刺标记
                 commands.entity(entity).insert(IsDashing);
             } else {
-                // 能量不足，检查冷却是否结束
-                let can_show_warning = energy_tracker
-                    .cooldowns
-                    .get(&entity)
-                    .is_none_or(bevy::prelude::Timer::is_finished);
-
-                if can_show_warning {
-                    // 设置能量不足提示冷却时间
-                    energy_tracker
-                        .cooldowns
-                        .insert(
-                            entity,
-                            Timer::from_seconds(INSUFFICIENT_ENERGY_DISPLAY_DURATION, TimerMode::Once),
-                        );
-
-                    // 触发能量不足提示
-                    crate::overlay_ui::spawn_insufficient_energy_warning(
-                        commands.reborrow(),
-                        font_resources.cn.clone(),
-                        font_resources.en.clone(),
-                        player_tank.tank_type,
-                        *language,
-                    );
-                }
+                // 能量不足，显示提示
+                energy_tracker.try_show_warning(
+                    &mut commands,
+                    entity,
+                    player_tank.tank_type,
+                    font_resources.cn.clone(),
+                    font_resources.en.clone(),
+                    *language,
+                );
             }
         }
     }
@@ -430,10 +410,7 @@ fn handle_brick_collision(
     // 获取 brick 位置用于生成效果
     if let Ok((_, brick_transform)) = bricks.get(brick_entity) {
         // 播放砖块被击中的音效
-        commands.spawn((
-            AudioPlayer::new(sound_resources.brick_hit.clone()),
-            PlaybackSettings::ONCE.with_volume(Volume::Linear(0.5)),
-        ));
+        sound_resources.play(commands, sound_resources.brick_hit.clone(), 0.5);
 
         // 发送火花特效事件
         effect_events.write(crate::bullet::EffectEvent::Spark {

@@ -48,10 +48,7 @@ pub fn spawn_explosion(
     ));
 
     // 使用预加载的爆炸音效
-    commands.spawn((
-        AudioPlayer::new(sound_resources.explosion.clone()),
-        PlaybackSettings::ONCE.with_volume(Volume::Linear(VOLUME_HALF)),
-    ));
+    sound_resources.play(commands, sound_resources.explosion.clone(), VOLUME_HALF);
 }
 
 pub fn spawn_forest_fire(
@@ -201,14 +198,7 @@ pub fn update_air_cushion_effect(
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 air_cushion 能力
-        let has_air_cushion = match player_tank.tank_type {
-            TankType::Player1 => player_info.player1.air_cushion,
-            TankType::Player2 => player_info
-                .player2
-                .as_ref()
-                .is_some_and(|stats| stats.air_cushion),
-            TankType::Enemy => false,
-        };
+        let has_air_cushion = player_info.has_air_cushion(player_tank.tank_type);
 
         if has_air_cushion {
             // 检查是否已经有气泡特效子实体

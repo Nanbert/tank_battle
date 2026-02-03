@@ -112,11 +112,7 @@ pub fn player_laser_system(
         }
 
         // 卫语句：敌方坦克没有激光
-        let key_bindings = match player_tank.tank_type {
-            TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
-            TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
-            TankType::Enemy => continue,
-        };
+        let key_bindings = player_tank.tank_type.get_key_bindings();
 
         let laser_key = key_bindings.laser;
 
@@ -182,11 +178,7 @@ pub fn player_laser_system(
 
 /// 检查是否被打断（移动或射击）
 fn is_movement_interrupted(keyboard: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    let key_bindings = match tank_type {
-        TankType::Player1 => crate::constants::PlayerKeyBindings::player1(),
-        TankType::Player2 => crate::constants::PlayerKeyBindings::player2(),
-        TankType::Enemy => return false,
-    };
+    let key_bindings = tank_type.get_key_bindings();
     key_bindings.is_moving(keyboard) || key_bindings.is_shooting(keyboard)
 }
 
@@ -229,30 +221,15 @@ fn start_charge(
 
     // 检查蓝量是否足够（需要3点蓝量）
     if player_stats.energy_points < 3 {
-        // 检查冷却是否结束
-        let can_show_warning = energy_tracker
-            .cooldowns
-            .get(&entity)
-            .is_none_or(bevy::prelude::Timer::is_finished);
-
-        if can_show_warning {
-            // 设置能量不足提示冷却时间
-            energy_tracker
-                .cooldowns
-                .insert(
-                    entity,
-                    Timer::from_seconds(INSUFFICIENT_ENERGY_DISPLAY_DURATION, TimerMode::Once),
-                );
-
-            // 触发能量不足提示
-            crate::overlay_ui::spawn_insufficient_energy_warning(
-                commands.reborrow(),
-                font_cn.clone(),
-                font_en.clone(),
-                tank_type,
-                *language,
-            );
-        }
+        // 能量不足，显示提示
+        energy_tracker.try_show_warning(
+            commands,
+            entity,
+            tank_type,
+            font_cn.clone(),
+            font_en.clone(),
+            *language,
+        );
         return;
     }
 
@@ -363,7 +340,7 @@ fn update_charge(
 
 /// 发射激光
 fn fire_laser(
-    commands: &mut Commands,
+    mut commands: &mut Commands,
     laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
@@ -401,9 +378,7 @@ fn fire_laser(
     );
 
     // 播放激光音效
-    commands.spawn((
-        AudioPlayer::new(sound_resources.laser.clone()),
-    ));
+    sound_resources.play(&mut commands, sound_resources.laser.clone(), 1.0);
 
     // 应用后坐力
     let recoil_distance = PLAYER_TANK_DISPLAY_HEIGHT * RECOIL_DISTANCE_FACTOR;

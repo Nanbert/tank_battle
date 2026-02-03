@@ -156,6 +156,67 @@ impl PlayerInfo {
         self.get_stats(tank_type).map_or(0, getter)
     }
 
+    /// 获取玩家的速度百分比 (0.0 - 1.0)
+    pub fn get_speed_percent(&self, tank_type: TankType) -> f32 {
+        self.get_stat_value(tank_type, |p| p.speed) as f32 / 100.0
+    }
+
+    /// 获取玩家的炮弹数量
+    pub fn get_shells(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.shells)
+    }
+
+    /// 获取玩家的能量点数
+    #[allow(dead_code)]
+    pub fn get_energy_points(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.energy_points)
+    }
+
+    /// 获取玩家的生命点数
+    #[allow(dead_code)]
+    pub fn get_life_points(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.life_points)
+    }
+
+    /// 获取玩家的护盾值
+    #[allow(dead_code)]
+    pub fn get_protection(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.protection)
+    }
+
+    /// 获取玩家的射击速度
+    #[allow(dead_code)]
+    pub fn get_fire_speed(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.fire_speed)
+    }
+
+    /// 获取玩家的分数
+    #[allow(dead_code)]
+    pub fn get_score(&self, tank_type: TankType) -> usize {
+        self.get_stat_value(tank_type, |p| p.score)
+    }
+
+    /// 检查玩家是否有火焰炮弹能力
+    pub fn has_fire_shell(&self, tank_type: TankType) -> bool {
+        self.get_stats(tank_type).map_or(false, |p| p.fire_shell)
+    }
+
+    /// 检查玩家是否有穿透能力
+    pub fn has_penetrate(&self, tank_type: TankType) -> bool {
+        self.get_stats(tank_type).map_or(false, |p| p.penetrate)
+    }
+
+    /// 检查玩家是否有履带链能力
+    #[allow(dead_code)]
+    pub fn has_track_chain(&self, tank_type: TankType) -> bool {
+        self.get_stats(tank_type).map_or(false, |p| p.track_chain)
+    }
+
+    /// 检查玩家是否有气垫能力
+    pub fn has_air_cushion(&self, tank_type: TankType) -> bool {
+        self.get_stats(tank_type).map_or(false, |p| p.air_cushion)
+    }
+
     /// 检查玩家是否存在
     #[allow(dead_code)]
     pub fn player_exists(&self, tank_type: TankType) -> bool {
@@ -164,6 +225,20 @@ impl PlayerInfo {
             TankType::Player2 => self.player2.is_some(),
             TankType::Enemy => false,
         }
+    }
+
+    /// 恢复所有玩家 1 点能量
+    pub fn recover_all_energy(&mut self) {
+        self.player1.recover_energy();
+        if let Some(ref mut p2) = self.player2 {
+            p2.recover_energy();
+        }
+    }
+
+    /// 检查是否有任何玩家需要恢复能量
+    pub fn needs_energy_regen(&self) -> bool {
+        self.player1.energy_points < crate::constants::MAX_ENERGY_POINTS
+            || self.player2.as_ref().is_some_and(|p| p.energy_points < crate::constants::MAX_ENERGY_POINTS)
     }
 }
 
@@ -180,6 +255,34 @@ pub struct PlayerStats {
     pub life_points: usize,    // max 3
     pub energy_points: usize, // max 3
     pub score: usize,
+}
+
+impl PlayerStats {
+    /// 创建默认玩家统计
+    pub fn new_default() -> Self {
+        use crate::constants::*;
+        Self {
+            speed: INITIAL_ATTRIBUTE_VALUE,
+            fire_speed: INITIAL_ATTRIBUTE_VALUE,
+            protection: INITIAL_ATTRIBUTE_VALUE,
+            shells: 1,
+            penetrate: false,
+            track_chain: false,
+            air_cushion: false,
+            fire_shell: false,
+            life_points: MAX_LIFE_POINTS,
+            energy_points: MAX_ENERGY_POINTS,
+            score: 0,
+        }
+    }
+
+    /// 恢复 1 点能量
+    pub fn recover_energy(&mut self) {
+        use crate::constants::*;
+        if self.energy_points < MAX_ENERGY_POINTS {
+            self.energy_points = (self.energy_points + 1).min(MAX_ENERGY_POINTS);
+        }
+    }
 }
 
 // 玩家回城计时器
@@ -287,6 +390,45 @@ pub struct InsufficientEnergyTracker {
     pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的能量不足提示冷却计时器
 }
 
+impl InsufficientEnergyTracker {
+    /// 检查并触发能量不足提示
+    /// 返回 true 如果成功触发提示
+    pub fn try_show_warning(
+        &mut self,
+        commands: &mut Commands,
+        entity: Entity,
+        tank_type: TankType,
+        font_cn: Handle<Font>,
+        font_en: Handle<Font>,
+        language: Language,
+    ) -> bool {
+        let can_show_warning = self.cooldowns
+            .get(&entity)
+            .is_none_or(bevy::prelude::Timer::is_finished);
+
+        if can_show_warning {
+            self.cooldowns.insert(
+                entity,
+                Timer::from_seconds(
+                    crate::constants::INSUFFICIENT_ENERGY_DISPLAY_DURATION,
+                    TimerMode::Once,
+                ),
+            );
+
+            crate::overlay_ui::spawn_insufficient_energy_warning(
+                commands.reborrow(),
+                font_cn,
+                font_en,
+                tank_type,
+                language,
+            );
+            true
+        } else {
+            false
+        }
+    }
+}
+
 // 地形纹理图集布局资源
 #[derive(Resource)]
 pub struct TerrainAtlasLayouts {
@@ -356,6 +498,21 @@ pub struct SoundResources {
     pub commander_get_shot: Handle<AudioSource>,
     pub commander_death: Handle<AudioSource>,
     pub player_shot: Handle<AudioSource>,
+}
+
+impl SoundResources {
+    /// 播放音效
+    pub fn play(
+        &self,
+        commands: &mut Commands,
+        audio_source: Handle<AudioSource>,
+        volume: f32,
+    ) {
+        commands.spawn((
+            AudioPlayer::new(audio_source),
+            PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(volume)),
+        ));
+    }
 }
 
 /// 特效纹理资源

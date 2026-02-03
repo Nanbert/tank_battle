@@ -397,6 +397,17 @@ pub enum TankType {
     Enemy,
 }
 
+impl TankType {
+    /// 获取指定玩家类型的按键绑定
+    pub fn get_key_bindings(self) -> PlayerKeyBindings {
+        match self {
+            TankType::Player1 => PlayerKeyBindings::player1(),
+            TankType::Player2 => PlayerKeyBindings::player2(),
+            TankType::Enemy => panic!("Enemy tank has no key bindings"),
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct PlayerTank {
     pub tank_type: TankType, // TankType::Player1 或 TankType::Player2

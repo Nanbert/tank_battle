@@ -147,11 +147,7 @@ pub fn move_player_tank(
             continue;
         }
         // 根据玩家类型选择按键绑定
-        let key_bindings = match player_tank.tank_type {
-            TankType::Player1 => PlayerKeyBindings::player1(),
-            TankType::Player2 => PlayerKeyBindings::player2(),
-            TankType::Enemy => continue,
-        };
+        let key_bindings = player_tank.tank_type.get_key_bindings();
 
         let direction = key_bindings.get_direction(&keyboard_input);
 
@@ -180,14 +176,7 @@ pub fn move_player_tank(
 
         // 使用 KinematicCharacterController 的 translation 字段控制移动
         // 获取玩家的 speed 百分比
-        let speed_percent = match player_tank.tank_type {
-            TankType::Player1 => player_info.player1.speed as f32 / 100.0,
-            TankType::Player2 => player_info
-                .player2
-                .as_ref()
-                .map_or(0.0, |p| p.speed as f32 / 100.0),
-            TankType::Enemy => 0.0,
-        };
+        let speed_percent = player_info.get_speed_percent(player_tank.tank_type);
         // 实际速度 = 基础速度 × (1 + speed百分比/100)
         // 转向时保持 50% 速度，减少卡顿感
         let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_percent);
@@ -269,11 +258,7 @@ pub fn handle_recall_input(
         let is_recalling = recall_timers.timers.contains_key(&entity);
 
         // 根据玩家类型选择按键绑定
-        let key_bindings = match player_tank.tank_type {
-            TankType::Player1 => PlayerKeyBindings::player1(),
-            TankType::Player2 => PlayerKeyBindings::player2(),
-            TankType::Enemy => continue,
-        };
+        let key_bindings = player_tank.tank_type.get_key_bindings();
 
         let is_recall_key_pressed = key_bindings.is_recalling(&keyboard_input);
 
@@ -371,11 +356,7 @@ fn is_recall_key_pressed(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: 
 
 /// 检查是否被打断（移动或射击）
 fn is_movement_interrupted(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    let key_bindings = match tank_type {
-        TankType::Player1 => PlayerKeyBindings::player1(),
-        TankType::Player2 => PlayerKeyBindings::player2(),
-        TankType::Enemy => return false,
-    };
+    let key_bindings = tank_type.get_key_bindings();
     key_bindings.is_moving(keyboard_input) || key_bindings.is_shooting(keyboard_input)
 }
 
@@ -504,30 +485,6 @@ pub fn reset_player_positions(
     }
 }
 
-/// 安全地获取玩家统计数据，返回 None 表示玩家不存在（仅适用于 Player2）
-fn get_player_stats<'a>(
-    player_info: &'a PlayerInfo,
-    tank_type: TankType,
-) -> Option<&'a PlayerStats> {
-    match tank_type {
-        TankType::Player1 => Some(&player_info.player1),
-        TankType::Player2 => player_info.player2.as_ref(),
-        TankType::Enemy => unreachable!(),
-    }
-}
-
-/// 安全地获取可变玩家统计数据，返回 None 表示玩家不存在（仅适用于 Player2）
-fn get_player_stats_mut<'a>(
-    player_info: &'a mut PlayerInfo,
-    tank_type: TankType,
-) -> Option<&'a mut PlayerStats> {
-    match tank_type {
-        TankType::Player1 => Some(&mut player_info.player1),
-        TankType::Player2 => player_info.player2.as_mut(),
-        TankType::Enemy => unreachable!(),
-    }
-}
-
 /// 处理屏障碰撞
 pub fn handle_barrier_collision(
     time: Res<Time>,
@@ -561,7 +518,7 @@ pub fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 检查玩家是否有 track_chain，如果有则免疫伤害
-                    let Some(player_stats) = get_player_stats(&player_info, player_tank.tank_type) else {
+                    let Some(player_stats) = player_info.get_stats(player_tank.tank_type) else {
                         // 单人模式下 Player2 不存在，跳过
                         continue;
                     };
@@ -580,7 +537,7 @@ pub fn handle_barrier_collision(
                         );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
-                    let Some(player_stats) = get_player_stats_mut(&mut player_info, player_tank.tank_type) else {
+                    let Some(player_stats) = player_info.get_stats_mut(player_tank.tank_type) else {
                         // 单人模式下 Player2 不存在，跳过
                         continue;
                     };
@@ -635,19 +592,7 @@ fn spawn_players(
             );
 
             // 初始化玩家1信息
-            player_info.player1 = PlayerStats {
-                speed: INITIAL_ATTRIBUTE_VALUE,
-                fire_speed: INITIAL_ATTRIBUTE_VALUE,
-                protection: INITIAL_ATTRIBUTE_VALUE,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_points: MAX_LIFE_POINTS,
-                energy_points: MAX_ENERGY_POINTS,
-                score: 0,
-            };
+            player_info.player1 = PlayerStats::new_default();
             player_info.player2 = None;
         }
 
@@ -669,35 +614,9 @@ fn spawn_players(
                 TankType::Player2,
             );
 
-            // 初始化玩家1信息
-            player_info.player1 = PlayerStats {
-                speed: INITIAL_ATTRIBUTE_VALUE,
-                fire_speed: INITIAL_ATTRIBUTE_VALUE,
-                protection: INITIAL_ATTRIBUTE_VALUE,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_points: MAX_LIFE_POINTS,
-                energy_points: MAX_ENERGY_POINTS,
-                score: 0,
-            };
-
-            // 初始化玩家2信息
-            player_info.player2 = Some(PlayerStats {
-                speed: INITIAL_ATTRIBUTE_VALUE,
-                fire_speed: INITIAL_ATTRIBUTE_VALUE,
-                protection: INITIAL_ATTRIBUTE_VALUE,
-                shells: 1,
-                penetrate: false,
-                track_chain: false,
-                air_cushion: false,
-                fire_shell: false,
-                life_points: MAX_LIFE_POINTS,
-                energy_points: MAX_ENERGY_POINTS,
-                score: 0,
-            });
+            // 初始化玩家1和玩家2信息
+            player_info.player1 = PlayerStats::new_default();
+            player_info.player2 = Some(PlayerStats::new_default());
         }
     }
 }
@@ -714,19 +633,7 @@ pub fn despawn_players(
     }
 
     // 清空玩家信息
-    player_info.player1 = PlayerStats {
-        speed: 1,
-        fire_speed: 1,
-        protection: 0,
-        shells: 1,
-        penetrate: false,
-        track_chain: false,
-        air_cushion: false,
-        fire_shell: false,
-        life_points: 0,
-        energy_points: 3,
-        score: 0,
-    };
+    player_info.player1 = PlayerStats::new_default();
     player_info.player2 = None;
 }
 
@@ -737,28 +644,12 @@ pub fn recover_energy(
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 检查是否有玩家能量不满
-    let any_player_needs_regen =
-        player_info.player1.energy_points < 3
-            || player_info
-                .player2
-                .as_ref()
-                .is_some_and(|p| p.energy_points < 3);
-
-    // 只有当有玩家能量不满时才更新计时器
-    if any_player_needs_regen {
+    if player_info.needs_energy_regen() {
         regen_timer.timer.tick(time.delta());
 
         // 当计时器触发时，恢复1点能量
         if regen_timer.timer.just_finished() {
-            if player_info.player1.energy_points < 3 {
-                player_info.player1.energy_points =
-                    (player_info.player1.energy_points + 1).min(3);
-            }
-            if let Some(ref mut p2) = player_info.player2 {
-                if p2.energy_points < 3 {
-                    p2.energy_points = (p2.energy_points + 1).min(3);
-                }
-            }
+            player_info.recover_all_energy();
         }
     } else {
         // 所有玩家能量都满时，重置计时器
@@ -807,14 +698,7 @@ pub fn update_barrel_system(
 ) {
     for (entity, children, player_tank, _transform) in player_tanks.iter() {
         // 获取玩家的 shells 数量
-        let shells = match player_tank.tank_type {
-            TankType::Player1 => player_info.player1.shells,
-            TankType::Player2 => player_info
-                .player2
-                .as_ref()
-                .map_or(1, |stats| stats.shells),
-            TankType::Enemy => 1,
-        };
+        let shells = player_info.get_shells(player_tank.tank_type);
 
         // 根据 shells 数量选择炮管纹理和尺寸
         let (barrel_texture, barrel_display_size) = if shells == 1 {
