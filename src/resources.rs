@@ -433,6 +433,15 @@ pub struct BulletResources {
     pub bullet_penetrate_effect: Handle<Image>,
 }
 
+// 子弹特效纹理图集布局资源（预加载，避免重复创建）
+#[derive(Resource)]
+pub struct EffectAtlasLayouts {
+    /// 火焰特效纹理图集布局
+    pub fire_effect: Handle<TextureAtlasLayout>,
+    /// 穿透效果纹理图集布局
+    pub penetrate_effect: Handle<TextureAtlasLayout>,
+}
+
 // ==================== 游戏资源管理 ====================
 
 /// 字体资源

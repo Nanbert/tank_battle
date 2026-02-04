@@ -74,6 +74,24 @@ pub struct PlayerAvatar;
 #[derive(Component, Clone)]
 pub struct HealthBar;
 
+// ============================================================================
+// HUD Stat Type Components
+// ============================================================================
+
+/// HUD 属性类型枚举
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum HudStatType {
+    Speed,
+    FireSpeed,
+    Protection,
+    Shells,
+    FireShell,
+    Penetrate,
+    TrackChain,
+    AirCushion,
+    Score,
+}
+
 /// 蓝条标记
 #[derive(Component, Clone)]
 pub struct BlueBar;
@@ -248,6 +266,7 @@ fn spawn_single_player_hud(
         stats.speed,
         HUD_Y_SPEED,
         x_pos,
+        HudStatType::Speed,
     );
     spawn_percent_text(
         commands,
@@ -258,6 +277,7 @@ fn spawn_single_player_hud(
         stats.fire_speed,
         HUD_Y_FIRE_SPEED,
         x_pos,
+        HudStatType::FireSpeed,
     );
     spawn_percent_text(
         commands,
@@ -268,18 +288,24 @@ fn spawn_single_player_hud(
         stats.protection,
         HUD_Y_PROTECTION,
         x_pos,
+        HudStatType::Protection,
     );
 
     // 炮弹数量
-    spawn_stat_text(
-        commands,
+    let prefix_shells = get_label(HUD_STAT_LABELS.shells, language);
+    commands.spawn((
         marker.clone(),
         ShellsText,
-        font,
-        &format!("{} {}", get_label(HUD_STAT_LABELS.shells, language), stats.shells),
-        HUD_Y_SHELLS,
-        x_pos,
-    );
+        HudStatType::Shells,
+        Text2d(format!("{} {}", prefix_shells, stats.shells)),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_SHELLS, Z_UI),
+    ));
 
     // 效果标题
     commands.spawn((
@@ -306,6 +332,7 @@ fn spawn_single_player_hud(
         HUD_Y_FIRE_SHELL,
         x_pos,
         language,
+        HudStatType::FireShell,
     );
     spawn_effect_text(
         commands,
@@ -317,6 +344,7 @@ fn spawn_single_player_hud(
         HUD_Y_PENETRATE,
         x_pos,
         language,
+        HudStatType::Penetrate,
     );
     spawn_effect_text(
         commands,
@@ -328,6 +356,7 @@ fn spawn_single_player_hud(
         HUD_Y_TRACK_CHAIN,
         x_pos,
         language,
+        HudStatType::TrackChain,
     );
     spawn_effect_text(
         commands,
@@ -339,13 +368,16 @@ fn spawn_single_player_hud(
         HUD_Y_AIR_CUSHION,
         x_pos,
         language,
+        HudStatType::AirCushion,
     );
 
     // 分数
+    let prefix_scores = get_label(HUD_STAT_LABELS.score, language);
     commands.spawn((
         marker.clone(),
         ScoreText,
-        Text2d(format!("{} {}", get_label(HUD_STAT_LABELS.score, language), stats.score)),
+        HudStatType::Score,
+        Text2d(format!("{} {}", prefix_scores, stats.score)),
         TextFont {
             font_size: 28.0,
             font: font.clone(),
@@ -483,30 +515,6 @@ fn spawn_bar<T: Component + Clone>(
     ));
 }
 
-/// 生成属性文本
-fn spawn_stat_text<T1: Component, T2: Component>(
-    commands: &mut Commands,
-    marker1: T1,
-    marker2: T2,
-    font: &Handle<Font>,
-    text: &str,
-    y_offset: f32,
-    x_pos: f32,
-) {
-    commands.spawn((
-        marker1,
-        marker2,
-        Text2d(text.to_string()),
-        TextFont {
-            font_size: 24.0,
-            font: font.clone(),
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - y_offset, Z_UI),
-    ));
-}
-
 /// 生成效果开关文本
 fn spawn_effect_text<T1: Component, T2: Component>(
     commands: &mut Commands,
@@ -518,21 +526,26 @@ fn spawn_effect_text<T1: Component, T2: Component>(
     y_offset: f32,
     x_pos: f32,
     language: Language,
+    stat_type: HudStatType,
 ) {
     let on_off_label = if value {
         get_label(HUD_TEXT_LABELS.on_off, language)
     } else {
         get_label(HUD_TEXT_LABELS.off_label, language)
     };
-    spawn_stat_text(
-        commands,
+    commands.spawn((
         marker1,
         marker2,
-        font,
-        &format!("{}: {}", prefix, on_off_label),
-        y_offset,
-        x_pos,
-    );
+        stat_type,
+        Text2d(format!("{}: {}", prefix, on_off_label)),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - y_offset, Z_UI),
+    ));
 }
 
 /// 生成百分比属性文本
@@ -545,13 +558,26 @@ fn spawn_percent_text<T1: Component, T2: Component>(
     value: usize,
     y_offset: f32,
     x_pos: f32,
+    stat_type: HudStatType,
 ) {
     let text = if value >= HUD_MAX_PERCENT {
         format!("{}MAX", prefix)
     } else {
         format!("{}{}%", prefix, value)
     };
-    spawn_stat_text(commands, marker1, marker2, font, &text, y_offset, x_pos);
+    commands.spawn((
+        marker1,
+        marker2,
+        stat_type,
+        Text2d(text),
+        TextFont {
+            font_size: 24.0,
+            font: font.clone(),
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - y_offset, Z_UI),
+    ));
 }
 
 /// 获取玩家统计数据（用于 spawn_single_player_hud）
@@ -595,51 +621,69 @@ fn update_bar(
 }
 
 /// 更新单个玩家的文本
-fn update_single_player_text(stats: &PlayerStats, text: &mut String, language: Language) {
-    // 百分比属性
-    let percent_attrs = [
-        (get_label(HUD_STAT_LABELS.speed, language), stats.speed),
-        (get_label(HUD_STAT_LABELS.fire_speed, language), stats.fire_speed),
-        (get_label(HUD_STAT_LABELS.protection, language), stats.protection),
-    ];
-
-    for (prefix, value) in percent_attrs {
-        if text.starts_with(prefix) {
-            *text = format!(
-                "{}{}",
-                prefix,
-                format_percent_value(value, value >= HUD_MAX_PERCENT)
-            );
-            return;
+/// 优化：使用组件标记直接更新属性值，避免字符串匹配
+fn update_single_player_text(
+    stats: &PlayerStats,
+    stat_type: HudStatType,
+    language: Language,
+) -> String {
+    match stat_type {
+        HudStatType::Speed => {
+            let prefix = get_label(HUD_STAT_LABELS.speed, language);
+            format!("{}{}", prefix, format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT))
         }
-    }
-
-    // 布尔效果属性
-    let effect_attrs = [
-        (get_label(HUD_STAT_LABELS.fire_shell, language), stats.fire_shell),
-        (get_label(HUD_STAT_LABELS.penetrate, language), stats.penetrate),
-        (get_label(HUD_STAT_LABELS.track_chain, language), stats.track_chain),
-        (get_label(HUD_STAT_LABELS.air_cushion, language), stats.air_cushion),
-    ];
-
-    let on_label = get_label(HUD_TEXT_LABELS.on_off, language);
-    let off_label = get_label(HUD_TEXT_LABELS.off_label, language);
-
-    for (prefix, value) in effect_attrs {
-        if text.starts_with(prefix) {
-            *text = format!("{}: {}", prefix, if value { on_label } else { off_label });
-            return;
+        HudStatType::FireSpeed => {
+            let prefix = get_label(HUD_STAT_LABELS.fire_speed, language);
+            format!("{}{}", prefix, format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT))
         }
-    }
-
-    // 其他属性
-    let prefix_shells = get_label(HUD_STAT_LABELS.shells, language);
-    let prefix_scores = get_label(HUD_STAT_LABELS.score, language);
-
-    if text.starts_with(prefix_shells) {
-        *text = format!("{} {}", prefix_shells, stats.shells);
-    } else if text.starts_with(prefix_scores) {
-        *text = format!("{} {}", prefix_scores, stats.score);
+        HudStatType::Protection => {
+            let prefix = get_label(HUD_STAT_LABELS.protection, language);
+            format!("{}{}", prefix, format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT))
+        }
+        HudStatType::Shells => {
+            let prefix = get_label(HUD_STAT_LABELS.shells, language);
+            format!("{} {}", prefix, stats.shells)
+        }
+        HudStatType::FireShell => {
+            let prefix = get_label(HUD_STAT_LABELS.fire_shell, language);
+            let on_off = if stats.fire_shell {
+                get_label(HUD_TEXT_LABELS.on_off, language)
+            } else {
+                get_label(HUD_TEXT_LABELS.off_label, language)
+            };
+            format!("{}: {}", prefix, on_off)
+        }
+        HudStatType::Penetrate => {
+            let prefix = get_label(HUD_STAT_LABELS.penetrate, language);
+            let on_off = if stats.penetrate {
+                get_label(HUD_TEXT_LABELS.on_off, language)
+            } else {
+                get_label(HUD_TEXT_LABELS.off_label, language)
+            };
+            format!("{}: {}", prefix, on_off)
+        }
+        HudStatType::TrackChain => {
+            let prefix = get_label(HUD_STAT_LABELS.track_chain, language);
+            let on_off = if stats.track_chain {
+                get_label(HUD_TEXT_LABELS.on_off, language)
+            } else {
+                get_label(HUD_TEXT_LABELS.off_label, language)
+            };
+            format!("{}: {}", prefix, on_off)
+        }
+        HudStatType::AirCushion => {
+            let prefix = get_label(HUD_STAT_LABELS.air_cushion, language);
+            let on_off = if stats.air_cushion {
+                get_label(HUD_TEXT_LABELS.on_off, language)
+            } else {
+                get_label(HUD_TEXT_LABELS.off_label, language)
+            };
+            format!("{}: {}", prefix, on_off)
+        }
+        HudStatType::Score => {
+            let prefix = get_label(HUD_STAT_LABELS.score, language);
+            format!("{} {}", prefix, stats.score)
+        }
     }
 }
 
@@ -648,10 +692,16 @@ fn update_single_player_text(stats: &PlayerStats, text: &mut String, language: L
 // ============================================================================
 
 /// 更新单个玩家的 HUD（内部辅助函数）
+/// 优化：使用组件标记直接查询和更新，避免重复遍历
 fn update_single_player_hud(
     stats: &PlayerStats,
     x_pos: f32,
-    text_query: &mut Query<(&mut Text2d, Option<&Player1Hud>, Option<&Player2Hud>)>,
+    player_hud_query: &mut Query<(
+        &mut Text2d,
+        &HudStatType,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
     bar_query: &mut Query<(
         &mut Sprite,
         &mut Transform,
@@ -664,9 +714,9 @@ fn update_single_player_hud(
     language: Language,
 ) {
     // 更新文本
-    for (mut text, is_p1, is_p2) in text_query.iter_mut() {
+    for (mut text, stat_type, is_p1, is_p2) in player_hud_query.iter_mut() {
         if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
-            update_single_player_text(stats, &mut text.0, language);
+            text.0 = update_single_player_text(stats, *stat_type, language);
         }
     }
 
@@ -700,10 +750,16 @@ fn update_single_player_hud(
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
 /// 优化：通过系统条件 resource_changed::<PlayerInfo> 确保只在玩家信息变化时更新 HUD
+/// 优化：使用组件标记直接查询和更新，避免重复遍历
 pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
-    mut text_query: Query<(&mut Text2d, Option<&Player1Hud>, Option<&Player2Hud>)>,
+    mut player_hud_query: Query<(
+        &mut Text2d,
+        &HudStatType,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
     mut bar_query: Query<(
         &mut Sprite,
         &mut Transform,
@@ -718,7 +774,7 @@ pub fn update_player_hud(
     update_single_player_hud(
         &player_info.player1,
         WINDOW_LEFT_X + 115.0,
-        &mut text_query,
+        &mut player_hud_query,
         &mut bar_query,
         true,
         *language,
@@ -730,7 +786,7 @@ pub fn update_player_hud(
             update_single_player_hud(
                 stats2,
                 WINDOW_RIGHT_X - 115.0,
-                &mut text_query,
+                &mut player_hud_query,
                 &mut bar_query,
                 false,
                 *language,
@@ -744,20 +800,30 @@ pub fn update_player_hud(
 // ============================================================================
 
 /// 处理 HUD 属性变更事件，触发文字闪烁
+/// 优化：使用组件标记匹配而不是字符串前缀匹配
 pub fn handle_hud_stat_changed(
     mut events: MessageReader<PlayerStatChanged>,
     mut commands: Commands,
-    player1_hud_texts: Query<(Entity, &Text2d), With<Player1Hud>>,
-    player2_hud_texts: Query<(Entity, &Text2d), With<Player2Hud>>,
-    language: Res<Language>,
+    player1_hud_texts: Query<(Entity, &HudStatType), With<Player1Hud>>,
+    player2_hud_texts: Query<(Entity, &HudStatType), With<Player2Hud>>,
 ) {
     for event in events.read() {
-        let prefixes = get_hud_stat_prefixes(event.stat_type, *language);
+        let target_stat_type = match event.stat_type {
+            StatType::Speed => HudStatType::Speed,
+            StatType::FireSpeed => HudStatType::FireSpeed,
+            StatType::Protection => HudStatType::Protection,
+            StatType::Shell => HudStatType::Shells,
+            StatType::FireShell => HudStatType::FireShell,
+            StatType::Penetrate => HudStatType::Penetrate,
+            StatType::TrackChain => HudStatType::TrackChain,
+            StatType::AirCushion => HudStatType::AirCushion,
+            StatType::Score => HudStatType::Score,
+        };
 
         match event.player_type {
             TankType::Player1 => {
-                for (entity, text) in player1_hud_texts.iter() {
-                    if prefixes.iter().any(|p| text.0.starts_with(p)) {
+                for (entity, stat_type) in player1_hud_texts.iter() {
+                    if *stat_type == target_stat_type {
                         commands
                             .entity(entity)
                             .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
@@ -769,8 +835,8 @@ pub fn handle_hud_stat_changed(
                 }
             }
             TankType::Player2 => {
-                for (entity, text) in player2_hud_texts.iter() {
-                    if prefixes.iter().any(|p| text.0.starts_with(p)) {
+                for (entity, stat_type) in player2_hud_texts.iter() {
+                    if *stat_type == target_stat_type {
                         commands
                             .entity(entity)
                             .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
@@ -787,6 +853,7 @@ pub fn handle_hud_stat_changed(
 }
 
 /// 动画化 HUD 文本闪烁效果
+/// 优化：使用组件标记判断是否达到最大值，避免字符串匹配
 pub fn animate_hud_text(
     time: Res<Time>,
     mut commands: Commands,
@@ -795,18 +862,18 @@ pub fn animate_hud_text(
             Entity,
             &mut PlayerInfoBlinkTimer,
             &mut TextColor,
-            &Text2d,
+            &HudStatType,
             Option<&Player1Hud>,
             Option<&Player2Hud>,
         ),
     >,
     player_info: Res<PlayerInfo>,
 ) {
-    for (entity, mut timer, mut color, text, is_p1, is_p2) in &mut query {
+    for (entity, mut timer, mut color, stat_type, is_p1, is_p2) in &mut query {
         timer.tick(time.delta());
 
         // 判断是否达到最大值或On状态
-        let is_max = is_hud_stat_at_max_value(&text.0, &player_info, is_p1, is_p2);
+        let is_max = is_hud_stat_at_max_value(*stat_type, &player_info, is_p1, is_p2);
 
         if is_max {
             // 达到最大值：保持红色，移除闪烁计时器
@@ -832,62 +899,33 @@ pub fn animate_hud_text(
     }
 }
 
-/// 获取 HUD 属性类型对应的前缀（支持多语言）
-fn get_hud_stat_prefixes(stat_type: StatType, language: Language) -> Vec<&'static str> {
-    let label = match stat_type {
-        StatType::Speed => get_label(HUD_STAT_LABELS.speed, language),
-        StatType::Protection => get_label(HUD_STAT_LABELS.protection, language),
-        StatType::FireSpeed => get_label(HUD_STAT_LABELS.fire_speed, language),
-        StatType::FireShell => get_label(HUD_STAT_LABELS.fire_shell, language),
-        StatType::TrackChain => get_label(HUD_STAT_LABELS.track_chain, language),
-        StatType::Penetrate => get_label(HUD_STAT_LABELS.penetrate, language),
-        StatType::AirCushion => get_label(HUD_STAT_LABELS.air_cushion, language),
-        StatType::Shell => get_label(HUD_STAT_LABELS.shells, language),
-        StatType::Score => get_label(HUD_STAT_LABELS.score, language),
-    };
-    vec![label]
-}
-
-/// 判断单个玩家 HUD 属性是否达到最大值或On状态
-fn is_player_stat_at_max(text: &str, stats: &PlayerStats) -> bool {
-    // 检查所有可能的属性前缀（中英文）
-    let stat_labels = [
-        (HUD_STAT_LABELS.shells, stats.shells >= HUD_MAX_SHELLS),
-        (HUD_STAT_LABELS.speed, stats.speed >= HUD_MAX_PERCENT),
-        (HUD_STAT_LABELS.protection, stats.protection >= HUD_MAX_PERCENT),
-        (HUD_STAT_LABELS.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT),
-        (HUD_STAT_LABELS.fire_shell, stats.fire_shell),
-        (HUD_STAT_LABELS.air_cushion, stats.air_cushion),
-        (HUD_STAT_LABELS.track_chain, stats.track_chain),
-        (HUD_STAT_LABELS.penetrate, stats.penetrate),
-    ];
-
-    for (label, is_max) in stat_labels {
-        if text.starts_with(label.0) || text.starts_with(label.1) {
-            return is_max;
-        }
-    }
-    false
-}
-
 /// 判断 HUD 属性是否达到最大值或On状态（用于动画系统）
+/// 优化：使用组件标记判断，避免字符串匹配
 fn is_hud_stat_at_max_value(
-    text: &str,
+    stat_type: HudStatType,
     player_info: &PlayerInfo,
     player_hud: Option<&Player1Hud>,
     player_hud2: Option<&Player2Hud>,
 ) -> bool {
     // 根据所属玩家选择对应的数据
-    if player_hud.is_some() {
-        is_player_stat_at_max(text, &player_info.player1)
+    let stats = if player_hud.is_some() {
+        &player_info.player1
     } else if player_hud2.is_some() {
-        if let Some(stats2) = &player_info.player2 {
-            is_player_stat_at_max(text, stats2)
-        } else {
-            false
-        }
+        player_info.player2.as_ref().unwrap()
     } else {
-        false
+        return false;
+    };
+
+    match stat_type {
+        HudStatType::Speed => stats.speed >= HUD_MAX_PERCENT,
+        HudStatType::FireSpeed => stats.fire_speed >= HUD_MAX_PERCENT,
+        HudStatType::Protection => stats.protection >= HUD_MAX_PERCENT,
+        HudStatType::Shells => stats.shells >= HUD_MAX_SHELLS,
+        HudStatType::FireShell => stats.fire_shell,
+        HudStatType::Penetrate => stats.penetrate,
+        HudStatType::TrackChain => stats.track_chain,
+        HudStatType::AirCushion => stats.air_cushion,
+        HudStatType::Score => false, // 分数没有最大值
     }
 }
 

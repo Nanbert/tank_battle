@@ -65,7 +65,7 @@ pub fn spawn_bullet(
     bullet_resources: &BulletResources,
     params: BulletSpawnParams,
     player_info: &Res<PlayerInfo>,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    effect_atlas_layouts: &crate::resources::EffectAtlasLayouts,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = match params.owner_type {
@@ -120,8 +120,7 @@ pub fn spawn_bullet(
 
     // 如果玩家有 fire_shell 效果，添加火焰特效子实体
     if has_fire_shell {
-        let fire_effect_tile_size = UVec2::new(FIRE_EFFECT_TILE_WIDTH as u32, FIRE_EFFECT_TILE_HEIGHT as u32);
-        let fire_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
+        let fire_effect_atlas = effect_atlas_layouts.fire_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::FIRE_EFFECT_TOTAL_FRAMES - 1,
@@ -158,8 +157,7 @@ pub fn spawn_bullet(
 
     // 如果玩家有 penetrate 效果，添加穿透特效子实体
     if has_penetrate {
-        let penetrate_effect_tile_size = UVec2::new(PENETRATE_EFFECT_TILE_WIDTH as u32, PENETRATE_EFFECT_TILE_HEIGHT as u32);
-        let penetrate_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
+        let penetrate_effect_atlas = effect_atlas_layouts.penetrate_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::PENETRATE_EFFECT_TOTAL_FRAMES - 1,
@@ -199,7 +197,7 @@ pub fn enemy_shoot_system(
     mut commands: Commands,
     bullet_resources: Res<BulletResources>,
     player_info: Res<PlayerInfo>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    effect_atlas_layouts: Res<crate::resources::EffectAtlasLayouts>,
     mut query: Query<
         (
             Entity,
@@ -242,7 +240,7 @@ pub fn enemy_shoot_system(
                     owner_type: TankType::Enemy,
                 },
                 &player_info,
-                &mut texture_atlas_layouts,
+                &effect_atlas_layouts,
             );
 
             // 记录子弹的所有者
@@ -256,7 +254,7 @@ pub fn player_shoot_system(
     mut commands: Commands,
     bullet_resources: Res<BulletResources>,
     time: Res<Time>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    effect_atlas_layouts: Res<crate::resources::EffectAtlasLayouts>,
     mut query: Query<
         (
             Entity,
@@ -327,7 +325,7 @@ pub fn player_shoot_system(
                 owner_type: player_tank.tank_type,
             },
             &player_info,
-            &mut texture_atlas_layouts,
+            &effect_atlas_layouts,
         );
 
         // 记录子弹的所有者

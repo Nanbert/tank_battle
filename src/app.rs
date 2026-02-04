@@ -89,6 +89,10 @@ pub fn configure_game_resources(app: &mut App) {
             bullet_fire_effect: Handle::default(),
             bullet_penetrate_effect: Handle::default(),
         })
+        .insert_resource(EffectAtlasLayouts {
+            fire_effect: Handle::default(),
+            penetrate_effect: Handle::default(),
+        })
         .insert_resource(EffectResources {
             explosion: Handle::default(),
             spark: Handle::default(),
@@ -650,6 +654,18 @@ pub fn init_game_resources(
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
         bullet_fire_effect: asset_server.load(TEXTURE_BULLET_FIRE_EFFECT),
         bullet_penetrate_effect: asset_server.load("texture/bullets/penetrate_effect.png"),
+    });
+
+    // 预加载子弹特效纹理图集布局（避免每次发射子弹时重复创建）
+    let fire_effect_tile_size = UVec2::new(FIRE_EFFECT_TILE_WIDTH as u32, FIRE_EFFECT_TILE_HEIGHT as u32);
+    let fire_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32);
+
+    let penetrate_effect_tile_size = UVec2::new(PENETRATE_EFFECT_TILE_WIDTH as u32, PENETRATE_EFFECT_TILE_HEIGHT as u32);
+    let penetrate_effect_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32);
+
+    commands.insert_resource(EffectAtlasLayouts {
+        fire_effect: fire_effect_atlas,
+        penetrate_effect: penetrate_effect_atlas,
     });
 
     // 地图纹理资源
