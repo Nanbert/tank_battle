@@ -13,15 +13,15 @@ use crate::resources::*;
 /// 生成开始界面的背景动画
 pub fn spawn_start_screen_background(
     commands: &mut Commands,
-    menu_resources: &MenuResources,
-    background_atlas_layout: &BackgroundAtlasLayout,
+    texture_resources: &GameTextureResources,
+    atlas_layouts: &GameAtlasLayoutResources,
 ) {
     commands.spawn((
         StartScreenUI,
         Sprite {
-            image: menu_resources.background.clone(),
+            image: texture_resources.background.clone(),
             texture_atlas: Some(TextureAtlas {
-                layout: background_atlas_layout.layout.clone(),
+                layout: atlas_layouts.background.clone(),
                 index: 0,
             }),
             custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
@@ -163,25 +163,25 @@ pub fn spawn_start_screen_instructions(commands: &mut Commands, font_en: &Handle
 /// 生成完整的开始界面
 pub fn spawn_start_screen(
     mut commands: Commands,
-    menu_resources: Res<MenuResources>,
-    background_atlas_layout: Res<BackgroundAtlasLayout>,
-    font_resources: Res<FontResources>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    font_resources: Res<GameTextureResources>,
     asset_server: Res<AssetServer>,
     language: Res<Language>,
 ) {
     // 检查资源是否已加载完成
     let font_en_loaded = asset_server.is_loaded(&font_resources.en);
     let font_cn_loaded = asset_server.is_loaded(&font_resources.cn);
-    let bg_loaded = asset_server.is_loaded(&menu_resources.background);
+    let bg_loaded = asset_server.is_loaded(&texture_resources.background);
 
     // 如果资源未完全加载，跳过生成（下次 Update 会重试）
-    // 注意：background_atlas_layout.layout 是动态创建的资源，不需要检查 is_loaded
+    // 注意：atlas_layouts.background 是动态创建的资源，不需要检查 is_loaded
     if !font_en_loaded || !font_cn_loaded || !bg_loaded {
         return;
     }
 
     // 添加动态背景
-    spawn_start_screen_background(&mut commands, &menu_resources, &background_atlas_layout);
+    spawn_start_screen_background(&mut commands, &texture_resources, &atlas_layouts);
 
     // 添加标题文字
     spawn_start_screen_title(&mut commands, font_resources.en.clone(), font_resources.cn.clone(), *language);
@@ -345,13 +345,6 @@ pub fn spawn_about_screen(mut commands: Commands, font_resources: Res<FontResour
     ));
 }
 
-/// 销毁关于界面
-pub fn despawn_about_screen(mut commands: Commands, query: Query<Entity, With<AboutUI>>) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
-}
-
 /// 处理关于界面的输入
 pub fn handle_about_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
@@ -420,13 +413,6 @@ pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<FontReso
         TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, -500.0, 1.0),
     ));
-}
-
-/// 销毁致谢界面
-pub fn despawn_credits_screen(mut commands: Commands, query: Query<Entity, With<CreditsUI>>) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
 }
 
 /// 处理致谢界面的输入
@@ -511,16 +497,6 @@ pub fn update_option_colors(
         } else {
             text_color.0 = COLOR_WHITE; // 白色
         }
-    }
-}
-
-/// 清理开始界面的UI元素
-pub fn cleanup_start_screen_ui(
-    mut commands: Commands,
-    query: Query<Entity, With<StartScreenUI>>,
-) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
     }
 }
 

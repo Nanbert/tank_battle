@@ -26,7 +26,7 @@ pub fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
 
 /// 淡出屏幕效果
 pub fn fade_out_screen(
-    commands: Commands,
+    mut commands: Commands,
     time: Res<Time>,
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
@@ -57,7 +57,7 @@ pub fn fade_out_screen(
     // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
         next_state.set(GameState::StageIntro);
-        crate::menus_ui::cleanup_start_screen_ui(commands, start_screen_query);
+        crate::utils::cleanup_entities(&mut commands, start_screen_query.iter());
     }
 }
 
@@ -197,9 +197,7 @@ pub fn despawn_stage_intro(
     // 重置背景色为游戏背景色
     clear_color.0 = COLOR_BACKGROUND;
 
-    for entity in stage_intro_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, stage_intro_query.iter());
 }
 
 /// 生成暂停界面
@@ -256,9 +254,7 @@ pub fn spawn_pause_ui(
 
 /// 销毁暂停界面
 pub fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseUI>>) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, query.iter());
 }
 
 /// 处理游戏中的输入（暂停和退出）
@@ -439,9 +435,7 @@ pub fn handle_game_over_input(
 
 /// 销毁游戏结束界面
 pub fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOverUI>>) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, query.iter());
 }
 
 /// 生成能量不足提示
@@ -531,7 +525,28 @@ pub fn despawn_insufficient_energy_warnings(
     mut commands: Commands,
     query: Query<Entity, With<InsufficientEnergyText>>,
 ) {
-    for entity in query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 清理开始界面的UI元素
+pub fn cleanup_start_screen_ui(
+    mut commands: Commands,
+    query: Query<Entity, With<StartScreenUI>>,
+) {
+    crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 销毁关于界面
+pub fn despawn_about_screen(mut commands: Commands, query: Query<Entity, With<AboutUI>>) {
+    crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 销毁致谢界面
+pub fn despawn_credits_screen(mut commands: Commands, query: Query<Entity, With<CreditsUI>>) {
+    crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 销毁所有道具
+pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<crate::powerup::PowerUp>>) {
+    crate::utils::cleanup_entities(&mut commands, powerups.iter());
 }

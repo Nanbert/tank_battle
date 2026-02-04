@@ -36,7 +36,7 @@ pub fn spawn_commander(
     // 重置 Commander 生命值
     commander_life.life_points = 3;
 
-    let commander_texture = commander_resources.texture.clone();
+    let commander_texture = commander_resources.commander.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
@@ -55,7 +55,7 @@ pub fn spawn_commander(
         ANIMATION_FRAME_COMMANDER,
         Vec3::new(commander_x, commander_y, 0.0),
         Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
-        (Commander, PlayingEntity),
+        (Commander, PlayingEntity, AnimationMode::Looping),
     );
 
     // 添加物理组件
@@ -84,7 +84,7 @@ pub fn spawn_commander(
         ANIMATION_FRAME_COMMANDER_MUSIC,
         Vec3::new(commander_x, commander_y, Z_FOREST),
         Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),
-        (CommanderMusicAnimation, PlayingEntity, LoopingAnimationMarker),
+        (CommanderMusicAnimation, PlayingEntity, AnimationMode::Looping),
     );
 }
 
@@ -98,6 +98,7 @@ pub fn animate_commander(
             &mut Sprite,
             &AnimationIndices,
             &mut CurrentAnimationFrame,
+            &AnimationMode,
         ),
         With<Commander>,
     >,
@@ -107,8 +108,11 @@ pub fn animate_commander(
         return;
     }
 
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+    for (mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
+        // 只处理循环动画模式
+        if *animation_mode == AnimationMode::Looping {
+            crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        }
     }
 }
 
@@ -119,12 +123,8 @@ pub fn despawn_commander(
     music_animations: Query<Entity, With<CommanderMusicAnimation>>,
 ) {
     // 销毁所有 Commander 实体
-    for entity in commanders.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, commanders.iter());
 
     // 销毁所有 MusicNote 动画实体
-    for entity in music_animations.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, music_animations.iter());
 }

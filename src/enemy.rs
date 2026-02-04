@@ -132,7 +132,7 @@ pub fn animate_enemy_born_animation(
                             direction: Vec2::new(0.0, -1.0),
                         })
                         .insert(PlayingEntity)
-                        .insert(LoopingAnimationMarker)
+                        .insert(AnimationMode::Looping)
                         .insert(TankFireConfig::default())
                         .insert(DirectionChangeTimer(Timer::from_seconds(
                             ENEMY_DIRECTION_CHANGE_INTERVAL,

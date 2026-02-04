@@ -219,7 +219,7 @@ pub fn spawn_terrain_tile(
                 .spawn((
                     Forest,
                     PlayingEntity,
-                    LoopingAnimationMarker,
+                    AnimationMode::Looping,
                     Sprite::from_atlas_image(
                         forest_texture,
                         TextureAtlas {
@@ -249,7 +249,7 @@ pub fn spawn_terrain_tile(
                 .spawn((
                     Sea,
                     PlayingEntity,
-                    LoopingAnimationMarker,
+                    AnimationMode::Looping,
                     Sprite::from_atlas_image(
                         sea_texture,
                         TextureAtlas {

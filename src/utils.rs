@@ -243,3 +243,16 @@ pub fn cleanup_children_by_marker<T: Component>(
         }
     }
 }
+
+/// 批量清理实体列表
+///
+/// 通用的实体清理函数，减少重复的 despawn 代码
+///
+/// # 参数
+/// - `commands`: 命令系统
+/// - `entities`: 要清理的实体迭代器
+pub fn cleanup_entities(commands: &mut Commands, entities: impl IntoIterator<Item = Entity>) {
+    for entity in entities {
+        let () = commands.entity(entity).try_despawn();
+    }
+}

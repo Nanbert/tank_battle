@@ -723,7 +723,7 @@ pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max
 pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
 
 // 激光
-pub const LASER_POSITION_OFFSET: f32 = -20.0; // 激光位置偏移（炮口向前的距离）
+pub const LASER_POSITION_OFFSET: f32 = -40.0; // 激光位置偏移（炮口向前的距离）
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
@@ -819,7 +819,7 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
 pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
 pub const ENERGY_BALL_END_FRAME: usize = 64; // 能量球动画结束帧（65帧：0-64）
-pub const ENERGY_BALL_CHARGE_LOOP_START: usize = 50; // 蓄力完成循环起始帧
+pub const ENERGY_BALL_CHARGE_LOOP_START: usize = 18; // 蓄力完成循环起始帧
 pub const ENERGY_BALL_CHARGE_LOOP_END: usize = 64; // 蓄力完成循环结束帧
 pub const ENERGY_BALL_LASER_LOOP_START: usize = 81; // 激光阶段循环起始帧
 pub const ENERGY_BALL_LASER_LOOP_END: usize = 84; // 激光阶段循环结束帧

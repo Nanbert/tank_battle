@@ -585,9 +585,7 @@ pub fn despawn_players(
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 销毁所有玩家坦克
-    for entity in player_tanks.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, player_tanks.iter());
 
     // 清空玩家信息
     player_info.player1 = PlayerStats::new_default();
@@ -624,9 +622,7 @@ pub fn init_players(
     player_tank_resources: Res<PlayerTankResources>,
 ) {
     // 防御性编程：先清理可能存在的旧玩家坦克和信息
-    for entity in existing_players.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, existing_players.iter());
     // 玩家信息会在 spawn_players 中重新初始化
 
     // 生成新玩家

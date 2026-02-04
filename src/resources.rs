@@ -23,13 +23,23 @@ impl BulletTracker {
         self.active_bullets.get(&tank).copied().unwrap_or(0) < max
     }
 
-    /// 添加子弹
+    /// 添加子弹，确保数据一致性
+    ///
+    /// # Panics
+    /// 如果子弹已经存在于追踪器中（重复添加）
     pub fn add_bullet(&mut self, bullet: Entity, tank: Entity) {
+        // 防御性检查：确保子弹未被重复添加
+        if self.bullet_to_tank.contains_key(&bullet) {
+            panic!("Bullet entity {:?} already exists in tracker", bullet);
+        }
+
         *self.active_bullets.entry(tank).or_insert(0) += 1;
         self.bullet_to_tank.insert(bullet, tank);
     }
 
     /// 移除子弹，返回所属坦克
+    ///
+    /// 确保两个映射表保持同步，即使 bullet_to_tank 中没有对应的条目
     pub fn remove_bullet(&mut self, bullet: Entity) -> Option<Entity> {
         if let Some(tank) = self.bullet_to_tank.remove(&bullet) {
             if let Some(count) = self.active_bullets.get_mut(&tank) {
@@ -42,6 +52,14 @@ impl BulletTracker {
         } else {
             None
         }
+    }
+
+    /// 清理所有子弹追踪数据
+    ///
+    /// 用于关卡重置时清空追踪器
+    pub fn clear(&mut self) {
+        self.active_bullets.clear();
+        self.bullet_to_tank.clear();
     }
 }
 
@@ -404,101 +422,33 @@ impl InsufficientEnergyTracker {
     }
 }
 
-// 地形纹理图集布局资源
-#[derive(Resource)]
-pub struct TerrainAtlasLayouts {
-    pub sea: Handle<TextureAtlasLayout>,
-    pub forest: Handle<TextureAtlasLayout>,
-    pub forest_fire: Handle<TextureAtlasLayout>,
-}
-
-// 背景精灵图纹理图集布局资源
-#[derive(Resource)]
-pub struct BackgroundAtlasLayout {
-    pub layout: Handle<TextureAtlasLayout>,
-}
-
-// 子弹资源
-#[derive(Resource)]
-pub struct BulletResources {
-    /// 玩家1子弹纹理
-    pub bullet_player1: Handle<Image>,
-    /// 玩家2子弹纹理
-    pub bullet_player2: Handle<Image>,
-    /// 敌方子弹纹理
-    pub bullet_enemy: Handle<Image>,
-    /// 火焰特效纹理（精灵图，叠加在子弹上）
-    pub bullet_fire_effect: Handle<Image>,
-    /// 穿透效果纹理（精灵图，叠加在子弹上）
-    pub bullet_penetrate_effect: Handle<Image>,
-}
-
-// 子弹特效纹理图集布局资源（预加载，避免重复创建）
-#[derive(Resource)]
-pub struct EffectAtlasLayouts {
-    /// 火焰特效纹理图集布局
-    pub fire_effect: Handle<TextureAtlasLayout>,
-    /// 穿透效果纹理图集布局
-    pub penetrate_effect: Handle<TextureAtlasLayout>,
-}
-
 // ==================== 游戏资源管理 ====================
 
-/// 字体资源
+/// 统一的纹理资源结构体
+/// 合并所有游戏纹理资源，减少资源结构体数量
 #[derive(Resource)]
-pub struct FontResources {
+pub struct GameTextureResources {
+    // 字体
     pub cn: Handle<Font>,
     pub en: Handle<Font>,
-}
-
-/// 玩家坦克资源
-#[derive(Resource)]
-pub struct PlayerTankResources {
+    // 玩家坦克
     pub player1: Handle<Image>,
     pub player2: Handle<Image>,
     pub single_barrel: Handle<Image>,
     pub double_barrel: Handle<Image>,
-}
-
-/// 司令官资源
-#[derive(Resource)]
-pub struct CommanderResources {
-    pub texture: Handle<Image>,
-    pub dead_texture: Handle<Image>,
+    // 司令官
+    pub commander: Handle<Image>,
+    pub commander_dead: Handle<Image>,
     pub avatar: Handle<Image>,
     pub avatar_death: Handle<Image>,
     pub avatar_commander_dead: Handle<Image>,
-}
-
-/// 音效资源
-#[derive(Resource)]
-pub struct SoundResources {
-    pub explosion: Handle<AudioSource>,
-    pub brick_hit: Handle<AudioSource>,
-    pub hit: Handle<AudioSource>,
-    pub metal_crash: Handle<AudioSource>,
-    pub laser_charge: Handle<AudioSource>,
-    pub laser: Handle<AudioSource>,
-    pub commander_get_shot: Handle<AudioSource>,
-    pub commander_death: Handle<AudioSource>,
-    pub player_shot: Handle<AudioSource>,
-}
-
-impl SoundResources {
-    /// 播放音效
-    pub fn play(
-        &self,
-        commands: &mut Commands,
-        audio_source: Handle<AudioSource>,
-        volume: f32,
-    ) {
-        utils::play_one_shot_sound(commands, audio_source, volume);
-    }
-}
-
-/// 特效纹理资源
-#[derive(Resource)]
-pub struct EffectResources {
+    // 子弹
+    pub bullet_player1: Handle<Image>,
+    pub bullet_player2: Handle<Image>,
+    pub bullet_enemy: Handle<Image>,
+    pub bullet_fire_effect: Handle<Image>,
+    pub bullet_penetrate_effect: Handle<Image>,
+    // 特效
     pub explosion: Handle<Image>,
     pub spark: Handle<Image>,
     pub smoke: Handle<Image>,
@@ -506,28 +456,19 @@ pub struct EffectResources {
     pub energy_blue_ball: Handle<Image>,
     pub energy_red_ball: Handle<Image>,
     pub forest_fire: Handle<Image>,
-}
-
-/// 地图纹理资源
-#[derive(Resource)]
-pub struct MapResources {
+    pub steel_hit: Handle<Image>,
+    pub laser_blue: Handle<Image>,
+    pub laser_red: Handle<Image>,
+    // 地图
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,
     pub tree: Handle<Image>,
     pub sea: Handle<Image>,
     pub barrier: Handle<Image>,
-}
-
-/// 敌方坦克资源
-#[derive(Resource)]
-pub struct EnemyResources {
+    // 敌方坦克
     pub enemy_born: Handle<Image>,
     pub enemy_tank: Handle<Image>,
-}
-
-/// 道具纹理资源
-#[derive(Resource)]
-pub struct PowerUpResources {
+    // 道具
     pub speed_up: Handle<Image>,
     pub protection: Handle<Image>,
     pub fire_speed: Handle<Image>,
@@ -539,30 +480,26 @@ pub struct PowerUpResources {
     pub hamburger: Handle<Image>,
     pub air_cushion: Handle<Image>,
     pub shell: Handle<Image>,
-}
-
-/// 激光纹理资源
-#[derive(Resource)]
-pub struct LaserResources {
-    pub laser_blue: Handle<Image>,
-    pub laser_red: Handle<Image>,
-}
-
-/// 菜单背景纹理资源
-#[derive(Resource)]
-pub struct MenuResources {
+    // 菜单
     pub background: Handle<Image>,
-}
-
-/// 司令官音乐纹理资源
-#[derive(Resource)]
-pub struct CommanderMusicResources {
     pub music_note: Handle<Image>,
 }
 
-/// 环境音效资源
+/// 统一的音频资源结构体
+/// 合并所有游戏音频资源，减少资源结构体数量
 #[derive(Resource)]
-pub struct AmbienceResources {
+pub struct GameAudioResources {
+    // 音效
+    pub explosion: Handle<AudioSource>,
+    pub brick_hit: Handle<AudioSource>,
+    pub hit: Handle<AudioSource>,
+    pub metal_crash: Handle<AudioSource>,
+    pub laser_charge: Handle<AudioSource>,
+    pub laser: Handle<AudioSource>,
+    pub commander_get_shot: Handle<AudioSource>,
+    pub commander_death: Handle<AudioSource>,
+    pub player_shot: Handle<AudioSource>,
+    // 环境音效
     pub burn_tree: Handle<AudioSource>,
     pub sea_ambience: Handle<AudioSource>,
     pub commander_music_000: Handle<AudioSource>,
@@ -571,6 +508,53 @@ pub struct AmbienceResources {
     pub commander_music_003: Handle<AudioSource>,
     pub tree_ambience: Handle<AudioSource>,
 }
+
+impl GameAudioResources {
+    /// 播放音效
+    pub fn play(
+        &self,
+        commands: &mut Commands,
+        audio_source: Handle<AudioSource>,
+        volume: f32,
+    ) {
+        utils::play_one_shot_sound(commands, audio_source, volume);
+    }
+}
+
+/// 统一的图集布局资源结构体
+/// 合并所有纹理图集布局资源，减少资源结构体数量
+#[derive(Resource)]
+pub struct GameAtlasLayoutResources {
+    // 地形
+    pub sea: Handle<TextureAtlasLayout>,
+    pub forest: Handle<TextureAtlasLayout>,
+    pub forest_fire: Handle<TextureAtlasLayout>,
+    // 背景
+    pub background: Handle<TextureAtlasLayout>,
+    // 子弹特效
+    pub fire_effect: Handle<TextureAtlasLayout>,
+    pub penetrate_effect: Handle<TextureAtlasLayout>,
+    // 烟雾特效
+    pub smoke_atlas: Handle<TextureAtlasLayout>,
+}
+
+// 兼容性类型别名（为了保持向后兼容）
+pub type FontResources = GameTextureResources;
+pub type PlayerTankResources = GameTextureResources;
+pub type CommanderResources = GameTextureResources;
+pub type BulletResources = GameTextureResources;
+pub type EffectResources = GameTextureResources;
+pub type MapResources = GameTextureResources;
+pub type EnemyResources = GameTextureResources;
+pub type PowerUpResources = GameTextureResources;
+pub type LaserResources = GameTextureResources;
+pub type MenuResources = GameTextureResources;
+pub type CommanderMusicResources = GameTextureResources;
+pub type SoundResources = GameAudioResources;
+pub type AmbienceResources = GameAudioResources;
+pub type TerrainAtlasLayouts = GameAtlasLayoutResources;
+pub type BackgroundAtlasLayout = GameAtlasLayoutResources;
+pub type EffectAtlasLayouts = GameAtlasLayoutResources;
 
 
 

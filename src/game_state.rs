@@ -219,50 +219,23 @@ pub fn cleanup_effects_and_bullets(
     audio_players: Query<Entity, With<bevy::audio::AudioPlayer>>,
     mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
 ) {
-    // 清理所有子弹
+    // 清理所有子弹（需要先从 tracker 中移除）
     for bullet in bullets.iter() {
         bullet_tracker.remove_bullet(bullet);
-        let () = commands.entity(bullet).try_despawn();
     }
+    crate::utils::cleanup_entities(&mut commands, bullets.iter());
 
-    // 清理所有爆炸特效
-    for explosion in explosions.iter() {
-        let () = commands.entity(explosion).try_despawn();
-    }
-
-    // 清理所有火花特效
-    for spark in sparks.iter() {
-        let () = commands.entity(spark).try_despawn();
-    }
-
-    // 清理所有烟雾特效
-    for smoke in smokes.iter() {
-        let () = commands.entity(smoke).try_despawn();
-    }
-
-    // 清理所有森林燃烧特效
-    for forest_fire in forest_fires.iter() {
-        let () = commands.entity(forest_fire).try_despawn();
-    }
-
-    // 清理所有能量球
-    for energy_ball in energy_balls.iter() {
-        let () = commands.entity(energy_ball).try_despawn();
-    }
-
-    // 清理所有激光
-    for laser in lasers.iter() {
-        let () = commands.entity(laser).try_despawn();
-    }
-
-    // 清理所有音效播放器
-    for audio_player in audio_players.iter() {
-        let () = commands.entity(audio_player).try_despawn();
-    }
+    // 清理其他实体
+    crate::utils::cleanup_entities(&mut commands, explosions.iter());
+    crate::utils::cleanup_entities(&mut commands, sparks.iter());
+    crate::utils::cleanup_entities(&mut commands, smokes.iter());
+    crate::utils::cleanup_entities(&mut commands, forest_fires.iter());
+    crate::utils::cleanup_entities(&mut commands, energy_balls.iter());
+    crate::utils::cleanup_entities(&mut commands, lasers.iter());
+    crate::utils::cleanup_entities(&mut commands, audio_players.iter());
 
     // 强制重置 BulletTracker，防止状态不同步
-    bullet_tracker.active_bullets.clear();
-    bullet_tracker.bullet_to_tank.clear();
+    bullet_tracker.clear();
 }
 
 /// 清理所有追踪器和计时器
@@ -278,8 +251,7 @@ pub fn cleanup_trackers_and_timers(
     mut enemy_spawn_state: ResMut<crate::resources::EnemySpawnState>,
 ) {
     // 清理 BulletTracker
-    bullet_tracker.active_bullets.clear();
-    bullet_tracker.bullet_to_tank.clear();
+    bullet_tracker.clear();
 
     // 清理 RecallTimers
     recall_timers.timers.clear();

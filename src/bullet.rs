@@ -129,7 +129,7 @@ pub fn spawn_bullet(
         commands.entity(bullet_entity).with_children(|parent| {
             parent.spawn((
                 crate::constants::FireEffect,
-                crate::constants::LoopingAnimationMarker,
+                crate::constants::AnimationMode::Looping,
                 Sprite::from_atlas_image(
                     bullet_resources.bullet_fire_effect.clone(),
                     TextureAtlas {
@@ -166,7 +166,7 @@ pub fn spawn_bullet(
         commands.entity(bullet_entity).with_children(|parent| {
             parent.spawn((
                 PenetrateEffect,
-                crate::constants::LoopingAnimationMarker,
+                crate::constants::AnimationMode::Looping,
                 Sprite::from_atlas_image(
                     bullet_resources.bullet_penetrate_effect.clone(),
                     TextureAtlas {

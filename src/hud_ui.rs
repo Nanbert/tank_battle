@@ -473,21 +473,17 @@ fn spawn_single_player_hud(
     ));
 }
 
-/// 销毁所有 HUD
+/// 销毁 HUD
 pub fn despawn_hud(
     mut commands: Commands,
     top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
 ) {
     // 销毁顶部 HUD
-    for entity in top_hud_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, top_hud_query.iter());
 
     // 销毁玩家 HUD
-    for entity in player_hud_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, player_hud_query.iter());
 }
 
 // ============================================================================
@@ -1023,12 +1019,8 @@ pub fn spawn_hud(
     language: Res<Language>,
 ) {
     // 先清理现有的 HUD，以防万一
-    for entity in top_hud_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
-    for entity in player_hud_query.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
+    crate::utils::cleanup_entities(&mut commands, top_hud_query.iter());
+    crate::utils::cleanup_entities(&mut commands, player_hud_query.iter());
 
     spawn_top_hud(commands.reborrow(), &font_resources, &stage_level, *language);
     spawn_player_hud(commands, font_resources, commander_resources, texture_atlas_layouts, player_info, game_mode, player1_hud_query, player2_hud_query, language);
@@ -1128,7 +1120,7 @@ pub fn animate_player_avatar(
 
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(
-    commander_resources: Res<CommanderResources>,
+    texture_resources: Res<GameTextureResources>,
     player_info: Res<PlayerInfo>,
     mut player_avatars: Query<(&mut Sprite, &PlayerUI), With<PlayerAvatar>>,
     mut has_handled_player1: Local<bool>,
@@ -1139,7 +1131,7 @@ pub fn handle_player_avatar_death(
     if player1_dead && !*has_handled_player1 {
         for (mut sprite, player_ui) in &mut player_avatars {
             if player_ui.player_type == TankType::Player1 {
-                sprite.image = commander_resources.avatar_death.clone();
+                sprite.image = texture_resources.avatar_death.clone();
                 sprite.texture_atlas = None; // 死亡头像不需要动画
                 sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
                 println!("[DEBUG] Player 1 avatar updated to death texture");
@@ -1157,7 +1149,7 @@ pub fn handle_player_avatar_death(
         if player2_dead && !*has_handled_player2 {
             for (mut sprite, player_ui) in &mut player_avatars {
                 if player_ui.player_type == TankType::Player2 {
-                    sprite.image = commander_resources.avatar_death.clone();
+                    sprite.image = texture_resources.avatar_death.clone();
                     sprite.texture_atlas = None; // 死亡头像不需要动画
                     sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
                     println!("[DEBUG] Player 2 avatar updated to death texture");
@@ -1173,7 +1165,7 @@ pub fn handle_player_avatar_death(
 
 /// 处理司令官阵亡时更换纹理和头像
 pub fn handle_commander_death(
-    commander_resources: Res<CommanderResources>,
+    texture_resources: Res<GameTextureResources>,
     commander_life: Res<CommanderLife>,
     player_info: Res<PlayerInfo>,
     mut queries: ParamSet<(
@@ -1199,7 +1191,7 @@ pub fn handle_commander_death(
 
     // 更换司令官纹理为死亡纹理
     for mut sprite in &mut queries.p0() {
-        sprite.image = commander_resources.dead_texture.clone();
+        sprite.image = texture_resources.commander_dead.clone();
         // 移除纹理图集，因为死亡纹理是单张图片
         sprite.texture_atlas = None;
     }
@@ -1228,9 +1220,9 @@ pub fn handle_commander_death(
 
         // 如果玩家已经死亡，保持死亡图片；否则设置为悲伤图片
         if player_dead {
-            sprite.image = commander_resources.avatar_death.clone();
+            sprite.image = texture_resources.avatar_death.clone();
         } else {
-            sprite.image = commander_resources.avatar_commander_dead.clone();
+            sprite.image = texture_resources.avatar_commander_dead.clone();
         }
         // 移除纹理图集，因为这些头像纹理都是单张图片
         sprite.texture_atlas = None;

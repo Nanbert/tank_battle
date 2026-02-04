@@ -9,7 +9,7 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, PowerUpResources, SoundResources, StatType};
+use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, GameTextureResources, GameAudioResources, StatType};
 use crate::utils;
 
 /// 道具碰撞检测距离
@@ -58,7 +58,7 @@ pub fn animate_powerup(
 /// 优化：使用 PickedPowerUp 结构体合并 entity 和 type，提高类型安全性
 pub fn handle_powerup_collision(
     mut commands: Commands,
-    sound_resources: Res<SoundResources>,
+    audio_resources: Res<GameAudioResources>,
     powerups: Query<(Entity, &Transform, &PowerUp)>,
     player_tanks: Query<(&Transform, &PlayerTank, Entity), With<PlayerTank>>,
     mut controllers: Query<&mut KinematicCharacterController>,
@@ -73,18 +73,20 @@ pub fn handle_powerup_collision(
     }
 
     for (tank_transform, player_tank, tank_entity) in player_tanks.iter() {
-        // 查找碰撞的道具
-        let picked = powerups.iter().find(|(_, powerup_transform, _)| {
-            (powerup_transform.translation - tank_transform.translation).length()
-                < POWERUP_COLLISION_DISTANCE
-        }).map(|(entity, _, powerup_type)| PickedPowerUp {
-            entity,
-            powerup_type: *powerup_type,
-        });
+        // 查找碰撞的道具（使用工具函数简化代码）
+        let picked = powerups.iter()
+            .find(|(_, powerup_transform, _)| {
+                (powerup_transform.translation - tank_transform.translation).length()
+                    < POWERUP_COLLISION_DISTANCE
+            })
+            .map(|(entity, _, powerup_type)| PickedPowerUp {
+                entity,
+                powerup_type: *powerup_type,
+            });
 
         if let Some(picked) = picked {
             // 播放道具音效
-            crate::utils::play_one_shot_sound(&mut commands, sound_resources.hit.clone(), 1.0);
+            crate::utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
             let () = commands.entity(picked.entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
@@ -187,7 +189,7 @@ pub fn handle_powerup_collision(
 /// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
 pub fn spawn_test_powerup_stage1(
     mut commands: Commands,
-    powerup_resources: Res<PowerUpResources>,
+    texture_resources: Res<GameTextureResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let powerup_type = PowerUp::FireShell; // 第一关测试用：改为 fire_shell
@@ -206,7 +208,7 @@ pub fn spawn_test_powerup_stage1(
 
     spawn_powerup_batch(
         &mut commands,
-        &powerup_resources,
+        &texture_resources,
         &mut texture_atlas_layouts,
         powerup_type,
         &[position],
@@ -216,7 +218,7 @@ pub fn spawn_test_powerup_stage1(
 /// 随机生成道具
 pub fn spawn_power_ups_random(
     mut commands: Commands,
-    powerup_resources: Res<PowerUpResources>,
+    texture_resources: Res<GameTextureResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     let powerup_types = [
@@ -248,7 +250,7 @@ pub fn spawn_power_ups_random(
 
     spawn_powerup_batch(
         &mut commands,
-        &powerup_resources,
+        &texture_resources,
         &mut texture_atlas_layouts,
         powerup_type,
         &[position],
@@ -261,29 +263,28 @@ pub fn spawn_power_ups_random(
 ///
 /// 参数：
 /// - commands: 命令队列
-/// - powerup_resources: 道具资源
+/// - texture_resources: 纹理资源
 /// - texture_atlas_layouts: 纹理图集布局资源
 /// - powerup_type: 道具类型
-/// - texture_path: 道具纹理路径
 /// - positions: 生成位置数组
 fn spawn_powerup_batch(
     commands: &mut Commands,
-    powerup_resources: &PowerUpResources,
+    texture_resources: &GameTextureResources,
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     powerup_type: PowerUp,
     positions: &[Vec3],
 ) {
     let texture = match powerup_type {
-        PowerUp::SpeedUp => powerup_resources.speed_up.clone(),
-        PowerUp::Protection => powerup_resources.protection.clone(),
-        PowerUp::FireSpeed => powerup_resources.fire_speed.clone(),
-        PowerUp::FireShell => powerup_resources.fire_shell.clone(),
-        PowerUp::TrackChain => powerup_resources.track_chain.clone(),
-        PowerUp::Penetrate => powerup_resources.penetrate.clone(),
-        PowerUp::Repair => powerup_resources.repair.clone(),
-        PowerUp::Hamburger => powerup_resources.hamburger.clone(),
-        PowerUp::AirCushion => powerup_resources.air_cushion.clone(),
-        PowerUp::Shell => powerup_resources.shell.clone(),
+        PowerUp::SpeedUp => texture_resources.speed_up.clone(),
+        PowerUp::Protection => texture_resources.protection.clone(),
+        PowerUp::FireSpeed => texture_resources.fire_speed.clone(),
+        PowerUp::FireShell => texture_resources.fire_shell.clone(),
+        PowerUp::TrackChain => texture_resources.track_chain.clone(),
+        PowerUp::Penetrate => texture_resources.penetrate.clone(),
+        PowerUp::Repair => texture_resources.repair.clone(),
+        PowerUp::Hamburger => texture_resources.hamburger.clone(),
+        PowerUp::AirCushion => texture_resources.air_cushion.clone(),
+        PowerUp::Shell => texture_resources.shell.clone(),
     };
     let tile_size = UVec2::new(87, 69);
     let texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, tile_size, 3, 1);
@@ -308,13 +309,6 @@ fn spawn_powerup_batch(
     }
 }
 
-/// 销毁所有道具
-pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<PowerUp>>) {
-    for entity in powerups.iter() {
-        let () = commands.entity(entity).try_despawn();
-    }
-}
-
 /// 更新履带特效
 /// 根据玩家是否拥有 track_chain 能力，动态添加或移除履带子实体
 pub fn update_track_chain_effect(
@@ -322,7 +316,7 @@ pub fn update_track_chain_effect(
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
     track_chain_entities: Query<(), With<crate::constants::TrackChainEffect>>,
     player_info: Res<PlayerInfo>,
-    powerup_resources: Res<PowerUpResources>,
+    texture_resources: Res<GameTextureResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
@@ -334,7 +328,7 @@ pub fn update_track_chain_effect(
 
         if has_track_chain && !has_track_chain_sprite {
             // 创建履带特效
-            let track_train_texture = powerup_resources.track_train.clone();
+            let track_train_texture = texture_resources.track_train.clone();
             let track_train_tile_size = UVec2::new(
                 crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
                 crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
