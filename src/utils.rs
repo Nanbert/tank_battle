@@ -4,6 +4,7 @@
 
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use std::time::Duration;
 
 use crate::constants::*;
@@ -113,4 +114,26 @@ pub fn add_texture_atlas(
 ) -> Handle<TextureAtlasLayout> {
     let layout = create_texture_atlas(tile_size, columns, rows);
     texture_atlas_layouts.add(layout)
+}
+
+/// 停止所有坦克的速度
+///
+/// 用于暂停游戏或游戏结束时停止所有坦克的移动
+///
+/// # 参数
+/// - `player_velocity_query`: 玩家坦克速度查询
+/// - `enemy_velocity_query`: 敌方坦克速度查询
+pub fn stop_all_tanks_velocity(
+    player_velocity_query: &mut Query<&mut Velocity, With<crate::constants::PlayerTank>>,
+    enemy_velocity_query: &mut Query<&mut Velocity, (With<crate::constants::EnemyTank>, Without<crate::constants::PlayerTank>)>,
+) {
+    // 停止玩家坦克的移动
+    for mut velocity in player_velocity_query.iter_mut() {
+        velocity.linvel = Vec2::ZERO;
+    }
+
+    // 停止敌方坦克的移动
+    for mut velocity in enemy_velocity_query.iter_mut() {
+        velocity.linvel = Vec2::ZERO;
+    }
 }

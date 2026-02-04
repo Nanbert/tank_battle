@@ -215,15 +215,8 @@ pub fn spawn_pause_ui(
         Language::English => font_resources.en.clone(),
     };
 
-    // 停止玩家坦克的移动
-    for mut velocity in &mut player_velocity_query {
-        velocity.linvel = Vec2::ZERO;
-    }
-
-    // 停止敌方坦克的移动
-    for mut velocity in &mut enemy_velocity_query {
-        velocity.linvel = Vec2::ZERO;
-    }
+    // 停止所有坦克的移动
+    crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
 
     let (title_text, instruction_text) = match *language {
         Language::Chinese => (
@@ -317,15 +310,8 @@ pub fn spawn_game_over_ui(
         Language::English => font_resources.en.clone(),
     };
 
-    // 停止玩家坦克的移动
-    for mut velocity in &mut player_velocity_query {
-        velocity.linvel = Vec2::ZERO;
-    }
-
-    // 停止敌方坦克的移动
-    for mut velocity in &mut enemy_velocity_query {
-        velocity.linvel = Vec2::ZERO;
-    }
+    // 停止所有坦克的移动
+    crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
 
     let (title_text, option_restart, option_menu, option_exit, instruction_text) = match *language {
         Language::Chinese => (

@@ -29,7 +29,8 @@ pub fn handle_dash_input(
 ) {
     // 更新所有能量不足冷却计时器
     for timer in energy_tracker.cooldowns.values_mut() {
-        timer.tick(time.delta());
+        let t: &mut Timer = timer;
+        t.tick(time.delta());
     }
 
     for (entity, transform, player_tank) in &query {

@@ -145,7 +145,8 @@ pub fn player_laser_system(
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
         for timer in energy_tracker.cooldowns.values_mut() {
-            timer.tick(time.delta());
+            let t: &mut Timer = timer;
+            t.tick(time.delta());
         }
 
         // 处理蓄力逻辑
@@ -314,26 +315,23 @@ fn update_charge(
     time: &Res<Time>,
     sound_resources: &SoundResources,
 ) {
-    for (e, mut charge) in charge_query.iter_mut() {
-        if e == entity && charge.tank_type == tank_type {
-            charge.timer.tick(time.delta());
+    if let Ok((_, mut charge)) = charge_query.get_mut(entity) {
+        charge.timer.tick(time.delta());
 
-            // 蓄力完成，发射激光
-            if charge.timer.just_finished() {
-                fire_laser(
-                    commands,
-                    laser_resources,
-                    texture_atlas_layouts,
-                    player_info,
-                    progress_bar_query,
-                    sound_query,
-                    entity,
-                    transform,
-                    tank_type,
-                    sound_resources,
-                );
-            }
-            break;
+        // 蓄力完成，发射激光
+        if charge.timer.just_finished() {
+            fire_laser(
+                commands,
+                laser_resources,
+                texture_atlas_layouts,
+                player_info,
+                progress_bar_query,
+                sound_query,
+                entity,
+                transform,
+                tank_type,
+                sound_resources,
+            );
         }
     }
 }

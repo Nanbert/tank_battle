@@ -1,7 +1,7 @@
 //! Game resources for the Tank Battle game
 
 use bevy::prelude::*;
-use std::collections::{HashMap, HashSet};
+use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
@@ -11,9 +11,9 @@ use crate::utils;
 #[derive(Resource, Default)]
 pub struct BulletTracker {
     /// 坦克实体 -> 场上子弹数量
-    pub active_bullets: HashMap<Entity, usize>,
+    pub active_bullets: EntityHashMap<usize>,
     /// 子弹实体 -> 坦克实体
-    pub bullet_to_tank: HashMap<Entity, Entity>,
+    pub bullet_to_tank: EntityHashMap<Entity>,
 }
 
 impl BulletTracker {
@@ -259,7 +259,7 @@ impl PlayerStats {
 // 玩家回城计时器
 #[derive(Resource, Default)]
 pub struct RecallTimers {
-    pub timers: HashMap<Entity, RecallTimer>,
+    pub timers: EntityHashMap<RecallTimer>,
 }
 
 pub struct RecallTimer {
@@ -279,7 +279,7 @@ impl RecallTimer {
 // 玩家冲刺计时器
 #[derive(Resource, Default)]
 pub struct DashTimers {
-    pub timers: HashMap<Entity, DashTimer>,
+    pub timers: EntityHashMap<DashTimer>,
 }
 
 pub struct DashTimer {
@@ -346,19 +346,19 @@ pub enum StatType {
 // Barrier 伤害追踪器，使用冷却机制防止玩家坦克频繁受伤
 #[derive(Resource, Default)]
 pub struct BarrierDamageTracker {
-    pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的受伤冷却计时器
+    pub cooldowns: EntityHashMap<Timer>, // 记录每个玩家坦克的受伤冷却计时器
 }
 
 // Dash 扣血追踪器，防止一次 dash 多次扣血
 #[derive(Resource, Default)]
 pub struct DashDamageTracker {
-    pub has_taken_damage: HashSet<Entity>, // 记录本次 dash 已经扣血的玩家坦克
+    pub has_taken_damage: EntityHashSet, // 记录本次 dash 已经扣血的玩家坦克
 }
 
 // 能量不足提示冷却追踪器，防止重复触发提示
 #[derive(Resource, Default)]
 pub struct InsufficientEnergyTracker {
-    pub cooldowns: HashMap<Entity, Timer>, // 记录每个玩家坦克的能量不足提示冷却计时器
+    pub cooldowns: EntityHashMap<Timer>, // 记录每个玩家坦克的能量不足提示冷却计时器
 }
 
 impl InsufficientEnergyTracker {
@@ -557,4 +557,11 @@ pub struct AmbienceResources {
     pub commander_music_002: Handle<AudioSource>,
     pub commander_music_003: Handle<AudioSource>,
     pub tree_ambience: Handle<AudioSource>,
+}
+
+/// 玩家位置缓存
+/// 用于快速访问玩家位置，避免重复查询
+#[derive(Resource, Default)]
+pub struct PlayerPositionCache {
+    pub positions: EntityHashMap<Vec3>,
 }

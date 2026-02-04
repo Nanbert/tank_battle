@@ -379,16 +379,15 @@ pub fn find_bullet_and_tank_in_collision<'a>(
     e1: Entity,
     e2: Entity,
     bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
-    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
-    player_tanks: &Query<(&PlayerTank, &Transform), With<PlayerTank>>,
+    all_tanks: &Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
 ) -> Option<(Entity, Entity, &'a Bullet)> {
     if let Ok((_, bullet, _)) = bullets.get(e1) {
-        if enemy_tanks.get(e2).is_ok() || player_tanks.get(e2).is_ok() {
+        if all_tanks.contains(e2) {
             return Some((e1, e2, bullet));
         }
     }
     if let Ok((_, bullet, _)) = bullets.get(e2) {
-        if enemy_tanks.get(e1).is_ok() || player_tanks.get(e1).is_ok() {
+        if all_tanks.contains(e1) {
             return Some((e2, e1, bullet));
         }
     }
@@ -486,6 +485,7 @@ pub fn bullet_tank_collision_system(
     mut effect_events: MessageWriter<EffectEvent>,
     mut bullet_tracker: ResMut<BulletTracker>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
+    all_tanks: Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     player_tanks: Query<(&PlayerTank, &Transform), With<PlayerTank>>,
     despawned_entities: Query<(), With<DespawnMarker>>,
@@ -500,7 +500,7 @@ pub fn bullet_tank_collision_system(
 
         // 提取子弹和坦克实体，同时获取子弹信息
         let Some((bullet_entity, tank_entity, bullet)) =
-            find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &enemy_tanks, &player_tanks)
+            find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &all_tanks)
         else { continue; };
 
         // 跳过已被标记销毁的实体（被激光击中的）

@@ -1,8 +1,8 @@
 //! Game constants for the Tank Battle game
 
 use bevy::prelude::*;
+use bevy::ecs::entity::EntityHashMap;
 use bevy_rapier2d::prelude::*;
-use std::collections::HashMap;
 
 // 字体路径常量
 pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
@@ -460,7 +460,7 @@ pub struct LaserStartPoint(pub Vec3);
 #[derive(Resource, Default)]
 pub struct EnemyCollisionCache {
     /// 存储 Entity -> 碰撞法线的映射
-    pub collisions: HashMap<Entity, Vec2>,
+    pub collisions: EntityHashMap<Vec2>,
 }
 
 impl EnemyCollisionCache {

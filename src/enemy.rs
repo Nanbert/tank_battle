@@ -18,14 +18,13 @@ pub fn enemy_spawn_system(
     enemy_resources: Res<EnemyResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
-    enemy_born_animations: Query<(), With<EnemyBornAnimation>>,
+    enemy_entities: Query<Entity, Or<(With<EnemyTank>, With<EnemyBornAnimation>)>>,
 ) {
     // 更新生成冷却时间
     enemy_spawn_state.spawn_cooldown.tick(time.delta());
 
     // 动态获取当前场上敌方坦克数量（包括已生成的和正在出生动画中的）
-    let current_enemy_count = enemy_tanks.iter().count() + enemy_born_animations.iter().count();
+    let current_enemy_count = enemy_entities.iter().count();
 
     // 检查是否需要生成新敌人
     // 条件：未达到总数上限 + 场上敌人数量少于4个 + 冷却时间已结束
@@ -213,26 +212,20 @@ pub fn animate_enemy_born_animation(
 pub fn collect_enemy_collisions(
     mut events: MessageReader<CollisionEvent>,
     mut collision_cache: ResMut<EnemyCollisionCache>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
-    player_tanks: Query<(), With<PlayerTank>>,
+    all_tanks: Query<Entity, Or<(With<EnemyTank>, With<PlayerTank>)>>,
 ) {
     for event in events.read() {
         // 只处理碰撞开始事件
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
         // 判断是否是敌方坦克参与的碰撞
-        let (enemy_entity, other_entity) = if enemy_tanks.contains(*e1) {
-            (*e1, *e2)
-        } else if enemy_tanks.contains(*e2) {
-            (*e2, *e1)
+        let enemy_entity = if all_tanks.contains(*e1) {
+            *e1
+        } else if all_tanks.contains(*e2) {
+            *e2
         } else {
             continue;
         };
-
-        // 跳过与玩家坦克的碰撞（特殊处理）
-        if player_tanks.contains(other_entity) {
-            continue;
-        }
 
         // 缓存碰撞标记，具体法线从 ContactForceEvent 获取
         collision_cache.insert(enemy_entity, Vec2::ZERO);

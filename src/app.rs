@@ -163,7 +163,8 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(MenuBlinkTimer(Timer::default()))
         .init_resource::<StageIntroTimer>()
         .init_resource::<StageCompleteDelayTimer>()
-        .init_resource::<crate::levels::LevelAssets>();
+        .init_resource::<crate::levels::LevelAssets>()
+        .init_resource::<crate::resources::PlayerPositionCache>();
 }
 
 pub fn register_game_systems(app: &mut App) {
@@ -374,6 +375,10 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             Update,
             player::update_recall_progress_bars.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
+            player::update_player_position_cache.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

@@ -117,9 +117,8 @@ pub fn move_player_tank(
             &mut Sprite,
             &AnimationIndices,
             &PlayerTank,
-            Option<&IsDashing>,
         ),
-        With<PlayerTank>,
+        (With<PlayerTank>, Without<IsDashing>),
     >,
 ) {
     for (
@@ -132,13 +131,8 @@ pub fn move_player_tank(
         mut sprite,
         animation_indices,
         player_tank,
-        is_dashing,
     ) in &mut query
     {
-        // 如果正在冲刺，跳过移动处理
-        if is_dashing.is_some() {
-            continue;
-        }
         // 根据玩家类型选择按键绑定
         let key_bindings = player_tank.tank_type.get_key_bindings();
 
@@ -412,16 +406,31 @@ fn complete_recall(
 /// 更新回城进度条位置
 pub fn update_recall_progress_bars(
     mut progress_bar_query: Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
-    player_tanks: Query<(Entity, &Transform), With<PlayerTank>>,
+    position_cache: Res<crate::resources::PlayerPositionCache>,
 ) {
-    // 直接更新进度条位置，通过 player_tanks 查询获取玩家位置
+    // 使用缓存的玩家位置更新进度条位置
     for (progress_bar, mut progress_transform) in progress_bar_query.iter_mut() {
-        if let Ok((_, player_transform)) = player_tanks.get(progress_bar.player_entity) {
+        if let Some(&player_position) = position_cache.positions.get(&progress_bar.player_entity) {
             // 更新倒计时文本位置（跟随坦克）
-            progress_transform.translation.x = player_transform.translation.x;
+            progress_transform.translation.x = player_position.x;
             progress_transform.translation.y =
-                player_transform.translation.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
+                player_position.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
         }
+    }
+}
+
+/// 更新玩家位置缓存
+/// 在玩家移动时更新缓存，避免重复查询
+pub fn update_player_position_cache(
+    player_tanks: Query<(Entity, &Transform), With<PlayerTank>>,
+    mut position_cache: ResMut<crate::resources::PlayerPositionCache>,
+) {
+    // 清空旧缓存
+    position_cache.positions.clear();
+    
+    // 更新所有玩家位置
+    for (entity, transform) in player_tanks.iter() {
+        position_cache.positions.insert(entity, transform.translation);
     }
 }
 
@@ -473,7 +482,8 @@ pub fn handle_barrier_collision(
 
     // 更新所有冷却计时器
     for timer in barrier_damage_tracker.cooldowns.values_mut() {
-        timer.tick(time.delta());
+        let t: &mut Timer = timer;
+        t.tick(time.delta());
     }
 
     // 检测玩家坦克与 barrier 的距离
