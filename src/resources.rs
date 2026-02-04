@@ -202,7 +202,7 @@ impl PlayerInfo {
     }
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct PlayerStats {
     pub speed: usize,
     pub fire_speed: usize,

@@ -55,6 +55,7 @@ pub fn animate_powerup(
 }
 
 /// 道具碰撞检测和拾取系统
+/// 优化：使用 PickedPowerUp 结构体合并 entity 和 type，提高类型安全性
 pub fn handle_powerup_collision(
     mut commands: Commands,
     sound_resources: Res<SoundResources>,
@@ -65,25 +66,26 @@ pub fn handle_powerup_collision(
     mut commander_life: ResMut<CommanderLife>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
+    // 定义拾取道具的结构体，确保 entity 和 type 同步
+    struct PickedPowerUp {
+        entity: Entity,
+        powerup_type: PowerUp,
+    }
+
     for (tank_transform, player_tank, tank_entity) in player_tanks.iter() {
-        let mut picked_powerup: Option<PowerUp> = None;
-        let mut powerup_entity_to_despawn: Option<Entity> = None;
+        // 查找碰撞的道具
+        let picked = powerups.iter().find(|(_, powerup_transform, _)| {
+            (powerup_transform.translation - tank_transform.translation).length()
+                < POWERUP_COLLISION_DISTANCE
+        }).map(|(entity, _, powerup_type)| PickedPowerUp {
+            entity,
+            powerup_type: *powerup_type,
+        });
 
-        // 检查道具碰撞
-        for (powerup_entity, powerup_transform, powerup_type) in powerups.iter() {
-            let distance = (powerup_transform.translation - tank_transform.translation).length();
-            if distance < POWERUP_COLLISION_DISTANCE {
-                picked_powerup = Some(*powerup_type);
-                powerup_entity_to_despawn = Some(powerup_entity);
-            }
-        }
-
-        if let Some(powerup_type) = picked_powerup {
-            let powerup_entity = powerup_entity_to_despawn.unwrap();
-
+        if let Some(picked) = picked {
             // 播放道具音效
             crate::utils::play_one_shot_sound(&mut commands, sound_resources.hit.clone(), 1.0);
-            let () = commands.entity(powerup_entity).try_despawn();
+            let () = commands.entity(picked.entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
             let tank_type = player_tank.tank_type;
@@ -91,7 +93,7 @@ pub fn handle_powerup_collision(
             let mut update_filter_groups = false;
 
             player_info.with_stats_mut(tank_type, |player_stats| {
-                stat_type = match powerup_type {
+                stat_type = match picked.powerup_type {
                     PowerUp::SpeedUp => {
                         if player_stats.speed < MAX_ATTRIBUTE_VALUE {
                             player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
@@ -152,7 +154,7 @@ pub fn handle_powerup_collision(
             });
 
             // 处理汉堡道具效果（修改 Commander 生命）
-            if let PowerUp::Hamburger = powerup_type {
+            if let PowerUp::Hamburger = picked.powerup_type {
                 if commander_life.life_points < COMMANDER_LIFE_MAX {
                     commander_life.life_points += 1;
                 }

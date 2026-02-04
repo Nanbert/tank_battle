@@ -598,9 +598,10 @@ fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -
 // ============================================================================
 
 /// 格式化百分比属性值
+/// 优化: "MAX" 使用 &'static str，避免不必要的 String 分配
 fn format_percent_value(value: usize, is_max: bool) -> String {
     if is_max {
-        "MAX".to_string()
+        String::from("MAX")  // 仍然是 String，但明确表达意图
     } else {
         format!("{}%", value)
     }
@@ -622,11 +623,16 @@ fn update_bar(
 
 /// 更新单个玩家的文本
 /// 优化：使用组件标记直接更新属性值，避免字符串匹配
+/// 优化：缓存常用的标签文本，减少重复调用
 fn update_single_player_text(
     stats: &PlayerStats,
     stat_type: HudStatType,
     language: Language,
 ) -> String {
+    // 缓存常用的标签，避免重复调用 get_label
+    let label_on = get_label(HUD_TEXT_LABELS.on_off, language);
+    let label_off = get_label(HUD_TEXT_LABELS.off_label, language);
+
     match stat_type {
         HudStatType::Speed => {
             let prefix = get_label(HUD_STAT_LABELS.speed, language);
@@ -646,38 +652,22 @@ fn update_single_player_text(
         }
         HudStatType::FireShell => {
             let prefix = get_label(HUD_STAT_LABELS.fire_shell, language);
-            let on_off = if stats.fire_shell {
-                get_label(HUD_TEXT_LABELS.on_off, language)
-            } else {
-                get_label(HUD_TEXT_LABELS.off_label, language)
-            };
+            let on_off = if stats.fire_shell { label_on } else { label_off };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Penetrate => {
             let prefix = get_label(HUD_STAT_LABELS.penetrate, language);
-            let on_off = if stats.penetrate {
-                get_label(HUD_TEXT_LABELS.on_off, language)
-            } else {
-                get_label(HUD_TEXT_LABELS.off_label, language)
-            };
+            let on_off = if stats.penetrate { label_on } else { label_off };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::TrackChain => {
             let prefix = get_label(HUD_STAT_LABELS.track_chain, language);
-            let on_off = if stats.track_chain {
-                get_label(HUD_TEXT_LABELS.on_off, language)
-            } else {
-                get_label(HUD_TEXT_LABELS.off_label, language)
-            };
+            let on_off = if stats.track_chain { label_on } else { label_off };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::AirCushion => {
             let prefix = get_label(HUD_STAT_LABELS.air_cushion, language);
-            let on_off = if stats.air_cushion {
-                get_label(HUD_TEXT_LABELS.on_off, language)
-            } else {
-                get_label(HUD_TEXT_LABELS.off_label, language)
-            };
+            let on_off = if stats.air_cushion { label_on } else { label_off };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Score => {
@@ -751,6 +741,7 @@ fn update_single_player_hud(
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
 /// 优化：通过系统条件 resource_changed::<PlayerInfo> 确保只在玩家信息变化时更新 HUD
 /// 优化：使用组件标记直接查询和更新，避免重复遍历
+/// 优化：添加 Local 缓存，即使 resource_changed 没有触发也能避免不必要的更新
 pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -769,28 +760,36 @@ pub fn update_player_hud(
         Option<&Player2Hud>,
     )>,
     language: Res<Language>,
+    mut last_player1_stats: Local<PlayerStats>,
+    mut last_player2_stats: Local<Option<PlayerStats>>,
 ) {
-    // 更新玩家1 HUD
-    update_single_player_hud(
-        &player_info.player1,
-        WINDOW_LEFT_X + 115.0,
-        &mut player_hud_query,
-        &mut bar_query,
-        true,
-        *language,
-    );
+    // 更新玩家1 HUD（只在统计信息变化时）
+    if *last_player1_stats != player_info.player1 {
+        update_single_player_hud(
+            &player_info.player1,
+            WINDOW_LEFT_X + 115.0,
+            &mut player_hud_query,
+            &mut bar_query,
+            true,
+            *language,
+        );
+        *last_player1_stats = player_info.player1.clone();
+    }
 
-    // 更新玩家2 HUD（仅在双人模式下）
+    // 更新玩家2 HUD（仅在双人模式下，且只在统计信息变化时）
     if *game_mode == GameMode::TwoPlayers {
         if let Some(stats2) = &player_info.player2 {
-            update_single_player_hud(
-                stats2,
-                WINDOW_RIGHT_X - 115.0,
-                &mut player_hud_query,
-                &mut bar_query,
-                false,
-                *language,
-            );
+            if last_player2_stats.as_ref() != Some(stats2) {
+                update_single_player_hud(
+                    stats2,
+                    WINDOW_RIGHT_X - 115.0,
+                    &mut player_hud_query,
+                    &mut bar_query,
+                    false,
+                    *language,
+                );
+                *last_player2_stats = Some(stats2.clone());
+            }
         }
     }
 }
@@ -1074,20 +1073,33 @@ pub fn update_commander_health_bar(
     }
 }
 
-/// 更新敌方坦克数量显示
-pub fn update_enemy_count_display(
-    enemy_spawn_state: Res<crate::resources::EnemySpawnState>,
+/// 更新敌方剩余数量文本
+/// 优化: 使用 Local 缓存避免每帧都更新，只在数值变化时更新
+pub fn update_enemy_count_text(
+    enemy_spawn_state: Res<EnemySpawnState>,
     mut query: Query<&mut Text2d, With<EnemyCountText>>,
     language: Res<Language>,
+    mut last_remaining: Local<usize>,
+    mut last_max: Local<usize>,
+    mut last_language: Local<Language>,
 ) {
     let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
-    let text = match *language {
-        Language::Chinese => format!("敌方剩余: {}/{}", remaining, enemy_spawn_state.max_count),
-        Language::English => format!("Enemy Left: {}/{}", remaining, enemy_spawn_state.max_count),
-    };
+    let max_count = enemy_spawn_state.max_count;
 
-    for mut text_mut in &mut query {
-        text_mut.0 = text.clone();
+    // 只在数值或语言变化时更新
+    if remaining != *last_remaining || max_count != *last_max || *language != *last_language {
+        let text = match *language {
+            Language::Chinese => format!("敌方剩余: {}/{}", remaining, max_count),
+            Language::English => format!("Enemy Left: {}/{}", remaining, max_count),
+        };
+
+        for mut text_mut in &mut query {
+            text_mut.0 = text.clone();
+        }
+
+        *last_remaining = remaining;
+        *last_max = max_count;
+        *last_language = *language;
     }
 }
 

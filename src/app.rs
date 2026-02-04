@@ -466,7 +466,7 @@ pub fn register_game_systems(app: &mut App) {
                 hud_ui::handle_player_avatar_death,
                 hud_ui::handle_hud_stat_changed,
                 hud_ui::animate_hud_text,
-                hud_ui::update_enemy_count_display
+                hud_ui::update_enemy_count_text
                     .run_if(resource_changed::<crate::resources::EnemySpawnState>),
                 hud_ui::update_commander_health_bar
                     .run_if(resource_changed::<CommanderLife>),
