@@ -356,6 +356,31 @@ pub struct AnimationTimer(pub Timer);
 #[derive(Component, Resource, Deref, DerefMut)]
 pub struct CurrentAnimationFrame(pub usize);
 
+/// 动画模式枚举
+/// 定义动画的播放模式
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum AnimationMode {
+    /// 循环播放（用于敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
+    Looping,
+    /// 播放一次后停止（用于爆炸、烟雾、火花、森林火焰等）
+    OneShot,
+    /// 播放一次后停止在最后一帧（用于能量球蓄力完成后）
+    OneShotHold,
+    /// 播放一次完整动画，然后循环播放指定帧范围
+    LoopRange {
+        /// 循环起始帧
+        start_frame: usize,
+        /// 循环结束帧
+        end_frame: usize,
+    },
+}
+
+impl Default for AnimationMode {
+    fn default() -> Self {
+        Self::Looping
+    }
+}
+
 /// 待销毁标记
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct DespawnMarker;
@@ -489,6 +514,15 @@ pub struct Smoke;
 #[derive(Component)]
 pub struct EnergyBall {
     pub player_entity: Entity,
+}
+
+/// 能量球进入激光阶段标记
+#[derive(Component)]
+pub struct LaserPhase;
+
+#[derive(Component)]
+pub struct LaserWithEnergyBall {
+    pub energy_ball_entity: Entity,
 }
 
 #[derive(Component)]
@@ -653,7 +687,7 @@ pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
-pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.05; // 能量球动画帧间隔
+pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.02; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER_MUSIC: f32 = 0.1; // 指挥官音乐动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
@@ -689,7 +723,7 @@ pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max
 pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
 
 // 激光
-pub const LASER_POSITION_OFFSET: f32 = -80.0; // 激光位置偏移（炮口向前的距离）
+pub const LASER_POSITION_OFFSET: f32 = -20.0; // 激光位置偏移（炮口向前的距离）
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
@@ -727,6 +761,9 @@ pub const BULLET_HEIGHT: f32 = 40.0; // 子弹高度
 pub const EXPLOSION_TILE_SIZE: f32 = 256.0; // 爆炸瓦片尺寸
 pub const SPARK_TILE_SIZE: f32 = 256.0; // 火花瓦片尺寸
 pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
+pub const SMOKE_COLUMNS: usize = 5; // 烟雾列数
+pub const SMOKE_ROWS: usize = 3; // 烟雾行数
+pub const SMOKE_TOTAL_FRAMES: usize = 15; // 烟雾总帧数
 pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
 pub const ENERGY_BALL_TILE_WIDTH: f32 = 675.0; // 能量球瓦片宽度
 pub const ENERGY_BALL_TILE_HEIGHT: f32 = 488.0; // 能量球瓦片高度
@@ -781,7 +818,11 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 // ==================== 游戏数值常量 ====================
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
 pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
-pub const ENERGY_BALL_END_FRAME: usize = 84; // 能量球动画结束帧（85帧：0-84）
+pub const ENERGY_BALL_END_FRAME: usize = 64; // 能量球动画结束帧（65帧：0-64）
+pub const ENERGY_BALL_CHARGE_LOOP_START: usize = 50; // 蓄力完成循环起始帧
+pub const ENERGY_BALL_CHARGE_LOOP_END: usize = 64; // 蓄力完成循环结束帧
+pub const ENERGY_BALL_LASER_LOOP_START: usize = 81; // 激光阶段循环起始帧
+pub const ENERGY_BALL_LASER_LOOP_END: usize = 84; // 激光阶段循环结束帧
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数
 pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01; // 敌方坦克射击概率
 pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4; // 随机转向概率

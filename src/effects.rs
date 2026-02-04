@@ -6,9 +6,10 @@
 
 use bevy::prelude::*;
 use rand::Rng;
+use std::time::Duration;
 
 use crate::constants::*;
-use crate::resources::{AmbienceResources, EffectResources, PlayerInfo, TerrainAtlasLayouts, SoundResources};
+use crate::resources::{AmbienceResources, GameAudioResources, GameTextureResources, PlayerInfo, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 通用动画特效生成函数
@@ -24,6 +25,7 @@ use crate::utils;
 /// * `frame_duration` - 每帧持续时间（秒）
 /// * `position` - 生成位置
 /// * `display_size` - 显示尺寸（可选）
+/// * `animation_mode` - 动画播放模式
 /// * `components` - 额外的组件标记
 fn spawn_animated_sprite_effect<M: Bundle>(
     commands: &mut Commands,
@@ -36,6 +38,7 @@ fn spawn_animated_sprite_effect<M: Bundle>(
     frame_duration: f32,
     position: Vec3,
     display_size: Option<Vec2>,
+    animation_mode: AnimationMode,
     components: M,
 ) {
     utils::spawn_animated_sprite(
@@ -49,15 +52,15 @@ fn spawn_animated_sprite_effect<M: Bundle>(
         frame_duration,
         position,
         display_size,
-        components,
+        (animation_mode, components),
     );
 }
 
 pub fn spawn_explosion(
     commands: &mut Commands,
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    effect_resources: &EffectResources,
-    sound_resources: &SoundResources,
+    effect_resources: &GameTextureResources,
+    sound_resources: &GameAudioResources,
     position: Vec3,
 ) {
     spawn_animated_sprite_effect(
@@ -71,7 +74,8 @@ pub fn spawn_explosion(
         ANIMATION_FRAME_EXPLOSION,
         position,
         Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
-        (Explosion, OneShotAnimation, PlayingEntity),
+        AnimationMode::OneShot,
+        (Explosion, PlayingEntity),
     );
 
     // 使用预加载的爆炸音效
@@ -80,9 +84,9 @@ pub fn spawn_explosion(
 
 pub fn spawn_forest_fire(
     commands: &mut Commands,
-    terrain_atlas_layouts: &TerrainAtlasLayouts,
-    effect_resources: &EffectResources,
-    ambience_resources: &AmbienceResources,
+    terrain_atlas_layouts: &GameAtlasLayoutResources,
+    effect_resources: &GameTextureResources,
+    ambience_resources: &GameAudioResources,
     position: Vec3,
 ) {
     // 使用预加载的纹理图集布局
@@ -91,7 +95,7 @@ pub fn spawn_forest_fire(
 
     commands.spawn((
         ForestFire,
-        OneShotAnimation,
+        AnimationMode::OneShot,
         PlayingEntity,
         Sprite::from_atlas_image(
             forest_fire_texture,
@@ -116,7 +120,7 @@ pub fn spawn_forest_fire(
 pub fn spawn_spark(
     commands: &mut Commands,
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    effect_resources: &EffectResources,
+    effect_resources: &GameTextureResources,
     position: Vec3,
 ) {
     spawn_animated_sprite_effect(
@@ -130,13 +134,41 @@ pub fn spawn_spark(
         ANIMATION_FRAME_SPARK,
         position,
         Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
-        (Spark, OneShotAnimation, PlayingEntity),
+        AnimationMode::OneShot,
+        (Spark, PlayingEntity),
     );
 }
 
-/// 通用一次性动画系统
-/// 处理所有播放一次后销毁的动画（爆炸、烟雾、火花、森林火焰等）
-pub fn animate_one_shot_animations(
+/// 帧循环更新辅助函数
+///
+/// 在指定帧范围内循环播放动画
+fn advance_loop_frame(
+    timer: &mut AnimationTimer,
+    sprite: &mut Sprite,
+    current_frame: &mut CurrentAnimationFrame,
+    delta: Duration,
+    loop_start: usize,
+    loop_end: usize,
+) {
+    timer.tick(delta);
+    if timer.just_finished() {
+        let current = current_frame.0;
+        let next_index = if current >= loop_end {
+            loop_start
+        } else {
+            current + 1
+        };
+        current_frame.0 = next_index;
+        if let Some(atlas) = &mut sprite.texture_atlas {
+            atlas.index = next_index;
+        }
+    }
+}
+
+/// 通用动画系统
+/// 根据 AnimationMode 组件统一处理所有动画播放
+/// 替代原来的 animate_one_shot_animations 和 animate_looping_sprite 两个独立系统
+pub fn animate_sprites(
     time: Res<Time>,
     mut commands: Commands,
     mut query: Query<
@@ -146,37 +178,68 @@ pub fn animate_one_shot_animations(
             &mut Sprite,
             &AnimationIndices,
             &mut CurrentAnimationFrame,
+            &AnimationMode,
         ),
-        With<OneShotAnimation>,
+        Or<(With<AnimationMode>, Without<AnimationMode>)>,
     >,
+    energy_ball_query: Query<(), (With<crate::constants::EnergyBall>, With<crate::constants::LaserPhase>)>,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+    for (entity, mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
         let prev_frame = current_frame.0;
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
-        if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
-            // 动画播放完毕，销毁实体
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
 
-/// 通用循环动画系统
-/// 用于播放需要循环播放的动画（如森林、海洋、敌方坦克、火焰特效等）
-/// 使用 LoopingAnimationMarker 标记所有需要循环动画的实体，统一处理以提高性能
-pub fn animate_looping_sprite(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<LoopingAnimationMarker>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        match animation_mode {
+            AnimationMode::OneShot => {
+                crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+                // 播放一次后销毁
+                if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
+                    let () = commands.entity(entity).try_despawn();
+                }
+            }
+            AnimationMode::OneShotHold => {
+                // 到达最后一帧后不再更新
+                if current_frame.0 < indices.last {
+                    crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+                    if current_frame.0 >= indices.last {
+                        if let Some(atlas) = &mut sprite.texture_atlas {
+                            atlas.index = indices.last;
+                        }
+                    }
+                }
+            }
+            AnimationMode::Looping => {
+                // 循环播放，animate_sprite 已经处理
+                crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+            }
+            AnimationMode::LoopRange { start_frame: _, end_frame: _ } => {
+                // 播放一次完整动画，然后在指定帧范围内循环
+                // 检查是否是激光阶段的能量球
+                let is_laser_phase = energy_ball_query.get(entity).is_ok();
+
+                if is_laser_phase {
+                    // 激光阶段：直接循环81-84帧
+                    advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
+                        crate::constants::ENERGY_BALL_LASER_LOOP_START,
+                        crate::constants::ENERGY_BALL_LASER_LOOP_END);
+                } else {
+                    // 蓄力阶段：播放0-64帧，然后循环50-64
+                    if current_frame.0 < crate::constants::ENERGY_BALL_CHARGE_LOOP_END {
+                        // 还在播放完整动画阶段（0-64）
+                        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+                        // 播放到第64帧后，立即切换到循环模式，防止继续播放65-80帧
+                        if current_frame.0 == crate::constants::ENERGY_BALL_CHARGE_LOOP_END {
+                            advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
+                                crate::constants::ENERGY_BALL_CHARGE_LOOP_START,
+                                crate::constants::ENERGY_BALL_CHARGE_LOOP_END);
+                        }
+                    } else {
+                        // 完整动画播放完毕，进入循环阶段（50-64）
+                        advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
+                            crate::constants::ENERGY_BALL_CHARGE_LOOP_START,
+                            crate::constants::ENERGY_BALL_CHARGE_LOOP_END);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -186,7 +249,7 @@ pub fn update_air_cushion_effect(
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
     bubble_entities: Query<(), With<crate::constants::BubbleEffect>>,
     player_info: Res<PlayerInfo>,
-    effect_resources: Res<EffectResources>,
+    texture_resources: Res<GameTextureResources>,
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 air_cushion 能力
@@ -197,7 +260,7 @@ pub fn update_air_cushion_effect(
 
         if has_air_cushion && !has_bubble {
             // 创建气泡特效
-            let bubble_texture = effect_resources.bubble.clone();
+            let bubble_texture = texture_resources.bubble.clone();
             commands.entity(entity).with_children(|parent| {
                 parent.spawn((
                     Sprite {
@@ -253,9 +316,7 @@ pub fn play_ambience_generic<T, P>(
         let entity = utils::play_looping_sound(&mut commands, ambience_sound, volume);
         commands.entity(entity).insert(P::default());
     } else if !is_near {
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
+        utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }
 }
 
@@ -330,9 +391,7 @@ pub fn play_commander_ambience(
         let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_COMMANDER_MUSIC);
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {
-        for (entity, _) in ambience_players.iter() {
-            let () = commands.entity(entity).try_despawn();
-        }
+        utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }
 }
 
