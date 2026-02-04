@@ -462,7 +462,6 @@ pub fn configure_game_resources(app: &mut App) {
             energy_blue_ball: Handle::default(),
             energy_red_ball: Handle::default(),
             forest_fire: Handle::default(),
-            steel_hit: Handle::default(),
             laser_blue: Handle::default(),
             laser_red: Handle::default(),
             brick: Handle::default(),
@@ -623,7 +622,6 @@ pub fn init_game_resources(
         energy_blue_ball: asset_server.load(TEXTURE_ENERGY_BLUE_BALL),
         energy_red_ball: asset_server.load(TEXTURE_ENERGY_RED_BALL),
         forest_fire: asset_server.load(TEXTURE_TREE_FIRE_SHEET),
-        steel_hit: asset_server.load(TEXTURE_STEEL_HIT),
         laser_blue: asset_server.load(TEXTURE_LASER_BLUE),
         laser_red: asset_server.load(TEXTURE_LASER_RED),
         // 地图

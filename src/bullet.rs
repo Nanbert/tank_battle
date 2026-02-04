@@ -370,6 +370,19 @@ pub fn bullet_bounds_check_system(
     }
 }
 
+/// 提取子弹和另一个实体的碰撞信息
+/// 返回 (子弹实体, 另一个实体, 子弹引用, 子弹变换)
+fn extract_bullet_collision<'a>(
+    e1: Entity,
+    e2: Entity,
+    bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
+) -> Option<(Entity, Entity, &'a Bullet, &'a Transform)> {
+    bullets.get(e1).ok()
+        .map(|(be, b, t)| (be, e2, b, t))
+        .or_else(|| bullets.get(e2).ok()
+        .map(|(be, b, t)| (be, e1, b, t)))
+}
+
 /// 查找碰撞中的子弹和坦克，同时返回子弹信息
 pub fn find_bullet_and_tank_in_collision<'a>(
     e1: Entity,
@@ -409,15 +422,10 @@ pub fn bullet_terrain_collision_system(
         // 卫语句：只处理 Started 事件
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
-        // 内联提取子弹和地形实体
-        let (bullet_entity, terrain_entity, bullet, bullet_transform) =
-            if let Ok((_, b, t)) = bullets.get(*e1) {
-                (*e1, *e2, b, t)
-            } else if let Ok((_, b, t)) = bullets.get(*e2) {
-                (*e2, *e1, b, t)
-            } else {
-                continue;
-            };
+        // 提取子弹和地形实体
+        let Some((bullet_entity, terrain_entity, bullet, bullet_transform)) =
+            extract_bullet_collision(*e1, *e2, &bullets)
+        else { continue; };
 
         // 跳过已被标记销毁的实体（被激光击中的）
         if despawned_entities.contains(terrain_entity) {
@@ -660,18 +668,15 @@ pub fn bullet_commander_collision_system(
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else { continue };
 
-        // 判断是否是子弹与司令官的碰撞，同时获取子弹和司令官信息
-        let (bullet_entity, bullet, bullet_transform) = if let (Ok((_, b, t)), Ok(_)) =
-            (bullets.get(*e1), commanders.get(*e2))
-        {
-            (*e1, b, t)
-        } else if let (Ok((_, b, t)), Ok(_)) =
-            (bullets.get(*e2), commanders.get(*e1))
-        {
-            (*e2, b, t)
-        } else {
+        // 提取子弹信息
+        let Some((bullet_entity, other_entity, bullet, bullet_transform)) =
+            extract_bullet_collision(*e1, *e2, &bullets)
+        else { continue; };
+
+        // 验证另一个实体是司令官
+        if commanders.get(other_entity).is_err() {
             continue;
-        };
+        }
 
         // 只处理敌方子弹击中司令官的情况
         if !bullet.is_enemy() {

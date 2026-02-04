@@ -195,17 +195,6 @@ pub fn animate_sprites(
                     let () = commands.entity(entity).try_despawn();
                 }
             }
-            AnimationMode::OneShotHold => {
-                // 到达最后一帧后不再更新
-                if current_frame.0 < indices.last {
-                    crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
-                    if current_frame.0 >= indices.last {
-                        if let Some(atlas) = &mut sprite.texture_atlas {
-                            atlas.index = indices.last;
-                        }
-                    }
-                }
-            }
             AnimationMode::Looping => {
                 // 循环播放，animate_sprite 已经处理
                 crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());

@@ -364,8 +364,6 @@ pub enum AnimationMode {
     Looping,
     /// 播放一次后停止（用于爆炸、烟雾、火花、森林火焰等）
     OneShot,
-    /// 播放一次后停止在最后一帧（用于能量球蓄力完成后）
-    OneShotHold,
     /// 播放一次完整动画，然后循环播放指定帧范围
     LoopRange {
         /// 循环起始帧
@@ -465,9 +463,6 @@ pub struct Barrel;
 
 #[derive(Component)]
 pub struct Explosion;
-
-#[derive(Component)]
-pub struct OneShotAnimation;
 
 #[derive(Component)]
 pub struct Laser;
@@ -608,12 +603,6 @@ pub struct IsRecalling;
 // 标记游戏过程中所有的Entity
 #[derive(Component)]
 pub struct PlayingEntity;
-
-/// 循环动画标记组件
-/// 用于标记所有需要循环播放动画的实体（敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
-/// 使用此标记可以合并多个独立的动画系统为一个统一的系统，提高性能
-#[derive(Component)]
-pub struct LoopingAnimationMarker;
 
 /// 后坐力组件
 #[derive(Component)]

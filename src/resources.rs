@@ -456,7 +456,6 @@ pub struct GameTextureResources {
     pub energy_blue_ball: Handle<Image>,
     pub energy_red_ball: Handle<Image>,
     pub forest_fire: Handle<Image>,
-    pub steel_hit: Handle<Image>,
     pub laser_blue: Handle<Image>,
     pub laser_red: Handle<Image>,
     // 地图
@@ -546,14 +545,10 @@ pub type BulletResources = GameTextureResources;
 pub type EffectResources = GameTextureResources;
 pub type MapResources = GameTextureResources;
 pub type EnemyResources = GameTextureResources;
-pub type PowerUpResources = GameTextureResources;
-pub type LaserResources = GameTextureResources;
-pub type MenuResources = GameTextureResources;
 pub type CommanderMusicResources = GameTextureResources;
 pub type SoundResources = GameAudioResources;
 pub type AmbienceResources = GameAudioResources;
 pub type TerrainAtlasLayouts = GameAtlasLayoutResources;
-pub type BackgroundAtlasLayout = GameAtlasLayoutResources;
 pub type EffectAtlasLayouts = GameAtlasLayoutResources;
 
 

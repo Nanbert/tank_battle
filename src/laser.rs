@@ -562,7 +562,7 @@ pub fn animate_laser(
                     let despawn_entity = hit_result.entity;
                     let transform = hit_result.position;
                     // 使用预加载的烟雾图集布局
-                    let smoke_animation_indices = AnimationIndices { first: 0, last: 14 };
+                    let smoke_animation_indices = AnimationIndices { first: 0, last: SMOKE_TOTAL_FRAMES - 1 };
 
                     commands.spawn((
                         PlayingEntity,
