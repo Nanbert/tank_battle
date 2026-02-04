@@ -81,6 +81,7 @@ pub fn spawn_commander(
     commands.spawn((
         CommanderMusicAnimation,
         PlayingEntity,
+        LoopingAnimationMarker,
         Sprite {
             image: music_texture,
             texture_atlas: Some(TextureAtlas {

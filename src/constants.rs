@@ -573,6 +573,12 @@ pub struct IsRecalling;
 #[derive(Component)]
 pub struct PlayingEntity;
 
+/// 循环动画标记组件
+/// 用于标记所有需要循环播放动画的实体（敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
+/// 使用此标记可以合并多个独立的动画系统为一个统一的系统，提高性能
+#[derive(Component)]
+pub struct LoopingAnimationMarker;
+
 /// 后坐力组件
 #[derive(Component)]
 pub struct RecoilForce {

@@ -8,7 +8,7 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{EnemyResources, EnemySpawnState};
+use crate::resources::{EnemyPositionCache, EnemyResources, EnemySpawnState};
 use crate::utils;
 
 /// 敌方坦克出生动画系统
@@ -146,6 +146,7 @@ pub fn animate_enemy_born_animation(
                             direction: Vec2::new(0.0, -1.0),
                         })
                         .insert(PlayingEntity)
+                        .insert(LoopingAnimationMarker)
                         .insert(TankFireConfig::default())
                         .insert(DirectionChangeTimer(Timer::from_seconds(
                             ENEMY_DIRECTION_CHANGE_INTERVAL,
@@ -478,4 +479,22 @@ pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
+}
+
+/// 更新敌方坦克位置缓存
+/// 每帧更新所有敌方坦克的位置，供其他系统快速访问
+pub fn update_enemy_position_cache(
+    enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
+    mut position_cache: ResMut<EnemyPositionCache>,
+) {
+    position_cache.positions.clear();
+    for (entity, transform) in enemy_tanks.iter() {
+        position_cache.positions.insert(entity, transform.translation);
+    }
+}
+
+/// 清理敌方坦克位置缓存
+/// 在关卡切换或游戏重置时调用
+pub fn clear_enemy_position_cache(mut position_cache: ResMut<EnemyPositionCache>) {
+    position_cache.positions.clear();
 }

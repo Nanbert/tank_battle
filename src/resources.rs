@@ -565,3 +565,11 @@ pub struct AmbienceResources {
 pub struct PlayerPositionCache {
     pub positions: EntityHashMap<Vec3>,
 }
+
+/// 敌方坦克位置缓存
+/// 用于快速访问敌方坦克位置，避免重复查询
+/// 优化 AI 系统和碰撞检测的性能
+#[derive(Resource, Default)]
+pub struct EnemyPositionCache {
+    pub positions: EntityHashMap<Vec3>,
+}

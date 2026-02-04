@@ -149,8 +149,9 @@ pub fn animate_one_shot_animations(
 }
 
 /// 通用循环动画系统
-/// 用于播放需要循环播放的动画（如森林、海洋等）
-pub fn animate_looping_sprite<T: Component>(
+/// 用于播放需要循环播放的动画（如森林、海洋、敌方坦克、火焰特效等）
+/// 使用 LoopingAnimationMarker 标记所有需要循环动画的实体，统一处理以提高性能
+pub fn animate_looping_sprite(
     time: Res<Time>,
     mut query: Query<
         (
@@ -159,7 +160,7 @@ pub fn animate_looping_sprite<T: Component>(
             &AnimationIndices,
             &mut CurrentAnimationFrame,
         ),
-        With<T>,
+        With<LoopingAnimationMarker>,
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {

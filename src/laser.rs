@@ -404,16 +404,11 @@ fn fire_laser(
 /// 射线检测激光路径上的所有实体
 /// 在激光动画结束时调用，检测激光路径上的碰撞实体
 /// 返回被命中的实体列表及其位置
+/// 优化版本：使用单一批量查询替代多次独立查询，提高性能
 fn check_laser_collision(
     laser_start: Vec3,
     laser_direction: Vec2,
-    enemies: &Query<(Entity, &Transform), With<EnemyTank>>,
-    bullets: &Query<(Entity, &Transform), With<Bullet>>,
-    bricks: &Query<(Entity, &Transform), With<Brick>>,
-    steels: &Query<(Entity, &Transform), With<Steel>>,
-    forests: &Query<(Entity, &Transform), With<Forest>>,
-    barriers: &Query<(Entity, &Transform), With<Barrier>>,
-    seas: &Query<(Entity, &Transform), With<Sea>>,
+    collidables: &Query<(Entity, &Transform), Or<(With<EnemyTank>, With<Bullet>, With<Brick>, With<Steel>, With<Forest>, With<Barrier>, With<Sea>)>>,
     player_tanks: &Query<(), With<PlayerTank>>,
     commanders: &Query<(), With<Commander>>,
 ) -> Vec<(Entity, Vec3)> {
@@ -421,70 +416,50 @@ fn check_laser_collision(
     let laser_origin = laser_start + laser_direction.extend(0.0) * LASER_POSITION_OFFSET;
     // 激光终点
     let laser_end = laser_origin + laser_direction.extend(0.0) * LASER_HEIGHT;
-    
+
     // 激光宽度的一半（用于碰撞检测，使用实际可见宽度）
     let laser_half_width = LASER_COLLISION_WIDTH / 2.0;
 
-    // 检查与各种实体的碰撞，收集所有命中的实体
-    let mut hit_entities = Vec::new();
-    check_entity_collision_ray(&mut hit_entities, enemies, laser_origin, laser_end, laser_half_width, ENEMY_TANK_DISPLAY_WIDTH, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, bullets, laser_origin, laser_end, laser_half_width, BULLET_SIZE, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, bricks, laser_origin, laser_end, laser_half_width, BRICK_TEXTURE_WIDTH, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, steels, laser_origin, laser_end, laser_half_width, BRICK_TEXTURE_WIDTH, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, forests, laser_origin, laser_end, laser_half_width, BRICK_TEXTURE_WIDTH, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, barriers, laser_origin, laser_end, laser_half_width, BRICK_TEXTURE_WIDTH, player_tanks, commanders);
-    check_entity_collision_ray(&mut hit_entities, seas, laser_origin, laser_end, laser_half_width, BRICK_TEXTURE_WIDTH, player_tanks, commanders);
-
-    hit_entities
-}
-
-/// 使用射线检测检查实体是否与激光碰撞
-fn check_entity_collision_ray<T: Component>(
-    hit_entities: &mut Vec<(Entity, Vec3)>,
-    entities: &Query<(Entity, &Transform), With<T>>,
-    laser_origin: Vec3,
-    laser_end: Vec3,
-    laser_half_width: f32,
-    entity_width: f32,
-    player_tanks: &Query<(), With<PlayerTank>>,
-    commanders: &Query<(), With<Commander>>,
-) {
-    let half_width = entity_width / 2.0;
-    
     // 计算激光的方向向量和法向量
     let laser_dir = (laser_end - laser_origin).truncate().normalize();
     let laser_normal = Vec2::new(-laser_dir.y, laser_dir.x); // 逆时针旋转90度
-    
-    for (entity, transform) in entities.iter() {
+
+    // 检查与所有可碰撞实体的碰撞，收集所有命中的实体
+    let mut hit_entities = Vec::new();
+
+    for (entity, transform) in collidables.iter() {
         // 跳过玩家坦克和 Commander（保护对象）
         if player_tanks.contains(entity) || commanders.contains(entity) {
             continue;
         }
-        
+
         let entity_center = transform.translation.truncate();
-        
+
         // 计算实体中心到激光起点的向量
         let to_entity = entity_center - laser_origin.truncate();
-        
+
         // 计算沿激光方向的投影距离
         let projection = to_entity.dot(laser_dir);
-        
+
         // 检查是否在激光长度范围内
         if projection < 0.0 || projection > LASER_HEIGHT {
             continue;
         }
-        
+
         // 计算垂直距离（到激光线的距离）
         let perpendicular_distance = to_entity.dot(laser_normal).abs();
-        
-        // 检查是否在激光宽度范围内
-        if perpendicular_distance > laser_half_width + half_width {
+
+        // 检查是否在激光宽度范围内（使用最大的实体尺寸确保不遗漏）
+        // 使用 BRICK_TEXTURE_WIDTH 作为通用尺寸，因为它足够大
+        if perpendicular_distance > laser_half_width + BRICK_TEXTURE_WIDTH / 2.0 {
             continue;
         }
-        
+
         // 命中！
         hit_entities.push((entity, transform.translation));
     }
+
+    hit_entities
 }
 
 /// 处理后坐力效果
@@ -512,6 +487,7 @@ pub fn handle_recoil_force(
 }
 
 /// 处理激光动画
+/// 优化版本：使用单一批量查询替代多个独立查询，提高碰撞检测性能
 pub fn animate_laser(
     time: Res<Time>,
     mut commands: Commands,
@@ -528,13 +504,7 @@ pub fn animate_laser(
         ),
         With<Laser>,
     >,
-    enemies: Query<(Entity, &Transform), With<EnemyTank>>,
-    bullets: Query<(Entity, &Transform), With<Bullet>>,
-    bricks: Query<(Entity, &Transform), With<Brick>>,
-    steels: Query<(Entity, &Transform), With<Steel>>,
-    forests: Query<(Entity, &Transform), With<Forest>>,
-    barriers: Query<(Entity, &Transform), With<Barrier>>,
-    seas: Query<(Entity, &Transform), With<Sea>>,
+    collidables: Query<(Entity, &Transform), Or<(With<EnemyTank>, With<Bullet>, With<Brick>, With<Steel>, With<Forest>, With<Barrier>, With<Sea>)>>,
     player_tanks: Query<(), With<PlayerTank>>,
     commanders: Query<(), With<Commander>>,
     effect_resources: Res<EffectResources>,
@@ -545,17 +515,11 @@ pub fn animate_laser(
 
         if prev_frame != current_frame.0 && timer.just_finished() {
             if current_frame.0 >= indices.last {
-                // 动画播放完毕，执行一次碰撞检测
+                // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
                 let hit_entities = check_laser_collision(
                     laser_start.0,
                     laser_direction.0,
-                    &enemies,
-                    &bullets,
-                    &bricks,
-                    &steels,
-                    &forests,
-                    &barriers,
-                    &seas,
+                    &collidables,
                     &player_tanks,
                     &commanders,
                 );

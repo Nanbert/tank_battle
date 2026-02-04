@@ -164,7 +164,8 @@ pub fn configure_game_resources(app: &mut App) {
         .init_resource::<StageIntroTimer>()
         .init_resource::<StageCompleteDelayTimer>()
         .init_resource::<crate::levels::LevelAssets>()
-        .init_resource::<crate::resources::PlayerPositionCache>();
+        .init_resource::<crate::resources::PlayerPositionCache>()
+        .init_resource::<crate::resources::EnemyPositionCache>();
 }
 
 pub fn register_game_systems(app: &mut App) {
@@ -277,6 +278,7 @@ pub fn register_game_systems(app: &mut App) {
                 ),
                 player::reset_player_positions,
                 enemy::reset_enemy_spawn_state,
+                enemy::clear_enemy_position_cache,
             )
                 .chain(),
         )
@@ -326,6 +328,10 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
+            enemy::update_enemy_position_cache.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            Update,
             enemy::enemy_spawn_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -334,7 +340,7 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::animate_looping_sprite::<EnemyTank>.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -422,14 +428,6 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            effects::animate_looping_sprite::<crate::constants::FireEffect>.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::animate_looping_sprite::<crate::constants::PenetrateEffect>.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
             laser::player_laser_system.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
@@ -444,22 +442,9 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             laser::animate_energy_ball.run_if(in_state(GameState::Playing)),
         )
-        
-        .add_systems(
-            Update,
-            effects::animate_looping_sprite::<Forest>.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::animate_looping_sprite::<Sea>.run_if(in_state(GameState::Playing)),
-        )
         .add_systems(
             Update,
             commander::animate_commander.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::animate_looping_sprite::<CommanderMusicAnimation>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
