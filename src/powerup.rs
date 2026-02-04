@@ -366,13 +366,7 @@ pub fn update_track_chain_effect(
             });
         } else if !has_track_chain && has_track_chain_sprite {
             // 移除所有履带特效子实体
-            if let Some(children) = children {
-                for child in children.iter() {
-                    if track_chain_entities.contains(child) {
-                        let () = commands.entity(child).try_despawn();
-                    }
-                }
-            }
+            crate::utils::cleanup_children_by_marker(&mut commands, children, &track_chain_entities);
         }
     }
 }

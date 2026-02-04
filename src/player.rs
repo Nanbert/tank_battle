@@ -333,12 +333,7 @@ pub fn update_recall_timers(
 
 /// 检查是否按住回城键
 fn is_recall_key_pressed(keyboard_input: &Res<ButtonInput<KeyCode>>, tank_type: TankType) -> bool {
-    let key_bindings = match tank_type {
-        TankType::Player1 => PlayerKeyBindings::player1(),
-        TankType::Player2 => PlayerKeyBindings::player2(),
-        TankType::Enemy => return false,
-    };
-    key_bindings.is_recalling(keyboard_input)
+    tank_type.get_key_bindings().is_recalling(keyboard_input)
 }
 
 /// 取消回城
@@ -351,11 +346,7 @@ fn cancel_recall(
     commands.entity(entity).remove::<IsRecalling>();
     recall_timers.timers.remove(&entity);
 
-    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-        if progress_bar.player_entity == entity {
-            let () = commands.entity(progress_entity).try_despawn();
-        }
-    }
+    crate::utils::cleanup_progress_bar(commands, progress_bar_query, entity);
 }
 
 /// 更新进度条
@@ -396,11 +387,7 @@ fn complete_recall(
     commands.entity(entity).remove::<IsRecalling>();
     recall_timers.timers.remove(&entity);
 
-    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-        if progress_bar.player_entity == entity {
-            let () = commands.entity(progress_entity).try_despawn();
-        }
-    }
+    crate::utils::cleanup_progress_bar(commands, progress_bar_query, entity);
 }
 
 /// 更新回城进度条位置

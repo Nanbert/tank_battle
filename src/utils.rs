@@ -192,3 +192,54 @@ pub fn stop_all_tanks_velocity(
         velocity.linvel = Vec2::ZERO;
     }
 }
+
+/// 从坦克旋转角度计算发射方向
+///
+/// # 参数
+/// - `rotation`: 坦克的旋转四元数
+///
+/// # 返回值
+/// 归一化的方向向量
+pub fn calculate_direction_from_rotation(rotation: &Quat) -> Vec2 {
+    let euler_angle = rotation.to_euler(EulerRot::XYZ).2;
+    let actual_angle = euler_angle + crate::constants::ANGLE_OFFSET_DEGREES.to_radians();
+    Vec2::new(actual_angle.cos(), actual_angle.sin())
+}
+
+/// 清理玩家关联的回城进度条
+///
+/// # 参数
+/// - `commands`: 命令系统
+/// - `progress_bar_query`: 进度条查询
+/// - `player_entity`: 玩家实体
+pub fn cleanup_progress_bar(
+    commands: &mut Commands,
+    progress_bar_query: &mut Query<(Entity, &mut Sprite, &crate::constants::RecallProgressBar)>,
+    player_entity: Entity,
+) {
+    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
+        if progress_bar.player_entity == player_entity {
+            let () = commands.entity(progress_entity).try_despawn();
+        }
+    }
+}
+
+/// 清理特定类型的子实体
+///
+/// # 参数
+/// - `commands`: 命令系统
+/// - `children`: 子实体列表
+/// - `target_query`: 目标类型查询
+pub fn cleanup_children_by_marker<T: Component>(
+    commands: &mut Commands,
+    children: Option<&Children>,
+    target_query: &Query<(), With<T>>,
+) {
+    if let Some(children) = children {
+        for child in children.iter() {
+            if target_query.contains(child) {
+                let () = commands.entity(child).try_despawn();
+            }
+        }
+    }
+}

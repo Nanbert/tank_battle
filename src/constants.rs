@@ -487,7 +487,9 @@ pub struct Spark;
 pub struct Smoke;
 
 #[derive(Component)]
-pub struct EnergyBall;
+pub struct EnergyBall {
+    pub player_entity: Entity,
+}
 
 #[derive(Component)]
 pub struct GameOverTimer;
@@ -598,12 +600,6 @@ pub struct BarrelRecoilForce {
 pub struct LaserCharge {
     pub timer: Timer,        // 蓄力计时器
     pub tank_type: TankType, // 坦克类型
-}
-
-/// 激光蓄力进度条组件
-#[derive(Component)]
-pub struct LaserChargeProgressBar {
-    pub player_entity: Entity,
 }
 
 /// 激光蓄力音效组件

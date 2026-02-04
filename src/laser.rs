@@ -102,7 +102,7 @@ pub fn player_laser_system(
         With<PlayerTank>,
     >,
     mut charge_query: Query<(Entity, &mut LaserCharge)>,
-    mut progress_bar_query: Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
+    mut energy_ball_query: Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: Query<(Entity, &LaserChargeSound)>,
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -131,14 +131,14 @@ pub fn player_laser_system(
 
         // 卫语句：被打断则取消蓄力
         if is_interrupted && has_charge {
-            cancel_charge(&mut commands, entity, &mut progress_bar_query, &sound_query);
+            cancel_charge(&mut commands, entity, &mut energy_ball_query, &sound_query);
             continue;
         }
 
         // 卫语句：未按键且有蓄力则取消
         if !keyboard.pressed(laser_key) {
             if has_charge {
-                cancel_charge(&mut commands, entity, &mut progress_bar_query, &sound_query);
+                cancel_charge(&mut commands, entity, &mut energy_ball_query, &sound_query);
             }
             continue;
         }
@@ -153,7 +153,7 @@ pub fn player_laser_system(
                 &laser_resources,
                 &mut texture_atlas_layouts,
                 &mut player_info,
-                &mut progress_bar_query,
+                &mut energy_ball_query,
                 &sound_query,
                 entity,
                 transform,
@@ -185,17 +185,18 @@ pub fn player_laser_system(
 fn cancel_charge(
     commands: &mut Commands,
     entity: Entity,
-    progress_bar_query: &mut Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
+    energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
 ) {
     commands.entity(entity).remove::<LaserCharge>();
-    
-    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-        if progress_bar.player_entity == entity {
-            let () = commands.entity(progress_entity).try_despawn();
+
+    // 清理关联的能量球
+    for (energy_ball_entity, _, energy_ball) in energy_ball_query.iter() {
+        if energy_ball.player_entity == entity {
+            let () = commands.entity(energy_ball_entity).try_despawn();
         }
     }
-    
+
     for (sound_entity, _) in sound_query.iter() {
         let () = commands.entity(sound_entity).try_despawn();
     }
@@ -256,13 +257,15 @@ fn start_charge(
     let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
 
     // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
-    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
-    let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+    let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
     // 计算垂直向量（顺时针方向）：将方向向量旋转90度
     // (x, y) 旋转90度顺时针得到 (y, -x)
     let perp_direction = Vec2::new(direction.y, -direction.x);
+
+    // 计算实际角度用于旋转能量球
+    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
+    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
 
     let energy_ball_pos = transform.translation
         + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE + 5.0)
@@ -270,8 +273,7 @@ fn start_charge(
 
     commands.spawn((
         PlayingEntity,
-        EnergyBall,
-        LaserChargeProgressBar {
+        EnergyBall {
             player_entity: entity,
         },
         Sprite {
@@ -303,7 +305,7 @@ fn update_charge(
     laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
-    progress_bar_query: &mut Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
+    energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
     entity: Entity,
     transform: &Transform,
@@ -322,7 +324,7 @@ fn update_charge(
                 laser_resources,
                 texture_atlas_layouts,
                 player_info,
-                progress_bar_query,
+                energy_ball_query,
                 sound_query,
                 entity,
                 transform,
@@ -339,7 +341,7 @@ fn fire_laser(
     laser_resources: &LaserResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
-    progress_bar_query: &mut Query<(Entity, &mut Sprite, &LaserChargeProgressBar)>,
+    energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
     entity: Entity,
     transform: &Transform,
@@ -352,9 +354,7 @@ fn fire_laser(
     });
 
     // 计算激光发射方向
-    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-    let actual_angle = euler_angle + 90.0_f32.to_radians();
-    let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+    let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
     // 计算激光初始位置
     let laser_pos = transform.translation
@@ -387,9 +387,10 @@ fn fire_laser(
     // 清理蓄力相关组件
     commands.entity(entity).remove::<LaserCharge>();
 
-    for (progress_entity, _, progress_bar) in progress_bar_query.iter() {
-        if progress_bar.player_entity == entity {
-            let () = commands.entity(progress_entity).try_despawn();
+    // 清理关联的能量球
+    for (energy_ball_entity, _, energy_ball) in energy_ball_query.iter() {
+        if energy_ball.player_entity == entity {
+            let () = commands.entity(energy_ball_entity).try_despawn();
         }
     }
 
@@ -573,11 +574,11 @@ pub fn animate_energy_ball(
             &mut Sprite,
             &AnimationIndices,
             &mut CurrentAnimationFrame,
+            &EnergyBall,
         ),
-        With<EnergyBall>,
     >,
 ) {
-    for (_entity, mut timer, mut sprite, indices, mut current_frame) in &mut query {
+    for (_entity, mut timer, mut sprite, indices, mut current_frame, _energy_ball) in &mut query {
         timer.tick(time.delta());
         if timer.just_finished() {
             let current = current_frame.0;

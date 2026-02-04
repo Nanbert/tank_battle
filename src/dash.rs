@@ -55,9 +55,7 @@ pub fn handle_dash_input(
             if has_enough_energy {
 
                 // 计算坦克当前朝向
-                let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-                let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
-                let direction = Vec2::new(actual_angle.cos(), actual_angle.sin());
+                let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
                 // 开始冲刺
                 let dash_timer = DashTimer::new(direction, DASH_DURATION);

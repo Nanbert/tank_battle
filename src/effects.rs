@@ -214,13 +214,7 @@ pub fn update_air_cushion_effect(
             });
         } else if !has_air_cushion && has_bubble {
             // 移除所有气泡特效子实体
-            if let Some(children) = children {
-                for child in children.iter() {
-                    if bubble_entities.contains(child) {
-                        let () = commands.entity(child).try_despawn();
-                    }
-                }
-            }
+            crate::utils::cleanup_children_by_marker(&mut commands, children, &bubble_entities);
         }
     }
 }
