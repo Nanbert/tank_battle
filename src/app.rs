@@ -162,7 +162,6 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(CurrentAnimationFrame(0))
         .insert_resource(MenuBlinkTimer(Timer::default()))
         .init_resource::<StageIntroTimer>()
-        .init_resource::<StageCompleteDelayTimer>()
         .init_resource::<crate::levels::LevelAssets>()
         .init_resource::<crate::resources::PlayerPositionCache>()
         .init_resource::<crate::resources::EnemyPositionCache>();

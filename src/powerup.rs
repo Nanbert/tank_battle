@@ -82,10 +82,7 @@ pub fn handle_powerup_collision(
             let powerup_entity = powerup_entity_to_despawn.unwrap();
 
             // 播放道具音效
-            let powerup_sound = sound_resources.hit.clone();
-            commands.spawn((
-                AudioPlayer::new(powerup_sound),
-            ));
+            crate::utils::play_one_shot_sound(&mut commands, sound_resources.hit.clone(), 1.0);
             let () = commands.entity(powerup_entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件

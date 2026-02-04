@@ -144,9 +144,11 @@ pub fn player_laser_system(
         }
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
-        for timer in energy_tracker.cooldowns.values_mut() {
-            let t: &mut Timer = timer;
-            t.tick(time.delta());
+        if let Some(ref mut timer) = energy_tracker.p1_cooldown {
+            timer.tick(time.delta());
+        }
+        if let Some(ref mut timer) = energy_tracker.p2_cooldown {
+            timer.tick(time.delta());
         }
 
         // 处理蓄力逻辑
@@ -226,7 +228,6 @@ fn start_charge(
         // 能量不足，显示提示
         energy_tracker.try_show_warning(
             commands,
-            entity,
             tank_type,
             font_cn.clone(),
             font_en.clone(),
@@ -241,9 +242,10 @@ fn start_charge(
         tank_type,
     });
 
-    // 播放蓄力音效
+    // 播放蓄力音效并添加标记组件
     commands.spawn((
         AudioPlayer::new(sound_resources.laser_charge.clone()),
+        PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(1.0)),
         LaserChargeSound,
     ));
 

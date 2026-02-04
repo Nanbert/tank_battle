@@ -699,6 +699,7 @@ fn update_single_player_hud(
 }
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
+/// 优化：添加 Changed<PlayerInfo> 条件，只在玩家信息变化时更新 HUD
 pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -713,6 +714,11 @@ pub fn update_player_hud(
     )>,
     language: Res<Language>,
 ) {
+    // 卫语句：如果玩家信息没有变化，跳过更新
+    if !player_info.is_changed() {
+        return;
+    }
+
     // 更新玩家1 HUD
     update_single_player_hud(
         &player_info.player1,

@@ -76,9 +76,10 @@ pub enum Language {
 
 #[derive(Resource)]
 pub struct EnemySpawnState {
-    pub has_spawned: usize,    // 已生成数量
-    pub max_count: usize,      // 总数量（每关固定20个）
-    pub spawn_cooldown: Timer, // 生成冷却时间
+    pub has_spawned: usize,               // 已生成数量
+    pub max_count: usize,                 // 总数量（每关固定20个）
+    pub spawn_cooldown: Timer,            // 生成冷却时间
+    pub stage_complete_delay: Timer,      // 关卡完成延迟计时器（2秒后进入下一关）
 }
 
 impl Default for EnemySpawnState {
@@ -87,6 +88,7 @@ impl Default for EnemySpawnState {
             has_spawned: 0,
             max_count: ENEMIES_PER_LEVEL,
             spawn_cooldown: Timer::from_seconds(ENEMY_SPAWN_COOLDOWN, TimerMode::Once),
+            stage_complete_delay: Timer::from_seconds(2.0, TimerMode::Once),
         }
     }
 }
@@ -108,20 +110,6 @@ pub struct StageIntroTimer {
     pub fade_in: Timer,
     pub stay: Timer,
     pub fade_out: Timer,
-}
-
-/// 关卡完成延迟计时器（消灭所有敌方坦克后延迟2秒进入下一关）
-#[derive(Resource)]
-pub struct StageCompleteDelayTimer {
-    pub timer: Timer,
-}
-
-impl Default for StageCompleteDelayTimer {
-    fn default() -> Self {
-        Self {
-            timer: Timer::from_seconds(2.0, TimerMode::Once),
-        }
-    }
 }
 
 #[derive(Resource, Default)]
@@ -356,9 +344,11 @@ pub struct DashDamageTracker {
 }
 
 // 能量不足提示冷却追踪器，防止重复触发提示
+// 优化：使用固定数组替代 EntityHashMap，因为玩家数量固定（最多2个）
 #[derive(Resource, Default)]
 pub struct InsufficientEnergyTracker {
-    pub cooldowns: EntityHashMap<Timer>, // 记录每个玩家坦克的能量不足提示冷却计时器
+    pub p1_cooldown: Option<Timer>, // 玩家1的冷却计时器
+    pub p2_cooldown: Option<Timer>, // 玩家2的冷却计时器
 }
 
 impl InsufficientEnergyTracker {
@@ -367,24 +357,27 @@ impl InsufficientEnergyTracker {
     pub fn try_show_warning(
         &mut self,
         commands: &mut Commands,
-        entity: Entity,
         tank_type: TankType,
         font_cn: Handle<Font>,
         font_en: Handle<Font>,
         language: Language,
     ) -> bool {
-        let can_show_warning = self.cooldowns
-            .get(&entity)
-            .is_none_or(bevy::prelude::Timer::is_finished);
+        // 根据玩家类型选择对应的冷却计时器
+        let cooldown = match tank_type {
+            TankType::Player1 => &mut self.p1_cooldown,
+            TankType::Player2 => &mut self.p2_cooldown,
+            TankType::Enemy => return false, // 敌方坦克不显示提示
+        };
+
+        let can_show_warning = cooldown
+            .as_ref()
+            .map_or(true, |t| t.is_finished());
 
         if can_show_warning {
-            self.cooldowns.insert(
-                entity,
-                Timer::from_seconds(
-                    crate::constants::INSUFFICIENT_ENERGY_DISPLAY_DURATION,
-                    TimerMode::Once,
-                ),
-            );
+            *cooldown = Some(Timer::from_seconds(
+                crate::constants::INSUFFICIENT_ENERGY_DISPLAY_DURATION,
+                TimerMode::Once,
+            ));
 
             crate::overlay_ui::spawn_insufficient_energy_warning(
                 commands.reborrow(),

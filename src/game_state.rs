@@ -171,21 +171,20 @@ fn update_start_screen_blink(
 }
 
 pub fn check_stage_complete(
-    enemy_spawn_state: Res<EnemySpawnState>,
+    mut enemy_spawn_state: ResMut<EnemySpawnState>,
     enemies: Query<(), With<EnemyTank>>,
     player_info: Res<PlayerInfo>,
     commander_life: Res<CommanderLife>,
     game_mode: Res<GameMode>,
     mut next_state: ResMut<NextState<GameState>>,
     mut stage_level: ResMut<StageLevel>,
-    mut delay_timer: ResMut<StageCompleteDelayTimer>,
     time: Res<Time>,
 ) {
     // 卫语句：检查是否完成关卡
     let current_enemy_count = enemies.iter().count();
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count || current_enemy_count > 0 {
         // 如果还有敌人，重置延迟计时器
-        delay_timer.timer.reset();
+        enemy_spawn_state.stage_complete_delay.reset();
         return;
     }
 
@@ -196,10 +195,10 @@ pub fn check_stage_complete(
     }
 
     // 更新延迟计时器
-    delay_timer.timer.tick(time.delta());
+    enemy_spawn_state.stage_complete_delay.tick(time.delta());
 
     // 检查延迟是否完成
-    if delay_timer.timer.just_finished() {
+    if enemy_spawn_state.stage_complete_delay.just_finished() {
         // 进入下一关
         stage_level.0 += 1;
         next_state.set(GameState::StageIntro);
@@ -276,7 +275,7 @@ pub fn cleanup_trackers_and_timers(
     mut barrier_damage_tracker: ResMut<crate::resources::BarrierDamageTracker>,
     mut insufficient_energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
     mut collision_cache: ResMut<crate::constants::EnemyCollisionCache>,
-    mut stage_complete_delay: ResMut<StageCompleteDelayTimer>,
+    mut enemy_spawn_state: ResMut<crate::resources::EnemySpawnState>,
 ) {
     // 清理 BulletTracker
     bullet_tracker.active_bullets.clear();
@@ -295,13 +294,14 @@ pub fn cleanup_trackers_and_timers(
     barrier_damage_tracker.cooldowns.clear();
 
     // 清理 InsufficientEnergyTracker
-    insufficient_energy_tracker.cooldowns.clear();
+    insufficient_energy_tracker.p1_cooldown = None;
+    insufficient_energy_tracker.p2_cooldown = None;
 
     // 清理 EnemyCollisionCache（事件驱动缓存）
     collision_cache.clear();
 
     // 重置关卡完成延迟计时器
-    stage_complete_delay.timer.reset();
+    enemy_spawn_state.stage_complete_delay.reset();
 }
 
 // 文本更新函数类型

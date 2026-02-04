@@ -28,9 +28,11 @@ pub fn handle_dash_input(
     time: Res<Time>,
 ) {
     // 更新所有能量不足冷却计时器
-    for timer in energy_tracker.cooldowns.values_mut() {
-        let t: &mut Timer = timer;
-        t.tick(time.delta());
+    if let Some(ref mut timer) = energy_tracker.p1_cooldown {
+        timer.tick(time.delta());
+    }
+    if let Some(ref mut timer) = energy_tracker.p2_cooldown {
+        timer.tick(time.delta());
     }
 
     for (entity, transform, player_tank) in &query {
@@ -72,7 +74,6 @@ pub fn handle_dash_input(
                 // 能量不足，显示提示
                 energy_tracker.try_show_warning(
                     &mut commands,
-                    entity,
                     player_tank.tank_type,
                     font_resources.cn.clone(),
                     font_resources.en.clone(),
