@@ -11,6 +11,48 @@ use crate::constants::*;
 use crate::resources::{AmbienceResources, EffectResources, PlayerInfo, TerrainAtlasLayouts, SoundResources};
 use crate::utils;
 
+/// 通用动画特效生成函数
+///
+/// # 参数
+/// * `commands` - 命令队列
+/// * `texture_atlas_layouts` - 纹理图集布局资源
+/// * `texture` - 纹理句柄
+/// * `tile_size` - 精灵图块大小
+/// * `columns` - 精灵图列数
+/// * `rows` - 精灵图行数
+/// * `animation_indices` - 动画帧索引范围
+/// * `frame_duration` - 每帧持续时间（秒）
+/// * `position` - 生成位置
+/// * `display_size` - 显示尺寸（可选）
+/// * `components` - 额外的组件标记
+fn spawn_animated_sprite_effect<M: Bundle>(
+    commands: &mut Commands,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture: Handle<Image>,
+    tile_size: UVec2,
+    columns: u32,
+    rows: u32,
+    animation_indices: AnimationIndices,
+    frame_duration: f32,
+    position: Vec3,
+    display_size: Option<Vec2>,
+    components: M,
+) {
+    utils::spawn_animated_sprite(
+        commands,
+        texture_atlas_layouts,
+        texture,
+        tile_size,
+        columns,
+        rows,
+        animation_indices,
+        frame_duration,
+        position,
+        display_size,
+        components,
+    );
+}
+
 pub fn spawn_explosion(
     commands: &mut Commands,
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
@@ -18,19 +60,14 @@ pub fn spawn_explosion(
     sound_resources: &SoundResources,
     position: Vec3,
 ) {
-    // 使用预加载的爆炸纹理
-    let explosion_texture = effect_resources.explosion.clone();
-    let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
-
-    utils::spawn_animated_sprite(
+    spawn_animated_sprite_effect(
         commands,
         &mut texture_atlas_layouts,
-        explosion_texture,
-        explosion_tile_size,
+        effect_resources.explosion.clone(),
+        UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32),
         8,
         8,
-        explosion_animation_indices,
+        AnimationIndices { first: 0, last: 63 },
         ANIMATION_FRAME_EXPLOSION,
         position,
         Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
@@ -82,19 +119,14 @@ pub fn spawn_spark(
     effect_resources: &EffectResources,
     position: Vec3,
 ) {
-    // 使用预加载的打击效果纹理
-    let spark_texture = effect_resources.spark.clone();
-    let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
-    let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
-
-    utils::spawn_animated_sprite(
+    spawn_animated_sprite_effect(
         commands,
         &mut texture_atlas_layouts,
-        spark_texture,
-        spark_tile_size,
+        effect_resources.spark.clone(),
+        UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32),
         4,
         4,
-        spark_animation_indices,
+        AnimationIndices { first: 0, last: 15 },
         ANIMATION_FRAME_SPARK,
         position,
         Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
@@ -271,6 +303,18 @@ pub fn play_tree_ambience(
     );
 }
 
+/// 从司令官音乐列表中随机选择一首
+fn select_random_commander_music(ambience_resources: &AmbienceResources) -> Handle<AudioSource> {
+    let music_files = [
+        &ambience_resources.commander_music_000,
+        &ambience_resources.commander_music_001,
+        &ambience_resources.commander_music_002,
+        &ambience_resources.commander_music_003,
+    ];
+    let mut rng = rand::rng();
+    music_files[rng.random_range(0..music_files.len())].clone()
+}
+
 /// 播放司令官的环境音效
 #[allow(unused_mut)]
 pub fn play_commander_ambience(
@@ -287,25 +331,11 @@ pub fn play_commander_ambience(
         })
     });
 
-    if is_near_commander {
-        // 如果在司令官附近但没有播放音效，则播放
-        if ambience_players.is_empty() {
-            // 从 commander_music_000 到 commander_music_003 中随机选择
-            let music_files = [
-                &ambience_resources.commander_music_000,
-                &ambience_resources.commander_music_001,
-                &ambience_resources.commander_music_002,
-                &ambience_resources.commander_music_003,
-            ];
-            let mut rng = rand::rng();
-            let random_music = music_files[rng.random_range(0..music_files.len())];
-
-            let commander_music_sound = random_music.clone();
-            let entity = utils::play_looping_sound(&mut commands, commander_music_sound, VOLUME_COMMANDER_MUSIC);
-            commands.entity(entity).insert(CommanderAmbiencePlayer);
-        }
-    } else {
-        // 如果不在司令官附近但有播放音效，则停止
+    if is_near_commander && ambience_players.is_empty() {
+        let random_music = select_random_commander_music(&ambience_resources);
+        let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_COMMANDER_MUSIC);
+        commands.entity(entity).insert(CommanderAmbiencePlayer);
+    } else if !is_near_commander {
         for (entity, _) in ambience_players.iter() {
             let () = commands.entity(entity).try_despawn();
         }

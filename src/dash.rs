@@ -152,103 +152,112 @@ pub fn handle_dash_collision(
         // 卫语句：只处理 Started 事件
         let CollisionEvent::Started(e1, e2, _) = event else { continue; };
 
-        // 提取碰撞信息（一次性查询所有需要的实体）
+        // 提取碰撞信息（一次性查询所有需要的实体和位置）
         let Some(collision_info) = extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels)
         else { continue; };
 
-        let DashCollisionInfo {
-            player_entity,
-            brick_entity,
-            steel_entity,
-            enemy_entity,
-            player_tank,
-            tank_position,
-            is_dashing,
-        } = collision_info;
-
         // 卫语句：不在冲刺状态则跳过
-        if !is_dashing {
+        if !collision_info.is_dashing {
             continue;
         }
 
-        // 处理 brick 碰撞
-        if let Some(b_entity) = brick_entity {
-            // 获取 brick 位置（已通过 extract_dash_collision_info 验证存在）
-            let brick_position = bricks.get(b_entity).ok().map(|(_, t)| t.translation);
+        match collision_info.target {
+            DashTarget::Brick { entity, position } => {
+                // 播放砖块被击中的音效
+                sound_resources.play(&mut commands, sound_resources.brick_hit.clone(), 0.5);
 
-            handle_brick_collision(
-                &mut commands,
-                &mut effect_events,
-                &mut texture_atlas_layouts,
-                brick_position,
-                &mut player_info,
-                &player_tank,
-                tank_position,
-                player_entity,
-                b_entity,
-                &mut dash_damage_tracker,
-                &effect_resources,
-                &sound_resources,
-            );
-            continue;
-        }
+                // 发送火花特效事件
+                effect_events.write(crate::bullet::EffectEvent::Spark { position });
 
-        // 处理 steel 碰撞
-        if let Some(s_entity) = steel_entity {
-            // 获取 steel 位置（已通过 extract_dash_collision_info 验证存在）
-            let steel_position = steels.get(s_entity).ok().map(|(_, t)| t.translation);
+                // 销毁 brick
+                let () = commands.entity(entity).try_despawn();
 
-            // 检查 protection 是否为 100%
-            let can_break_steel = player_info.get_stat_value(player_tank.tank_type, |p| p.protection) >= 100;
-
-            if can_break_steel {
-                // protection = 100%，可以撞碎铁块，不扣血
-                handle_steel_break(
-                    &mut commands,
-                    &mut effect_events,
-                    steel_position,
-                    s_entity,
+                // 应用伤害并检查死亡
+                let (_, is_dead) = apply_dash_damage(
+                    &mut player_info,
+                    &collision_info.player_tank,
+                    &mut dash_damage_tracker,
+                    collision_info.player_entity,
                 );
-            } else {
-                // protection < 100%，玩家死亡
+
+                if is_dead {
+                    let transform = Transform::from_translation(collision_info.tank_position);
+                    kill_player_tank(
+                        &mut commands,
+                        &mut texture_atlas_layouts,
+                        &transform,
+                        collision_info.player_entity,
+                        &effect_resources,
+                        &sound_resources,
+                    );
+                }
+            }
+
+            DashTarget::Steel { entity, position } => {
+                // 检查 protection 是否为 100%
+                let can_break_steel = player_info.get_stat_value(collision_info.player_tank.tank_type, |p| p.protection) >= 100;
+
+                if can_break_steel {
+                    // protection = 100%，可以撞碎铁块，不扣血
+                    effect_events.write(crate::bullet::EffectEvent::Spark { position });
+                    let () = commands.entity(entity).try_despawn();
+                } else {
+                    // protection < 100%，玩家死亡
+                    effect_events.write(crate::bullet::EffectEvent::Explosion {
+                        position: collision_info.tank_position,
+                    });
+
+                    let transform = Transform::from_translation(collision_info.tank_position);
+                    kill_player_tank(
+                        &mut commands,
+                        &mut texture_atlas_layouts,
+                        &transform,
+                        collision_info.player_entity,
+                        &effect_resources,
+                        &sound_resources,
+                    );
+                }
+            }
+
+            DashTarget::Enemy { entity, position } => {
                 // 发送爆炸特效事件
-                effect_events.write(crate::bullet::EffectEvent::Explosion {
-                    position: tank_position,
+                effect_events.write(crate::bullet::EffectEvent::Explosion { position });
+
+                // 销毁敌方坦克
+                let () = commands.entity(entity).try_despawn();
+
+                // 增加分数
+                let tank_type = collision_info.player_tank.tank_type;
+                player_info.with_stats_mut(tank_type, |player_stats| {
+                    player_stats.score += 100;
                 });
 
-                let transform = Transform::from_translation(tank_position);
-                kill_player_tank(
-                    &mut commands,
-                    &mut texture_atlas_layouts,
-                    &transform,
-                    player_entity,
-                    &effect_resources,
-                    &sound_resources,
+                // 发送分数变更事件
+                stat_changed_events.write(PlayerStatChanged {
+                    player_type: tank_type,
+                    stat_type: StatType::Score,
+                });
+
+                // 应用伤害并检查死亡
+                let (_, is_dead) = apply_dash_damage(
+                    &mut player_info,
+                    &collision_info.player_tank,
+                    &mut dash_damage_tracker,
+                    collision_info.player_entity,
                 );
+
+                if is_dead {
+                    let transform = Transform::from_translation(collision_info.tank_position);
+                    kill_player_tank(
+                        &mut commands,
+                        &mut texture_atlas_layouts,
+                        &transform,
+                        collision_info.player_entity,
+                        &effect_resources,
+                        &sound_resources,
+                    );
+                }
             }
-            continue;
-        }
-
-        // 处理敌方坦克碰撞
-        if let Some(e_entity) = enemy_entity {
-            // 获取敌方坦克位置（已通过 extract_dash_collision_info 验证存在）
-            let enemy_position = enemy_tanks.get(e_entity).ok().map(|(_, t)| t.translation);
-
-            handle_dash_enemy_tank_collision(
-                &mut commands,
-                &mut effect_events,
-                &mut texture_atlas_layouts,
-                enemy_position,
-                &mut player_info,
-                &mut stat_changed_events,
-                &player_tank,
-                tank_position,
-                player_entity,
-                e_entity,
-                &mut dash_damage_tracker,
-                &effect_resources,
-                &sound_resources,
-            );
         }
     }
 }
@@ -256,12 +265,17 @@ pub fn handle_dash_collision(
 /// 冲刺碰撞信息结构
 struct DashCollisionInfo {
     player_entity: Entity,
-    brick_entity: Option<Entity>,
-    steel_entity: Option<Entity>,
-    enemy_entity: Option<Entity>,
     player_tank: PlayerTank,
     tank_position: Vec3,
     is_dashing: bool,
+    target: DashTarget,
+}
+
+/// 碰撞目标类型
+enum DashTarget {
+    Brick { entity: Entity, position: Vec3 },
+    Steel { entity: Entity, position: Vec3 },
+    Enemy { entity: Entity, position: Vec3 },
 }
 
 /// 提取冲刺碰撞信息
@@ -275,30 +289,26 @@ fn extract_dash_collision_info(
 ) -> Option<DashCollisionInfo> {
     // 尝试从 e1 获取玩家坦克
     if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1) {
-        if let Some((brick_entity, steel_entity, enemy_entity)) = get_collision_targets(e2, enemy_tanks, bricks, steels) {
+        if let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels) {
             return Some(DashCollisionInfo {
                 player_entity,
-                brick_entity,
-                steel_entity,
-                enemy_entity,
                 player_tank: *player_tank,
                 tank_position: tank_transform.translation,
                 is_dashing: is_dashing.is_some(),
+                target,
             });
         }
     }
 
     // 尝试从 e2 获取玩家坦克
     if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2) {
-        if let Some((brick_entity, steel_entity, enemy_entity)) = get_collision_targets(e1, enemy_tanks, bricks, steels) {
+        if let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels) {
             return Some(DashCollisionInfo {
                 player_entity,
-                brick_entity,
-                steel_entity,
-                enemy_entity,
                 player_tank: *player_tank,
                 tank_position: tank_transform.translation,
                 is_dashing: is_dashing.is_some(),
+                target,
             });
         }
     }
@@ -306,29 +316,77 @@ fn extract_dash_collision_info(
     None
 }
 
-/// 获取碰撞目标
-fn get_collision_targets(
+/// 获取碰撞目标（同时获取位置信息，避免后续重复查询）
+fn get_collision_target(
     target_entity: Entity,
     enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
-) -> Option<(Option<Entity>, Option<Entity>, Option<Entity>)> {
+) -> Option<DashTarget> {
     // 检查是否是 brick
-    if bricks.get(target_entity).is_ok() {
-        return Some((Some(target_entity), None, None));
+    if let Ok((_, transform)) = bricks.get(target_entity) {
+        return Some(DashTarget::Brick {
+            entity: target_entity,
+            position: transform.translation,
+        });
     }
 
     // 检查是否是 steel
-    if steels.get(target_entity).is_ok() {
-        return Some((None, Some(target_entity), None));
+    if let Ok((_, transform)) = steels.get(target_entity) {
+        return Some(DashTarget::Steel {
+            entity: target_entity,
+            position: transform.translation,
+        });
     }
 
     // 检查是否是敌方坦克
-    if enemy_tanks.get(target_entity).is_ok() {
-        return Some((None, None, Some(target_entity)));
+    if let Ok((_, transform)) = enemy_tanks.get(target_entity) {
+        return Some(DashTarget::Enemy {
+            entity: target_entity,
+            position: transform.translation,
+        });
     }
 
     None
+}
+
+/// 应用冲刺伤害（统一的扣血逻辑）
+/// 返回 (扣血量, 是否死亡)
+fn apply_dash_damage(
+    player_info: &mut ResMut<PlayerInfo>,
+    player_tank: &PlayerTank,
+    dash_damage_tracker: &mut DashDamageTracker,
+    player_entity: Entity,
+) -> (usize, bool) {
+    // 检查本次 dash 是否已经扣过血
+    if dash_damage_tracker
+        .has_taken_damage
+        .contains(&player_entity)
+    {
+        return (0, false);
+    }
+
+    let tank_type = player_tank.tank_type;
+    let mut health_cost = 0;
+    let mut is_dead = false;
+
+    player_info.with_stats_mut(tank_type, |player_stats| {
+        health_cost = if player_stats.protection < 40 {
+            2 // 2/3血条
+        } else {
+            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
+        };
+
+        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
+        is_dead = player_stats.life_points == 0;
+    });
+
+    // 标记本次 dash 已经扣过血
+    if health_cost > 0 {
+        dash_damage_tracker.has_taken_damage.insert(player_entity);
+    }
+
+    (health_cost, is_dead)
 }
 
 /// 销毁玩家坦克
@@ -351,171 +409,4 @@ fn kill_player_tank(
 
     // 销毁玩家坦克
     let () = commands.entity(player_entity).try_despawn();
-}
-
-/// 处理砖块碰撞
-fn handle_brick_collision(
-    commands: &mut Commands,
-    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    brick_position: Option<Vec3>,
-    player_info: &mut ResMut<PlayerInfo>,
-    player_tank: &PlayerTank,
-    tank_position: Vec3,
-    player_entity: Entity,
-    brick_entity: Entity,
-    dash_damage_tracker: &mut DashDamageTracker,
-    effect_resources: &EffectResources,
-    sound_resources: &SoundResources,
-) {
-    // 使用传入的位置生成效果
-    if let Some(pos) = brick_position {
-        // 播放砖块被击中的音效
-        sound_resources.play(commands, sound_resources.brick_hit.clone(), 0.5);
-
-        // 发送火花特效事件
-        effect_events.write(crate::bullet::EffectEvent::Spark {
-            position: pos,
-        });
-
-        // 销毁 brick
-        let () = commands.entity(brick_entity).try_despawn();
-    }
-
-    // 检查本次 dash 是否已经扣过血
-    if dash_damage_tracker
-        .has_taken_damage
-        .contains(&player_entity)
-    {
-        return; // 已经扣过血，不再重复扣血
-    }
-
-    // 根据 protection 百分比决定扣血量
-    let tank_type = player_tank.tank_type;
-    let mut health_cost = 0;
-    let mut is_dead = false;
-
-    player_info.with_stats_mut(tank_type, |player_stats| {
-        health_cost = if player_stats.protection < 40 {
-            2 // 2/3血条
-        } else {
-            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-        };
-
-        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
-        is_dead = player_stats.life_points == 0;
-    });
-
-    // 标记本次 dash 已经扣过血
-    if health_cost > 0 {
-        dash_damage_tracker.has_taken_damage.insert(player_entity);
-    }
-
-    // 检查玩家是否死亡
-    if is_dead {
-        let transform = Transform::from_translation(tank_position);
-        kill_player_tank(
-            commands,
-            texture_atlas_layouts,
-            &transform,
-            player_entity,
-            effect_resources,
-            sound_resources,
-        );
-    }
-}
-
-/// 处理钢铁破碎
-fn handle_steel_break(
-    commands: &mut Commands,
-    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    steel_position: Option<Vec3>,
-    steel_entity: Entity,
-) {
-    // 使用传入的位置生成效果
-    if let Some(pos) = steel_position {
-        // 发送火花特效事件
-        effect_events.write(crate::bullet::EffectEvent::Spark {
-            position: pos,
-        });
-
-        // 销毁 steel
-        let () = commands.entity(steel_entity).try_despawn();
-    }
-}
-
-/// 处理冲刺与敌方坦克碰撞
-fn handle_dash_enemy_tank_collision(
-    commands: &mut Commands,
-    effect_events: &mut MessageWriter<crate::bullet::EffectEvent>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    enemy_position: Option<Vec3>,
-    player_info: &mut ResMut<PlayerInfo>,
-    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
-    player_tank: &PlayerTank,
-    tank_position: Vec3,
-    player_entity: Entity,
-    enemy_entity: Entity,
-    dash_damage_tracker: &mut DashDamageTracker,
-    effect_resources: &EffectResources,
-    sound_resources: &SoundResources,
-) {
-    // 使用传入的位置生成爆炸效果
-    if let Some(pos) = enemy_position {
-        // 发送爆炸特效事件
-        effect_events.write(crate::bullet::EffectEvent::Explosion {
-            position: pos,
-        });
-    }
-
-    // 销毁敌方坦克
-    let () = commands.entity(enemy_entity).try_despawn();
-
-    // 检查本次 dash 是否已经扣过血
-    if dash_damage_tracker
-        .has_taken_damage
-        .contains(&player_entity)
-    {
-        return; // 已经扣过血，不再重复扣血
-    }
-
-    // 增加分数和根据 protection 百分比决定扣血量
-    let tank_type = player_tank.tank_type;
-    let mut health_cost = 0;
-    let mut is_dead = false;
-
-    player_info.with_stats_mut(tank_type, |player_stats| {
-        player_stats.score += 100;
-        health_cost = if player_stats.protection < 40 {
-            DASH_DAMAGE_COST_HIGH // 2/3血条
-        } else {
-            usize::from(player_stats.protection < 80) // 1/3血条 或 不扣血
-        };
-        player_stats.life_points = player_stats.life_points.saturating_sub(health_cost);
-        is_dead = player_stats.life_points == 0;
-    });
-
-    // 发送分数变更事件
-    stat_changed_events.write(PlayerStatChanged {
-        player_type: tank_type,
-        stat_type: StatType::Score,
-    });
-
-    // 标记本次 dash 已经扣过血
-    if health_cost > 0 {
-        dash_damage_tracker.has_taken_damage.insert(player_entity);
-    }
-
-    // 检查玩家是否死亡
-    if is_dead {
-        let transform = Transform::from_translation(tank_position);
-        kill_player_tank(
-            commands,
-            texture_atlas_layouts,
-            &transform,
-            player_entity,
-            effect_resources,
-            sound_resources,
-        );
-    }
 }

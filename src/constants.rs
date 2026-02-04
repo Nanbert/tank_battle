@@ -791,7 +791,6 @@ pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01; // 敌方坦克射击概率
 pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4; // 随机转向概率
 pub const INITIAL_ATTRIBUTE_VALUE: usize = 40; // 初始属性值
 pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
-pub const DASH_DAMAGE_COST_HIGH: usize = 2; // 高扣血量
 
 // ==================== 比例和音量常量 ====================
 pub const VOLUME_HALF: f32 = 0.5; // 音效音量
