@@ -422,11 +422,11 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            bullet::animate_fire_shell_bullet.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<crate::constants::FireEffect>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            bullet::animate_penetrate_bullet.run_if(in_state(GameState::Playing)),
+            effects::animate_looping_sprite::<crate::constants::PenetrateEffect>.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,

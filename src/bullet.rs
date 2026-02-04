@@ -705,40 +705,4 @@ pub fn bullet_commander_collision_system(
     }
 }
 
-/// 火焰特效动画系统
-/// 播放叠加在子弹上的火焰特效精灵图动画
-pub fn animate_fire_shell_bullet(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<crate::constants::FireEffect>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
-    }
-}
 
-/// 穿透特效动画系统
-/// 播放叠加在子弹上的穿透特效精灵图动画
-pub fn animate_penetrate_bullet(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<crate::constants::PenetrateEffect>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
-    }
-}
