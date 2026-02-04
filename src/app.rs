@@ -11,6 +11,32 @@ use crate::constants::*;
 use crate::resources::*;
 use crate::utils;
 
+/// 游戏系统调度集
+/// 将系统按功能分组，减少 run_if 检查的开销
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GameSystemSet {
+    /// 敌方坦克系统集
+    EnemySystems,
+    /// 玩家坦克系统集
+    PlayerSystems,
+    /// 子弹系统集
+    BulletSystems,
+    /// 激光系统集
+    LaserSystems,
+    /// 特效和动画系统集
+    EffectsAndAnimationSystems,
+    /// 司令官系统集
+    CommanderSystems,
+    /// HUD UI 系统集
+    HudSystems,
+    /// 道具系统集
+    PowerUpSystems,
+    /// 游戏状态管理系统集
+    GameStateSystems,
+    /// 环境音效系统集
+    AmbienceSystems,
+}
+
 // 导入模块以便使用其函数
 use crate::bullet;
 use crate::commander;
@@ -182,6 +208,7 @@ pub fn register_game_systems(app: &mut App) {
                 init_game_resources,
             )
         )
+        // ==================== StartScreen 状态系统 ====================
         .add_systems(
             OnEnter(GameState::StartScreen),
             (
@@ -204,35 +231,34 @@ pub fn register_game_systems(app: &mut App) {
         .add_systems(
             Update,
             (
+                // 清理游戏实体
                 |mut commands: Commands, entities: Query<Entity, With<crate::constants::PlayingEntity>>| {
                     for entity in entities.iter() {
                         let () = commands.entity(entity).try_despawn();
                     }
                 },
-            ).run_if(in_state(GameState::StartScreen)),
-        )
-        .add_systems(
-            Update,
-            menus_ui::spawn_start_screen.run_if(
-                |query: Query<(), With<crate::constants::StartScreenUI>>| {
-                    query.is_empty()
-                }
-            ).run_if(in_state(GameState::StartScreen)),
-        )
-        .add_systems(
-            Update,
-            (
-                menus_ui::cleanup_start_screen_ui,
-                menus_ui::spawn_start_screen,
-            )
-                .chain()
-                .run_if(
-                    |language: Res<crate::resources::Language>| {
-                        language.is_changed()
+                // 生成开始菜单
+                menus_ui::spawn_start_screen.run_if(
+                    |query: Query<(), With<crate::constants::StartScreenUI>>| {
+                        query.is_empty()
                     }
+                ),
+                // 语言变化时重新生成菜单
+                (
+                    menus_ui::cleanup_start_screen_ui,
+                    menus_ui::spawn_start_screen,
                 )
+                    .chain()
+                    .run_if(|language: Res<crate::resources::Language>| language.is_changed()),
+                // 处理菜单输入
+                menus_ui::handle_start_screen_input,
+                menus_ui::update_option_colors,
+                menus_ui::animate_start_screen_background,
+                game_state::update_menu_blink,
+            )
                 .run_if(in_state(GameState::StartScreen)),
         )
+        // ==================== About 和 Credits 状态系统 ====================
         .add_systems(
             OnEnter(GameState::About),
             (menus_ui::cleanup_start_screen_ui, menus_ui::spawn_about_screen).chain(),
@@ -257,6 +283,7 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             menus_ui::handle_credits_input.run_if(in_state(GameState::Credits)),
         )
+        // ==================== StageIntro 状态系统 ====================
         .add_systems(
             OnEnter(GameState::StageIntro),
             (
@@ -283,13 +310,6 @@ pub fn register_game_systems(app: &mut App) {
                 .chain(),
         )
         .add_systems(
-            Update,
-            (
-                game_state::cleanup_effects_and_bullets,
-                game_state::cleanup_trackers_and_timers,
-            ).run_if(in_state(GameState::StageIntro)),
-        )
-        .add_systems(
             OnEnter(GameState::StageIntro),
             (
                 commander::spawn_commander.run_if(
@@ -301,11 +321,20 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            overlay_ui::handle_stage_intro_timer.run_if(in_state(GameState::StageIntro)),
+            (
+                game_state::cleanup_effects_and_bullets,
+                game_state::cleanup_trackers_and_timers,
+                overlay_ui::handle_stage_intro_timer,
+            )
+                .run_if(in_state(GameState::StageIntro)),
         )
         .add_systems(OnExit(GameState::StageIntro), overlay_ui::despawn_stage_intro)
+        // ==================== Paused 状态系统 ====================
         .add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
-        .add_systems(OnExit(GameState::Paused), (overlay_ui::despawn_pause_ui,))
+        .add_systems(OnExit(GameState::Paused), 
+            (overlay_ui::despawn_pause_ui, overlay_ui::despawn_insufficient_energy_warnings).chain())
+        .add_systems(Update, overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)))
+        // ==================== GameOver 状态系统 ====================
         .add_systems(OnEnter(GameState::GameOver), overlay_ui::spawn_game_over_ui)
         .add_systems(
             OnExit(GameState::GameOver),
@@ -320,248 +349,172 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            (
-                enemy::collect_enemy_collisions,
-                enemy::collect_contact_forces,
-                enemy::move_enemy_tanks,
-            ).chain().run_if(in_state(GameState::Playing)),
-        )
-        
-        .add_systems(
-            Update,
-            enemy::enemy_spawn_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            enemy::animate_enemy_born_animation.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::animate_looping_sprite.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::move_player_tank.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::animate_player_avatar.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::handle_player_avatar_death.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::handle_recall_input.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::update_recall_timers.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            dash::handle_dash_input.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            dash::update_dash_movement.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            dash::handle_dash_collision.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::handle_barrier_collision.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::update_recall_progress_bars.run_if(in_state(GameState::Playing)),
-        )
-        
-        .add_systems(
-            Update,
-            player::recover_energy.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::update_barrel_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            player::handle_barrel_recoil_force.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::enemy_shoot_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::player_shoot_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::bullet_bounds_check_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::bullet_terrain_collision_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::bullet_tank_collision_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::bullet_commander_collision_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            bullet::handle_effect_events.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            laser::player_laser_system.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::animate_one_shot_animations.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            laser::animate_laser.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            laser::animate_energy_ball.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            commander::animate_commander.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::play_sea_ambience.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            effects::play_commander_ambience.run_if(in_state(GameState::Playing)),
-        ) // 测试司令官音乐
-        .add_systems(
-            Update,
-            effects::play_tree_ambience.run_if(in_state(GameState::Playing)),
-        ) // 测试森林环绕声
-        
-        .add_systems(
-            Update,
-            game_state::handle_game_over_delay.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            game_state::check_game_over.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            game_state::check_stage_complete.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::handle_hud_stat_changed.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::animate_hud_text.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            hud_ui::update_enemy_count_display
-                .run_if(in_state(GameState::Playing))
-                .run_if(resource_changed::<crate::resources::EnemySpawnState>),
-        )
-        .add_systems(
-            Update,
-            hud_ui::update_commander_health_bar
-                .run_if(in_state(GameState::Playing))
-                .run_if(resource_changed::<CommanderLife>),
-        )
-        .add_systems(
-            Update,
-            hud_ui::update_player_hud
-                .run_if(in_state(GameState::Playing))
-                .run_if(resource_changed::<PlayerInfo>),
-        )
-        .add_systems(
-            Update,
-            hud_ui::handle_commander_death.run_if(in_state(GameState::Playing)),
-        ) // 测试司令官阵亡处理
-        
-        .add_systems(
-            Update,
-            (
-                menus_ui::handle_start_screen_input,
-                menus_ui::update_option_colors,
-                menus_ui::animate_start_screen_background,
-            ).run_if(in_state(GameState::StartScreen)),
-        )
-        .add_systems(
-            Update,
-            overlay_ui::handle_game_input.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)),
-        )
-        .add_systems(
-            Update,
             (overlay_ui::handle_game_over_input, menus_ui::update_option_colors)
                 .chain()
                 .run_if(in_state(GameState::GameOver)),
         )
+        // ==================== FadingOut 状态系统 ====================
         .add_systems(
             Update,
-            laser::handle_recoil_force.run_if(in_state(GameState::Playing)),
+            (
+                game_state::update_menu_blink,
+                overlay_ui::fade_out_screen,
+            )
+                .run_if(in_state(GameState::FadingOut)),
+        )
+        // ==================== Playing 状态系统 ====================
+        // 使用 SystemSet 组织系统，只在 Playing 状态时执行
+        // 通过配置调度集来减少 run_if 检查
+        .configure_sets(
+            Update,
+            (
+                GameSystemSet::EnemySystems,
+                GameSystemSet::PlayerSystems,
+                GameSystemSet::BulletSystems,
+                GameSystemSet::LaserSystems,
+                GameSystemSet::EffectsAndAnimationSystems,
+                GameSystemSet::CommanderSystems,
+                GameSystemSet::HudSystems,
+                GameSystemSet::PowerUpSystems,
+                GameSystemSet::GameStateSystems,
+                GameSystemSet::AmbienceSystems,
+            )
+                .run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
-            overlay_ui::update_insufficient_energy_warnings.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            OnExit(GameState::Paused),
-            (overlay_ui::despawn_pause_ui, overlay_ui::despawn_insufficient_energy_warnings).chain(),
-        )
-        
-        .add_systems(
-            Update,
-            powerup::animate_powerup.run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            powerup::handle_powerup_collision.run_if(in_state(GameState::Playing)),
+            // 敌方坦克系统集
+            (
+                enemy::collect_enemy_collisions,
+                enemy::collect_contact_forces,
+                enemy::move_enemy_tanks,
+            )
+                .chain()
+                .in_set(GameSystemSet::EnemySystems),
         )
         .add_systems(
             Update,
-            effects::update_air_cushion_effect.run_if(in_state(GameState::Playing)),
+            (
+                enemy::enemy_spawn_system,
+                enemy::animate_enemy_born_animation,
+            )
+                .in_set(GameSystemSet::EnemySystems),
         )
         .add_systems(
             Update,
-            powerup::update_track_chain_effect.run_if(in_state(GameState::Playing)),
+            (
+                // 玩家坦克系统集
+                player::move_player_tank,
+                player::handle_recall_input,
+                player::update_recall_timers,
+                dash::handle_dash_input,
+                dash::update_dash_movement,
+                dash::handle_dash_collision,
+                player::handle_barrier_collision,
+                player::update_recall_progress_bars,
+                player::recover_energy,
+                player::update_barrel_system,
+                player::handle_barrel_recoil_force,
+            )
+                .in_set(GameSystemSet::PlayerSystems),
         )
         .add_systems(
             Update,
-            powerup::animate_track_chain.run_if(in_state(GameState::Playing)),
+            (
+                // 子弹系统集
+                bullet::enemy_shoot_system,
+                bullet::player_shoot_system,
+                bullet::bullet_bounds_check_system,
+                bullet::bullet_terrain_collision_system,
+                bullet::bullet_tank_collision_system,
+                bullet::bullet_commander_collision_system,
+                bullet::handle_effect_events,
+            )
+                .in_set(GameSystemSet::BulletSystems),
         )
         .add_systems(
             Update,
-            game_state::update_menu_blink.run_if(in_state(GameState::StartScreen)),
+            (
+                // 激光系统集
+                laser::player_laser_system,
+                laser::animate_laser,
+                laser::animate_energy_ball,
+                laser::handle_recoil_force,
+            )
+                .in_set(GameSystemSet::LaserSystems),
         )
         .add_systems(
             Update,
-            game_state::update_menu_blink.run_if(in_state(GameState::FadingOut)),
+            (
+                // 特效和动画系统集
+                effects::animate_looping_sprite,
+                effects::animate_one_shot_animations,
+                effects::update_air_cushion_effect,
+            )
+                .in_set(GameSystemSet::EffectsAndAnimationSystems),
         )
         .add_systems(
             Update,
-            overlay_ui::fade_out_screen.run_if(in_state(GameState::FadingOut)),
+            // 司令官系统集
+            commander::animate_commander.in_set(GameSystemSet::CommanderSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                // HUD UI 系统集
+                hud_ui::animate_player_avatar,
+                hud_ui::handle_player_avatar_death,
+                hud_ui::handle_hud_stat_changed,
+                hud_ui::animate_hud_text,
+                hud_ui::update_enemy_count_display
+                    .run_if(resource_changed::<crate::resources::EnemySpawnState>),
+                hud_ui::update_commander_health_bar
+                    .run_if(resource_changed::<CommanderLife>),
+                hud_ui::update_player_hud
+                    .run_if(resource_changed::<PlayerInfo>),
+                hud_ui::handle_commander_death,
+            )
+                .in_set(GameSystemSet::HudSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                // 道具系统集
+                powerup::animate_powerup,
+                powerup::handle_powerup_collision,
+                powerup::update_track_chain_effect,
+                powerup::animate_track_chain,
+            )
+                .in_set(GameSystemSet::PowerUpSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                // 游戏状态管理系统集
+                game_state::handle_game_over_delay,
+                game_state::check_game_over,
+                game_state::check_stage_complete,
+            )
+                .in_set(GameSystemSet::GameStateSystems),
+        )
+        .add_systems(
+            Update,
+            (
+                // 环境音效系统集
+                effects::play_sea_ambience,
+                effects::play_commander_ambience,
+                effects::play_tree_ambience,
+            )
+                .in_set(GameSystemSet::AmbienceSystems),
+        )
+        .add_systems(
+            Update,
+            // 其他系统（不属于特定集的 Playing 状态系统）
+            (
+                overlay_ui::handle_game_input,
+                overlay_ui::update_insufficient_energy_warnings,
+            )
+                .run_if(in_state(GameState::Playing)),
         );
 }
 
