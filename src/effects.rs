@@ -21,30 +21,21 @@ pub fn spawn_explosion(
     // 使用预加载的爆炸纹理
     let explosion_texture = effect_resources.explosion.clone();
     let explosion_tile_size = UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32);
-    let explosion_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, explosion_tile_size, 8, 8);
     let explosion_animation_indices = AnimationIndices { first: 0, last: 63 };
 
-    commands.spawn((
-        Explosion,
-        OneShotAnimation,
-        PlayingEntity,
-        Sprite {
-            image: explosion_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: explosion_texture_atlas,
-                index: explosion_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
-            ..default()
-        },
-        Transform::from_translation(position),
+    utils::spawn_animated_sprite(
+        commands,
+        &mut texture_atlas_layouts,
+        explosion_texture,
+        explosion_tile_size,
+        8,
+        8,
         explosion_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_EXPLOSION,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-    ));
+        ANIMATION_FRAME_EXPLOSION,
+        position,
+        Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
+        (Explosion, OneShotAnimation, PlayingEntity),
+    );
 
     // 使用预加载的爆炸音效
     sound_resources.play(commands, sound_resources.explosion.clone(), VOLUME_HALF);
@@ -94,30 +85,21 @@ pub fn spawn_spark(
     // 使用预加载的打击效果纹理
     let spark_texture = effect_resources.spark.clone();
     let spark_tile_size = UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32);
-    let spark_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, spark_tile_size, 4, 4);
     let spark_animation_indices = AnimationIndices { first: 0, last: 15 };
 
-    commands.spawn((
-        Spark,
-        OneShotAnimation,
-        PlayingEntity,
-        Sprite {
-            image: spark_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: spark_texture_atlas,
-                index: spark_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
-            ..default()
-        },
-        Transform::from_translation(position),
+    utils::spawn_animated_sprite(
+        commands,
+        &mut texture_atlas_layouts,
+        spark_texture,
+        spark_tile_size,
+        4,
+        4,
         spark_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_SPARK,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-    ));
+        ANIMATION_FRAME_SPARK,
+        position,
+        Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
+        (Spark, OneShotAnimation, PlayingEntity),
+    );
 }
 
 /// 通用一次性动画系统

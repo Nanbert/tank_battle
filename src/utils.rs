@@ -116,6 +116,61 @@ pub fn add_texture_atlas(
     texture_atlas_layouts.add(layout)
 }
 
+/// 生成带动画的精灵
+///
+/// 统一处理纹理图集加载、动画索引和计时器的创建
+///
+/// # 参数
+/// - `commands`: 命令系统
+/// - `texture_atlas_layouts`: 纹理图集布局资源管理器
+/// - `texture`: 纹理句柄
+/// - `tile_size`: 单个图块大小
+/// - `columns`: 列数
+/// - `rows`: 行数
+/// - `animation_indices`: 动画索引配置
+/// - `frame_time`: 每帧时间（秒）
+/// - `position`: 位置
+/// - `size`: 显示大小（如果为 None 则使用 tile_size）
+/// - `components`: 额外的组件
+///
+/// # 返回值
+/// 生成的实体 ID
+pub fn spawn_animated_sprite(
+    commands: &mut Commands,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture: Handle<Image>,
+    tile_size: UVec2,
+    columns: u32,
+    rows: u32,
+    animation_indices: AnimationIndices,
+    frame_time: f32,
+    position: Vec3,
+    size: Option<Vec2>,
+    components: impl Bundle,
+) -> Entity {
+    let texture_atlas = add_texture_atlas(texture_atlas_layouts, tile_size, columns, rows);
+    let custom_size = size.unwrap_or_else(|| Vec2::new(tile_size.x as f32, tile_size.y as f32));
+
+    commands
+        .spawn((
+            Sprite {
+                image: texture,
+                texture_atlas: Some(TextureAtlas {
+                    layout: texture_atlas,
+                    index: animation_indices.first,
+                }),
+                custom_size: Some(custom_size),
+                ..default()
+            },
+            Transform::from_translation(position),
+            animation_indices,
+            AnimationTimer(Timer::from_seconds(frame_time, TimerMode::Repeating)),
+            CurrentAnimationFrame(0),
+            components,
+        ))
+        .id()
+}
+
 /// 停止所有坦克的速度
 ///
 /// 用于暂停游戏或游戏结束时停止所有坦克的移动

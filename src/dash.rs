@@ -28,12 +28,7 @@ pub fn handle_dash_input(
     time: Res<Time>,
 ) {
     // 更新所有能量不足冷却计时器
-    if let Some(ref mut timer) = energy_tracker.p1_cooldown {
-        timer.tick(time.delta());
-    }
-    if let Some(ref mut timer) = energy_tracker.p2_cooldown {
-        timer.tick(time.delta());
-    }
+    energy_tracker.tick_all(time.delta());
 
     for (entity, transform, player_tank) in &query {
         // 检查是否正在冲刺

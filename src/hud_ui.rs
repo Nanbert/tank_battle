@@ -699,7 +699,7 @@ fn update_single_player_hud(
 }
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
-/// 优化：添加 Changed<PlayerInfo> 条件，只在玩家信息变化时更新 HUD
+/// 优化：通过系统条件 resource_changed::<PlayerInfo> 确保只在玩家信息变化时更新 HUD
 pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -714,11 +714,6 @@ pub fn update_player_hud(
     )>,
     language: Res<Language>,
 ) {
-    // 卫语句：如果玩家信息没有变化，跳过更新
-    if !player_info.is_changed() {
-        return;
-    }
-
     // 更新玩家1 HUD
     update_single_player_hud(
         &player_info.player1,
@@ -1017,6 +1012,7 @@ pub fn update_stage_text(
 }
 
 /// 更新 Commander 血条
+/// 优化：使用 update_bar 函数避免代码重复
 pub fn update_commander_health_bar(
     commander_life: Res<CommanderLife>,
     mut health_bars: Query<
@@ -1029,9 +1025,14 @@ pub fn update_commander_health_bar(
     >,
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        let health_width = (commander_life.life_points as f32 / 3.0) * COMMANDER_BAR_WIDTH;
-        sprite.custom_size = Some(Vec2::new(health_width, HUD_BAR_HEIGHT));
-        transform.translation.x = original_pos.0 - (COMMANDER_BAR_WIDTH - health_width) / 2.0;
+        update_bar(
+            &mut sprite,
+            &mut transform,
+            commander_life.life_points as f32,
+            3.0,
+            original_pos.0,
+            COMMANDER_BAR_WIDTH,
+        );
     }
 }
 

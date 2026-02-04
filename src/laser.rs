@@ -144,12 +144,7 @@ pub fn player_laser_system(
         }
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
-        if let Some(ref mut timer) = energy_tracker.p1_cooldown {
-            timer.tick(time.delta());
-        }
-        if let Some(ref mut timer) = energy_tracker.p2_cooldown {
-            timer.tick(time.delta());
-        }
+        energy_tracker.tick_all(time.delta());
 
         // 处理蓄力逻辑
         if has_charge {

@@ -406,33 +406,20 @@ fn complete_recall(
 /// 更新回城进度条位置
 pub fn update_recall_progress_bars(
     mut progress_bar_query: Query<(&RecallProgressBar, &mut Transform), Without<PlayerTank>>,
-    position_cache: Res<crate::resources::PlayerPositionCache>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
 ) {
-    // 使用缓存的玩家位置更新进度条位置
+    // 直接查询玩家位置更新进度条位置
     for (progress_bar, mut progress_transform) in progress_bar_query.iter_mut() {
-        if let Some(&player_position) = position_cache.positions.get(&progress_bar.player_entity) {
+        if let Ok(player_transform) = player_tanks.get(progress_bar.player_entity) {
             // 更新倒计时文本位置（跟随坦克）
-            progress_transform.translation.x = player_position.x;
+            progress_transform.translation.x = player_transform.translation.x;
             progress_transform.translation.y =
-                player_position.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
+                player_transform.translation.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
 
-/// 更新玩家位置缓存
-/// 在玩家移动时更新缓存，避免重复查询
-pub fn update_player_position_cache(
-    player_tanks: Query<(Entity, &Transform), With<PlayerTank>>,
-    mut position_cache: ResMut<crate::resources::PlayerPositionCache>,
-) {
-    // 清空旧缓存
-    position_cache.positions.clear();
-    
-    // 更新所有玩家位置
-    for (entity, transform) in player_tanks.iter() {
-        position_cache.positions.insert(entity, transform.translation);
-    }
-}
+
 
 /// 重置玩家坦克位置到出生点
 pub fn reset_player_positions(

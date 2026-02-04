@@ -8,7 +8,7 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{EnemyPositionCache, EnemyResources, EnemySpawnState};
+use crate::resources::{EnemyResources, EnemySpawnState};
 use crate::utils;
 
 /// 敌方坦克出生动画系统
@@ -55,43 +55,29 @@ pub fn enemy_spawn_system(
 pub fn spawn_enemy_born_animation(
     commands: &mut Commands,
     enemy_resources: &Res<EnemyResources>,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     position: Vec3,
 ) -> Entity {
     let enemy_born_texture = enemy_resources.enemy_born.clone();
     let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
-    let enemy_born_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, enemy_born_tile_size, 5, 3);
     let enemy_born_animation_indices = AnimationIndices {
         first: 0,
         last: ENEMY_BORN_END_FRAME,
     };
 
-    commands
-        .spawn((
-            EnemyBornAnimation,
-            PlayingEntity,
-            Sprite {
-                image: enemy_born_texture,
-                texture_atlas: Some(TextureAtlas {
-                    layout: enemy_born_texture_atlas,
-                    index: enemy_born_animation_indices.first,
-                }),
-                custom_size: Some(Vec2::new(
-                    ENEMY_BORN_ANIMATION_SIZE,
-                    ENEMY_BORN_ANIMATION_SIZE,
-                )),
-                ..default()
-            },
-            Transform::from_translation(position),
-            enemy_born_animation_indices,
-            AnimationTimer(Timer::from_seconds(
-                ANIMATION_FRAME_ENEMY_BORN,
-                TimerMode::Repeating,
-            )),
-            CurrentAnimationFrame(0),
-            BornPosition(position), // 记录出生位置
-        ))
-        .id()
+    utils::spawn_animated_sprite(
+        commands,
+        texture_atlas_layouts,
+        enemy_born_texture,
+        enemy_born_tile_size,
+        5,
+        3,
+        enemy_born_animation_indices,
+        ANIMATION_FRAME_ENEMY_BORN,
+        position,
+        Some(Vec2::new(ENEMY_BORN_ANIMATION_SIZE, ENEMY_BORN_ANIMATION_SIZE)),
+        (EnemyBornAnimation, PlayingEntity, BornPosition(position)),
+    )
 }
 
 /// 敌方坦克出生动画系统
@@ -481,20 +467,4 @@ pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     enemy_spawn_state.spawn_cooldown.reset();
 }
 
-/// 更新敌方坦克位置缓存
-/// 每帧更新所有敌方坦克的位置，供其他系统快速访问
-pub fn update_enemy_position_cache(
-    enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
-    mut position_cache: ResMut<EnemyPositionCache>,
-) {
-    position_cache.positions.clear();
-    for (entity, transform) in enemy_tanks.iter() {
-        position_cache.positions.insert(entity, transform.translation);
-    }
-}
 
-/// 清理敌方坦克位置缓存
-/// 在关卡切换或游戏重置时调用
-pub fn clear_enemy_position_cache(mut position_cache: ResMut<EnemyPositionCache>) {
-    position_cache.positions.clear();
-}

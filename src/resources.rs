@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use std::time::Duration;
 
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
@@ -352,6 +353,16 @@ pub struct InsufficientEnergyTracker {
 }
 
 impl InsufficientEnergyTracker {
+    /// 更新所有冷却计时器
+    pub fn tick_all(&mut self, delta: Duration) {
+        if let Some(ref mut timer) = self.p1_cooldown {
+            timer.tick(delta);
+        }
+        if let Some(ref mut timer) = self.p2_cooldown {
+            timer.tick(delta);
+        }
+    }
+
     /// 检查并触发能量不足提示
     /// 返回 true 如果成功触发提示
     pub fn try_show_warning(
@@ -552,17 +563,6 @@ pub struct AmbienceResources {
     pub tree_ambience: Handle<AudioSource>,
 }
 
-/// 玩家位置缓存
-/// 用于快速访问玩家位置，避免重复查询
-#[derive(Resource, Default)]
-pub struct PlayerPositionCache {
-    pub positions: EntityHashMap<Vec3>,
-}
 
-/// 敌方坦克位置缓存
-/// 用于快速访问敌方坦克位置，避免重复查询
-/// 优化 AI 系统和碰撞检测的性能
-#[derive(Resource, Default)]
-pub struct EnemyPositionCache {
-    pub positions: EntityHashMap<Vec3>,
-}
+
+

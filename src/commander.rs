@@ -39,35 +39,31 @@ pub fn spawn_commander(
     let commander_texture = commander_resources.texture.clone();
     // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
     let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, commander_tile_size, 10, 10);
     let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
 
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
     let commander_x = 0.0;
 
-    let _commander_entity = commands.spawn((
-        Commander,
-        PlayingEntity,
-        Sprite {
-            image: commander_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: commander_texture_atlas,
-                index: commander_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
-            ..default()
-        },
-        Transform::from_xyz(commander_x, commander_y, 0.0),
+    let commander_entity = utils::spawn_animated_sprite(
+        &mut commands,
+        &mut texture_atlas_layouts,
+        commander_texture,
+        commander_tile_size,
+        10,
+        10,
         commander_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_COMMANDER,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
+        ANIMATION_FRAME_COMMANDER,
+        Vec3::new(commander_x, commander_y, 0.0),
+        Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
+        (Commander, PlayingEntity),
+    );
+
+    // 添加物理组件
+    commands.entity(commander_entity).insert((
         RigidBody::Fixed,
         Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
         ActiveEvents::COLLISION_EVENTS,
-    )).id();
+    ));
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
     let music_texture = commander_music_resources.music_note.clone();
@@ -75,30 +71,21 @@ pub fn spawn_commander(
         COMMANDER_MUSIC_TILE_WIDTH as u32,
         COMMANDER_MUSIC_TILE_HEIGHT as u32,
     );
-    let music_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, music_tile_size, 10, 1);
     let music_animation_indices = AnimationIndices { first: 0, last: 9 };
 
-    commands.spawn((
-        CommanderMusicAnimation,
-        PlayingEntity,
-        LoopingAnimationMarker,
-        Sprite {
-            image: music_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: music_texture_atlas,
-                index: music_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),
-            ..default()
-        },
-        Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)), // z=1.0 使动画在 Commander 上方
+    utils::spawn_animated_sprite(
+        &mut commands,
+        &mut texture_atlas_layouts,
+        music_texture,
+        music_tile_size,
+        10,
+        1,
         music_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_COMMANDER_MUSIC,
-            TimerMode::Repeating,
-        )), // 每0.1秒切换一帧
-        CurrentAnimationFrame(0),
-    ));
+        ANIMATION_FRAME_COMMANDER_MUSIC,
+        Vec3::new(commander_x, commander_y, Z_FOREST),
+        Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),
+        (CommanderMusicAnimation, PlayingEntity, LoopingAnimationMarker),
+    );
 }
 
 /// 动画 Commander 纹理（只在存活时播放）

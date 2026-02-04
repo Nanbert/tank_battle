@@ -162,9 +162,7 @@ pub fn configure_game_resources(app: &mut App) {
         .insert_resource(CurrentAnimationFrame(0))
         .insert_resource(MenuBlinkTimer(Timer::default()))
         .init_resource::<StageIntroTimer>()
-        .init_resource::<crate::levels::LevelAssets>()
-        .init_resource::<crate::resources::PlayerPositionCache>()
-        .init_resource::<crate::resources::EnemyPositionCache>();
+        .init_resource::<crate::levels::LevelAssets>();
 }
 
 pub fn register_game_systems(app: &mut App) {
@@ -277,7 +275,6 @@ pub fn register_game_systems(app: &mut App) {
                 ),
                 player::reset_player_positions,
                 enemy::reset_enemy_spawn_state,
-                enemy::clear_enemy_position_cache,
             )
                 .chain(),
         )
@@ -325,10 +322,7 @@ pub fn register_game_systems(app: &mut App) {
                 enemy::move_enemy_tanks,
             ).chain().run_if(in_state(GameState::Playing)),
         )
-        .add_systems(
-            Update,
-            enemy::update_enemy_position_cache.run_if(in_state(GameState::Playing)),
-        )
+        
         .add_systems(
             Update,
             enemy::enemy_spawn_system.run_if(in_state(GameState::Playing)),
@@ -381,10 +375,7 @@ pub fn register_game_systems(app: &mut App) {
             Update,
             player::update_recall_progress_bars.run_if(in_state(GameState::Playing)),
         )
-        .add_systems(
-            Update,
-            player::update_player_position_cache.run_if(in_state(GameState::Playing)),
-        )
+        
         .add_systems(
             Update,
             player::recover_energy.run_if(in_state(GameState::Playing)),
@@ -480,15 +471,21 @@ pub fn register_game_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            hud_ui::update_enemy_count_display.run_if(in_state(GameState::Playing)),
+            hud_ui::update_enemy_count_display
+                .run_if(in_state(GameState::Playing))
+                .run_if(resource_changed::<crate::resources::EnemySpawnState>),
         )
         .add_systems(
             Update,
-            hud_ui::update_commander_health_bar.run_if(in_state(GameState::Playing)),
+            hud_ui::update_commander_health_bar
+                .run_if(in_state(GameState::Playing))
+                .run_if(resource_changed::<CommanderLife>),
         )
         .add_systems(
             Update,
-            hud_ui::update_player_hud.run_if(in_state(GameState::Playing)),
+            hud_ui::update_player_hud
+                .run_if(in_state(GameState::Playing))
+                .run_if(resource_changed::<PlayerInfo>),
         )
         .add_systems(
             Update,
