@@ -426,19 +426,9 @@ pub fn configure_asset_plugin() -> AssetPlugin {
     }
 }
 
-/// 宏：简化资源插入，减少重复代码
-macro_rules! insert_resources {
-    ($app:expr, $($resource:expr),+ $(,)?) => {
-        $app
-            $(.insert_resource($resource))*
-    };
-}
-
 pub fn configure_game_resources(app: &mut App) {
-    insert_resources!(
-        app,
-        ClearColor(crate::constants::COLOR_GRAY),
-        crate::resources::GameTextureResources {
+    app.insert_resource(ClearColor(crate::constants::COLOR_GRAY))
+        .insert_resource(crate::resources::GameTextureResources {
             cn: Handle::default(),
             en: Handle::default(),
             player1: Handle::default(),
@@ -484,8 +474,8 @@ pub fn configure_game_resources(app: &mut App) {
             shell: Handle::default(),
             background: Handle::default(),
             music_note: Handle::default(),
-        },
-        crate::resources::GameAudioResources {
+        })
+        .insert_resource(crate::resources::GameAudioResources {
             explosion: Handle::default(),
             brick_hit: Handle::default(),
             hit: Handle::default(),
@@ -502,8 +492,8 @@ pub fn configure_game_resources(app: &mut App) {
             commander_music_002: Handle::default(),
             commander_music_003: Handle::default(),
             tree_ambience: Handle::default(),
-        },
-        crate::resources::GameAtlasLayoutResources {
+        })
+        .insert_resource(crate::resources::GameAtlasLayoutResources {
             sea: Handle::default(),
             forest: Handle::default(),
             forest_fire: Handle::default(),
@@ -511,29 +501,26 @@ pub fn configure_game_resources(app: &mut App) {
             fire_effect: Handle::default(),
             penetrate_effect: Handle::default(),
             smoke_atlas: Handle::default(),
-        },
-        Language::default(),
-        GameMode::OnePlayer,
-        StageLevel(1),
-        CommanderLife {
+        })
+        .insert_resource(Language::default())
+        .insert_resource(GameMode::OnePlayer)
+        .insert_resource(StageLevel(1))
+        .insert_resource(CommanderLife {
             life_points: COMMANDER_LIFE_MAX,
-        },
-        PlayerInfo::default(),
-        EnemySpawnState::default(),
-        RecallTimers::default(),
-        DashTimers::default(),
-        DashDamageTracker::default(),
-        BarrierDamageTracker::default(),
-        InsufficientEnergyTracker::default(),
-        FadingOut { alpha: 1.0 },
-        CurrentMenuSelection { selected_index: 0 },
-        AnimationIndices { first: 0, last: 14 },
-        CurrentAnimationFrame(0),
-        MenuBlinkTimer(Timer::default()),
-    );
-
-    // 使用 init_resource 的资源需要单独调用
-    app.init_resource::<EnemyCollisionCache>()
+        })
+        .insert_resource(PlayerInfo::default())
+        .insert_resource(EnemySpawnState::default())
+        .insert_resource(RecallTimers::default())
+        .insert_resource(DashTimers::default())
+        .insert_resource(DashDamageTracker::default())
+        .insert_resource(BarrierDamageTracker::default())
+        .insert_resource(InsufficientEnergyTracker::default())
+        .insert_resource(FadingOut { alpha: 1.0 })
+        .insert_resource(CurrentMenuSelection { selected_index: 0 })
+        .insert_resource(AnimationIndices { first: 0, last: 14 })
+        .insert_resource(CurrentAnimationFrame(0))
+        .insert_resource(MenuBlinkTimer(Timer::default()))
+        .init_resource::<EnemyCollisionCache>()
         .init_resource::<BlueBarRegenTimer>()
         .init_resource::<StageIntroTimer>()
         .init_resource::<crate::levels::LevelAssets>();

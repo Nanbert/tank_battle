@@ -12,7 +12,7 @@ use crate::powerup;
 use crate::resources::{
     BarrierDamageTracker, BlueBarRegenTimer,
     GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers,
-    StatType, PlayerTankResources,
+    StatType, GameTextureResources,
 };
 use crate::utils;
 
@@ -527,11 +527,11 @@ fn spawn_players(
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     game_mode: GameMode,
     player_info: &mut ResMut<PlayerInfo>,
-    player_tank_resources: &PlayerTankResources,
+    texture_resources: &GameTextureResources,
 ) {
     // 使用预加载的玩家坦克纹理
-    let player1_texture = player_tank_resources.player1.clone();
-    let player2_texture = player_tank_resources.player2.clone();
+    let player1_texture = texture_resources.player1.clone();
+    let player2_texture = texture_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
     let player_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, player_tile_size, 2, 1);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
@@ -619,7 +619,7 @@ pub fn init_players(
     game_mode: Res<GameMode>,
     mut player_info: ResMut<PlayerInfo>,
     existing_players: Query<Entity, With<PlayerTank>>,
-    player_tank_resources: Res<PlayerTankResources>,
+    texture_resources: Res<GameTextureResources>,
 ) {
     // 防御性编程：先清理可能存在的旧玩家坦克和信息
     crate::utils::cleanup_entities(&mut commands, existing_players.iter());
@@ -634,7 +634,7 @@ pub fn init_players(
             GameMode::TwoPlayers => GameMode::TwoPlayers,
         },
         &mut player_info,
-        &player_tank_resources,
+        &texture_resources,
     );
 }
 
@@ -647,7 +647,7 @@ pub fn update_barrel_system(
     player_tanks: Query<(Entity, Option<&Children>, &PlayerTank, &Transform), With<PlayerTank>>,
     barrels: Query<(Entity, &Sprite), With<Barrel>>,
     player_info: Res<PlayerInfo>,
-    player_tank_resources: Res<PlayerTankResources>,
+    texture_resources: Res<GameTextureResources>,
 ) {
     for (entity, children, player_tank, _transform) in player_tanks.iter() {
         // 获取玩家的 shells 数量
@@ -656,12 +656,12 @@ pub fn update_barrel_system(
         // 根据 shells 数量选择炮管纹理和尺寸
         let (barrel_texture, barrel_display_size) = if shells == 1 {
             (
-                player_tank_resources.single_barrel.clone(),
+                texture_resources.single_barrel.clone(),
                 Vec2::new(SINGLE_BARREL_DISPLAY_WIDTH, SINGLE_BARREL_DISPLAY_HEIGHT),
             )
         } else {
             (
-                player_tank_resources.double_barrel.clone(),
+                texture_resources.double_barrel.clone(),
                 Vec2::new(DOUBLE_BARREL_DISPLAY_WIDTH, DOUBLE_BARREL_DISPLAY_HEIGHT),
             )
         };

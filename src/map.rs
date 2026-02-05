@@ -9,9 +9,7 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::{
-    MapResources, StageLevel, TerrainAtlasLayouts,
-};
+use crate::resources::{GameAtlasLayoutResources, GameTextureResources, StageLevel};
 
 /// 地形类型枚举
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -168,14 +166,14 @@ pub enum TerrainTileType {
 /// - `tile_type`: 地形类型
 pub fn spawn_terrain_tile(
     commands: &mut Commands,
-    map_resources: &Res<MapResources>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    texture_resources: &Res<GameTextureResources>,
+    atlas_layouts: &Res<GameAtlasLayoutResources>,
     position: Vec2,
     tile_type: TerrainTileType,
 ) -> Entity {
     match tile_type {
         TerrainTileType::Brick => {
-            let brick_texture = map_resources.brick.clone();
+            let brick_texture = texture_resources.brick.clone();
             commands
                 .spawn((
                     Brick,
@@ -194,7 +192,7 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Steel => {
-            let steel_texture = map_resources.steel.clone();
+            let steel_texture = texture_resources.steel.clone();
             commands
                 .spawn((
                     Steel,
@@ -213,7 +211,7 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Forest => {
-            let forest_texture = map_resources.tree.clone();
+            let forest_texture = texture_resources.tree.clone();
             let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
             commands
                 .spawn((
@@ -243,7 +241,7 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Sea => {
-            let sea_texture = map_resources.sea.clone();
+            let sea_texture = texture_resources.sea.clone();
             let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
             commands
                 .spawn((
@@ -271,7 +269,7 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Barrier => {
-            let barrier_texture = map_resources.barrier.clone();
+            let barrier_texture = texture_resources.barrier.clone();
             commands
                 .spawn((
                     Barrier,
@@ -321,8 +319,8 @@ pub(crate) enum TileLayout {
 /// 返回：生成的实体数组（2或4个，取决于布局类型）
 pub fn spawn_tile_group(
     commands: &mut Commands,
-    map_resources: &Res<MapResources>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    texture_resources: &Res<GameTextureResources>,
+    atlas_layouts: &Res<GameAtlasLayoutResources>,
     center_position: Vec2,
     tile_type: TerrainTileType,
     layout: TileLayout,
@@ -346,7 +344,7 @@ pub fn spawn_tile_group(
         .map(|pos| {
             spawn_terrain_tile(
                 commands,
-                map_resources,
+                texture_resources,
                 atlas_layouts,
                 center_position + pos,
                 tile_type,
@@ -377,8 +375,8 @@ fn get_terrain_config(terrain: TerrainType) -> Option<(TerrainTileType, Option<T
 
 fn spawn_map_terrain(
     commands: &mut Commands,
-    map_resources: &Res<MapResources>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    texture_resources: &Res<GameTextureResources>,
+    atlas_layouts: &Res<GameAtlasLayoutResources>,
     level_assets: &mut crate::levels::LevelAssets,
     stage_level: usize,
 ) {
@@ -395,10 +393,10 @@ fn spawn_map_terrain(
             if let Some((tile_type, layout)) = get_terrain_config(*terrain) {
                 match layout {
                     Some(layout_type) => {
-                        spawn_tile_group(commands, map_resources, atlas_layouts, pos, tile_type, layout_type);
+                        spawn_tile_group(commands, texture_resources, atlas_layouts, pos, tile_type, layout_type);
                     }
                     None => {
-                        spawn_terrain_tile(commands, map_resources, atlas_layouts, pos, tile_type);
+                        spawn_terrain_tile(commands, texture_resources, atlas_layouts, pos, tile_type);
                     }
                 }
             }
@@ -409,8 +407,8 @@ fn spawn_map_terrain(
 /// 生成游戏地图（包括围墙、地形和司令官堡垒）
 pub fn spawn_map(
     mut commands: Commands,
-    map_resources: Res<MapResources>,
-    atlas_layouts: Res<TerrainAtlasLayouts>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     mut level_assets: ResMut<crate::levels::LevelAssets>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
@@ -435,21 +433,21 @@ pub fn spawn_map(
     // 根据地图数组生成地形
     spawn_map_terrain(
         &mut commands,
-        &map_resources,
+        &texture_resources,
         &atlas_layouts,
         &mut level_assets,
         stage_level.0,
     );
 
     // 生成司令官堡垒墙
-    spawn_commander_fortress(&mut commands, &map_resources, &atlas_layouts);
+    spawn_commander_fortress(&mut commands, &texture_resources, &atlas_layouts);
 }
 
 /// 生成一列砖块墙
 fn spawn_wall_column(
     commands: &mut Commands,
-    map_resources: &Res<MapResources>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    texture_resources: &Res<GameTextureResources>,
+    atlas_layouts: &Res<GameAtlasLayoutResources>,
     fixed_axis: f32,
     start_pos: f32,
     brick_size: f32,
@@ -463,15 +461,15 @@ fn spawn_wall_column(
         } else {
             Vec2::new(pos, fixed_axis)
         };
-        spawn_terrain_tile(commands, map_resources, atlas_layouts, position, TerrainTileType::Brick);
+        spawn_terrain_tile(commands, texture_resources, atlas_layouts, position, TerrainTileType::Brick);
     }
 }
 
 /// 生成包围司令官的三面砖块堡垒墙（左、右、上）
 pub fn spawn_commander_fortress(
     commands: &mut Commands,
-    map_resources: &Res<MapResources>,
-    atlas_layouts: &Res<TerrainAtlasLayouts>,
+    texture_resources: &Res<GameTextureResources>,
+    atlas_layouts: &Res<GameAtlasLayoutResources>,
 ) {
     let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
 
@@ -486,7 +484,7 @@ pub fn spawn_commander_fortress(
     // 左墙：3块砖
     spawn_wall_column(
         commands,
-        map_resources,
+        texture_resources,
         atlas_layouts,
         commander_left - brick_size / 2.0,
         commander_bottom,
@@ -498,7 +496,7 @@ pub fn spawn_commander_fortress(
     // 右墙：3块砖
     spawn_wall_column(
         commands,
-        map_resources,
+        texture_resources,
         atlas_layouts,
         commander_right + brick_size / 2.0,
         commander_bottom,
@@ -510,7 +508,7 @@ pub fn spawn_commander_fortress(
     // 上墙：2块砖
     spawn_wall_column(
         commands,
-        map_resources,
+        texture_resources,
         atlas_layouts,
         commander_top + brick_size / 2.0,
         -COMMANDER_WIDTH / 2.0,

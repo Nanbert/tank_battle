@@ -180,8 +180,8 @@ fn get_player_name(player_type: TankType, language: Language) -> &'static str {
 /// 生成玩家 HUD
 fn spawn_player_hud(
     mut commands: Commands,
-    font_resources: Res<FontResources>,
-    commander_resources: Res<CommanderResources>,
+    font_resources: Res<GameTextureResources>,
+    commander_resources: Res<GameTextureResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -232,7 +232,7 @@ fn spawn_player_hud(
 fn spawn_single_player_hud(
     commands: &mut Commands,
     font: &Handle<Font>,
-    commander_resources: &CommanderResources,
+    commander_resources: &GameTextureResources,
     mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &PlayerInfo,
     player_type: TankType,
@@ -927,7 +927,7 @@ fn is_hud_stat_at_max_value(
 /// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
 fn spawn_top_hud(
     mut commands: Commands,
-    font_resources: &FontResources,
+    font_resources: &GameTextureResources,
     stage_level: &Res<StageLevel>,
     language: Language,
 ) {
@@ -1006,8 +1006,8 @@ fn spawn_top_hud(
 /// 生成所有 HUD（只在第一关时生成）
 pub fn spawn_hud(
     mut commands: Commands,
-    font_resources: Res<FontResources>,
-    commander_resources: Res<CommanderResources>,
+    font_resources: Res<GameTextureResources>,
+    commander_resources: Res<GameTextureResources>,
     texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,

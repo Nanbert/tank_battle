@@ -9,7 +9,7 @@ use rand::Rng;
 use std::time::Duration;
 
 use crate::constants::*;
-use crate::resources::{AmbienceResources, GameAudioResources, GameTextureResources, PlayerInfo, GameAtlasLayoutResources};
+use crate::resources::{GameAudioResources, GameTextureResources, PlayerInfo, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 通用动画特效生成函数
@@ -182,7 +182,6 @@ pub fn animate_sprites(
         ),
         Or<(With<AnimationMode>, Without<AnimationMode>)>,
     >,
-    energy_ball_query: Query<(), (With<crate::constants::EnergyBall>, With<crate::constants::LaserPhase>)>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
         let prev_frame = current_frame.0;
@@ -199,34 +198,9 @@ pub fn animate_sprites(
                 // 循环播放，animate_sprite 已经处理
                 crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
             }
-            AnimationMode::LoopRange { start_frame: _, end_frame: _ } => {
-                // 播放一次完整动画，然后在指定帧范围内循环
-                // 检查是否是激光阶段的能量球
-                let is_laser_phase = energy_ball_query.get(entity).is_ok();
-
-                if is_laser_phase {
-                    // 激光阶段：直接循环81-84帧
-                    advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
-                        crate::constants::ENERGY_BALL_LASER_LOOP_START,
-                        crate::constants::ENERGY_BALL_LASER_LOOP_END);
-                } else {
-                    // 蓄力阶段：播放0-64帧，然后循环50-64
-                    if current_frame.0 < crate::constants::ENERGY_BALL_CHARGE_LOOP_END {
-                        // 还在播放完整动画阶段（0-64）
-                        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
-                        // 播放到第64帧后，立即切换到循环模式，防止继续播放65-80帧
-                        if current_frame.0 == crate::constants::ENERGY_BALL_CHARGE_LOOP_END {
-                            advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
-                                crate::constants::ENERGY_BALL_CHARGE_LOOP_START,
-                                crate::constants::ENERGY_BALL_CHARGE_LOOP_END);
-                        }
-                    } else {
-                        // 完整动画播放完毕，进入循环阶段（50-64）
-                        advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(),
-                            crate::constants::ENERGY_BALL_CHARGE_LOOP_START,
-                            crate::constants::ENERGY_BALL_CHARGE_LOOP_END);
-                    }
-                }
+            AnimationMode::LoopRange { start_frame, end_frame } => {
+                // 在指定帧范围内循环播放（用于能量球）
+                advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(), *start_frame, *end_frame);
             }
         }
     }
@@ -313,14 +287,14 @@ pub fn play_ambience_generic<T, P>(
 #[allow(unused_mut)]
 pub fn play_sea_ambience(
     mut commands: Commands,
-    ambience_resources: Res<AmbienceResources>,
+    audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     seas: Query<&Transform, With<Sea>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<SeaAmbiencePlayer>>,
 ) {
     play_ambience_generic::<Sea, SeaAmbiencePlayer>(
         commands,
-        ambience_resources.sea_ambience.clone(),
+        audio_resources.sea_ambience.clone(),
         player_tanks,
         seas,
         ambience_players,
@@ -332,14 +306,14 @@ pub fn play_sea_ambience(
 #[allow(unused_mut)]
 pub fn play_tree_ambience(
     mut commands: Commands,
-    ambience_resources: Res<AmbienceResources>,
+    audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     forests: Query<&Transform, With<Forest>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<TreeAmbiencePlayer>>,
 ) {
     play_ambience_generic::<Forest, TreeAmbiencePlayer>(
         commands,
-        ambience_resources.tree_ambience.clone(),
+        audio_resources.tree_ambience.clone(),
         player_tanks,
         forests,
         ambience_players,
@@ -348,12 +322,12 @@ pub fn play_tree_ambience(
 }
 
 /// 从司令官音乐列表中随机选择一首
-fn select_random_commander_music(ambience_resources: &AmbienceResources) -> Handle<AudioSource> {
+fn select_random_commander_music(audio_resources: &GameAudioResources) -> Handle<AudioSource> {
     let music_files = [
-        &ambience_resources.commander_music_000,
-        &ambience_resources.commander_music_001,
-        &ambience_resources.commander_music_002,
-        &ambience_resources.commander_music_003,
+        &audio_resources.commander_music_000,
+        &audio_resources.commander_music_001,
+        &audio_resources.commander_music_002,
+        &audio_resources.commander_music_003,
     ];
     let mut rng = rand::rng();
     music_files[rng.random_range(0..music_files.len())].clone()
@@ -363,7 +337,7 @@ fn select_random_commander_music(ambience_resources: &AmbienceResources) -> Hand
 #[allow(unused_mut)]
 pub fn play_commander_ambience(
     #[allow(unused_mut)] mut commands: Commands,
-    ambience_resources: Res<AmbienceResources>,
+    audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     commander: Query<&Transform, With<Commander>>,
     ambience_players: Query<(Entity, &mut AudioPlayer), With<CommanderAmbiencePlayer>>,
@@ -376,7 +350,7 @@ pub fn play_commander_ambience(
     });
 
     if is_near_commander && ambience_players.is_empty() {
-        let random_music = select_random_commander_music(&ambience_resources);
+        let random_music = select_random_commander_music(&audio_resources);
         let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_COMMANDER_MUSIC);
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {

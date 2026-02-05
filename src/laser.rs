@@ -295,7 +295,8 @@ fn start_charge(
         EnergyBall {
             player_entity: entity,
         },
-        AnimationMode::LoopRange { start_frame: 50, end_frame: 64 },
+        crate::constants::EnergyBallPhase::Charging,
+        AnimationMode::LoopRange { start_frame: 20, end_frame: 64 },
         Sprite {
             image: energy_ball_texture,
             texture_atlas: Some(TextureAtlas {
@@ -399,9 +400,14 @@ fn fire_laser(
         },
     );
 
-    // 给能量球添加激光阶段标记，切换到80-84循环
+    // 给能量球切换到激光阶段，更新动画循环范围
     if let Some(energy_ball_entity) = energy_ball_entity {
-        commands.entity(energy_ball_entity).insert(LaserPhase);
+        commands.entity(energy_ball_entity)
+            .insert(crate::constants::EnergyBallPhase::Lasering)
+            .insert(AnimationMode::LoopRange {
+                start_frame: crate::constants::ENERGY_BALL_LASER_LOOP_START,
+                end_frame: crate::constants::ENERGY_BALL_LASER_LOOP_END,
+            });
     }
 
     // 播放激光音效

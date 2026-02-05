@@ -191,7 +191,7 @@ pub fn spawn_start_screen(
 }
 
 /// 生成关于界面
-pub fn spawn_about_screen(mut commands: Commands, font_resources: Res<FontResources>, asset_server: Res<AssetServer>, language: Res<Language>) {
+pub fn spawn_about_screen(mut commands: Commands, font_resources: Res<GameTextureResources>, asset_server: Res<AssetServer>, language: Res<Language>) {
     // 加载自定义字体
     let cn_font = font_resources.cn.clone();
     let en_font = font_resources.en.clone();
@@ -357,7 +357,7 @@ pub fn handle_about_input(
 }
 
 /// 生成致谢界面
-pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<FontResources>) {
+pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameTextureResources>) {
     // 加载自定义字体
     let custom_font = font_resources.en.clone();
 

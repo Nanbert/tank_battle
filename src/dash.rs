@@ -11,7 +11,7 @@ use crate::effects;
 
 use crate::constants::*;
 use crate::resources::{
-    DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged, StatType, EffectResources, SoundResources,
+    DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged, StatType, GameTextureResources, GameAudioResources,
     InsufficientEnergyTracker,
 };
 
@@ -23,7 +23,7 @@ pub fn handle_dash_input(
     mut dash_timers: ResMut<DashTimers>,
     mut player_info: ResMut<PlayerInfo>,
     mut energy_tracker: ResMut<InsufficientEnergyTracker>,
-    font_resources: Res<crate::resources::FontResources>,
+    font_resources: Res<crate::resources::GameTextureResources>,
     language: Res<crate::resources::Language>,
     time: Res<Time>,
 ) {
@@ -143,8 +143,8 @@ pub fn handle_dash_collision(
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut dash_damage_tracker: ResMut<DashDamageTracker>,
-    effect_resources: Res<EffectResources>,
-    sound_resources: Res<SoundResources>,
+    texture_resources: Res<GameTextureResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -162,7 +162,7 @@ pub fn handle_dash_collision(
         match collision_info.target {
             DashTarget::Brick { entity, position } => {
                 // 播放砖块被击中的音效
-                sound_resources.play(&mut commands, sound_resources.brick_hit.clone(), 0.5);
+                audio_resources.play(&mut commands, audio_resources.brick_hit.clone(), 0.5);
 
                 // 发送火花特效事件
                 effect_events.write(crate::bullet::EffectEvent::Spark { position });
@@ -185,8 +185,8 @@ pub fn handle_dash_collision(
                         &mut texture_atlas_layouts,
                         &transform,
                         collision_info.player_entity,
-                        &effect_resources,
-                        &sound_resources,
+                        &texture_resources,
+                        &audio_resources,
                     );
                 }
             }
@@ -211,8 +211,8 @@ pub fn handle_dash_collision(
                         &mut texture_atlas_layouts,
                         &transform,
                         collision_info.player_entity,
-                        &effect_resources,
-                        &sound_resources,
+                        &texture_resources,
+                        &audio_resources,
                     );
                 }
             }
@@ -251,8 +251,8 @@ pub fn handle_dash_collision(
                         &mut texture_atlas_layouts,
                         &transform,
                         collision_info.player_entity,
-                        &effect_resources,
-                        &sound_resources,
+                        &texture_resources,
+                        &audio_resources,
                     );
                 }
             }
@@ -393,15 +393,15 @@ fn kill_player_tank(
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     tank_transform: &Transform,
     player_entity: Entity,
-    effect_resources: &EffectResources,
-    sound_resources: &SoundResources,
+    texture_resources: &GameTextureResources,
+    audio_resources: &GameAudioResources,
 ) {
     // 生成爆炸效果
     effects::spawn_explosion(
         commands,
         texture_atlas_layouts,
-        effect_resources,
-        sound_resources,
+        texture_resources,
+        audio_resources,
         tank_transform.translation,
     );
 

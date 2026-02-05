@@ -511,9 +511,15 @@ pub struct EnergyBall {
     pub player_entity: Entity,
 }
 
-/// 能量球进入激光阶段标记
-#[derive(Component)]
-pub struct LaserPhase;
+/// 能量球阶段枚举
+/// 标记能量球当前所处的动画阶段
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum EnergyBallPhase {
+    /// 蓄力阶段：播放0-64帧，然后循环50-64帧
+    Charging,
+    /// 激光阶段：循环81-84帧
+    Lasering,
+}
 
 #[derive(Component)]
 pub struct LaserWithEnergyBall {
@@ -808,8 +814,6 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
 pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
 pub const ENERGY_BALL_END_FRAME: usize = 64; // 能量球动画结束帧（65帧：0-64）
-pub const ENERGY_BALL_CHARGE_LOOP_START: usize = 18; // 蓄力完成循环起始帧
-pub const ENERGY_BALL_CHARGE_LOOP_END: usize = 64; // 蓄力完成循环结束帧
 pub const ENERGY_BALL_LASER_LOOP_START: usize = 81; // 激光阶段循环起始帧
 pub const ENERGY_BALL_LASER_LOOP_END: usize = 84; // 激光阶段循环结束帧
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数

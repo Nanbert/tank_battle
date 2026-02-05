@@ -537,20 +537,6 @@ pub struct GameAtlasLayoutResources {
     pub smoke_atlas: Handle<TextureAtlasLayout>,
 }
 
-// 兼容性类型别名（为了保持向后兼容）
-pub type FontResources = GameTextureResources;
-pub type PlayerTankResources = GameTextureResources;
-pub type CommanderResources = GameTextureResources;
-pub type BulletResources = GameTextureResources;
-pub type EffectResources = GameTextureResources;
-pub type MapResources = GameTextureResources;
-pub type EnemyResources = GameTextureResources;
-pub type CommanderMusicResources = GameTextureResources;
-pub type SoundResources = GameAudioResources;
-pub type AmbienceResources = GameAudioResources;
-pub type TerrainAtlasLayouts = GameAtlasLayoutResources;
-pub type EffectAtlasLayouts = GameAtlasLayoutResources;
-
 
 
 

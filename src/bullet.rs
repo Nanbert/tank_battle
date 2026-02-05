@@ -10,7 +10,7 @@ use rand::Rng;
 
 use crate::effects;
 use crate::constants::*;
-use crate::resources::{AmbienceResources, BulletTracker, BulletResources, EffectResources, PlayerInfo, PlayerStatChanged, StatType, TerrainAtlasLayouts, SoundResources};
+use crate::resources::{BulletTracker, GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo, PlayerStatChanged, StatType};
 use crate::utils;
 
 /// 特效事件枚举
@@ -62,16 +62,16 @@ pub struct BulletSpawnParams {
 /// 生成子弹实体
 pub fn spawn_bullet(
     commands: &mut Commands,
-    bullet_resources: &BulletResources,
+    texture_resources: &GameTextureResources,
     params: BulletSpawnParams,
     player_info: &Res<PlayerInfo>,
-    effect_atlas_layouts: &crate::resources::EffectAtlasLayouts,
+    atlas_layouts: &GameAtlasLayoutResources,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = match params.owner_type {
-        TankType::Player1 => bullet_resources.bullet_player1.clone(),
-        TankType::Player2 => bullet_resources.bullet_player2.clone(),
-        TankType::Enemy => bullet_resources.bullet_enemy.clone(),
+        TankType::Player1 => texture_resources.bullet_player1.clone(),
+        TankType::Player2 => texture_resources.bullet_player2.clone(),
+        TankType::Enemy => texture_resources.bullet_enemy.clone(),
     };
 
     // 检查玩家是否拥有 fire_shell 能力
@@ -120,7 +120,7 @@ pub fn spawn_bullet(
 
     // 如果玩家有 fire_shell 效果，添加火焰特效子实体
     if has_fire_shell {
-        let fire_effect_atlas = effect_atlas_layouts.fire_effect.clone();
+        let fire_effect_atlas = atlas_layouts.fire_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::FIRE_EFFECT_TOTAL_FRAMES - 1,
@@ -131,7 +131,7 @@ pub fn spawn_bullet(
                 crate::constants::FireEffect,
                 crate::constants::AnimationMode::Looping,
                 Sprite::from_atlas_image(
-                    bullet_resources.bullet_fire_effect.clone(),
+                    texture_resources.bullet_fire_effect.clone(),
                     TextureAtlas {
                         layout: fire_effect_atlas,
                         index: animation_indices.first,
@@ -157,7 +157,7 @@ pub fn spawn_bullet(
 
     // 如果玩家有 penetrate 效果，添加穿透特效子实体
     if has_penetrate {
-        let penetrate_effect_atlas = effect_atlas_layouts.penetrate_effect.clone();
+        let penetrate_effect_atlas = atlas_layouts.penetrate_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
             last: crate::constants::PENETRATE_EFFECT_TOTAL_FRAMES - 1,
@@ -168,7 +168,7 @@ pub fn spawn_bullet(
                 PenetrateEffect,
                 crate::constants::AnimationMode::Looping,
                 Sprite::from_atlas_image(
-                    bullet_resources.bullet_penetrate_effect.clone(),
+                    texture_resources.bullet_penetrate_effect.clone(),
                     TextureAtlas {
                         layout: penetrate_effect_atlas,
                         index: animation_indices.first,
@@ -195,9 +195,9 @@ pub fn spawn_bullet(
 /// 敌方坦克射击系统
 pub fn enemy_shoot_system(
     mut commands: Commands,
-    bullet_resources: Res<BulletResources>,
+    texture_resources: Res<GameTextureResources>,
     player_info: Res<PlayerInfo>,
-    effect_atlas_layouts: Res<crate::resources::EffectAtlasLayouts>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     mut query: Query<
         (
             Entity,
@@ -232,7 +232,7 @@ pub fn enemy_shoot_system(
             // 生成子弹
             let bullet_entity = spawn_bullet(
                 &mut commands,
-                &bullet_resources,
+                &texture_resources,
                 BulletSpawnParams {
                     position: bullet_pos,
                     direction,
@@ -240,7 +240,7 @@ pub fn enemy_shoot_system(
                     owner_type: TankType::Enemy,
                 },
                 &player_info,
-                &effect_atlas_layouts,
+                &atlas_layouts,
             );
 
             // 记录子弹的所有者
@@ -252,9 +252,9 @@ pub fn enemy_shoot_system(
 /// 玩家坦克射击系统
 pub fn player_shoot_system(
     mut commands: Commands,
-    bullet_resources: Res<BulletResources>,
+    texture_resources: Res<GameTextureResources>,
     time: Res<Time>,
-    effect_atlas_layouts: Res<crate::resources::EffectAtlasLayouts>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     mut query: Query<
         (
             Entity,
@@ -270,7 +270,7 @@ pub fn player_shoot_system(
     player_info: Res<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
     barrel_query: Query<(), With<Barrel>>,
-    sound_resources: Res<SoundResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for (entity, transform, rotation_timer, player_tank, mut fire_config, children) in &mut query {
         // 检查是否正在旋转
@@ -313,7 +313,7 @@ pub fn player_shoot_system(
         // 生成子弹
         let bullet_entity = spawn_bullet(
             &mut commands,
-            &bullet_resources,
+            &texture_resources,
             BulletSpawnParams {
                 position: bullet_pos,
                 direction,
@@ -321,14 +321,14 @@ pub fn player_shoot_system(
                 owner_type: player_tank.tank_type,
             },
             &player_info,
-            &effect_atlas_layouts,
+            &atlas_layouts,
         );
 
         // 记录子弹的所有者
         bullet_tracker.add_bullet(bullet_entity, entity);
 
         // 播放玩家射击音效，音量 0.4
-        sound_resources.play(&mut commands, sound_resources.player_shot.clone(), 0.4);
+        audio_resources.play(&mut commands, audio_resources.player_shot.clone(), 0.4);
 
         // 给炮管添加后坐力效果
         if let Some(children) = children {
@@ -416,7 +416,7 @@ pub fn bullet_terrain_collision_system(
     despawned_entities: Query<(), With<DespawnMarker>>,
     player_info: Res<PlayerInfo>,
     mut bullet_tracker: ResMut<BulletTracker>,
-    sound_resources: Res<SoundResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -449,7 +449,7 @@ pub fn bullet_terrain_collision_system(
 
         // 处理砖块碰撞
         if bricks.get(terrain_entity).is_ok() {
-            sound_resources.play(&mut commands, sound_resources.brick_hit.clone(), VOLUME_HALF);
+            audio_resources.play(&mut commands, audio_resources.brick_hit.clone(), VOLUME_HALF);
             effect_events.write(EffectEvent::Spark {
                 position: bullet_transform.translation,
             });
@@ -465,13 +465,13 @@ pub fn bullet_terrain_collision_system(
             });
 
             if bullet.is_enemy() {
-                utils::play_one_shot_sound(&mut commands, sound_resources.hit.clone(), 1.0);
+                utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
             } else if let Some(player_stats) = player_info.get_stats(bullet.owner_type()) {
                 if player_stats.penetrate {
-                    sound_resources.play(&mut commands, sound_resources.metal_crash.clone(), 1.0);
+                    audio_resources.play(&mut commands, audio_resources.metal_crash.clone(), 1.0);
                     let () = commands.entity(terrain_entity).try_despawn();
                 } else {
-                    sound_resources.play(&mut commands, sound_resources.hit.clone(), 1.0);
+                    audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
                 }
             }
 
@@ -496,7 +496,7 @@ pub fn bullet_tank_collision_system(
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
-    sound_resources: Res<SoundResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -521,7 +521,7 @@ pub fn bullet_tank_collision_system(
                     position: tank_transform.translation,
                 });
             }
-            sound_resources.play(&mut commands, sound_resources.hit.clone(), 1.0);
+            audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
             let () = commands.entity(tank_entity).try_despawn();
             // 增加分数
             player_info.with_stats_mut(player_type, |player_stats| {
@@ -541,7 +541,7 @@ pub fn bullet_tank_collision_system(
                 let player_type = player_tank.tank_type;
                 let tank_entity = tank_entity; // 提取到外部变量
 
-                sound_resources.play(&mut commands, sound_resources.hit.clone(), 1.0);
+                audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
                 effect_events.write(EffectEvent::Spark {
                     position: tank_transform.translation,
                 });
@@ -617,10 +617,9 @@ pub fn handle_effect_events(
     mut events: MessageReader<EffectEvent>,
     mut commands: Commands,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    terrain_atlas_layouts: Res<TerrainAtlasLayouts>,
-    effect_resources: Res<EffectResources>,
-    sound_resources: Res<SoundResources>,
-    ambience_resources: Res<AmbienceResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    texture_resources: Res<GameTextureResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for event in events.read() {
         match event {
@@ -628,8 +627,8 @@ pub fn handle_effect_events(
                 effects::spawn_explosion(
                     &mut commands,
                     &mut texture_atlas_layouts,
-                    &effect_resources,
-                    &sound_resources,
+                    &texture_resources,
+                    &audio_resources,
                     *position,
                 );
             }
@@ -637,16 +636,16 @@ pub fn handle_effect_events(
                 effects::spawn_spark(
                     &mut commands,
                     &mut texture_atlas_layouts,
-                    &effect_resources,
+                    &texture_resources,
                     *position,
                 );
             }
             EffectEvent::ForestFire { position } => {
                 effects::spawn_forest_fire(
                     &mut commands,
-                    &terrain_atlas_layouts,
-                    &effect_resources,
-                    &ambience_resources,
+                    &atlas_layouts,
+                    &texture_resources,
+                    &audio_resources,
                     *position,
                 );
             }
@@ -663,7 +662,7 @@ pub fn bullet_commander_collision_system(
     commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
     mut commander_life: ResMut<crate::resources::CommanderLife>,
     mut bullet_tracker: ResMut<BulletTracker>,
-    sound_resources: Res<SoundResources>,
+    audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else { continue };
@@ -684,7 +683,7 @@ pub fn bullet_commander_collision_system(
         }
 
         // 碰撞确认，播放受击音效
-        sound_resources.play(&mut commands, sound_resources.commander_get_shot.clone(), 1.0);
+        audio_resources.play(&mut commands, audio_resources.commander_get_shot.clone(), 1.0);
 
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
@@ -699,7 +698,7 @@ pub fn bullet_commander_collision_system(
         // 检查是否是致命伤（生命值归零）
         if commander_life.life_points == 0 {
             // 播放死亡音效
-            sound_resources.play(&mut commands, sound_resources.commander_death.clone(), 1.0);
+            audio_resources.play(&mut commands, audio_resources.commander_death.clone(), 1.0);
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);

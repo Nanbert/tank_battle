@@ -67,7 +67,7 @@ pub fn spawn_stage_intro(
     mut stage_intro_timer: ResMut<StageIntroTimer>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
-    font_resources: Res<FontResources>,
+    font_resources: Res<GameTextureResources>,
     language: Res<Language>,
 ) {
     // 设置背景色为白色
@@ -203,7 +203,7 @@ pub fn despawn_stage_intro(
 /// 生成暂停界面
 pub fn spawn_pause_ui(
     mut commands: Commands,
-    font_resources: Res<FontResources>,
+    font_resources: Res<GameTextureResources>,
     language: Res<Language>,
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
@@ -296,7 +296,7 @@ pub fn handle_pause_input(
 /// 生成游戏结束界面
 pub fn spawn_game_over_ui(
     mut commands: Commands,
-    font_resources: Res<FontResources>,
+    font_resources: Res<GameTextureResources>,
     language: Res<Language>,
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
