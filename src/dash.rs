@@ -286,8 +286,8 @@ fn extract_dash_collision_info(
     steels: &Query<(Entity, &Transform), With<Steel>>,
 ) -> Option<DashCollisionInfo> {
     // 尝试从 e1 获取玩家坦克
-    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1) {
-        if let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels) {
+    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1)
+        && let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels) {
             return Some(DashCollisionInfo {
                 player_entity,
                 player_tank: *player_tank,
@@ -296,11 +296,10 @@ fn extract_dash_collision_info(
                 target,
             });
         }
-    }
 
     // 尝试从 e2 获取玩家坦克
-    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2) {
-        if let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels) {
+    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2)
+        && let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels) {
             return Some(DashCollisionInfo {
                 player_entity,
                 player_tank: *player_tank,
@@ -309,7 +308,6 @@ fn extract_dash_collision_info(
                 target,
             });
         }
-    }
 
     None
 }

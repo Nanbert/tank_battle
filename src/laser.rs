@@ -34,7 +34,7 @@ pub struct LaserSpawnParams {
 pub fn spawn_laser(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     params: LaserSpawnParams,
 ) -> Entity {
     // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
@@ -44,7 +44,7 @@ pub fn spawn_laser(
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
-    let laser_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, laser_tile_size, 4, 3);
+    let laser_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, laser_tile_size, 4, 3);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
@@ -226,7 +226,7 @@ fn start_charge(
     commands: &mut Commands,
     player_info: &ResMut<PlayerInfo>,
     texture_resources: &GameTextureResources,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
@@ -272,7 +272,7 @@ fn start_charge(
     };
 
     let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
-    let energy_ball_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, energy_ball_tile_size, 17, 5);
+    let energy_ball_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, energy_ball_tile_size, 17, 5);
     let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
 
     // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
@@ -358,7 +358,7 @@ fn update_charge(
 
 /// 发射激光
 fn fire_laser(
-    mut commands: &mut Commands,
+    commands: &mut Commands,
     texture_resources: &GameTextureResources,
     texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
@@ -412,7 +412,7 @@ fn fire_laser(
     }
 
     // 播放激光音效
-    audio_resources.play(&mut commands, audio_resources.laser.clone(), 1.0);
+    audio_resources.play(commands, audio_resources.laser.clone(), 1.0);
 
     // 应用后坐力
     let recoil_distance = PLAYER_TANK_DISPLAY_HEIGHT * RECOIL_DISTANCE_FACTOR;
@@ -473,7 +473,7 @@ fn check_laser_collision(
         let projection = to_entity.dot(laser_dir);
 
         // 检查是否在激光长度范围内
-        if projection < 0.0 || projection > LASER_HEIGHT {
+        if !(0.0..=LASER_HEIGHT).contains(&projection) {
             continue;
         }
 
@@ -548,8 +548,8 @@ pub fn animate_laser(
         let prev_frame = current_frame.0;
         crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
 
-        if prev_frame != current_frame.0 && timer.just_finished() {
-            if current_frame.0 >= indices.last {
+        if prev_frame != current_frame.0 && timer.just_finished()
+            && current_frame.0 >= indices.last {
                 // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
                 let hit_entities = check_laser_collision(
                     laser_start.0,
@@ -601,6 +601,5 @@ pub fn animate_laser(
                 }
                 let () = commands.entity(entity).try_despawn();
             }
-        }
     }
 }

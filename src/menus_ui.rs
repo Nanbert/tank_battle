@@ -507,14 +507,13 @@ pub fn animate_start_screen_background(
 ) {
     for (mut timer, mut sprite, indices) in &mut query {
         timer.tick(time.delta());
-        if timer.just_finished() {
-            if let Some(ref mut atlas) = sprite.texture_atlas {
+        if timer.just_finished()
+            && let Some(ref mut atlas) = sprite.texture_atlas {
                 atlas.index = if atlas.index < indices.last {
                     atlas.index + 1
                 } else {
                     indices.first
                 };
             }
-        }
     }
 }

@@ -18,10 +18,10 @@ use crate::constants::*;
 /// # 返回值
 /// 最小角度差，范围在 -π 到 π 之间
 pub fn calculate_angle_difference(target_angle: f32, current_angle: f32) -> f32 {
-    let diff = std::f32::consts::PI.mul_add(3.0, target_angle - current_angle)
+    
+    std::f32::consts::PI.mul_add(3.0, target_angle - current_angle)
         % (std::f32::consts::PI * 2.0)
-        - std::f32::consts::PI;
-    diff
+        - std::f32::consts::PI
 }
 
 /// 检查玩家是否正在移动或射击（用于打断持续状态）

@@ -524,7 +524,7 @@ pub fn handle_barrier_collision(
 /// 生成玩家坦克和信息
 fn spawn_players(
     commands: &mut Commands,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     game_mode: GameMode,
     player_info: &mut ResMut<PlayerInfo>,
     texture_resources: &GameTextureResources,
@@ -533,7 +533,7 @@ fn spawn_players(
     let player1_texture = texture_resources.player1.clone();
     let player2_texture = texture_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, player_tile_size, 2, 1);
+    let player_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, player_tile_size, 2, 1);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 
     // 根据游戏模式生成玩家

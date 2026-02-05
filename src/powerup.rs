@@ -156,21 +156,19 @@ pub fn handle_powerup_collision(
             });
 
             // 处理汉堡道具效果（修改 Commander 生命）
-            if let PowerUp::Hamburger = picked.powerup_type {
-                if commander_life.life_points < COMMANDER_LIFE_MAX {
+            if let PowerUp::Hamburger = picked.powerup_type
+                && commander_life.life_points < COMMANDER_LIFE_MAX {
                     commander_life.life_points += 1;
                 }
-            }
 
             // 更新 filter_groups，排除海（GROUP_2）
-            if update_filter_groups {
-                if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+            if update_filter_groups
+                && let Ok(mut controller) = controllers.get_mut(tank_entity) {
                     controller.filter_groups = Some(CollisionGroups::new(
                         Group::all(),
                         Group::all() & !SEA_GROUP,
                     ));
                 }
-            }
 
             // 发送属性变更事件（如果有）
             if let Some(st) = stat_type {
@@ -270,7 +268,7 @@ pub fn spawn_power_ups_random(
 fn spawn_powerup_batch(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     powerup_type: PowerUp,
     positions: &[Vec3],
 ) {
@@ -287,7 +285,7 @@ fn spawn_powerup_batch(
         PowerUp::Shell => texture_resources.shell.clone(),
     };
     let tile_size = UVec2::new(87, 69);
-    let texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, tile_size, 3, 1);
+    let texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, tile_size, 3, 1);
     let animation_indices = AnimationIndices { first: 0, last: 2 };
 
     for pos in positions {

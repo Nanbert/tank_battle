@@ -359,8 +359,10 @@ pub struct CurrentAnimationFrame(pub usize);
 /// 动画模式枚举
 /// 定义动画的播放模式
 #[derive(Component, Clone, Copy, PartialEq, Eq)]
+#[derive(Default)]
 pub enum AnimationMode {
     /// 循环播放（用于敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
+    #[default]
     Looping,
     /// 播放一次后停止（用于爆炸、烟雾、火花、森林火焰等）
     OneShot,
@@ -373,11 +375,6 @@ pub enum AnimationMode {
     },
 }
 
-impl Default for AnimationMode {
-    fn default() -> Self {
-        Self::Looping
-    }
-}
 
 /// 待销毁标记
 #[derive(Component, Clone, Copy, Debug, Default)]

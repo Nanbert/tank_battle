@@ -233,7 +233,7 @@ fn spawn_single_player_hud(
     commands: &mut Commands,
     font: &Handle<Font>,
     commander_resources: &GameTextureResources,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &PlayerInfo,
     player_type: TankType,
     x_pos: f32,
@@ -393,7 +393,7 @@ fn spawn_single_player_hud(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
     );
-    let player_avatar_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, player_avatar_tile_size, 13, 3);
+    let player_avatar_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, player_avatar_tile_size, 13, 3);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
     commands.spawn((
         marker.clone(),
@@ -767,8 +767,8 @@ pub fn update_player_hud(
     );
 
     // 更新玩家2 HUD（仅在双人模式下）
-    if *game_mode == GameMode::TwoPlayers {
-        if let Some(stats2) = &player_info.player2 {
+    if *game_mode == GameMode::TwoPlayers
+        && let Some(stats2) = &player_info.player2 {
             update_single_player_hud(
                 stats2,
                 WINDOW_RIGHT_X - 115.0,
@@ -778,7 +778,6 @@ pub fn update_player_hud(
                 *language,
             );
         }
-    }
 }
 
 // ============================================================================
@@ -977,8 +976,8 @@ fn spawn_top_hud(
 
 // 敌方剩余数量显示在右侧
     let enemy_count_text = match language {
-        Language::Chinese => format!("敌方剩余: 20/20"),
-        Language::English => format!("Enemy Left: 20/20"),
+        Language::Chinese => "敌方剩余: 20/20".to_string(),
+        Language::English => "Enemy Left: 20/20".to_string(),
     };
     commands.spawn((
         PlayingEntity,
@@ -1114,7 +1113,6 @@ pub fn handle_player_avatar_death(
                 sprite.image = texture_resources.avatar_death.clone();
                 sprite.texture_atlas = None; // 死亡头像不需要动画
                 sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
-                println!("[DEBUG] Player 1 avatar updated to death texture");
                 break;
             }
         }
@@ -1129,13 +1127,11 @@ pub fn handle_player_avatar_death(
         if player2_dead && !*has_handled_player2 {
             for (mut sprite, player_ui) in &mut player_avatars {
                 if player_ui.player_type == TankType::Player2 {
-                    sprite.image = texture_resources.avatar_death.clone();
-                    sprite.texture_atlas = None; // 死亡头像不需要动画
-                    sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
-                    println!("[DEBUG] Player 2 avatar updated to death texture");
-                    break;
-                }
-            }
+                                sprite.image = texture_resources.avatar_death.clone();
+                                sprite.texture_atlas = None; // 死亡头像不需要动画
+                                sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
+                                break;
+                            }            }
             *has_handled_player2 = true;
         } else if !player2_dead && *has_handled_player2 {
             *has_handled_player2 = false; // 重置状态，以便下次死亡时再次处理

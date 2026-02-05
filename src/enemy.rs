@@ -276,13 +276,12 @@ pub fn move_enemy_tanks(
         // 只在冷却时间结束后才检测碰撞
         if collision_cooldown.is_finished() {
             // 优先使用事件缓存（事件驱动模式）
-            if let Some(collision_normal) = collision_cache.take(entity) {
-                if collision_normal.length() > 0.0 {
+            if let Some(collision_normal) = collision_cache.take(entity)
+                && collision_normal.length() > 0.0 {
                     enemy_tank.direction = get_new_direction(collision_normal);
                     direction_timer.reset();
                     collision_cooldown.reset();
                 }
-            }
 
             // 边界碰撞仍然需要手动检测（边界不是物理实体，无碰撞事件）
             if let Some(boundary_normal) = check_boundary_collision(

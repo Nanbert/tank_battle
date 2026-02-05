@@ -176,17 +176,17 @@ impl PlayerInfo {
 
     /// 检查玩家是否有火焰炮弹能力
     pub fn has_fire_shell(&self, tank_type: TankType) -> bool {
-        self.get_stats(tank_type).map_or(false, |p| p.fire_shell)
+        self.get_stats(tank_type).is_some_and(|p| p.fire_shell)
     }
 
     /// 检查玩家是否有穿透能力
     pub fn has_penetrate(&self, tank_type: TankType) -> bool {
-        self.get_stats(tank_type).map_or(false, |p| p.penetrate)
+        self.get_stats(tank_type).is_some_and(|p| p.penetrate)
     }
 
     /// 检查玩家是否有气垫能力
     pub fn has_air_cushion(&self, tank_type: TankType) -> bool {
-        self.get_stats(tank_type).map_or(false, |p| p.air_cushion)
+        self.get_stats(tank_type).is_some_and(|p| p.air_cushion)
     }
 
     /// 恢复所有玩家 1 点能量
@@ -400,7 +400,7 @@ impl InsufficientEnergyTracker {
 
         let can_show_warning = cooldown
             .as_ref()
-            .map_or(true, |t| t.is_finished());
+            .is_none_or(|t| t.is_finished());
 
         if can_show_warning {
             *cooldown = Some(Timer::from_seconds(

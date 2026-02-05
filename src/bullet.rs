@@ -390,16 +390,14 @@ pub fn find_bullet_and_tank_in_collision<'a>(
     bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     all_tanks: &Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
 ) -> Option<(Entity, Entity, &'a Bullet)> {
-    if let Ok((_, bullet, _)) = bullets.get(e1) {
-        if all_tanks.contains(e2) {
+    if let Ok((_, bullet, _)) = bullets.get(e1)
+        && all_tanks.contains(e2) {
             return Some((e1, e2, bullet));
         }
-    }
-    if let Ok((_, bullet, _)) = bullets.get(e2) {
-        if all_tanks.contains(e1) {
+    if let Ok((_, bullet, _)) = bullets.get(e2)
+        && all_tanks.contains(e1) {
             return Some((e2, e1, bullet));
         }
-    }
     None
 }
 
@@ -434,16 +432,14 @@ pub fn bullet_terrain_collision_system(
 
         // 处理森林碰撞
         if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
-            if bullet.is_player() {
-                if let Some(player_stats) = player_info.get_stats(bullet.owner_type()) {
-                    if player_stats.fire_shell {
+            if bullet.is_player()
+                && let Some(player_stats) = player_info.get_stats(bullet.owner_type())
+                    && player_stats.fire_shell {
                         effect_events.write(EffectEvent::ForestFire {
                             position: forest_transform.translation,
                         });
                         let () = commands.entity(forest_entity).try_despawn();
                     }
-                }
-            }
             continue;
         }
 
@@ -536,8 +532,8 @@ pub fn bullet_tank_collision_system(
         }
 
         // 敌方子弹击中玩家坦克
-        if bullet.is_enemy() {
-            if let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity) {
+        if bullet.is_enemy()
+            && let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity) {
                 let player_type = player_tank.tank_type;
                 let tank_entity = tank_entity; // 提取到外部变量
 
@@ -587,11 +583,10 @@ pub fn bullet_tank_collision_system(
                 });
 
                 // 更新 filter_groups
-                if need_update_filter_groups {
-                    if let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                if need_update_filter_groups
+                    && let Ok(mut controller) = controllers.get_mut(tank_entity) {
                         controller.filter_groups = None;
                     }
-                }
 
                 // 销毁坦克
                 if need_despawn {
@@ -605,7 +600,6 @@ pub fn bullet_tank_collision_system(
 
                 despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
             }
-        }
     }
 }
 

@@ -58,14 +58,14 @@ fn spawn_animated_sprite_effect<M: Bundle>(
 
 pub fn spawn_explosion(
     commands: &mut Commands,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &GameTextureResources,
     sound_resources: &GameAudioResources,
     position: Vec3,
 ) {
     spawn_animated_sprite_effect(
         commands,
-        &mut texture_atlas_layouts,
+        texture_atlas_layouts,
         effect_resources.explosion.clone(),
         UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32),
         8,
@@ -119,13 +119,13 @@ pub fn spawn_forest_fire(
 
 pub fn spawn_spark(
     commands: &mut Commands,
-    mut texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &GameTextureResources,
     position: Vec3,
 ) {
     spawn_animated_sprite_effect(
         commands,
-        &mut texture_atlas_layouts,
+        texture_atlas_layouts,
         effect_resources.spark.clone(),
         UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32),
         4,
