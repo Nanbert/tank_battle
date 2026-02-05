@@ -535,7 +535,6 @@ pub fn bullet_tank_collision_system(
         if bullet.is_enemy()
             && let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity) {
                 let player_type = player_tank.tank_type;
-                let tank_entity = tank_entity; // 提取到外部变量
 
                 audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
                 effect_events.write(EffectEvent::Spark {

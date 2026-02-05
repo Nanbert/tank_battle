@@ -248,9 +248,8 @@ pub fn update_air_cushion_effect(
 /// 通用环境音效播放系统
 /// T: 地形组件标记 (Sea, Forest, Commander)
 /// P: 音效播放器标记 (SeaAmbiencePlayer, TreeAmbiencePlayer, CommanderAmbiencePlayer)
-#[allow(unused_mut)]
 pub fn play_ambience_generic<T, P>(
-    #[allow(unused_mut)] mut commands: Commands,
+    mut commands: Commands,
     ambience_sound: Handle<AudioSource>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     terrain_entities: Query<&Transform, With<T>>,
@@ -284,9 +283,8 @@ pub fn play_ambience_generic<T, P>(
 }
 
 /// 播放海洋的环境音效
-#[allow(unused_mut)]
 pub fn play_sea_ambience(
-    mut commands: Commands,
+    commands: Commands,
     audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     seas: Query<&Transform, With<Sea>>,
@@ -303,9 +301,8 @@ pub fn play_sea_ambience(
 }
 
 /// 播放森林的环境音效
-#[allow(unused_mut)]
 pub fn play_tree_ambience(
-    mut commands: Commands,
+    commands: Commands,
     audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     forests: Query<&Transform, With<Forest>>,
@@ -334,9 +331,8 @@ fn select_random_commander_music(audio_resources: &GameAudioResources) -> Handle
 }
 
 /// 播放司令官的环境音效
-#[allow(unused_mut)]
 pub fn play_commander_ambience(
-    #[allow(unused_mut)] mut commands: Commands,
+    mut commands: Commands,
     audio_resources: Res<GameAudioResources>,
     player_tanks: Query<&Transform, With<PlayerTank>>,
     commander: Query<&Transform, With<Commander>>,

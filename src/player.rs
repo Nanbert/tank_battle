@@ -540,7 +540,7 @@ fn spawn_players(
     match game_mode {
         GameMode::OnePlayer => {
             // 单人模式：只生成玩家1
-            let _player1_tank_entity = spawn_player_tank(
+            spawn_player_tank(
                 commands,
                 player1_texture,
                 player_texture_atlas,
@@ -555,7 +555,7 @@ fn spawn_players(
 
         GameMode::TwoPlayers => {
             // 双人模式：生成玩家1和玩家2
-            let _player1_tank_entity = spawn_player_tank(
+            spawn_player_tank(
                 commands,
                 player1_texture,
                 player_texture_atlas.clone(),
@@ -563,7 +563,7 @@ fn spawn_players(
                 TankType::Player1,
             );
 
-            let _player2_tank_entity = spawn_player_tank(
+            spawn_player_tank(
                 commands,
                 player2_texture,
                 player_texture_atlas,

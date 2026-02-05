@@ -124,9 +124,7 @@ pub const PLAYER_BULLET_SPEED: f32 = 600.0;
 pub const BULLET_SIZE: f32 = 10.0;
 pub const RECALL_TIME: f32 = 2.0; // 回城时间（秒）
 pub const VERTICAL_OFFSET: f32 = (BOTTOM_PADDING - TOP_PADDING) / 2.0; // 由于下边不留白，会导致坐标垂直便移-50
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub const WINDOW_WIDTH: u32 = (MAP_WIDTH + LEFT_PADDING + RIGHT_PADDING) as u32; // 总宽度
-#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub const WINDOW_HEIGHT: u32 = (MAP_HEIGHT + TOP_PADDING + BOTTOM_PADDING) as u32; // 总高度
 pub const WINDOW_LEFT_X: f32 = -(WINDOW_WIDTH as f32) / 2.0;
 pub const WINDOW_RIGHT_X: f32 = (WINDOW_WIDTH as f32) / 2.0;

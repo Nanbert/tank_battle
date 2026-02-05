@@ -126,7 +126,7 @@ pub fn animate_enemy_born_animation(
                     let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 
                     // 生成敌方坦克
-                    let _enemy_entity = commands
+                    commands
                         .spawn_empty()
                         .insert(EnemyTank {
                             direction: Vec2::new(0.0, -1.0),
@@ -186,8 +186,7 @@ pub fn animate_enemy_born_animation(
                         .insert(LockedAxes::ROTATION_LOCKED)
                         .insert(GravityScale(0.0))
                         .insert(Friction::new(0.0))
-                        .insert(Restitution::new(0.0))
-                        .id();
+                        .insert(Restitution::new(0.0));
                 }
             }
         }
