@@ -737,7 +737,6 @@ fn update_single_player_hud(
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
 /// 优化：通过系统条件 resource_changed::<PlayerInfo> 确保只在玩家信息变化时更新 HUD
 /// 优化：使用组件标记直接查询和更新，避免重复遍历
-/// 优化：添加 Local 缓存，即使 resource_changed 没有触发也能避免不必要的更新
 pub fn update_player_hud(
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
@@ -756,36 +755,28 @@ pub fn update_player_hud(
         Option<&Player2Hud>,
     )>,
     language: Res<Language>,
-    mut last_player1_stats: Local<PlayerStats>,
-    mut last_player2_stats: Local<Option<PlayerStats>>,
 ) {
-    // 更新玩家1 HUD（只在统计信息变化时）
-    if *last_player1_stats != player_info.player1 {
-        update_single_player_hud(
-            &player_info.player1,
-            WINDOW_LEFT_X + 115.0,
-            &mut player_hud_query,
-            &mut bar_query,
-            true,
-            *language,
-        );
-        *last_player1_stats = player_info.player1.clone();
-    }
+    // 更新玩家1 HUD
+    update_single_player_hud(
+        &player_info.player1,
+        WINDOW_LEFT_X + 115.0,
+        &mut player_hud_query,
+        &mut bar_query,
+        true,
+        *language,
+    );
 
-    // 更新玩家2 HUD（仅在双人模式下，且只在统计信息变化时）
+    // 更新玩家2 HUD（仅在双人模式下）
     if *game_mode == GameMode::TwoPlayers {
         if let Some(stats2) = &player_info.player2 {
-            if last_player2_stats.as_ref() != Some(stats2) {
-                update_single_player_hud(
-                    stats2,
-                    WINDOW_RIGHT_X - 115.0,
-                    &mut player_hud_query,
-                    &mut bar_query,
-                    false,
-                    *language,
-                );
-                *last_player2_stats = Some(stats2.clone());
-            }
+            update_single_player_hud(
+                stats2,
+                WINDOW_RIGHT_X - 115.0,
+                &mut player_hud_query,
+                &mut bar_query,
+                false,
+                *language,
+            );
         }
     }
 }
@@ -1066,32 +1057,21 @@ pub fn update_commander_health_bar(
 }
 
 /// 更新敌方剩余数量文本
-/// 优化: 使用 Local 缓存避免每帧都更新，只在数值变化时更新
 pub fn update_enemy_count_text(
     enemy_spawn_state: Res<EnemySpawnState>,
     mut query: Query<&mut Text2d, With<EnemyCountText>>,
     language: Res<Language>,
-    mut last_remaining: Local<usize>,
-    mut last_max: Local<usize>,
-    mut last_language: Local<Language>,
 ) {
     let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
     let max_count = enemy_spawn_state.max_count;
 
-    // 只在数值或语言变化时更新
-    if remaining != *last_remaining || max_count != *last_max || *language != *last_language {
-        let text = match *language {
-            Language::Chinese => format!("敌方剩余: {}/{}", remaining, max_count),
-            Language::English => format!("Enemy Left: {}/{}", remaining, max_count),
-        };
+    let text = match *language {
+        Language::Chinese => format!("敌方剩余: {}/{}", remaining, max_count),
+        Language::English => format!("Enemy Left: {}/{}", remaining, max_count),
+    };
 
-        for mut text_mut in &mut query {
-            text_mut.0 = text.clone();
-        }
-
-        *last_remaining = remaining;
-        *last_max = max_count;
-        *last_language = *language;
+    for mut text_mut in &mut query {
+        text_mut.0 = text.clone();
     }
 }
 
