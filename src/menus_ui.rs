@@ -16,28 +16,16 @@ pub fn spawn_start_screen_background(
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,
 ) {
-    commands.spawn((
-        StartScreenUI,
-        Sprite {
-            image: texture_resources.background.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: atlas_layouts.background.clone(),
-                index: 0,
-            }),
-            custom_size: Some(WINDOW_SIZE),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        GlobalTransform::default(),
-        AnimationIndices {
-            first: 0,
-            last: crate::atlas::BACKGROUND_ATLAS.total_frames - 1,
-        },
-        AnimationTimer(Timer::from_seconds(
-            BACKGROUND_ANIMATION_FRAME,
-            TimerMode::Repeating,
-        )),
-    ));
+    crate::utils::spawn_animated_sprite(
+        commands,
+        texture_resources.background.clone(),
+        atlas_layouts.background.clone(),
+        crate::atlas::BACKGROUND_ATLAS.animation_indices_full(),
+        BACKGROUND_ANIMATION_FRAME,
+        Vec3::new(0.0, 0.0, 0.0),
+        WINDOW_SIZE,
+        (StartScreenUI, AnimationMode::Looping),
+    );
 }
 
 /// 生成开始界面的标题和菜单选项
@@ -570,21 +558,4 @@ pub fn update_option_colors(
     }
 }
 
-/// 开始界面背景动画系统
-pub fn animate_start_screen_background(
-    time: Res<Time>,
-    mut query: Query<(&mut AnimationTimer, &mut Sprite, &AnimationIndices), With<StartScreenUI>>,
-) {
-    for (mut timer, mut sprite, indices) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished()
-            && let Some(ref mut atlas) = sprite.texture_atlas
-        {
-            atlas.index = if atlas.index < indices.last {
-                atlas.index + 1
-            } else {
-                indices.first
-            };
-        }
-    }
-}
+

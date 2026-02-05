@@ -179,40 +179,33 @@ fn spawn_player_hud(
     mut commands: Commands,
     font_resources: Res<GameTextureResources>,
     commander_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
-    player1_hud_query: Query<(), With<Player1Hud>>,
-    player2_hud_query: Query<(), With<Player2Hud>>,
     language: Res<Language>,
 ) {
-    // 只在 HUD 不存在时才创建，以保留颜色状态
-    // 关卡切换时，白色背景会自然遮挡 HUD
-
     let font = font_resources.get_font(*language);
 
     // 玩家1 HUD
-    if player1_hud_query.is_empty() {
-        spawn_single_player_hud(
-            &mut commands,
-            &font,
-            &commander_resources,
-            &mut texture_atlas_layouts,
-            &player_info,
-            TankType::Player1,
-            WINDOW_LEFT_X + 115.0,
-            Player1Hud,
-            *language,
-        );
-    }
+    spawn_single_player_hud(
+        &mut commands,
+        &font,
+        &commander_resources,
+        &atlas_layouts,
+        &player_info,
+        TankType::Player1,
+        WINDOW_LEFT_X + 115.0,
+        Player1Hud,
+        *language,
+    );
 
     // 玩家2 HUD（仅在双人模式下）
-    if *game_mode == GameMode::TwoPlayers && player2_hud_query.is_empty() {
+    if *game_mode == GameMode::TwoPlayers {
         spawn_single_player_hud(
             &mut commands,
             &font,
             &commander_resources,
-            &mut texture_atlas_layouts,
+            &atlas_layouts,
             &player_info,
             TankType::Player2,
             WINDOW_RIGHT_X - 115.0,
@@ -227,7 +220,7 @@ fn spawn_single_player_hud(
     commands: &mut Commands,
     font: &Handle<Font>,
     commander_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     player_info: &PlayerInfo,
     player_type: TankType,
     x_pos: f32,
@@ -382,28 +375,16 @@ fn spawn_single_player_hud(
     ));
 
     // 玩家头像（使用精灵图）
-    let player_avatar_texture = commander_resources.avatar.clone();
-    let player_avatar_texture_atlas =
-        crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(texture_atlas_layouts);
-    let player_avatar_animation_indices = crate::atlas::PLAYER_AVATAR_ATLAS.animation_indices_full();
-    commands.spawn((
-        marker.clone(),
-        PlayerAvatar,
-        PlayerUI { player_type },
-        Sprite {
-            image: player_avatar_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: player_avatar_texture_atlas,
-                index: 0,
-            }),
-            custom_size: Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size),
-            ..default()
-        },
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Avatar as usize], Z_UI),
-        player_avatar_animation_indices,
-        AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
-        CurrentAnimationFrame(0),
-    ));
+    crate::utils::spawn_animated_sprite(
+        commands,
+        commander_resources.avatar.clone(),
+        atlas_layouts.player_avatar.clone(),
+        crate::atlas::PLAYER_AVATAR_ATLAS.animation_indices_full(),
+        0.2,
+        Vec3::new(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Avatar as usize], Z_UI),
+        crate::atlas::PLAYER_AVATAR_ATLAS.display_size,
+        (marker.clone(), PlayerAvatar, PlayerUI { player_type }, AnimationMode::Looping),
+    );
 
     // 血条背景
     spawn_bar(
@@ -1013,11 +994,9 @@ pub fn spawn_hud(
     mut commands: Commands,
     font_resources: Res<GameTextureResources>,
     commander_resources: Res<GameTextureResources>,
-    texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     player_info: Res<PlayerInfo>,
     game_mode: Res<GameMode>,
-    player1_hud_query: Query<(), With<Player1Hud>>,
-    player2_hud_query: Query<(), With<Player2Hud>>,
     top_hud_query: Query<
         Entity,
         Or<(
@@ -1045,11 +1024,9 @@ pub fn spawn_hud(
         commands,
         font_resources,
         commander_resources,
-        texture_atlas_layouts,
+        atlas_layouts,
         player_info,
         game_mode,
-        player1_hud_query,
-        player2_hud_query,
         language,
     );
 }
@@ -1112,35 +1089,7 @@ pub fn update_enemy_count_text(
     }
 }
 
-/// 动画玩家头像（只在存活时播放）
-pub fn animate_player_avatar(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<PlayerAvatar>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        // 只有当纹理图集存在时才播放动画（死亡头像没有纹理图集）
-        if sprite.texture_atlas.is_none() {
-            continue;
-        }
 
-        crate::utils::advance_next_frame(
-            &mut timer,
-            &mut sprite,
-            &mut current_frame,
-            time.delta(),
-            indices.first,
-            indices.last,
-        );
-    }
-}
 
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(

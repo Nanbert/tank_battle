@@ -103,6 +103,7 @@ pub fn animate_effects(
         ),
         Or<(With<AnimationMode>, Without<AnimationMode>)>,
     >,
+    born_position_query: Query<&crate::enemy::BornPosition>,
 ) {
     for (entity, mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
         let prev_frame = current_frame.0;
@@ -160,6 +161,35 @@ pub fn animate_effects(
                         indices.first,
                         indices.last,
                     );
+                }
+            }
+            AnimationMode::AtFrameWithEvent {
+                trigger_frame,
+                event_type,
+            } => {
+                crate::utils::advance_next_frame(
+                    &mut timer,
+                    &mut sprite,
+                    &mut current_frame,
+                    time.delta(),
+                    indices.first,
+                    indices.last,
+                );
+                // 在指定帧触发事件
+                if prev_frame != current_frame.0 && current_frame.0 == *trigger_frame {
+                    match event_type {
+                        AnimationEventType::SpawnEnemy => {
+                            if let Ok(born_position) = born_position_query.get(entity) {
+                                commands.trigger(crate::enemy::SpawnEnemyEvent {
+                                    position: born_position.0,
+                                });
+                            }
+                        }
+                    }
+                }
+                // 动画播放完毕后销毁
+                if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
+                    let () = commands.entity(entity).try_despawn();
                 }
             }
         }

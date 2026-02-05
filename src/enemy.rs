@@ -11,6 +11,17 @@ use crate::constants::*;
 use crate::resources::{EnemySpawnState, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 
+/// 敌方坦克出生位置组件
+#[derive(Component)]
+pub struct BornPosition(pub Vec3);
+
+/// 敌方坦克生成事件
+#[derive(Event, Message)]
+pub struct SpawnEnemyEvent {
+    /// 出生位置
+    pub position: Vec3,
+}
+
 /// 敌方坦克出生动画系统
 pub fn enemy_spawn_system(
     time: Res<Time>,
@@ -45,7 +56,15 @@ pub fn enemy_spawn_system(
             ANIMATION_FRAME_ENEMY_BORN,
             position,
             crate::atlas::ENEMY_BORN_ATLAS.display_size,
-            (EnemyBornAnimation, PlayingEntity, BornPosition(position)),
+            (
+                EnemyBornAnimation,
+                PlayingEntity,
+                BornPosition(position),
+                AnimationMode::AtFrameWithEvent {
+                    trigger_frame: 10,
+                    event_type: AnimationEventType::SpawnEnemy,
+                },
+            ),
         );
 
         // 更新计数
@@ -55,116 +74,72 @@ pub fn enemy_spawn_system(
         enemy_spawn_state.spawn_cooldown.reset();
     }
 }
-
-/// 敌方坦克出生动画系统
-pub fn animate_enemy_born_animation(
-    time: Res<Time>,
+/// 处理敌方坦克出生动画帧触发事件
+/// 在指定帧生成真正的敌方坦克
+pub fn handle_spawn_enemy_event(
     mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-            &BornPosition,
-        ),
-        With<EnemyBornAnimation>,
-    >,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    mut events: MessageReader<SpawnEnemyEvent>,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame, born_position) in &mut query {
-        timer.tick(time.delta());
+    for event in events.read() {
+        // 使用 spawn_animated_sprite 生成动画精灵部分
+        let enemy_entity = utils::spawn_animated_sprite(
+            &mut commands,
+            texture_resources.enemy_tank.clone(),
+            atlas_layouts.enemy_tank.clone(),
+            crate::atlas::ENEMY_TANK1_ATLAS.animation_indices_full(),
+            ANIMATION_FRAME_ENEMY_MOVE,
+            event.position,
+            crate::constants::TANK_DISPLAY_SIZE,
+            (
+                EnemyTank {
+                    direction: Vec2::new(0.0, -1.0),
+                },
+                PlayingEntity,
+                AnimationMode::Looping,
+            ),
+        );
 
-        if timer.just_finished()
-            && let Some(atlas) = &mut sprite.texture_atlas
-        {
-            let current = current_frame.0;
-            let spawn_frame = 10; // 第10帧生成坦克
-
-            if current >= indices.last {
-                // 动画播放完毕，销毁出生动画实体
-                let () = commands.entity(entity).try_despawn();
-            } else {
-                // 继续播放动画
-                let next_index = current + 1;
-                current_frame.0 = next_index;
-                atlas.index = next_index;
-
-                // 在动画播放到 2/3 时生成敌方坦克
-                if next_index == spawn_frame {
-                    // 加载敌方坦克纹理和创建精灵图
-                    let enemy_texture = texture_resources.enemy_tank.clone();
-                    let enemy_texture_atlas =
-                        crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts);
-                    let enemy_animation_indices = crate::atlas::ENEMY_TANK1_ATLAS.animation_indices_full();
-
-                    // 生成敌方坦克
-                    commands
-                        .spawn_empty()
-                        .insert(EnemyTank {
-                            direction: Vec2::new(0.0, -1.0),
-                        })
-                        .insert(PlayingEntity)
-                        .insert(AnimationMode::Looping)
-                        .insert(TankFireConfig::default())
-                        .insert(DirectionChangeTimer(Timer::from_seconds(
-                            ENEMY_DIRECTION_CHANGE_INTERVAL,
-                            TimerMode::Once,
-                        )))
-                        .insert(CollisionCooldownTimer(Timer::from_seconds(
-                            ENEMY_SPAWN_COOLDOWN,
-                            TimerMode::Once,
-                        )))
-                        .insert(RotationTimer(Timer::from_seconds(
-                            ENEMY_ROTATION_TIME,
-                            TimerMode::Once,
-                        )))
-                        .insert(TargetRotation {
-                            angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
-                        })
-                        .insert(AnimationTimer(Timer::from_seconds(
-                            ANIMATION_FRAME_ENEMY_MOVE,
-                            TimerMode::Repeating,
-                        )))
-                        .insert(Sprite {
-                            image: enemy_texture,
-                            texture_atlas: Some(TextureAtlas {
-                                layout: enemy_texture_atlas,
-                                index: enemy_animation_indices.first,
-                            }),
-                            custom_size: Some(crate::constants::TANK_DISPLAY_SIZE),
-                            ..default()
-                        })
-                        .insert(Transform::from_translation(born_position.0))
-                        .insert(enemy_animation_indices)
-                        .insert(CurrentAnimationFrame(0))
-                        .insert(Velocity {
-                            linvel: Vec2::new(0.0, -TANK_SPEED),
-                            angvel: 0.0,
-                        })
-                        .insert(RigidBody::Dynamic)
-                        .insert(Collider::cuboid(
-                            ENEMY_COLLIDER_HALF_SIZE.x,
-                            ENEMY_COLLIDER_HALF_SIZE.y,
-                        ))
-                        .insert(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
-                        .insert(
-                            ActiveCollisionTypes::default()
-                                | ActiveCollisionTypes::DYNAMIC_DYNAMIC
-                                | ActiveCollisionTypes::DYNAMIC_STATIC,
-                        )
-                        .insert(LockedAxes::ROTATION_LOCKED)
-                        .insert(GravityScale(0.0))
-                        .insert(Friction::new(0.0))
-                        .insert(Restitution::new(0.0));
-                }
-            }
-        }
+        // 添加额外的组件
+        commands.entity(enemy_entity)
+            .insert(TankFireConfig::default())
+            .insert(DirectionChangeTimer(Timer::from_seconds(
+                ENEMY_DIRECTION_CHANGE_INTERVAL,
+                TimerMode::Once,
+            )))
+            .insert(CollisionCooldownTimer(Timer::from_seconds(
+                ENEMY_SPAWN_COOLDOWN,
+                TimerMode::Once,
+            )))
+            .insert(RotationTimer(Timer::from_seconds(
+                ENEMY_ROTATION_TIME,
+                TimerMode::Once,
+            )))
+            .insert(TargetRotation {
+                angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
+            })
+            .insert(Velocity {
+                linvel: Vec2::new(0.0, -TANK_SPEED),
+                angvel: 0.0,
+            })
+            .insert(RigidBody::Dynamic)
+            .insert(Collider::cuboid(
+                ENEMY_COLLIDER_HALF_SIZE.x,
+                ENEMY_COLLIDER_HALF_SIZE.y,
+            ))
+            .insert(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
+            .insert(
+                ActiveCollisionTypes::default()
+                    | ActiveCollisionTypes::DYNAMIC_DYNAMIC
+                    | ActiveCollisionTypes::DYNAMIC_STATIC,
+            )
+            .insert(LockedAxes::ROTATION_LOCKED)
+            .insert(GravityScale(0.0))
+            .insert(Friction::new(0.0))
+            .insert(Restitution::new(0.0));
     }
 }
-
 /// 收集敌方坦克碰撞事件
 /// 使用事件驱动模式，只在碰撞发生时处理，避免每帧主动查询
 pub fn collect_enemy_collisions(

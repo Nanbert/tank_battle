@@ -398,6 +398,13 @@ pub enum AnimationMode {
         /// 玩家坦克类型（用于查询按键状态）
         tank_type: TankType,
     },
+    /// 在指定帧触发事件后继续播放（用于敌方出生动画等）
+    AtFrameWithEvent {
+        /// 触发事件的帧索引
+        trigger_frame: usize,
+        /// 触发的事件类型
+        event_type: AnimationEventType,
+    },
 }
 
 /// 待销毁标记
@@ -425,6 +432,13 @@ pub struct EnemyTank {
 
 #[derive(Component)]
 pub struct EnemyBornAnimation;
+
+/// 动画事件类型枚举
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AnimationEventType {
+    /// 生成敌方坦克
+    SpawnEnemy,
+}
 
 /// 坦克类型枚举
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -596,10 +610,6 @@ pub struct CommanderHealthBarOriginalPosition(pub f32); // 记录 Commander 血�
 #[derive(Component)]
 pub struct EnemyCountText;
 
-/// 出生位置记录组件
-#[derive(Component)]
-pub struct BornPosition(pub Vec3);
-
 /// 回城进度条组件
 #[derive(Component)]
 pub struct RecallProgressBar {
@@ -703,7 +713,6 @@ pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0; // 关卡停留时间
 pub const STAGE_FADE_OUT_DURATION: f32 = 1.0; // 关卡淡出时间
 pub const GAME_OVER_DELAY: f32 = 1.2; // Game Over 延迟
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
-pub const FOREST_FIRE_DURATION: f32 = 1.5; // 森林燃烧动画总时长
 pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间
 pub const LASER_CHARGE_TIME: f32 = 4.0; // 激光蓄力时间

@@ -544,8 +544,13 @@ pub struct GameAtlasLayoutResources {
     // 指挥官
     pub commander: Handle<TextureAtlasLayout>,
     pub music_note: Handle<TextureAtlasLayout>,
+    pub player_avatar: Handle<TextureAtlasLayout>,
     // 敌方出生
     pub enemy_born: Handle<TextureAtlasLayout>,
+    pub enemy_tank: Handle<TextureAtlasLayout>,
+    // 激光
+    pub laser_blue: Handle<TextureAtlasLayout>,
+    pub laser_red: Handle<TextureAtlasLayout>,
     // 道具
     pub speed_up: Handle<TextureAtlasLayout>,
     pub protection: Handle<TextureAtlasLayout>,

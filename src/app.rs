@@ -78,8 +78,8 @@ fn register_start_screen_systems(app: &mut App) {
             // 处理菜单输入
             menus_ui::handle_start_screen_input,
             menus_ui::update_option_colors,
-            menus_ui::animate_start_screen_background,
             game_state::update_menu_blink,
+            effects::animate_effects,
         )
             .run_if(in_state(GameState::StartScreen)),
     );
@@ -261,7 +261,7 @@ fn register_playing_systems(app: &mut App) {
         Update,
         (
             enemy::enemy_spawn_system,
-            enemy::animate_enemy_born_animation,
+            enemy::handle_spawn_enemy_event,
         )
             .in_set(GameSystemSet::EnemySystems),
     );
@@ -328,7 +328,6 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            hud_ui::animate_player_avatar,
             hud_ui::handle_player_avatar_death,
             hud_ui::handle_hud_stat_changed,
             hud_ui::animate_hud_text,
@@ -516,7 +515,11 @@ pub fn configure_game_resources(app: &mut App) {
             spark: Handle::default(),
             commander: Handle::default(),
             music_note: Handle::default(),
+            player_avatar: Handle::default(),
             enemy_born: Handle::default(),
+            enemy_tank: Handle::default(),
+            laser_blue: Handle::default(),
+            laser_red: Handle::default(),
             speed_up: Handle::default(),
             protection: Handle::default(),
             fire_speed: Handle::default(),
@@ -559,6 +562,7 @@ pub fn register_game_systems(app: &mut App) {
     app.init_state::<GameState>()
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
+        .add_message::<crate::enemy::SpawnEnemyEvent>()
         .init_resource::<BulletTracker>()
         .add_systems(
             Startup,
@@ -688,11 +692,14 @@ pub fn init_game_resources(
         // 指挥官
         commander: crate::atlas::COMMANDER_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         music_note: crate::atlas::MUSIC_NOTE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 敌方出生
-        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        // 道具
-        speed_up: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        protection: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+                    enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+                    enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+                    laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+                    laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+                    // 道具
+                    speed_up: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(&mut texture_atlas_layouts),        protection: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         fire_speed: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         fire_shell: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         track_chain: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.add_to_assets(&mut texture_atlas_layouts),

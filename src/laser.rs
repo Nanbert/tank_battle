@@ -34,84 +34,64 @@ pub struct LaserSpawnParams {
 }
 
 /// 生成激光实体（像手电筒一样，瞬间出现，不移动）
-pub fn spawn_laser(
+fn spawn_laser(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     params: LaserSpawnParams,
 ) -> Entity {
-    // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
-    let laser_texture = match params.owner_type {
-        TankType::Player1 => texture_resources.laser_blue.clone(),
-        TankType::Player2 => texture_resources.laser_red.clone(),
+    let (laser_texture, laser_texture_atlas, laser_animation_indices) = match params.owner_type {
+        TankType::Player1 => (
+            texture_resources.laser_blue.clone(),
+            atlas_layouts.laser_blue.clone(),
+            crate::atlas::LASER_BLUE_ATLAS.animation_indices_full(),
+        ),
+        TankType::Player2 => (
+            texture_resources.laser_red.clone(),
+            atlas_layouts.laser_red.clone(),
+            crate::atlas::LASER_RED_ATLAS.animation_indices_full(),
+        ),
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
-    let laser_texture_atlas =
-        crate::atlas::LASER_BLUE_ATLAS.add_to_assets(texture_atlas_layouts);
-    let laser_animation_indices = crate::atlas::LASER_BLUE_ATLAS.animation_indices_full();
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
-    // 纹理默认向上（0度），需要根据方向计算旋转角度
     let angle = params.direction.y.atan2(params.direction.x) - std::f32::consts::FRAC_PI_2;
-
-    // 激光束高度的一半（原本长度），用于位置偏移
     let laser_half_height = LASER_HEIGHT / 2.0;
-
-    // 计算激光位置：从坦克炮口向前延伸
-    // 激光束的底部在坦克炮口，激光束向前延伸
     let laser_position = params.position
         + params.direction.extend(0.0) * (laser_half_height + LASER_POSITION_OFFSET);
 
-    let bullet_type = if matches!(params.owner_type, TankType::Enemy) {
-        Bullet::Enemy
-    } else {
-        Bullet::Player(params.owner_type)
-    };
-
-    // 创建激光实体
-    let mut laser_entity = commands.spawn((
-        Laser,
-        PlayingEntity,
-        bullet_type,
-        Sprite {
-            image: laser_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: laser_texture_atlas,
-                index: laser_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(crate::atlas::LASER_BLUE_ATLAS.display_size.x, LASER_HEIGHT)),
-            ..default()
-        },
-        Transform {
-            translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER),
-            rotation: Quat::from_rotation_z(angle),
-            ..default()
-        },
+    // 使用 spawn_animated_sprite 创建激光实体
+    let entity = utils::spawn_animated_sprite(
+        commands,
+        laser_texture,
+        laser_texture_atlas,
         laser_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_LASER,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-        // 保存激光方向和位置，用于碰撞检测
-        LaserDirection(params.direction),
-        LaserStartPoint(params.position),
-    ));
+        ANIMATION_FRAME_LASER,
+        Vec3::new(laser_position.x, laser_position.y, Z_LASER),
+        Vec2::new(crate::atlas::LASER_BLUE_ATLAS.display_size.x, LASER_HEIGHT),
+        (
+            Laser,
+            PlayingEntity,
+            LaserDirection(params.direction),
+            LaserStartPoint(params.position),
+            Transform::from_rotation(Quat::from_rotation_z(angle)),
+        ),
+    );
 
     // 如果有关联的能量球，添加 LaserWithEnergyBall 组件
     if let Some(energy_ball_entity) = params.energy_ball_entity {
-        laser_entity.insert(LaserWithEnergyBall { energy_ball_entity });
+        commands.entity(entity).insert(LaserWithEnergyBall { energy_ball_entity });
     }
 
-    laser_entity.id()
+    entity
 }
 
 /// 玩家激光射击系统（蓄力发射）
 pub fn player_laser_system(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     audio_resources: Res<GameAudioResources>,
-    _atlas_layouts: Res<GameAtlasLayoutResources>,
     time: Res<Time>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank), With<PlayerTank>>,
@@ -164,7 +144,7 @@ pub fn player_laser_system(
             update_charge(
                 &mut commands,
                 &texture_resources,
-                &mut texture_atlas_layouts,
+                &atlas_layouts,
                 &mut player_info,
                 &mut energy_ball_query,
                 &sound_query,
@@ -326,7 +306,7 @@ fn start_charge(
 fn update_charge(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     player_info: &mut ResMut<PlayerInfo>,
     energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
@@ -345,7 +325,7 @@ fn update_charge(
             fire_laser(
                 commands,
                 texture_resources,
-                texture_atlas_layouts,
+                atlas_layouts,
                 player_info,
                 energy_ball_query,
                 sound_query,
@@ -362,14 +342,14 @@ fn update_charge(
 fn fire_laser(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     player_info: &mut ResMut<PlayerInfo>,
     energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
-    audio_resources: &GameAudioResources,
+    audio_resources: &GameAudioResources
 ) {
     // 消耗整个蓝条
     player_info.with_stats_mut(tank_type, |stats| {
@@ -393,7 +373,7 @@ fn fire_laser(
     spawn_laser(
         commands,
         texture_resources,
-        texture_atlas_layouts,
+        atlas_layouts,
         LaserSpawnParams {
             position: laser_pos,
             direction,

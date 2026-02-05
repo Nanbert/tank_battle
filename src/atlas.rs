@@ -66,12 +66,6 @@ impl TextureAtlasInfo {
         self.display_size = display_size;
         self
     }
-
-    /// 设置 total_frames
-    pub const fn with_total_frames(mut self, total_frames: usize) -> Self {
-        self.total_frames = total_frames;
-        self
-    }
 }
 
 // ==================== 纹理图常量 ====================

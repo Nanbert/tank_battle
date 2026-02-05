@@ -215,62 +215,42 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Forest => {
-            let forest_texture = texture_resources.tree.clone();
-            let forest_animation_indices = crate::atlas::FOREST_ATLAS.animation_indices_full();
-            commands
-                .spawn((
-                    Forest,
-                    PlayingEntity,
-                    AnimationMode::Looping,
-                    Sprite::from_atlas_image(
-                        forest_texture,
-                        TextureAtlas {
-                            layout: atlas_layouts.forest.clone(),
-                            index: forest_animation_indices.first,
-                        },
-                    ),
-                    Transform::from_xyz(position.x, position.y, Z_FOREST),
-                    forest_animation_indices,
-                    AnimationTimer(Timer::from_seconds(
-                        ANIMATION_FRAME_FOREST,
-                        TimerMode::Repeating,
-                    )),
-                    CurrentAnimationFrame(0),
-                    Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
-                    RigidBody::Fixed,
-                    Sensor,
-                    ActiveEvents::COLLISION_EVENTS,
-                    ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-                ))
-                .id()
+            let entity = crate::utils::spawn_animated_sprite(
+                commands,
+                texture_resources.tree.clone(),
+                atlas_layouts.forest.clone(),
+                crate::atlas::FOREST_ATLAS.animation_indices_full(),
+                ANIMATION_FRAME_FOREST,
+                Vec3::new(position.x, position.y, Z_FOREST),
+                crate::atlas::FOREST_ATLAS.display_size,
+                (Forest, PlayingEntity, AnimationMode::Looping),
+            );
+            commands.entity(entity).insert((
+                Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
+                RigidBody::Fixed,
+                Sensor,
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+            ));
+            entity
         }
         TerrainTileType::Sea => {
-            let sea_texture = texture_resources.sea.clone();
-            let sea_animation_indices = crate::atlas::SEA_ATLAS.animation_indices_full();
-            commands
-                .spawn((
-                    Sea,
-                    PlayingEntity,
-                    AnimationMode::Looping,
-                    Sprite::from_atlas_image(
-                        sea_texture,
-                        TextureAtlas {
-                            layout: atlas_layouts.sea.clone(),
-                            index: sea_animation_indices.first,
-                        },
-                    ),
-                    Transform::from_xyz(position.x, position.y, Z_SEA),
-                    sea_animation_indices,
-                    AnimationTimer(Timer::from_seconds(
-                        ANIMATION_FRAME_SEA,
-                        TimerMode::Repeating,
-                    )),
-                    CurrentAnimationFrame(0),
-                    RigidBody::Fixed,
-                    Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
-                    CollisionGroups::new(SEA_GROUP, Group::all()),
-                ))
-                .id()
+            let entity = crate::utils::spawn_animated_sprite(
+                commands,
+                texture_resources.sea.clone(),
+                atlas_layouts.sea.clone(),
+                crate::atlas::SEA_ATLAS.animation_indices_full(),
+                ANIMATION_FRAME_SEA,
+                Vec3::new(position.x, position.y, Z_SEA),
+                crate::atlas::SEA_ATLAS.display_size,
+                (Sea, PlayingEntity, AnimationMode::Looping),
+            );
+            commands.entity(entity).insert((
+                RigidBody::Fixed,
+                Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
+                CollisionGroups::new(SEA_GROUP, Group::all()),
+            ));
+            entity
         }
         TerrainTileType::Barrier => {
             let barrier_texture = texture_resources.barrier.clone();
