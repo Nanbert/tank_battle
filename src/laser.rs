@@ -407,7 +407,8 @@ fn fire_laser(
             .insert(AnimationMode::LoopRange {
                 start_frame: crate::constants::ENERGY_BALL_LASER_LOOP_START,
                 end_frame: crate::constants::ENERGY_BALL_LASER_LOOP_END,
-            });
+            })
+            .insert(CurrentAnimationFrame(crate::constants::ENERGY_BALL_LASER_LOOP_START));
     }
 
     // 播放激光音效
