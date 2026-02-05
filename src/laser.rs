@@ -46,10 +46,9 @@ pub fn spawn_laser(
         TankType::Player2 => texture_resources.laser_red.clone(),
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
-    let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
     let laser_texture_atlas =
-        utils::add_texture_atlas(texture_atlas_layouts, laser_tile_size, 4, 3);
-    let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
+        crate::atlas::LASER_BLUE_ATLAS.add_to_assets(texture_atlas_layouts);
+    let laser_animation_indices = crate::atlas::LASER_BLUE_ATLAS.animation_indices_full();
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
     // 纹理默认向上（0度），需要根据方向计算旋转角度
@@ -80,7 +79,7 @@ pub fn spawn_laser(
                 layout: laser_texture_atlas,
                 index: laser_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(LASER_DISPLAY_WIDTH, LASER_HEIGHT)),
+            custom_size: Some(Vec2::new(crate::atlas::LASER_BLUE_ATLAS.display_size.x, LASER_HEIGHT)),
             ..default()
         },
         Transform {
@@ -268,12 +267,8 @@ fn start_charge(
         TankType::Enemy => unreachable!(),
     };
 
-    let energy_ball_tile_size = UVec2::new(
-        ENERGY_BALL_TILE_WIDTH as u32,
-        ENERGY_BALL_TILE_HEIGHT as u32,
-    );
     let energy_ball_texture_atlas =
-        utils::add_texture_atlas(texture_atlas_layouts, energy_ball_tile_size, 17, 5);
+        crate::atlas::ENERGY_BALL_BLUE_ATLAS.add_to_assets(texture_atlas_layouts);
     let energy_ball_animation_indices = AnimationIndices {
         first: 0,
         last: ENERGY_BALL_END_FRAME,
@@ -291,7 +286,7 @@ fn start_charge(
     let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
 
     let energy_ball_pos = transform.translation
-        + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE + 5.0)
+        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0)
         + perp_direction.extend(0.0) * 7.0;
 
     commands.spawn((
@@ -310,10 +305,7 @@ fn start_charge(
                 layout: energy_ball_texture_atlas,
                 index: energy_ball_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(
-                ENERGY_BALL_DISPLAY_WIDTH,
-                ENERGY_BALL_DISPLAY_HEIGHT,
-            )),
+            custom_size: Some(crate::atlas::ENERGY_BALL_BLUE_ATLAS.display_size),
             ..default()
         },
         Transform {
@@ -389,7 +381,7 @@ fn fire_laser(
 
     // 计算激光初始位置
     let laser_pos = transform.translation
-        + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
+        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
 
     // 找到关联的能量球实体
     let energy_ball_entity = energy_ball_query
@@ -425,10 +417,10 @@ fn fire_laser(
     }
 
     // 播放激光音效
-    audio_resources.play(commands, audio_resources.laser.clone(), 1.0);
+    utils::play_one_shot_sound(commands, audio_resources.laser.clone(), 1.0);
 
     // 应用后坐力
-    let recoil_distance = PLAYER_TANK_DISPLAY_HEIGHT * RECOIL_DISTANCE_FACTOR;
+    let recoil_distance = TANK_DISPLAY_SIZE.y * RECOIL_DISTANCE_FACTOR;
     let recoil_offset = direction * -recoil_distance;
     commands.entity(entity).insert(RecoilForce {
         original_pos: transform.translation,
@@ -505,8 +497,8 @@ fn check_laser_collision(
         let perpendicular_distance = to_entity.dot(laser_normal).abs();
 
         // 检查是否在激光宽度范围内（使用最大的实体尺寸确保不遗漏）
-        // 使用 BRICK_TEXTURE_WIDTH 作为通用尺寸，因为它足够大
-        if perpendicular_distance > laser_half_width + BRICK_TEXTURE_WIDTH / 2.0 {
+        // 使用 WALL_TEXTURE_SIZE.x 作为通用尺寸，因为它足够大
+        if perpendicular_distance > laser_half_width + WALL_TEXTURE_SIZE.x / 2.0 {
             continue;
         }
 
@@ -591,12 +583,13 @@ pub fn animate_laser(
     ) in &mut query
     {
         let prev_frame = current_frame.0;
-        crate::utils::animate_sprite(
+        crate::utils::advance_next_frame(
             &mut timer,
             &mut sprite,
-            indices,
             &mut current_frame,
             time.delta(),
+            indices.first,
+            indices.last,
         );
 
         if prev_frame != current_frame.0 && timer.just_finished() && current_frame.0 >= indices.last
@@ -622,7 +615,7 @@ pub fn animate_laser(
                 // 使用预加载的烟雾图集布局
                 let smoke_animation_indices = AnimationIndices {
                     first: 0,
-                    last: SMOKE_TOTAL_FRAMES - 1,
+                    last: crate::atlas::SMOKE_ATLAS.total_frames - 1,
                 };
 
                 commands.spawn((
@@ -635,7 +628,7 @@ pub fn animate_laser(
                             layout: atlas_layouts.smoke_atlas.clone(),
                             index: smoke_animation_indices.first,
                         }),
-                        custom_size: Some(Vec2::new(SMOKE_DISPLAY_SIZE, SMOKE_DISPLAY_SIZE)),
+                        custom_size: Some(crate::atlas::SMOKE_ATLAS.display_size),
                         ..default()
                     },
                     Transform {

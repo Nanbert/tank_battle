@@ -10,10 +10,9 @@ use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::{
-    CommanderLife, GameAudioResources, GameTextureResources, PlayerInfo, PlayerStatChanged,
+    CommanderLife, GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo, PlayerStatChanged,
     StatType,
 };
-use crate::utils;
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -37,30 +36,6 @@ pub enum PowerUp {
     Hamburger,
     AirCushion,
     Shell,
-}
-
-/// 道具动画系统
-pub fn animate_powerup(
-    time: Res<Time>,
-    mut query: Query<
-        (
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<PowerUp>,
-    >,
-) {
-    for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(
-            &mut timer,
-            &mut sprite,
-            indices,
-            &mut current_frame,
-            time.delta(),
-        );
-    }
 }
 
 /// 道具碰撞检测和拾取系统
@@ -202,15 +177,15 @@ pub fn handle_powerup_collision(
 pub fn spawn_test_powerup_stage1(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
     let powerup_type = PowerUp::Penetrate; // 第一关测试用：改为 penetrate
 
-    // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
-    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
-    let top_forbidden_y = MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT;
-    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
+// 定义禁止区域
+    // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
+    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_SIZE.y）
+    let top_forbidden_y = MAP_TOP_Y - TANK_DISPLAY_SIZE.y;
+    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y;
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
     let mut rng = rand::rng();
@@ -218,12 +193,12 @@ pub fn spawn_test_powerup_stage1(
     let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, 0.0);
 
-    spawn_powerup_batch(
+    spawn_powerup(
         &mut commands,
         &texture_resources,
-        &mut texture_atlas_layouts,
+        &atlas_layouts,
         powerup_type,
-        &[position],
+        position,
     );
 }
 
@@ -231,7 +206,7 @@ pub fn spawn_test_powerup_stage1(
 pub fn spawn_power_ups_random(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
     let powerup_types = [
         PowerUp::SpeedUp,
@@ -250,22 +225,22 @@ pub fn spawn_power_ups_random(
     let powerup_type = powerup_types[rng.random_range(0..powerup_types.len())];
 
     // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
-    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_HEIGHT）
-    let top_forbidden_y = MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT;
-    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT;
+    // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
+    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_SIZE.y）
+    let top_forbidden_y = MAP_TOP_Y - TANK_DISPLAY_SIZE.y;
+    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y;
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
     let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, 0.0);
 
-    spawn_powerup_batch(
+    spawn_powerup(
         &mut commands,
         &texture_resources,
-        &mut texture_atlas_layouts,
+        &atlas_layouts,
         powerup_type,
-        &[position],
+        position,
     );
 }
 
@@ -276,50 +251,84 @@ pub fn spawn_power_ups_random(
 /// 参数：
 /// - commands: 命令队列
 /// - texture_resources: 纹理资源
-/// - texture_atlas_layouts: 纹理图集布局资源
+/// - atlas_layouts: 图集布局资源
 /// - powerup_type: 道具类型
 /// - positions: 生成位置数组
-fn spawn_powerup_batch(
+/// 生成单个道具
+/// 使用统一的动画系统
+fn spawn_powerup(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     powerup_type: PowerUp,
-    positions: &[Vec3],
+    position: Vec3,
 ) {
-    let texture = match powerup_type {
-        PowerUp::SpeedUp => texture_resources.speed_up.clone(),
-        PowerUp::Protection => texture_resources.protection.clone(),
-        PowerUp::FireSpeed => texture_resources.fire_speed.clone(),
-        PowerUp::FireShell => texture_resources.fire_shell.clone(),
-        PowerUp::TrackChain => texture_resources.track_chain.clone(),
-        PowerUp::Penetrate => texture_resources.penetrate.clone(),
-        PowerUp::Repair => texture_resources.repair.clone(),
-        PowerUp::Hamburger => texture_resources.hamburger.clone(),
-        PowerUp::AirCushion => texture_resources.air_cushion.clone(),
-        PowerUp::Shell => texture_resources.shell.clone(),
+    let (texture, atlas_info, atlas_layout) = match powerup_type {
+        PowerUp::SpeedUp => (
+            texture_resources.speed_up.clone(),
+            &crate::atlas::POWER_UP_SPEED_UP_ATLAS,
+            &atlas_layouts.speed_up,
+        ),
+        PowerUp::Protection => (
+            texture_resources.protection.clone(),
+            &crate::atlas::POWER_UP_PROTECTION_ATLAS,
+            &atlas_layouts.protection,
+        ),
+        PowerUp::FireSpeed => (
+            texture_resources.fire_speed.clone(),
+            &crate::atlas::POWER_UP_FIRE_SPEED_ATLAS,
+            &atlas_layouts.fire_speed,
+        ),
+        PowerUp::FireShell => (
+            texture_resources.fire_shell.clone(),
+            &crate::atlas::POWER_UP_FIRE_SHELL_ATLAS,
+            &atlas_layouts.fire_shell,
+        ),
+        PowerUp::TrackChain => (
+            texture_resources.track_chain.clone(),
+            &crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS,
+            &atlas_layouts.track_chain,
+        ),
+        PowerUp::Penetrate => (
+            texture_resources.penetrate.clone(),
+            &crate::atlas::POWER_UP_PENETRATE_ATLAS,
+            &atlas_layouts.penetrate,
+        ),
+        PowerUp::Repair => (
+            texture_resources.repair.clone(),
+            &crate::atlas::POWER_UP_REPAIR_ATLAS,
+            &atlas_layouts.repair,
+        ),
+        PowerUp::Hamburger => (
+            texture_resources.hamburger.clone(),
+            &crate::atlas::POWER_UP_HAMBURGER_ATLAS,
+            &atlas_layouts.hamburger,
+        ),
+        PowerUp::AirCushion => (
+            texture_resources.air_cushion.clone(),
+            &crate::atlas::POWER_UP_AIR_CUSHION_ATLAS,
+            &atlas_layouts.air_cushion,
+        ),
+        PowerUp::Shell => (
+            texture_resources.shell.clone(),
+            &crate::atlas::POWER_UP_SHELL_ATLAS,
+            &atlas_layouts.shell,
+        ),
     };
-    let tile_size = UVec2::new(87, 69);
-    let texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, tile_size, 3, 1);
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
 
-    for pos in positions {
-        commands.spawn((
-            powerup_type,
-            PlayingEntity,
-            Sprite::from_atlas_image(
-                texture.clone(),
-                TextureAtlas {
-                    layout: texture_atlas.clone(),
-                    index: animation_indices.first,
-                },
-            ),
-            Transform::from_xyz(pos.x, pos.y, 0.8), // z=0.8 使道具高于除了树之外的所有图层
-            animation_indices,
-            AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-            CurrentAnimationFrame(0),
-        ));
-    }
+    crate::utils::spawn_animated_sprite(
+        commands,
+        texture,
+        atlas_layout.clone(),
+        atlas_info.animation_indices_full(),
+        crate::constants::POWER_UP_ANIMATION_FRAME,
+        position,
+        atlas_info.display_size,
+        (powerup_type, PlayingEntity, AnimationMode::Looping),
+    );
 }
+
+/// 更新履带特效
 
 /// 更新履带特效
 /// 根据玩家是否拥有 track_chain 能力，动态添加或移除履带子实体
@@ -329,7 +338,7 @@ pub fn update_track_chain_effect(
     track_chain_entities: Query<(), With<crate::constants::TrackChainEffect>>,
     player_info: Res<PlayerInfo>,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 track_chain 能力
@@ -343,39 +352,19 @@ pub fn update_track_chain_effect(
 
         if has_track_chain && !has_track_chain_sprite {
             // 创建履带特效
-            let track_train_texture = texture_resources.track_train.clone();
-            let track_train_tile_size = UVec2::new(
-                crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
-                crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
-            );
-            let track_train_texture_atlas =
-                utils::add_texture_atlas(&mut texture_atlas_layouts, track_train_tile_size, 2, 1);
-            let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
-
-            commands.entity(entity).with_children(|parent| {
-                parent.spawn((
-                    Sprite {
-                        image: track_train_texture,
-                        texture_atlas: Some(TextureAtlas {
-                            layout: track_train_texture_atlas,
-                            index: track_train_animation_indices.first,
-                        }),
-                        custom_size: Some(Vec2::new(
-                            crate::constants::TRACK_CHAIN_DISPLAY_WIDTH,
-                            crate::constants::TRACK_CHAIN_DISPLAY_HEIGHT,
-                        )),
-                        ..default()
-                    },
-                    Transform::from_xyz(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1),
-                    track_train_animation_indices,
-                    AnimationTimer(Timer::from_seconds(
+            let child_entity = crate::utils::spawn_animated_sprite(
+                        &mut commands,
+                        texture_resources.track_train.clone(),
+                        atlas_layouts.track_chain.clone(),
+                        crate::atlas::TRACK_CHAIN_ATLAS.animation_indices_full(),
                         crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
-                        TimerMode::Repeating,
-                    )),
-                    CurrentAnimationFrame(0),
-                    crate::constants::TrackChainEffect,
-                ));
-            });
+                        Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1),
+                        crate::constants::TANK_DISPLAY_SIZE,
+                        (crate::constants::TrackChainEffect, AnimationMode::Conditional { tank_type: player_tank.tank_type }),
+                    );
+            
+            // 将履带特效设为坦克的子实体
+            commands.entity(entity).add_child(child_entity);
         } else if !has_track_chain && has_track_chain_sprite {
             // 移除所有履带特效子实体
             crate::utils::cleanup_children_by_marker(
@@ -383,75 +372,6 @@ pub fn update_track_chain_effect(
                 children,
                 &track_chain_entities,
             );
-        }
-    }
-}
-
-/// 履带动画系统
-/// 仅在坦克移动时播放履带动画，静止时停止
-pub fn animate_track_chain(
-    time: Res<Time>,
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    player_tanks: Query<(&PlayerTank, &Children), With<PlayerTank>>,
-    mut track_chain_query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-        ),
-        With<TrackChainEffect>,
-    >,
-) {
-    // 先收集所有履带子实体及其父坦克的移动状态
-    let mut track_chain_moving = std::collections::HashMap::new();
-
-    for (player_tank, children) in player_tanks.iter() {
-        // 根据玩家类型检测键盘输入，判断是否在移动
-        let is_moving = if player_tank.tank_type == TankType::Player1 {
-            // 玩家1使用 WASD
-            keyboard_input.pressed(KeyCode::KeyW)
-                || keyboard_input.pressed(KeyCode::KeyS)
-                || keyboard_input.pressed(KeyCode::KeyA)
-                || keyboard_input.pressed(KeyCode::KeyD)
-        } else {
-            // 玩家2使用方向键
-            keyboard_input.pressed(KeyCode::ArrowUp)
-                || keyboard_input.pressed(KeyCode::ArrowDown)
-                || keyboard_input.pressed(KeyCode::ArrowLeft)
-                || keyboard_input.pressed(KeyCode::ArrowRight)
-        };
-
-        for child in children {
-            track_chain_moving.insert(child, is_moving);
-        }
-    }
-
-    // 更新履带动画
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in track_chain_query.iter_mut()
-    {
-        // 检查父坦克是否在移动
-        let is_moving = track_chain_moving.get(&entity).copied().unwrap_or(false);
-
-        if is_moving {
-            // 移动时播放动画
-            timer.tick(time.delta());
-            if timer.just_finished() {
-                let current = current_frame.0;
-                let next_index = if current == indices.last {
-                    indices.first
-                } else {
-                    current + 1
-                };
-                current_frame.0 = next_index;
-                if let Some(atlas) = &mut sprite.texture_atlas {
-                    atlas.index = next_index;
-                }
-            }
-        } else {
-            // 静止时停止动画，重置计时器
-            timer.reset();
         }
     }
 }

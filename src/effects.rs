@@ -6,11 +6,10 @@
 
 use bevy::prelude::*;
 use rand::Rng;
-use std::time::Duration;
 
 use crate::constants::*;
 use crate::resources::{
-    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+    GameAudioResources, GameTextureResources, PlayerInfo,
 };
 use crate::utils;
 
@@ -19,159 +18,79 @@ use crate::utils;
 /// # 参数
 /// * `commands` - 命令队列
 /// * `texture_atlas_layouts` - 纹理图集布局资源
-/// * `texture` - 纹理句柄
-/// * `tile_size` - 精灵图块大小
-/// * `columns` - 精灵图列数
-/// * `rows` - 精灵图行数
-/// * `animation_indices` - 动画帧索引范围
-/// * `frame_duration` - 每帧持续时间（秒）
-/// * `position` - 生成位置
-/// * `display_size` - 显示尺寸（可选）
-/// * `animation_mode` - 动画播放模式
-/// * `components` - 额外的组件标记
-fn spawn_animated_sprite_effect<M: Bundle>(
-    commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    texture: Handle<Image>,
-    tile_size: UVec2,
-    columns: u32,
-    rows: u32,
-    animation_indices: AnimationIndices,
-    frame_duration: f32,
-    position: Vec3,
-    display_size: Option<Vec2>,
-    animation_mode: AnimationMode,
-    components: M,
-) {
-    utils::spawn_animated_sprite(
-        commands,
-        texture_atlas_layouts,
-        texture,
-        tile_size,
-        columns,
-        rows,
-        animation_indices,
-        frame_duration,
-        position,
-        display_size,
-        (animation_mode, components),
-    );
-}
-
 pub fn spawn_explosion(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &GameTextureResources,
+    atlas_layouts: &crate::resources::GameAtlasLayoutResources,
     sound_resources: &GameAudioResources,
     position: Vec3,
 ) {
-    spawn_animated_sprite_effect(
+    let _ = utils::spawn_animated_sprite(
         commands,
-        texture_atlas_layouts,
         effect_resources.explosion.clone(),
-        UVec2::new(EXPLOSION_TILE_SIZE as u32, EXPLOSION_TILE_SIZE as u32),
-        8,
-        8,
-        AnimationIndices { first: 0, last: 63 },
+        atlas_layouts.explosion.clone(),
+        crate::atlas::EXPLOSION_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_EXPLOSION,
         position,
-        Some(Vec2::new(EXPLOSION_DISPLAY_SIZE, EXPLOSION_DISPLAY_SIZE)),
-        AnimationMode::OneShot,
-        (Explosion, PlayingEntity),
+        crate::atlas::EXPLOSION_ATLAS.display_size,
+        (AnimationMode::OneShot, Explosion, PlayingEntity),
     );
 
     // 使用预加载的爆炸音效
-    sound_resources.play(commands, sound_resources.explosion.clone(), VOLUME_HALF);
+    utils::play_one_shot_sound(commands, sound_resources.explosion.clone(), VOLUME_HALF);
 }
 
 pub fn spawn_forest_fire(
     commands: &mut Commands,
-    terrain_atlas_layouts: &GameAtlasLayoutResources,
     effect_resources: &GameTextureResources,
-    ambience_resources: &GameAudioResources,
+    atlas_layouts: &crate::resources::GameAtlasLayoutResources,
+    sound_resources: &GameAudioResources,
     position: Vec3,
 ) {
-    // 使用预加载的纹理图集布局
-    let forest_fire_texture = effect_resources.forest_fire.clone();
-    let forest_fire_animation_indices = AnimationIndices { first: 0, last: 9 };
-
-    commands.spawn((
-        ForestFire,
-        AnimationMode::OneShot,
-        PlayingEntity,
-        Sprite::from_atlas_image(
-            forest_fire_texture,
-            TextureAtlas {
-                layout: terrain_atlas_layouts.forest_fire.clone(),
-                index: forest_fire_animation_indices.first,
-            },
-        ),
-        Transform::from_translation(position),
-        forest_fire_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            FOREST_FIRE_DURATION / 10.0,
-            TimerMode::Repeating,
-        )), // 1.5秒播完10帧
-        CurrentAnimationFrame(0),
-    ));
+    let _ = utils::spawn_animated_sprite(
+        commands,
+        effect_resources.forest_fire.clone(),
+        atlas_layouts.forest_fire.clone(),
+        crate::atlas::FOREST_FIRE_ATLAS.animation_indices_full(),
+        ANIMATION_FRAME_FOREST_FIRE,
+        position,
+        crate::atlas::FOREST_FIRE_ATLAS.display_size,
+        (AnimationMode::OneShot, ForestFire, PlayingEntity),
+    );
 
     // 播放树林燃烧音效
-    utils::play_one_shot_sound(commands, ambience_resources.burn_tree.clone(), VOLUME_HALF);
+    utils::play_one_shot_sound(commands, sound_resources.burn_tree.clone(), VOLUME_HALF);
 }
 
 pub fn spawn_spark(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     effect_resources: &GameTextureResources,
+    atlas_layouts: &crate::resources::GameAtlasLayoutResources,
+    audio_handle: Handle<AudioSource>,
+    volume: f32,
     position: Vec3,
 ) {
-    spawn_animated_sprite_effect(
+    let _ = utils::spawn_animated_sprite(
         commands,
-        texture_atlas_layouts,
         effect_resources.spark.clone(),
-        UVec2::new(SPARK_TILE_SIZE as u32, SPARK_TILE_SIZE as u32),
-        4,
-        4,
-        AnimationIndices { first: 0, last: 15 },
+        atlas_layouts.spark.clone(),
+        crate::atlas::SPARK_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_SPARK,
         position,
-        Some(Vec2::new(SPARK_DISPLAY_SIZE, SPARK_DISPLAY_SIZE)),
-        AnimationMode::OneShot,
-        (Spark, PlayingEntity),
+        crate::atlas::SPARK_ATLAS.display_size,
+        (AnimationMode::OneShot, Spark, PlayingEntity),
     );
-}
 
-/// 帧循环更新辅助函数
-///
-/// 在指定帧范围内循环播放动画
-fn advance_loop_frame(
-    timer: &mut AnimationTimer,
-    sprite: &mut Sprite,
-    current_frame: &mut CurrentAnimationFrame,
-    delta: Duration,
-    loop_start: usize,
-    loop_end: usize,
-) {
-    timer.tick(delta);
-    if timer.just_finished() {
-        let current = current_frame.0;
-        let next_index = if current >= loop_end {
-            loop_start
-        } else {
-            current + 1
-        };
-        current_frame.0 = next_index;
-        if let Some(atlas) = &mut sprite.texture_atlas {
-            atlas.index = next_index;
-        }
-    }
+    // 播放指定的音效
+    utils::play_one_shot_sound(commands, audio_handle, volume);
 }
 
 /// 通用动画系统
 /// 根据 AnimationMode 组件统一处理所有动画播放
 /// 替代原来的 animate_one_shot_animations 和 animate_looping_sprite 两个独立系统
-pub fn animate_sprites(
+pub fn animate_effects(
     time: Res<Time>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     mut query: Query<
         (
@@ -190,12 +109,13 @@ pub fn animate_sprites(
 
         match animation_mode {
             AnimationMode::OneShot => {
-                crate::utils::animate_sprite(
+                crate::utils::advance_next_frame(
                     &mut timer,
                     &mut sprite,
-                    indices,
                     &mut current_frame,
                     time.delta(),
+                    indices.first,
+                    indices.last,
                 );
                 // 播放一次后销毁
                 if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
@@ -203,13 +123,14 @@ pub fn animate_sprites(
                 }
             }
             AnimationMode::Looping => {
-                // 循环播放，animate_sprite 已经处理
-                crate::utils::animate_sprite(
+                // 循环播放
+                crate::utils::advance_next_frame(
                     &mut timer,
                     &mut sprite,
-                    indices,
                     &mut current_frame,
                     time.delta(),
+                    indices.first,
+                    indices.last,
                 );
             }
             AnimationMode::LoopRange {
@@ -217,7 +138,7 @@ pub fn animate_sprites(
                 end_frame,
             } => {
                 // 在指定帧范围内循环播放（用于能量球）
-                advance_loop_frame(
+                utils::advance_next_frame(
                     &mut timer,
                     &mut sprite,
                     &mut current_frame,
@@ -225,6 +146,21 @@ pub fn animate_sprites(
                     *start_frame,
                     *end_frame,
                 );
+            }
+            AnimationMode::Conditional { tank_type } => {
+                // 只有条件满足时才播放动画（用于履带、玩家坦克纹理等）
+                let key_bindings = tank_type.get_key_bindings();
+                let is_moving = key_bindings.is_moving(&keyboard_input);
+                if is_moving {
+                    crate::utils::advance_next_frame(
+                        &mut timer,
+                        &mut sprite,
+                        &mut current_frame,
+                        time.delta(),
+                        indices.first,
+                        indices.last,
+                    );
+                }
             }
         }
     }
@@ -347,13 +283,13 @@ pub fn play_tree_ambience(
     );
 }
 
-/// 从司令官音乐列表中随机选择一首
-fn select_random_commander_music(audio_resources: &GameAudioResources) -> Handle<AudioSource> {
+/// 从音符音乐列表中随机选择一首
+fn select_random_music_note(audio_resources: &GameAudioResources) -> Handle<AudioSource> {
     let music_files = [
-        &audio_resources.commander_music_000,
-        &audio_resources.commander_music_001,
-        &audio_resources.commander_music_002,
-        &audio_resources.commander_music_003,
+        &audio_resources.music_note_000,
+        &audio_resources.music_note_001,
+        &audio_resources.music_note_002,
+        &audio_resources.music_note_003,
     ];
     let mut rng = rand::rng();
     music_files[rng.random_range(0..music_files.len())].clone()
@@ -378,8 +314,8 @@ pub fn play_commander_ambience(
     });
 
     if is_near_commander && ambience_players.is_empty() {
-        let random_music = select_random_commander_music(&audio_resources);
-        let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_COMMANDER_MUSIC);
+        let random_music = select_random_music_note(&audio_resources);
+        let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_MUSIC_NOTE);
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));

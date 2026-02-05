@@ -35,11 +35,6 @@ pub fn is_movement_interrupted(keyboard: &ButtonInput<KeyCode>, tank_type: TankT
     key_bindings.is_moving(keyboard) || key_bindings.is_shooting(keyboard)
 }
 
-/// 创建纹理图集布局的辅助函数
-pub fn create_texture_atlas(tile_size: UVec2, columns: u32, rows: u32) -> TextureAtlasLayout {
-    TextureAtlasLayout::from_grid(tile_size, columns, rows, None, None)
-}
-
 /// 播放一次性音效
 pub fn play_one_shot_sound(
     commands: &mut Commands,
@@ -68,28 +63,30 @@ pub fn play_looping_sound(
         .id()
 }
 
-/// 处理精灵图动画播放
+/// 更新动画帧
 ///
-/// 更新动画计时器，并在计时器完成时切换到下一帧
+/// 在指定帧范围内循环播放动画
 ///
 /// # 参数
 /// - `timer`: 动画计时器引用
 /// - `sprite`: 精灵图引用
-/// - `indices`: 动画索引配置
 /// - `current_frame`: 当前帧引用
 /// - `delta`: 时间增量
-pub fn animate_sprite(
+/// - `loop_start`: 循环起始帧
+/// - `loop_end`: 循环结束帧
+pub fn advance_next_frame(
     timer: &mut AnimationTimer,
     sprite: &mut Sprite,
-    indices: &AnimationIndices,
     current_frame: &mut CurrentAnimationFrame,
     delta: Duration,
+    loop_start: usize,
+    loop_end: usize,
 ) {
     timer.tick(delta);
     if timer.just_finished() {
         let current = current_frame.0;
-        let next_index = if current == indices.last {
-            indices.first
+        let next_index = if current >= loop_end {
+            loop_start
         } else {
             current + 1
         };
@@ -100,63 +97,30 @@ pub fn animate_sprite(
     }
 }
 
-/// 添加纹理图集到资源管理器
-///
-/// 创建纹理图集布局并添加到 Assets 中，返回句柄
+/// 生成动画精灵
 ///
 /// # 参数
-/// - `texture_atlas_layouts`: 纹理图集布局资源管理器
-/// - `tile_size`: 单个图块大小
-/// - `columns`: 列数
-/// - `rows`: 行数
-///
-/// # 返回值
-/// 纹理图集布局句柄
-pub fn add_texture_atlas(
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    tile_size: UVec2,
-    columns: u32,
-    rows: u32,
-) -> Handle<TextureAtlasLayout> {
-    let layout = create_texture_atlas(tile_size, columns, rows);
-    texture_atlas_layouts.add(layout)
-}
-
-/// 生成带动画的精灵
-///
-/// 统一处理纹理图集加载、动画索引和计时器的创建
-///
-/// # 参数
-/// - `commands`: 命令系统
-/// - `texture_atlas_layouts`: 纹理图集布局资源管理器
-/// - `texture`: 纹理句柄
-/// - `tile_size`: 单个图块大小
-/// - `columns`: 列数
-/// - `rows`: 行数
-/// - `animation_indices`: 动画索引配置
-/// - `frame_time`: 每帧时间（秒）
-/// - `position`: 位置
-/// - `size`: 显示大小（如果为 None 则使用 tile_size）
-/// - `components`: 额外的组件
+/// * `commands` - 命令队列
+/// * `texture` - 纹理句柄
+/// * `texture_atlas` - 纹理图集布局句柄（预加载）
+/// * `animation_indices` - 动画索引配置
+/// * `frame_time` - 每帧时间（秒）
+/// * `position` - 位置
+/// * `display_size` - 显示尺寸
+/// * `components` - 额外的组件
 ///
 /// # 返回值
 /// 生成的实体 ID
 pub fn spawn_animated_sprite(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     texture: Handle<Image>,
-    tile_size: UVec2,
-    columns: u32,
-    rows: u32,
+    texture_atlas: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
     frame_time: f32,
     position: Vec3,
-    size: Option<Vec2>,
+    display_size: Vec2,
     components: impl Bundle,
 ) -> Entity {
-    let texture_atlas = add_texture_atlas(texture_atlas_layouts, tile_size, columns, rows);
-    let custom_size = size.unwrap_or_else(|| Vec2::new(tile_size.x as f32, tile_size.y as f32));
-
     commands
         .spawn((
             Sprite {
@@ -165,7 +129,7 @@ pub fn spawn_animated_sprite(
                     layout: texture_atlas,
                     index: animation_indices.first,
                 }),
-                custom_size: Some(custom_size),
+                custom_size: Some(display_size),
                 ..default()
             },
             Transform::from_translation(position),

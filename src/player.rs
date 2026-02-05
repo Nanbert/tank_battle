@@ -16,13 +16,13 @@ use crate::resources::{
 use crate::utils;
 
 /// 玩家1初始X坐标（左侧）
-const PLAYER1_START_X: f32 = -PLAYER_COLLIDER_HALF - COMMANDER_WIDTH / 2.0 - PLAYER_SPAWN_OFFSET;
+const PLAYER1_START_X: f32 = -PLAYER_COLLIDER_HALF_SIZE.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET;
 
 /// 玩家2初始X坐标（右侧）
-const PLAYER2_START_X: f32 = PLAYER_COLLIDER_HALF + COMMANDER_WIDTH / 2.0 + PLAYER_SPAWN_OFFSET;
+const PLAYER2_START_X: f32 = PLAYER_COLLIDER_HALF_SIZE.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET;
 
 /// 玩家初始Y坐标（底部）
-const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF;
+const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF_SIZE.x;
 
 /// 生成玩家坦克
 pub fn spawn_player_tank(
@@ -32,68 +32,54 @@ pub fn spawn_player_tank(
     animation_indices: AnimationIndices,
     tank_type: TankType,
 ) -> Entity {
-    let (x_pos, display_size, collider_half) = match tank_type {
-        TankType::Player1 => (
-            PLAYER1_START_X,
-            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
-            PLAYER_COLLIDER_HALF,
-        ),
-        TankType::Player2 => (
-            PLAYER2_START_X,
-            Vec2::new(PLAYER_TANK_DISPLAY_WIDTH, PLAYER_TANK_DISPLAY_HEIGHT),
-            PLAYER_COLLIDER_HALF,
-        ),
+    let (x_pos, collider_half) = match tank_type {
+        TankType::Player1 => (PLAYER1_START_X, PLAYER_COLLIDER_HALF_SIZE.x),
+        TankType::Player2 => (PLAYER2_START_X, PLAYER_COLLIDER_HALF_SIZE.x),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
 
-    commands
-        .spawn_empty()
-        .insert(PlayerTank { tank_type })
-        .insert(PlayingEntity)
-        .insert(TankFireConfig::default())
-        .insert(RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)))
-        .insert(TargetRotation {
-            angle: 0.0_f32.to_radians(),
-        })
-        .insert(Sprite {
-            image: texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: texture_atlas_layout,
-                index: animation_indices.first,
-            }),
-            custom_size: Some(display_size),
-            ..default()
-        })
-        .insert(Transform::from_xyz(x_pos, PLAYER_START_Y, 0.0))
-        .insert(Velocity {
-            linvel: Vec2::default(),
-            angvel: 0.0,
-        })
-        .insert(animation_indices)
-        .insert(AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_ENEMY_MOVE,
-            TimerMode::Repeating,
-        )))
-        .insert(RigidBody::KinematicPositionBased)
-        .insert(Collider::cuboid(collider_half, collider_half))
-        .insert(ActiveEvents::COLLISION_EVENTS)
-        .insert(
+    let entity = crate::utils::spawn_animated_sprite(
+        commands,
+        texture,
+        texture_atlas_layout,
+        animation_indices,
+        ANIMATION_FRAME_ENEMY_MOVE,
+        Vec3::new(x_pos, PLAYER_START_Y, 0.0),
+        TANK_DISPLAY_SIZE,
+        (
+            PlayerTank { tank_type },
+            PlayingEntity,
+            TankFireConfig::default(),
+            RotationTimer(Timer::from_seconds(0.1, TimerMode::Once)),
+            TargetRotation {
+                angle: 0.0_f32.to_radians(),
+            },
+            AnimationMode::Conditional { tank_type },
+            Velocity {
+                linvel: Vec2::default(),
+                angvel: 0.0,
+            },
+            RigidBody::KinematicPositionBased,
+            Collider::cuboid(collider_half, collider_half),
+            ActiveEvents::COLLISION_EVENTS,
             ActiveCollisionTypes::default()
                 | ActiveCollisionTypes::KINEMATIC_STATIC
                 | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
-        )
-        .insert(LockedAxes::ROTATION_LOCKED)
-        .insert(KinematicCharacterController {
-            offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
-            filter_groups: None,
-            autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
-                min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
-                include_dynamic_bodies: false,
-            }),
-            ..default()
-        })
-        .id()
+            LockedAxes::ROTATION_LOCKED,
+            KinematicCharacterController {
+                offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
+                filter_groups: None,
+                autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
+                    max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
+                    min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
+                    include_dynamic_bodies: false,
+                }),
+                ..default()
+            },
+        ),
+    );
+
+    entity
 }
 
 /// 生成玩家1坦克
@@ -108,9 +94,6 @@ pub fn move_player_tank(
             &mut KinematicCharacterController,
             &mut RotationTimer,
             &mut TargetRotation,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
             &PlayerTank,
         ),
         (With<PlayerTank>, Without<IsDashing>),
@@ -122,9 +105,6 @@ pub fn move_player_tank(
         mut character_controller,
         mut rotation_timer,
         mut target_rotation,
-        mut animation_timer,
-        mut sprite,
-        animation_indices,
         player_tank,
     ) in &mut query
     {
@@ -175,23 +155,6 @@ pub fn move_player_tank(
             character_controller.translation = None;
         }
 
-        // 处理纹理动画
-        if let Some(atlas) = &mut sprite.texture_atlas {
-            if is_moving {
-                animation_timer.tick(time.delta());
-                if animation_timer.just_finished() {
-                    atlas.index = if atlas.index == animation_indices.last {
-                        animation_indices.first
-                    } else {
-                        atlas.index + 1
-                    }
-                }
-            } else {
-                atlas.index = animation_indices.last;
-                animation_timer.reset();
-            }
-        }
-
         // 只在需要旋转时才更新旋转计时器和计算旋转
         if needs_rotation || !rotation_timer.is_finished() {
             rotation_timer.tick(time.delta());
@@ -217,7 +180,7 @@ pub fn move_player_tank(
         }
 
         // 限制坦克在地图边界内
-        utils::clamp_entity_position(&mut transform, PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF);
+        utils::clamp_entity_position(&mut transform, PLAYER_COLLIDER_HALF_SIZE.x, PLAYER_COLLIDER_HALF_SIZE.x);
     }
 }
 
@@ -266,7 +229,7 @@ pub fn handle_recall_input(
                 Transform::from_xyz(
                     transform.translation.x,
                     transform.translation.y
-                        + PLAYER_TANK_DISPLAY_HEIGHT / 2.0
+                        + TANK_DISPLAY_SIZE.y / 2.0
                         + PROGRESS_BAR_Y_OFFSET,
                     Z_PROGRESS_BAR,
                 ), // 在坦克上方
@@ -407,7 +370,7 @@ pub fn update_recall_progress_bars(
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_transform.translation.x;
             progress_transform.translation.y =
-                player_transform.translation.y + PLAYER_COLLIDER_HALF + PROGRESS_BAR_Y_OFFSET;
+                player_transform.translation.y + PLAYER_COLLIDER_HALF_SIZE.x + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -456,7 +419,7 @@ pub fn handle_barrier_collision(
     mut barrier_damage_tracker: ResMut<BarrierDamageTracker>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
-    const COLLISION_THRESHOLD: f32 = BARRIER_WIDTH;
+    const COLLISION_THRESHOLD: f32 = BARRIER_SIZE.x;
 
     // 更新所有冷却计时器
     for timer in barrier_damage_tracker.cooldowns.values_mut() {
@@ -523,62 +486,51 @@ pub fn handle_barrier_collision(
     }
 }
 
-/// 生成玩家坦克和信息
-fn spawn_players(
-    commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    game_mode: GameMode,
-    player_info: &mut ResMut<PlayerInfo>,
-    texture_resources: &GameTextureResources,
+/// 生成玩家坦克
+pub fn spawn_players(
+    mut commands: Commands,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    game_mode: Res<GameMode>,
+    mut player_info: ResMut<PlayerInfo>,
+    existing_players: Query<Entity, With<PlayerTank>>,
+    texture_resources: Res<GameTextureResources>,
 ) {
-    // 使用预加载的玩家坦克纹理
+    // 清理可能存在的旧玩家坦克
+    crate::utils::cleanup_entities(&mut commands, existing_players.iter());
+
     let player1_texture = texture_resources.player1.clone();
-    let player2_texture = texture_resources.player2.clone();
-    let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas =
-        utils::add_texture_atlas(texture_atlas_layouts, player_tile_size, 2, 1);
-    let player_animation_indices = AnimationIndices { first: 0, last: 1 };
+    let player1_texture_atlas =
+        crate::atlas::PLAYER_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts);
+    let player_animation_indices = crate::atlas::PLAYER_TANK1_ATLAS.animation_indices_full();
 
-    // 根据游戏模式生成玩家
-    match game_mode {
-        GameMode::OnePlayer => {
-            // 单人模式：只生成玩家1
-            spawn_player_tank(
-                commands,
-                player1_texture,
-                player_texture_atlas,
-                player_animation_indices,
-                TankType::Player1,
-            );
+    // 始终生成玩家1
+    spawn_player_tank(
+        &mut commands,
+        player1_texture,
+        player1_texture_atlas,
+        player_animation_indices,
+        TankType::Player1,
+    );
 
-            // 初始化玩家1信息
-            player_info.player1 = PlayerStats::new_default();
-            player_info.player2 = None;
-        }
-
-        GameMode::TwoPlayers => {
-            // 双人模式：生成玩家1和玩家2
-            spawn_player_tank(
-                commands,
-                player1_texture,
-                player_texture_atlas.clone(),
-                player_animation_indices,
-                TankType::Player1,
-            );
-
-            spawn_player_tank(
-                commands,
-                player2_texture,
-                player_texture_atlas,
-                player_animation_indices,
-                TankType::Player2,
-            );
-
-            // 初始化玩家1和玩家2信息
-            player_info.player1 = PlayerStats::new_default();
-            player_info.player2 = Some(PlayerStats::new_default());
-        }
+    // 根据游戏模式判断是否生成玩家2
+    if *game_mode == GameMode::TwoPlayers {
+        let player2_texture = texture_resources.player2.clone();
+        let player2_texture_atlas =
+            crate::atlas::PLAYER_TANK2_ATLAS.add_to_assets(&mut texture_atlas_layouts);
+        spawn_player_tank(
+            &mut commands,
+            player2_texture,
+            player2_texture_atlas,
+            player_animation_indices,
+            TankType::Player2,
+        );
+        player_info.player2 = Some(PlayerStats::new_default());
+    } else {
+        player_info.player2 = None;
     }
+
+    // 初始化玩家1信息
+    player_info.player1 = PlayerStats::new_default();
 }
 
 /// 销毁所有玩家坦克
@@ -615,32 +567,6 @@ pub fn recover_energy(
     }
 }
 
-/// 初始化玩家坦克
-pub fn init_players(
-    mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    game_mode: Res<GameMode>,
-    mut player_info: ResMut<PlayerInfo>,
-    existing_players: Query<Entity, With<PlayerTank>>,
-    texture_resources: Res<GameTextureResources>,
-) {
-    // 防御性编程：先清理可能存在的旧玩家坦克和信息
-    crate::utils::cleanup_entities(&mut commands, existing_players.iter());
-    // 玩家信息会在 spawn_players 中重新初始化
-
-    // 生成新玩家
-    spawn_players(
-        &mut commands,
-        &mut texture_atlas_layouts,
-        match *game_mode {
-            GameMode::OnePlayer => GameMode::OnePlayer,
-            GameMode::TwoPlayers => GameMode::TwoPlayers,
-        },
-        &mut player_info,
-        &texture_resources,
-    );
-}
-
 /// 更新玩家坦克炮管
 /// 根据玩家 shells 数量动态添加或更新炮管纹理
 /// shells = 1: 单管炮管
@@ -660,12 +586,12 @@ pub fn update_barrel_system(
         let (barrel_texture, barrel_display_size) = if shells == 1 {
             (
                 texture_resources.single_barrel.clone(),
-                Vec2::new(SINGLE_BARREL_DISPLAY_WIDTH, SINGLE_BARREL_DISPLAY_HEIGHT),
+                TANK_DISPLAY_SIZE,
             )
         } else {
             (
                 texture_resources.double_barrel.clone(),
-                Vec2::new(DOUBLE_BARREL_DISPLAY_WIDTH, DOUBLE_BARREL_DISPLAY_HEIGHT),
+                TANK_DISPLAY_SIZE,
             )
         };
 

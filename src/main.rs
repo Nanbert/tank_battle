@@ -19,6 +19,7 @@ mod overlay_ui;
 mod player;
 mod powerup;
 mod resources;
+mod atlas;
 mod utils;
 
 use bevy::prelude::*;

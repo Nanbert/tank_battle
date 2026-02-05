@@ -18,10 +18,14 @@ use crate::utils;
 
 /// 特效事件枚举
 /// 用于解耦碰撞逻辑和特效生成
-#[derive(Event, Clone, Copy, Message)]
+#[derive(Event, Clone, Message)]
 pub enum EffectEvent {
     Explosion { position: Vec3 },
-    Spark { position: Vec3 },
+    Spark {
+        position: Vec3,
+        audio_handle: Handle<AudioSource>,
+        volume: f32,
+    },
     ForestFire { position: Vec3 },
 }
 
@@ -98,7 +102,7 @@ pub fn spawn_bullet(
             PlayingEntity,
             Sprite {
                 image: bullet_texture,
-                custom_size: Some(Vec2::new(BULLET_WIDTH, BULLET_HEIGHT)), // 子弹尺寸：长60像素，宽40像素
+                custom_size: Some(BULLET_DISPLAY_SIZE), // 子弹尺寸：长60像素，宽40像素
                 ..default()
             },
             Transform {
@@ -111,7 +115,7 @@ pub fn spawn_bullet(
                 angvel: 0.0,
             },
             RigidBody::KinematicVelocityBased,
-            Collider::cuboid(BULLET_WIDTH / 2.0, BULLET_HEIGHT / 2.0), // 使用矩形碰撞体匹配子弹尺寸
+            Collider::cuboid(BULLET_DISPLAY_SIZE.x / 2.0, BULLET_DISPLAY_SIZE.y / 2.0), // 使用矩形碰撞体匹配子弹尺寸
             LockedAxes::ROTATION_LOCKED,
             Sensor,
             ActiveEvents::COLLISION_EVENTS,
@@ -126,7 +130,7 @@ pub fn spawn_bullet(
         let fire_effect_atlas = atlas_layouts.fire_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
-            last: crate::constants::FIRE_EFFECT_TOTAL_FRAMES - 1,
+            last: crate::atlas::FIRE_EFFECT_ATLAS.total_frames - 1,
         };
 
         commands.entity(bullet_entity).with_children(|parent| {
@@ -163,7 +167,7 @@ pub fn spawn_bullet(
         let penetrate_effect_atlas = atlas_layouts.penetrate_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
-            last: crate::constants::PENETRATE_EFFECT_TOTAL_FRAMES - 1,
+            last: crate::atlas::PENETRATE_EFFECT_ATLAS.total_frames - 1,
         };
 
         commands.entity(bullet_entity).with_children(|parent| {
@@ -230,7 +234,7 @@ pub fn enemy_shoot_system(
 
             // 计算子弹初始位置（坦克前方）
             let bullet_pos = transform.translation
-                + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
+                + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
 
             // 生成子弹
             let bullet_entity = spawn_bullet(
@@ -308,9 +312,8 @@ pub fn player_shoot_system(
         let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
         // 计算子弹初始位置（坦克前方）
-        let bullet_pos = transform.translation
-            + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
-
+                    let bullet_pos = transform.translation
+                        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
         // 玩家子弹速度 = PLAYER_BULLET_SPEED × (1 + fire_speed百分比/100)
         let fire_speed_bonus = player_stats.fire_speed as f32 / 100.0;
         let bullet_speed = PLAYER_BULLET_SPEED * (1.0 + fire_speed_bonus);
@@ -333,7 +336,7 @@ pub fn player_shoot_system(
         bullet_tracker.add_bullet(bullet_entity, entity);
 
         // 播放玩家射击音效，音量 0.4
-        audio_resources.play(&mut commands, audio_resources.player_shot.clone(), 0.4);
+        utils::play_one_shot_sound(&mut commands, audio_resources.player_shot.clone(), 0.4);
 
         // 给炮管添加后坐力效果
         if let Some(children) = children {
@@ -462,13 +465,10 @@ pub fn bullet_terrain_collision_system(
 
         // 处理砖块碰撞
         if bricks.get(terrain_entity).is_ok() {
-            audio_resources.play(
-                &mut commands,
-                audio_resources.brick_hit.clone(),
-                VOLUME_HALF,
-            );
             effect_events.write(EffectEvent::Spark {
                 position: bullet_transform.translation,
+                audio_handle: audio_resources.brick_hit.clone(),
+                volume: VOLUME_HALF,
             });
             let () = commands.entity(terrain_entity).try_despawn();
             despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
@@ -477,18 +477,27 @@ pub fn bullet_terrain_collision_system(
 
         // 处理钢铁碰撞
         if steels.get(terrain_entity).is_ok() {
-            effect_events.write(EffectEvent::Spark {
-                position: bullet_transform.translation,
-            });
-
             if bullet.is_enemy() {
-                utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
+                effect_events.write(EffectEvent::Spark {
+                    position: bullet_transform.translation,
+                    audio_handle: audio_resources.hit.clone(),
+                    volume: 1.0,
+                });
             } else if let Some(player_stats) = player_info.get_stats(bullet.owner_type()) {
                 if player_stats.penetrate {
-                    audio_resources.play(&mut commands, audio_resources.metal_crash.clone(), 1.0);
+                    effect_events.write(EffectEvent::Spark {
+                        position: bullet_transform.translation,
+                        audio_handle: audio_resources.metal_crash.clone(),
+                        volume: 1.0,
+                    });
                     let () = commands.entity(terrain_entity).try_despawn();
                 } else {
-                    audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
+                    effect_events.write(EffectEvent::Spark {
+                        position: bullet_transform.translation,
+                        audio_handle: audio_resources.hit.clone(),
+                        volume: 1.0,
+                    });
+                    utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
                 }
             }
 
@@ -540,7 +549,7 @@ pub fn bullet_tank_collision_system(
                     position: tank_transform.translation,
                 });
             }
-            audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
+            utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
             let () = commands.entity(tank_entity).try_despawn();
             // 增加分数
             player_info.with_stats_mut(player_type, |player_stats| {
@@ -560,9 +569,10 @@ pub fn bullet_tank_collision_system(
         {
             let player_type = player_tank.tank_type;
 
-            audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
             effect_events.write(EffectEvent::Spark {
                 position: tank_transform.translation,
+                audio_handle: audio_resources.hit.clone(),
+                volume: 1.0,
             });
 
             let mut need_update_filter_groups = false;
@@ -645,7 +655,6 @@ pub fn bullet_tank_collision_system(
 pub fn handle_effect_events(
     mut events: MessageReader<EffectEvent>,
     mut commands: Commands,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
     texture_resources: Res<GameTextureResources>,
     audio_resources: Res<GameAudioResources>,
@@ -655,25 +664,31 @@ pub fn handle_effect_events(
             EffectEvent::Explosion { position } => {
                 effects::spawn_explosion(
                     &mut commands,
-                    &mut texture_atlas_layouts,
                     &texture_resources,
+                    &atlas_layouts,
                     &audio_resources,
                     *position,
                 );
             }
-            EffectEvent::Spark { position } => {
+            EffectEvent::Spark {
+                position,
+                audio_handle,
+                volume,
+            } => {
                 effects::spawn_spark(
                     &mut commands,
-                    &mut texture_atlas_layouts,
                     &texture_resources,
+                    &atlas_layouts,
+                    audio_handle.clone(),
+                    *volume,
                     *position,
                 );
             }
             EffectEvent::ForestFire { position } => {
                 effects::spawn_forest_fire(
                     &mut commands,
-                    &atlas_layouts,
                     &texture_resources,
+                    &atlas_layouts,
                     &audio_resources,
                     *position,
                 );
@@ -716,7 +731,7 @@ pub fn bullet_commander_collision_system(
         }
 
         // 碰撞确认，播放受击音效
-        audio_resources.play(
+        utils::play_one_shot_sound(
             &mut commands,
             audio_resources.commander_get_shot.clone(),
             1.0,
@@ -725,6 +740,8 @@ pub fn bullet_commander_collision_system(
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
             position: bullet_transform.translation,
+            audio_handle: audio_resources.commander_get_shot.clone(),
+            volume: 1.0,
         });
 
         // 减少司令官生命值
@@ -735,7 +752,7 @@ pub fn bullet_commander_collision_system(
         // 检查是否是致命伤（生命值归零）
         if commander_life.life_points == 0 {
             // 播放死亡音效
-            audio_resources.play(&mut commands, audio_resources.commander_death.clone(), 1.0);
+            utils::play_one_shot_sound(&mut commands, audio_resources.commander_death.clone(), 1.0);
         }
 
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);

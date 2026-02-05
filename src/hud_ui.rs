@@ -8,7 +8,6 @@ use bevy::prelude::*;
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use crate::utils;
 
 // ============================================================================
 // HUD Marker Components
@@ -248,7 +247,7 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_NAME, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Name as usize], Z_UI),
     ));
 
     // 属性文本（百分比类型）
@@ -259,7 +258,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.speed, language),
         stats.speed,
-        HUD_Y_SPEED,
+        HUD_Y_POSITIONS[HudYPosition::Speed as usize],
         x_pos,
         HudStatType::Speed,
     );
@@ -270,7 +269,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.fire_speed, language),
         stats.fire_speed,
-        HUD_Y_FIRE_SPEED,
+        HUD_Y_POSITIONS[HudYPosition::FireSpeed as usize],
         x_pos,
         HudStatType::FireSpeed,
     );
@@ -281,7 +280,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.protection, language),
         stats.protection,
-        HUD_Y_PROTECTION,
+        HUD_Y_POSITIONS[HudYPosition::Protection as usize],
         x_pos,
         HudStatType::Protection,
     );
@@ -299,7 +298,7 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_SHELLS, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Shells as usize], Z_UI),
     ));
 
     // 效果标题
@@ -313,7 +312,7 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_EFFECTS_TITLE, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::EffectsTitle as usize], Z_UI),
     ));
 
     // 效果文本（布尔类型）
@@ -324,7 +323,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.fire_shell, language),
         stats.fire_shell,
-        HUD_Y_FIRE_SHELL,
+        HUD_Y_POSITIONS[HudYPosition::FireShell as usize],
         x_pos,
         language,
         HudStatType::FireShell,
@@ -336,7 +335,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.penetrate, language),
         stats.penetrate,
-        HUD_Y_PENETRATE,
+        HUD_Y_POSITIONS[HudYPosition::Penetrate as usize],
         x_pos,
         language,
         HudStatType::Penetrate,
@@ -348,7 +347,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.track_chain, language),
         stats.track_chain,
-        HUD_Y_TRACK_CHAIN,
+        HUD_Y_POSITIONS[HudYPosition::TrackChain as usize],
         x_pos,
         language,
         HudStatType::TrackChain,
@@ -360,7 +359,7 @@ fn spawn_single_player_hud(
         font,
         get_label(HUD_STAT_LABELS.air_cushion, language),
         stats.air_cushion,
-        HUD_Y_AIR_CUSHION,
+        HUD_Y_POSITIONS[HudYPosition::AirCushion as usize],
         x_pos,
         language,
         HudStatType::AirCushion,
@@ -379,18 +378,14 @@ fn spawn_single_player_hud(
             ..default()
         },
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_SCORE, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Score as usize], Z_UI),
     ));
 
     // 玩家头像（使用精灵图）
     let player_avatar_texture = commander_resources.avatar.clone();
-    let player_avatar_tile_size = UVec2::new(
-        PLAYER_AVATAR_TILE_WIDTH as u32,
-        PLAYER_AVATAR_TILE_HEIGHT as u32,
-    );
     let player_avatar_texture_atlas =
-        utils::add_texture_atlas(texture_atlas_layouts, player_avatar_tile_size, 13, 3);
-    let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
+        crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(texture_atlas_layouts);
+    let player_avatar_animation_indices = crate::atlas::PLAYER_AVATAR_ATLAS.animation_indices_full();
     commands.spawn((
         marker.clone(),
         PlayerAvatar,
@@ -401,13 +396,10 @@ fn spawn_single_player_hud(
                 layout: player_avatar_texture_atlas,
                 index: 0,
             }),
-            custom_size: Some(Vec2::new(
-                PLAYER_AVATAR_DISPLAY_WIDTH,
-                PLAYER_AVATAR_DISPLAY_HEIGHT,
-            )),
+            custom_size: Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size),
             ..default()
         },
-        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_AVATAR, Z_UI),
+        Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Avatar as usize], Z_UI),
         player_avatar_animation_indices,
         AnimationTimer(Timer::from_seconds(0.2, TimerMode::Repeating)),
         CurrentAnimationFrame(0),
@@ -419,25 +411,25 @@ fn spawn_single_player_hud(
         marker.clone(),
         COLOR_DARK_GRAY,
         x_pos,
-        WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_HEALTH,
-        HUD_BAR_WIDTH,
+        WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::BarHealth as usize],
+        HUD_BAR_SIZE.x,
         Z_UI,
     );
 
     // 血条前景（红色）
-    let health_width = HUD_BAR_WIDTH * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
+    let health_width = HUD_BAR_SIZE.x * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
     commands.spawn((
         marker.clone(),
         HealthBar,
         HealthBarForeground,
         Sprite {
             color: COLOR_RED,
-            custom_size: Some(Vec2::new(health_width, HUD_BAR_HEIGHT)),
+            custom_size: Some(Vec2::new(health_width, HUD_BAR_SIZE.y)),
             ..default()
         },
         Transform::from_xyz(
-            x_pos - HUD_BAR_WIDTH / 2.0 + health_width / 2.0,
-            WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_HEALTH,
+            x_pos - HUD_BAR_SIZE.x / 2.0 + health_width / 2.0,
+            WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::BarHealth as usize],
             Z_UI + 0.1,
         ),
     ));
@@ -448,25 +440,25 @@ fn spawn_single_player_hud(
         marker.clone(),
         COLOR_DARK_GRAY,
         x_pos,
-        WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_BLUE,
-        HUD_BAR_WIDTH,
+        WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::BarBlue as usize],
+        HUD_BAR_SIZE.x,
         Z_UI,
     );
 
     // 蓝条前景（蓝色）
-    let blue_width = HUD_BAR_WIDTH * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
+    let blue_width = HUD_BAR_SIZE.x * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
     commands.spawn((
         marker.clone(),
         BlueBar,
         BlueBarForeground,
         Sprite {
             color: COLOR_BLUE,
-            custom_size: Some(Vec2::new(blue_width, HUD_BAR_HEIGHT)),
+            custom_size: Some(Vec2::new(blue_width, HUD_BAR_SIZE.y)),
             ..default()
         },
         Transform::from_xyz(
-            x_pos - HUD_BAR_WIDTH / 2.0 + blue_width / 2.0,
-            WINDOW_TOP_Y - HUD_BAR_Y_OFFSET_BLUE,
+            x_pos - HUD_BAR_SIZE.x / 2.0 + blue_width / 2.0,
+            WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::BarBlue as usize],
             Z_UI + 0.1,
         ),
     ));
@@ -511,7 +503,7 @@ fn spawn_bar<T: Component + Clone>(
         marker,
         Sprite {
             color,
-            custom_size: Some(Vec2::new(width, HUD_BAR_HEIGHT)),
+            custom_size: Some(Vec2::new(width, HUD_BAR_SIZE.y)),
             ..default()
         },
         Transform::from_xyz(x, y, z),
@@ -616,7 +608,7 @@ fn update_bar(
     bar_width: f32,
 ) {
     let width = bar_width * (value / max_value);
-    sprite.custom_size = Some(Vec2::new(width, HUD_BAR_HEIGHT));
+    sprite.custom_size = Some(Vec2::new(width, HUD_BAR_SIZE.y));
     transform.translation.x = base_x - bar_width / 2.0 + width / 2.0;
 }
 
@@ -745,7 +737,7 @@ fn update_single_player_hud(
                     stats.life_points as f32,
                     HUD_MAX_LIFE_POINTS,
                     x_pos,
-                    HUD_BAR_WIDTH,
+                    HUD_BAR_SIZE.x,
                 );
             } else if is_blue_foreground.is_some() {
                 update_bar(
@@ -754,7 +746,7 @@ fn update_single_player_hud(
                     stats.energy_points as f32,
                     HUD_MAX_LIFE_POINTS,
                     x_pos,
-                    HUD_BAR_WIDTH,
+                    HUD_BAR_SIZE.x,
                 );
             }
         }
@@ -991,7 +983,7 @@ fn spawn_top_hud(
         CommanderHealthBarOriginalPosition(commander_text_x + 172.0), // 文字右侧
         Sprite {
             color: COLOR_RED,
-            custom_size: Some(Vec2::new(COMMANDER_BAR_WIDTH, COMMANDER_BAR_HEIGHT)),
+            custom_size: Some(COMMANDER_BAR_SIZE),
             ..default()
         },
         Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
@@ -1096,7 +1088,7 @@ pub fn update_commander_health_bar(
             commander_life.life_points as f32,
             3.0,
             original_pos.0,
-            COMMANDER_BAR_WIDTH,
+            COMMANDER_BAR_SIZE.x,
         );
     }
 }
@@ -1139,12 +1131,13 @@ pub fn animate_player_avatar(
             continue;
         }
 
-        crate::utils::animate_sprite(
+        crate::utils::advance_next_frame(
             &mut timer,
             &mut sprite,
-            indices,
             &mut current_frame,
             time.delta(),
+            indices.first,
+            indices.last,
         );
     }
 }
@@ -1164,10 +1157,7 @@ pub fn handle_player_avatar_death(
             if player_ui.player_type == TankType::Player1 {
                 sprite.image = texture_resources.avatar_death.clone();
                 sprite.texture_atlas = None; // 死亡头像不需要动画
-                sprite.custom_size = Some(Vec2::new(
-                    PLAYER_AVATAR_DISPLAY_WIDTH,
-                    PLAYER_AVATAR_DISPLAY_HEIGHT,
-                ));
+                sprite.custom_size = Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size);
                 break;
             }
         }
@@ -1184,10 +1174,7 @@ pub fn handle_player_avatar_death(
                 if player_ui.player_type == TankType::Player2 {
                     sprite.image = texture_resources.avatar_death.clone();
                     sprite.texture_atlas = None; // 死亡头像不需要动画
-                    sprite.custom_size = Some(Vec2::new(
-                        PLAYER_AVATAR_DISPLAY_WIDTH,
-                        PLAYER_AVATAR_DISPLAY_HEIGHT,
-                    ));
+                    sprite.custom_size = Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size);
                     break;
                 }
             }
@@ -1207,7 +1194,7 @@ pub fn handle_commander_death(
         Query<&mut Sprite, With<Commander>>,
         Query<(&mut Sprite, &PlayerUI), With<PlayerAvatar>>,
         Query<&mut AnimationTimer, With<Commander>>,
-        Query<&mut AnimationTimer, With<CommanderMusicAnimation>>,
+        Query<&mut AnimationTimer, With<MusicNoteAnimation>>,
     )>,
     mut has_handled: Local<bool>,
 ) {

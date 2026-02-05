@@ -8,14 +8,14 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, GameTextureResources};
+use crate::resources::{CommanderLife, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 生成司令官
 pub fn spawn_commander(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     commanders: Query<Entity, With<Commander>>,
     children: Query<&Children>,
     mut commander_life: ResMut<CommanderLife>,
@@ -36,58 +36,43 @@ pub fn spawn_commander(
     commander_life.life_points = 3;
 
     let commander_texture = texture_resources.commander.clone();
-    // commander.png 实际尺寸: 1400x1200, 每帧 140x120, 10列 x 10行, 共100帧
-    let commander_tile_size = UVec2::new(COMMANDER_TILE_WIDTH as u32, COMMANDER_TILE_HEIGHT as u32);
-    let commander_animation_indices = AnimationIndices { first: 0, last: 99 };
+    let commander_animation_indices = crate::atlas::COMMANDER_ATLAS.animation_indices_full();
 
-    let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
+    let commander_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y / 2.0;
     let commander_x = 0.0;
 
     let commander_entity = utils::spawn_animated_sprite(
         &mut commands,
-        &mut texture_atlas_layouts,
         commander_texture,
-        commander_tile_size,
-        10,
-        10,
+        atlas_layouts.commander.clone(),
         commander_animation_indices,
         ANIMATION_FRAME_COMMANDER,
         Vec3::new(commander_x, commander_y, 0.0),
-        Some(Vec2::new(COMMANDER_DISPLAY_WIDTH, COMMANDER_DISPLAY_HEIGHT)),
+        crate::atlas::COMMANDER_ATLAS.display_size,
         (Commander, PlayingEntity, AnimationMode::Looping),
     );
 
     // 添加物理组件
     commands.entity(commander_entity).insert((
         RigidBody::Fixed,
-        Collider::cuboid(COMMANDER_WIDTH / 2.0, COMMANDER_HEIGHT / 2.0),
+        Collider::cuboid(COMMANDER_SIZE.x / 2.0, COMMANDER_SIZE.y / 2.0),
         ActiveEvents::COLLISION_EVENTS,
     ));
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
     let music_texture = texture_resources.music_note.clone();
-    let music_tile_size = UVec2::new(
-        COMMANDER_MUSIC_TILE_WIDTH as u32,
-        COMMANDER_MUSIC_TILE_HEIGHT as u32,
-    );
-    let music_animation_indices = AnimationIndices { first: 0, last: 9 };
+    let music_animation_indices = crate::atlas::MUSIC_NOTE_ATLAS.animation_indices_full();
 
-    utils::spawn_animated_sprite(
+    let _ = utils::spawn_animated_sprite(
         &mut commands,
-        &mut texture_atlas_layouts,
         music_texture,
-        music_tile_size,
-        10,
-        1,
+        atlas_layouts.music_note.clone(),
         music_animation_indices,
-        ANIMATION_FRAME_COMMANDER_MUSIC,
+        ANIMATION_FRAME_MUSIC_NOTE,
         Vec3::new(commander_x, commander_y, Z_FOREST),
-        Some(Vec2::new(
-            COMMANDER_MUSIC_DISPLAY_WIDTH,
-            COMMANDER_MUSIC_DISPLAY_HEIGHT,
-        )),
+        crate::atlas::MUSIC_NOTE_ATLAS.display_size,
         (
-            CommanderMusicAnimation,
+            MusicNoteAnimation,
             PlayingEntity,
             AnimationMode::Looping,
         ),
@@ -117,12 +102,13 @@ pub fn animate_commander(
     for (mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
         // 只处理循环动画模式
         if *animation_mode == AnimationMode::Looping {
-            crate::utils::animate_sprite(
+            crate::utils::advance_next_frame(
                 &mut timer,
                 &mut sprite,
-                indices,
                 &mut current_frame,
                 time.delta(),
+                indices.first,
+                indices.last,
             );
         }
     }
@@ -132,7 +118,7 @@ pub fn animate_commander(
 pub fn despawn_commander(
     mut commands: Commands,
     commanders: Query<Entity, With<Commander>>,
-    music_animations: Query<Entity, With<CommanderMusicAnimation>>,
+    music_animations: Query<Entity, With<MusicNoteAnimation>>,
 ) {
     // 销毁所有 Commander 实体
     crate::utils::cleanup_entities(&mut commands, commanders.iter());

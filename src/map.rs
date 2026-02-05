@@ -184,12 +184,12 @@ pub fn spawn_terrain_tile(
                     PlayingEntity,
                     Sprite {
                         image: brick_texture,
-                        custom_size: Some(Vec2::new(BRICK_TEXTURE_WIDTH, BRICK_TEXTURE_HEIGHT)),
+                        custom_size: Some(WALL_TEXTURE_SIZE),
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
                     RigidBody::Fixed,
-                    Collider::cuboid(BRICK_COLLIDER_WIDTH / 2.0, BRICK_COLLIDER_HEIGHT / 2.0),
+                    Collider::cuboid(WALL_COLLIDER_SIZE.x / 2.0, WALL_COLLIDER_SIZE.y / 2.0),
                     ActiveEvents::COLLISION_EVENTS,
                     ActiveCollisionTypes::all(),
                 ))
@@ -203,12 +203,12 @@ pub fn spawn_terrain_tile(
                     PlayingEntity,
                     Sprite {
                         image: steel_texture,
-                        custom_size: Some(Vec2::new(STEEL_TEXTURE_WIDTH, STEEL_TEXTURE_HEIGHT)),
+                        custom_size: Some(WALL_TEXTURE_SIZE),
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
                     RigidBody::Fixed,
-                    Collider::cuboid(STEEL_COLLIDER_WIDTH / 2.0, STEEL_COLLIDER_HEIGHT / 2.0),
+                    Collider::cuboid(WALL_COLLIDER_SIZE.x / 2.0, WALL_COLLIDER_SIZE.y / 2.0),
                     ActiveEvents::COLLISION_EVENTS,
                     ActiveCollisionTypes::all(),
                 ))
@@ -216,7 +216,7 @@ pub fn spawn_terrain_tile(
         }
         TerrainTileType::Forest => {
             let forest_texture = texture_resources.tree.clone();
-            let forest_animation_indices = AnimationIndices { first: 0, last: 9 };
+            let forest_animation_indices = crate::atlas::FOREST_ATLAS.animation_indices_full();
             commands
                 .spawn((
                     Forest,
@@ -246,7 +246,7 @@ pub fn spawn_terrain_tile(
         }
         TerrainTileType::Sea => {
             let sea_texture = texture_resources.sea.clone();
-            let sea_animation_indices = AnimationIndices { first: 0, last: 2 };
+            let sea_animation_indices = crate::atlas::SEA_ATLAS.animation_indices_full();
             commands
                 .spawn((
                     Sea,
@@ -280,12 +280,12 @@ pub fn spawn_terrain_tile(
                     PlayingEntity,
                     Sprite {
                         image: barrier_texture,
-                        custom_size: Some(Vec2::new(BARRIER_WIDTH, BARRIER_HEIGHT)),
+                        custom_size: Some(BARRIER_SIZE),
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
                     RigidBody::Fixed,
-                    Collider::cuboid(BARRIER_WIDTH / 2.0, BARRIER_HEIGHT / 2.0),
+                    Collider::cuboid(BARRIER_SIZE.x / 2.0, BARRIER_SIZE.y / 2.0),
                     Sensor,
                     ActiveEvents::COLLISION_EVENTS,
                     ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
@@ -329,18 +329,17 @@ pub fn spawn_tile_group(
     tile_type: TerrainTileType,
     layout: TileLayout,
 ) -> Vec<Entity> {
-    let offset = BRICK_GROUP_OFFSET;
     let positions = match layout {
         TileLayout::Full => vec![
-            Vec2::new(-offset, offset),
-            Vec2::new(offset, offset),
-            Vec2::new(-offset, -offset),
-            Vec2::new(offset, -offset),
+            BRICK_GROUP_TOP_LEFT,
+            BRICK_GROUP_TOP_RIGHT,
+            BRICK_GROUP_BOTTOM_LEFT,
+            BRICK_GROUP_BOTTOM_RIGHT,
         ],
-        TileLayout::Left => vec![Vec2::new(-offset, offset), Vec2::new(-offset, -offset)],
-        TileLayout::Right => vec![Vec2::new(offset, offset), Vec2::new(offset, -offset)],
-        TileLayout::Top => vec![Vec2::new(-offset, offset), Vec2::new(offset, offset)],
-        TileLayout::Bottom => vec![Vec2::new(-offset, -offset), Vec2::new(offset, -offset)],
+        TileLayout::Left => vec![BRICK_GROUP_TOP_LEFT, BRICK_GROUP_BOTTOM_LEFT],
+        TileLayout::Right => vec![BRICK_GROUP_TOP_RIGHT, BRICK_GROUP_BOTTOM_RIGHT],
+        TileLayout::Top => vec![BRICK_GROUP_TOP_LEFT, BRICK_GROUP_TOP_RIGHT],
+        TileLayout::Bottom => vec![BRICK_GROUP_BOTTOM_LEFT, BRICK_GROUP_BOTTOM_RIGHT],
     };
 
     positions
@@ -494,15 +493,15 @@ pub fn spawn_commander_fortress(
     texture_resources: &Res<GameTextureResources>,
     atlas_layouts: &Res<GameAtlasLayoutResources>,
 ) {
-    let commander_y = MAP_BOTTOM_Y + COMMANDER_HEIGHT / 2.0;
+    let commander_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y / 2.0;
 
     // 司令官边界
-    let commander_left = -COMMANDER_WIDTH / 2.0;
-    let commander_right = COMMANDER_WIDTH / 2.0;
-    let commander_top = commander_y + COMMANDER_HEIGHT / 2.0;
-    let commander_bottom = commander_y - COMMANDER_HEIGHT / 2.0;
+    let commander_left = -COMMANDER_SIZE.x / 2.0;
+    let commander_right = COMMANDER_SIZE.x / 2.0;
+    let commander_top = commander_y + COMMANDER_SIZE.y / 2.0;
+    let commander_bottom = commander_y - COMMANDER_SIZE.y / 2.0;
 
-    let brick_size = COMMANDER_BRICK_SIZE;
+    let brick_size = WALL_TEXTURE_SIZE.x;
 
     // 左墙：3块砖
     spawn_wall_column(
@@ -534,7 +533,7 @@ pub fn spawn_commander_fortress(
         texture_resources,
         atlas_layouts,
         commander_top + brick_size / 2.0,
-        -COMMANDER_WIDTH / 2.0,
+        -COMMANDER_SIZE.x / 2.0,
         brick_size,
         2,
         false,

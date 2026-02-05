@@ -12,7 +12,7 @@ use crate::utils;
 
 use crate::constants::*;
 use crate::resources::{
-    DashDamageTracker, DashTimer, DashTimers, GameAudioResources, GameTextureResources,
+    DashDamageTracker, DashTimer, DashTimers, GameAtlasLayoutResources, GameAudioResources, GameTextureResources,
     InsufficientEnergyTracker, PlayerInfo, PlayerStatChanged, StatType,
 };
 
@@ -111,8 +111,8 @@ pub fn update_dash_movement(
             // 限制坦克在地图边界内
             utils::clamp_entity_position(
                 &mut transform,
-                PLAYER_TANK_DISPLAY_WIDTH / 2.0,
-                PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
+                TANK_DISPLAY_SIZE.x / 2.0,
+                TANK_DISPLAY_SIZE.y / 2.0,
             );
 
             // 检查是否完成
@@ -133,7 +133,7 @@ pub fn handle_dash_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<crate::bullet::EffectEvent>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     player_tanks: Query<(Entity, &PlayerTank, &Transform, Option<&IsDashing>)>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     bricks: Query<(Entity, &Transform), With<Brick>>,
@@ -164,11 +164,12 @@ pub fn handle_dash_collision(
 
         match collision_info.target {
             DashTarget::Brick { entity, position } => {
-                // 播放砖块被击中的音效
-                audio_resources.play(&mut commands, audio_resources.brick_hit.clone(), 0.5);
-
                 // 发送火花特效事件
-                effect_events.write(crate::bullet::EffectEvent::Spark { position });
+                effect_events.write(crate::bullet::EffectEvent::Spark {
+                    position,
+                    audio_handle: audio_resources.brick_hit.clone(),
+                    volume: 0.5,
+                });
 
                 // 销毁 brick
                 let () = commands.entity(entity).try_despawn();
@@ -185,7 +186,7 @@ pub fn handle_dash_collision(
                     let transform = Transform::from_translation(collision_info.tank_position);
                     kill_player_tank(
                         &mut commands,
-                        &mut texture_atlas_layouts,
+                        &atlas_layouts,
                         &transform,
                         collision_info.player_entity,
                         &texture_resources,
@@ -202,7 +203,11 @@ pub fn handle_dash_collision(
 
                 if can_break_steel {
                     // protection = 100%，可以撞碎铁块，不扣血
-                    effect_events.write(crate::bullet::EffectEvent::Spark { position });
+                    effect_events.write(crate::bullet::EffectEvent::Spark {
+                        position,
+                        audio_handle: audio_resources.metal_crash.clone(),
+                        volume: 1.0,
+                    });
                     let () = commands.entity(entity).try_despawn();
                 } else {
                     // protection < 100%，玩家死亡
@@ -213,7 +218,7 @@ pub fn handle_dash_collision(
                     let transform = Transform::from_translation(collision_info.tank_position);
                     kill_player_tank(
                         &mut commands,
-                        &mut texture_atlas_layouts,
+                        &atlas_layouts,
                         &transform,
                         collision_info.player_entity,
                         &texture_resources,
@@ -253,7 +258,7 @@ pub fn handle_dash_collision(
                     let transform = Transform::from_translation(collision_info.tank_position);
                     kill_player_tank(
                         &mut commands,
-                        &mut texture_atlas_layouts,
+                        &atlas_layouts,
                         &transform,
                         collision_info.player_entity,
                         &texture_resources,
@@ -395,7 +400,7 @@ fn apply_dash_damage(
 /// 销毁玩家坦克
 fn kill_player_tank(
     commands: &mut Commands,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    atlas_layouts: &GameAtlasLayoutResources,
     tank_transform: &Transform,
     player_entity: Entity,
     texture_resources: &GameTextureResources,
@@ -404,8 +409,8 @@ fn kill_player_tank(
     // 生成爆炸效果
     effects::spawn_explosion(
         commands,
-        texture_atlas_layouts,
         texture_resources,
+        atlas_layouts,
         audio_resources,
         tank_transform.translation,
     );

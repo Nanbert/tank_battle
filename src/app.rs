@@ -9,7 +9,6 @@ use bevy::window::{PresentMode, WindowResolution};
 
 use crate::constants::*;
 use crate::resources::*;
-use crate::utils;
 
 /// 游戏系统调度集
 /// 将系统按功能分组，减少 run_if 检查的开销
@@ -135,7 +134,7 @@ fn register_stage_intro_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::StageIntro),
         (
-            player::init_players
+            player::spawn_players
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             map::spawn_map,
             overlay_ui::despawn_powerups,
@@ -315,7 +314,7 @@ fn register_playing_systems(app: &mut App) {
     // 特效和动画系统集
     app.add_systems(
         Update,
-        (effects::animate_sprites, effects::update_air_cushion_effect)
+        (effects::animate_effects, effects::update_air_cushion_effect)
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );
 
@@ -346,10 +345,8 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            powerup::animate_powerup,
             powerup::handle_powerup_collision,
             powerup::update_track_chain_effect,
-            powerup::animate_track_chain,
         )
             .in_set(GameSystemSet::PowerUpSystems),
     );
@@ -501,10 +498,10 @@ pub fn configure_game_resources(app: &mut App) {
             player_shot: Handle::default(),
             burn_tree: Handle::default(),
             sea_ambience: Handle::default(),
-            commander_music_000: Handle::default(),
-            commander_music_001: Handle::default(),
-            commander_music_002: Handle::default(),
-            commander_music_003: Handle::default(),
+            music_note_000: Handle::default(),
+            music_note_001: Handle::default(),
+            music_note_002: Handle::default(),
+            music_note_003: Handle::default(),
             tree_ambience: Handle::default(),
         })
         .insert_resource(crate::resources::GameAtlasLayoutResources {
@@ -515,6 +512,21 @@ pub fn configure_game_resources(app: &mut App) {
             fire_effect: Handle::default(),
             penetrate_effect: Handle::default(),
             smoke_atlas: Handle::default(),
+            explosion: Handle::default(),
+            spark: Handle::default(),
+            commander: Handle::default(),
+            music_note: Handle::default(),
+            enemy_born: Handle::default(),
+            speed_up: Handle::default(),
+            protection: Handle::default(),
+            fire_speed: Handle::default(),
+            fire_shell: Handle::default(),
+            track_chain: Handle::default(),
+            penetrate: Handle::default(),
+            repair: Handle::default(),
+            hamburger: Handle::default(),
+            air_cushion: Handle::default(),
+            shell: Handle::default(),
         })
         .insert_resource(Language::default())
         .insert_resource(GameMode::OnePlayer)
@@ -576,25 +588,7 @@ pub fn init_game_resources(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // 纹理图集布局
-    let sea_tile_size = UVec2::new(100, 100);
-    let forest_tile_size = UVec2::new(131, 131);
-    let forest_fire_tile_size =
-        UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32);
-    let fire_effect_tile_size = UVec2::new(
-        FIRE_EFFECT_TILE_WIDTH as u32,
-        FIRE_EFFECT_TILE_HEIGHT as u32,
-    );
-    let penetrate_effect_tile_size = UVec2::new(
-        PENETRATE_EFFECT_TILE_WIDTH as u32,
-        PENETRATE_EFFECT_TILE_HEIGHT as u32,
-    );
-    let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
-    let background_atlas = utils::add_texture_atlas(
-        &mut texture_atlas_layouts,
-        UVec2::new(BACKGROUND_TILE_WIDTH as u32, BACKGROUND_TILE_HEIGHT as u32),
-        BACKGROUND_COLUMNS as u32,
-        BACKGROUND_ROWS as u32,
-    );
+    let background_atlas = crate::atlas::BACKGROUND_ATLAS.add_to_assets(&mut texture_atlas_layouts);
 
     // 纹理资源
     let textures = crate::resources::GameTextureResources {
@@ -602,56 +596,56 @@ pub fn init_game_resources(
         cn: asset_server.load(FONT_CN),
         en: asset_server.load(FONT_EN),
         // 玩家坦克
-        player1: asset_server.load(TEXTURE_PLAYER_TANK1),
-        player2: asset_server.load(TEXTURE_PLAYER_TANK2),
+        player1: crate::atlas::PLAYER_TANK1_ATLAS.load_texture(&asset_server),
+        player2: crate::atlas::PLAYER_TANK2_ATLAS.load_texture(&asset_server),
         single_barrel: asset_server.load(TEXTURE_SINGLE_BARREL),
         double_barrel: asset_server.load(TEXTURE_DOUBLE_BARREL),
         // 司令官
-        commander: asset_server.load(TEXTURE_COMMANDER),
+        commander: crate::atlas::COMMANDER_ATLAS.load_texture(&asset_server),
         commander_dead: asset_server.load(TEXTURE_COMMANDER_DEAD),
-        avatar: asset_server.load(TEXTURE_AVATAR),
+        avatar: crate::atlas::PLAYER_AVATAR_ATLAS.load_texture(&asset_server),
         avatar_death: asset_server.load(TEXTURE_AVATAR_DEATH),
         avatar_commander_dead: asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD),
         // 子弹
         bullet_player1: asset_server.load(TEXTURE_BULLET_PLAYER1),
         bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
-        bullet_fire_effect: asset_server.load(TEXTURE_BULLET_FIRE_EFFECT),
-        bullet_penetrate_effect: asset_server.load("texture/bullets/penetrate_effect.png"),
+        bullet_fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.load_texture(&asset_server),
+        bullet_penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.load_texture(&asset_server),
         // 特效
-        explosion: asset_server.load(TEXTURE_EXPLOSION),
-        spark: asset_server.load(TEXTURE_STEEL_HIT),
-        smoke: asset_server.load(TEXTURE_SMOKE),
+        explosion: crate::atlas::EXPLOSION_ATLAS.load_texture(&asset_server),
+        spark: crate::atlas::SPARK_ATLAS.load_texture(&asset_server),
+        smoke: crate::atlas::SMOKE_ATLAS.load_texture(&asset_server),
         bubble: asset_server.load(TEXTURE_BUBBLE),
-        energy_blue_ball: asset_server.load(TEXTURE_ENERGY_BLUE_BALL),
-        energy_red_ball: asset_server.load(TEXTURE_ENERGY_RED_BALL),
-        forest_fire: asset_server.load(TEXTURE_TREE_FIRE_SHEET),
-        laser_blue: asset_server.load(TEXTURE_LASER_BLUE),
-        laser_red: asset_server.load(TEXTURE_LASER_RED),
+        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.load_texture(&asset_server),
+        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.load_texture(&asset_server),
+        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.load_texture(&asset_server),
+        laser_blue: crate::atlas::LASER_BLUE_ATLAS.load_texture(&asset_server),
+        laser_red: crate::atlas::LASER_RED_ATLAS.load_texture(&asset_server),
         // 地图
         brick: asset_server.load(TEXTURE_BRICK),
         steel: asset_server.load(TEXTURE_STEEL),
-        tree: asset_server.load(TEXTURE_TREE),
-        sea: asset_server.load(TEXTURE_SEA),
+        tree: crate::atlas::FOREST_ATLAS.load_texture(&asset_server),
+        sea: crate::atlas::SEA_ATLAS.load_texture(&asset_server),
         barrier: asset_server.load(TEXTURE_BARRIER),
         // 敌方坦克
-        enemy_born: asset_server.load(TEXTURE_ENEMY_BORN),
-        enemy_tank: asset_server.load(TEXTURE_ENEMY_TANK1),
+        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.load_texture(&asset_server),
+        enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.load_texture(&asset_server),
         // 道具
-        speed_up: asset_server.load("power_up/speed_up.png"),
-        protection: asset_server.load("power_up/protection.png"),
-        fire_speed: asset_server.load("power_up/fire_speed.png"),
-        fire_shell: asset_server.load("power_up/fire_shell.png"),
-        track_chain: asset_server.load("power_up/track_chain.png"),
-        track_train: asset_server.load("texture/track_train.png"),
-        penetrate: asset_server.load("power_up/penetrate.png"),
-        repair: asset_server.load("power_up/repair.png"),
-        hamburger: asset_server.load("power_up/hamburger.png"),
-        air_cushion: asset_server.load("power_up/air_cushion.png"),
-        shell: asset_server.load("power_up/shell.png"),
+        speed_up: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(&asset_server),
+        protection: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
+        fire_speed: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.load_texture(&asset_server),
+        fire_shell: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(&asset_server),
+        track_chain: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
+        track_train: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
+        penetrate: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
+        repair: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
+        hamburger: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
+        air_cushion: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.load_texture(&asset_server),
+        shell: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(&asset_server),
         // 菜单
-        background: asset_server.load(TEXTURE_BACKGROUND),
-        music_note: asset_server.load(TEXTURE_MUSIC_NOTE),
+        background: crate::atlas::BACKGROUND_ATLAS.load_texture(&asset_server),
+        music_note: crate::atlas::MUSIC_NOTE_ATLAS.load_texture(&asset_server),
     };
 
     // 音频资源
@@ -669,46 +663,44 @@ pub fn init_game_resources(
         player_shot: asset_server.load(SOUND_PLAYER_SHOT), // 环境音效
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
-        commander_music_000: asset_server.load(SOUND_COMMANDER_MUSIC_000),
-        commander_music_001: asset_server.load(SOUND_COMMANDER_MUSIC_001),
-        commander_music_002: asset_server.load(SOUND_COMMANDER_MUSIC_002),
-        commander_music_003: asset_server.load(SOUND_COMMANDER_MUSIC_003),
-        tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
+        music_note_000: asset_server.load(SOUND_MUSIC_NOTE_000),
+                    music_note_001: asset_server.load(SOUND_MUSIC_NOTE_001),
+                    music_note_002: asset_server.load(SOUND_MUSIC_NOTE_002),
+                    music_note_003: asset_server.load(SOUND_MUSIC_NOTE_003),        tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
     };
 
     // 图集布局资源
     let atlases = crate::resources::GameAtlasLayoutResources {
         // 地形
-        sea: utils::add_texture_atlas(&mut texture_atlas_layouts, sea_tile_size, 3, 1),
-        forest: utils::add_texture_atlas(&mut texture_atlas_layouts, forest_tile_size, 10, 1),
-        forest_fire: utils::add_texture_atlas(
-            &mut texture_atlas_layouts,
-            forest_fire_tile_size,
-            10,
-            1,
-        ),
+        sea: crate::atlas::SEA_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        forest: crate::atlas::FOREST_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 背景
         background: background_atlas,
         // 子弹特效
-        fire_effect: utils::add_texture_atlas(
-            &mut texture_atlas_layouts,
-            fire_effect_tile_size,
-            FIRE_EFFECT_COLUMNS as u32,
-            FIRE_EFFECT_ROWS as u32,
-        ),
-        penetrate_effect: utils::add_texture_atlas(
-            &mut texture_atlas_layouts,
-            penetrate_effect_tile_size,
-            PENETRATE_EFFECT_COLUMNS as u32,
-            PENETRATE_EFFECT_ROWS as u32,
-        ),
+        fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 烟雾特效
-        smoke_atlas: utils::add_texture_atlas(
-            &mut texture_atlas_layouts,
-            smoke_tile_size,
-            SMOKE_COLUMNS as u32,
-            SMOKE_ROWS as u32,
-        ),
+        smoke_atlas: crate::atlas::SMOKE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        // 爆炸特效
+        explosion: crate::atlas::EXPLOSION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        spark: crate::atlas::SPARK_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        // 指挥官
+        commander: crate::atlas::COMMANDER_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        music_note: crate::atlas::MUSIC_NOTE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        // 敌方出生
+        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        // 道具
+        speed_up: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        protection: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        fire_speed: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        fire_shell: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        track_chain: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        penetrate: crate::atlas::POWER_UP_PENETRATE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        repair: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        hamburger: crate::atlas::POWER_UP_HAMBURGER_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        air_cushion: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        shell: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
     };
 
     // 插入所有资源

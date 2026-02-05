@@ -7,7 +7,6 @@ use std::time::Duration;
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
 };
-use crate::utils;
 
 #[derive(Resource, Default)]
 pub struct BulletTracker {
@@ -513,18 +512,15 @@ pub struct GameAudioResources {
     // 环境音效
     pub burn_tree: Handle<AudioSource>,
     pub sea_ambience: Handle<AudioSource>,
-    pub commander_music_000: Handle<AudioSource>,
-    pub commander_music_001: Handle<AudioSource>,
-    pub commander_music_002: Handle<AudioSource>,
-    pub commander_music_003: Handle<AudioSource>,
+    pub music_note_000: Handle<AudioSource>,
+    pub music_note_001: Handle<AudioSource>,
+    pub music_note_002: Handle<AudioSource>,
+    pub music_note_003: Handle<AudioSource>,
     pub tree_ambience: Handle<AudioSource>,
 }
 
 impl GameAudioResources {
-    /// 播放音效
-    pub fn play(&self, commands: &mut Commands, audio_source: Handle<AudioSource>, volume: f32) {
-        utils::play_one_shot_sound(commands, audio_source, volume);
-    }
+    // 注意：不再提供 play 方法，直接使用 utils::play_one_shot_sound
 }
 
 /// 统一的图集布局资源结构体
@@ -542,4 +538,23 @@ pub struct GameAtlasLayoutResources {
     pub penetrate_effect: Handle<TextureAtlasLayout>,
     // 烟雾特效
     pub smoke_atlas: Handle<TextureAtlasLayout>,
+    // 爆炸特效
+    pub explosion: Handle<TextureAtlasLayout>,
+    pub spark: Handle<TextureAtlasLayout>,
+    // 指挥官
+    pub commander: Handle<TextureAtlasLayout>,
+    pub music_note: Handle<TextureAtlasLayout>,
+    // 敌方出生
+    pub enemy_born: Handle<TextureAtlasLayout>,
+    // 道具
+    pub speed_up: Handle<TextureAtlasLayout>,
+    pub protection: Handle<TextureAtlasLayout>,
+    pub fire_speed: Handle<TextureAtlasLayout>,
+    pub fire_shell: Handle<TextureAtlasLayout>,
+    pub track_chain: Handle<TextureAtlasLayout>,
+    pub penetrate: Handle<TextureAtlasLayout>,
+    pub repair: Handle<TextureAtlasLayout>,
+    pub hamburger: Handle<TextureAtlasLayout>,
+    pub air_cushion: Handle<TextureAtlasLayout>,
+    pub shell: Handle<TextureAtlasLayout>,
 }

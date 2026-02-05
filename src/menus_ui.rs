@@ -24,14 +24,14 @@ pub fn spawn_start_screen_background(
                 layout: atlas_layouts.background.clone(),
                 index: 0,
             }),
-            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
+            custom_size: Some(WINDOW_SIZE),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
         AnimationIndices {
             first: 0,
-            last: BACKGROUND_TOTAL_FRAMES - 1,
+            last: crate::atlas::BACKGROUND_ATLAS.total_frames - 1,
         },
         AnimationTimer(Timer::from_seconds(
             BACKGROUND_ANIMATION_FRAME,
@@ -287,7 +287,7 @@ pub fn spawn_about_screen(
         AboutUI,
         Sprite {
             color: COLOR_WHITE,
-            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
+            custom_size: Some(WINDOW_SIZE),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),
@@ -436,7 +436,7 @@ pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameText
         CreditsUI,
         Sprite {
             color: COLOR_WHITE,
-            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
+            custom_size: Some(WINDOW_SIZE),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 0.0),

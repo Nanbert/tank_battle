@@ -8,7 +8,7 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{EnemySpawnState, GameTextureResources};
+use crate::resources::{EnemySpawnState, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 敌方坦克出生动画系统
@@ -16,7 +16,7 @@ pub fn enemy_spawn_system(
     time: Res<Time>,
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
     enemy_entities: Query<Entity, Or<(With<EnemyTank>, With<EnemyBornAnimation>)>>,
 ) {
@@ -36,11 +36,16 @@ pub fn enemy_spawn_system(
         let mut rng = rand::rng();
         let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
         let position = ENEMY_BORN_PLACES[random_index];
-        spawn_enemy_born_animation(
+
+        let _ = utils::spawn_animated_sprite(
             &mut commands,
-            &texture_resources,
-            &mut texture_atlas_layouts,
+            texture_resources.enemy_born.clone(),
+            atlas_layouts.enemy_born.clone(),
+            crate::atlas::ENEMY_BORN_ATLAS.animation_indices_full(),
+            ANIMATION_FRAME_ENEMY_BORN,
             position,
+            crate::atlas::ENEMY_BORN_ATLAS.display_size,
+            (EnemyBornAnimation, PlayingEntity, BornPosition(position)),
         );
 
         // 更新计数
@@ -49,38 +54,6 @@ pub fn enemy_spawn_system(
         // 重置冷却时间
         enemy_spawn_state.spawn_cooldown.reset();
     }
-}
-
-/// 生成敌方坦克出生动画
-pub fn spawn_enemy_born_animation(
-    commands: &mut Commands,
-    texture_resources: &Res<GameTextureResources>,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
-    position: Vec3,
-) -> Entity {
-    let enemy_born_texture = texture_resources.enemy_born.clone();
-    let enemy_born_tile_size = UVec2::new(ENEMY_BORN_TILE_SIZE as u32, ENEMY_BORN_TILE_SIZE as u32);
-    let enemy_born_animation_indices = AnimationIndices {
-        first: 0,
-        last: ENEMY_BORN_END_FRAME,
-    };
-
-    utils::spawn_animated_sprite(
-        commands,
-        texture_atlas_layouts,
-        enemy_born_texture,
-        enemy_born_tile_size,
-        5,
-        3,
-        enemy_born_animation_indices,
-        ANIMATION_FRAME_ENEMY_BORN,
-        position,
-        Some(Vec2::new(
-            ENEMY_BORN_ANIMATION_SIZE,
-            ENEMY_BORN_ANIMATION_SIZE,
-        )),
-        (EnemyBornAnimation, PlayingEntity, BornPosition(position)),
-    )
 }
 
 /// 敌方坦克出生动画系统
@@ -123,11 +96,9 @@ pub fn animate_enemy_born_animation(
                 if next_index == spawn_frame {
                     // 加载敌方坦克纹理和创建精灵图
                     let enemy_texture = texture_resources.enemy_tank.clone();
-                    let enemy_tile_size =
-                        UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
                     let enemy_texture_atlas =
-                        utils::add_texture_atlas(&mut texture_atlas_layouts, enemy_tile_size, 2, 1);
-                    let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
+                        crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts);
+                    let enemy_animation_indices = crate::atlas::ENEMY_TANK1_ATLAS.animation_indices_full();
 
                     // 生成敌方坦克
                     commands
@@ -163,10 +134,7 @@ pub fn animate_enemy_born_animation(
                                 layout: enemy_texture_atlas,
                                 index: enemy_animation_indices.first,
                             }),
-                            custom_size: Some(Vec2::new(
-                                ENEMY_TANK_DISPLAY_WIDTH,
-                                ENEMY_TANK_DISPLAY_HEIGHT,
-                            )),
+                            custom_size: Some(crate::constants::TANK_DISPLAY_SIZE),
                             ..default()
                         })
                         .insert(Transform::from_translation(born_position.0))
@@ -178,8 +146,8 @@ pub fn animate_enemy_born_animation(
                         })
                         .insert(RigidBody::Dynamic)
                         .insert(Collider::cuboid(
-                            ENEMY_COLLIDER_HALF_WIDTH,
-                            ENEMY_COLLIDER_HALF_HEIGHT,
+                            ENEMY_COLLIDER_HALF_SIZE.x,
+                            ENEMY_COLLIDER_HALF_SIZE.y,
                         ))
                         .insert(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
                         .insert(
@@ -292,8 +260,8 @@ pub fn move_enemy_tanks(
             // 边界碰撞仍然需要手动检测（边界不是物理实体，无碰撞事件）
             if let Some(boundary_normal) = check_boundary_collision(
                 &transform,
-                ENEMY_COLLIDER_HALF_WIDTH,
-                ENEMY_COLLIDER_HALF_HEIGHT,
+                ENEMY_COLLIDER_HALF_SIZE.x,
+                ENEMY_COLLIDER_HALF_SIZE.y,
                 enemy_tank.direction,
             ) {
                 enemy_tank.direction = get_new_direction(boundary_normal);
@@ -338,8 +306,8 @@ pub fn move_enemy_tanks(
         // 限制敌方坦克在地图边界内
         utils::clamp_entity_position(
             &mut transform,
-            ENEMY_TANK_DISPLAY_WIDTH / 2.0,
-            ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
+            TANK_DISPLAY_SIZE.x / 2.0,
+            TANK_DISPLAY_SIZE.y / 2.0,
         );
     }
 }

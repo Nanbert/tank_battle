@@ -13,10 +13,10 @@ pub const SOUND_BRICK_HIT: &str = "music/brick_hit.ogg";
 pub const SOUND_BURN_TREE: &str = "music/burn_tree.ogg";
 pub const SOUND_COMMANDER_DEATH: &str = "music/commander_death.ogg";
 pub const SOUND_COMMANDER_GET_SHOT: &str = "music/commander_get_shot.ogg";
-pub const SOUND_COMMANDER_MUSIC_000: &str = "music/commander_music_000.ogg";
-pub const SOUND_COMMANDER_MUSIC_001: &str = "music/commander_music_001.ogg";
-pub const SOUND_COMMANDER_MUSIC_002: &str = "music/commander_music_002.ogg";
-pub const SOUND_COMMANDER_MUSIC_003: &str = "music/commander_music_003.ogg";
+pub const SOUND_MUSIC_NOTE_000: &str = "music/music_note_000.ogg";
+pub const SOUND_MUSIC_NOTE_001: &str = "music/music_note_001.ogg";
+pub const SOUND_MUSIC_NOTE_002: &str = "music/music_note_002.ogg";
+pub const SOUND_MUSIC_NOTE_003: &str = "music/music_note_003.ogg";
 pub const SOUND_EXPLOSION: &str = "music/explosion_sound.ogg";
 pub const SOUND_HIT: &str = "music/hit_sound.ogg";
 pub const SOUND_LASER_CHARGE: &str = "music/laser_charge.ogg";
@@ -27,81 +27,32 @@ pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
 
-// 子弹纹理路径常量
+// 子弹纹理路径常量（静态）
 pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
 pub const TEXTURE_BULLET_PLAYER2: &str = "texture/bullets/bullet_player2.png";
 pub const TEXTURE_BULLET_ENEMY: &str = "texture/bullets/bullet_enemy.png";
-pub const TEXTURE_BULLET_FIRE_EFFECT: &str = "texture/bullets/fire_effect.png";
 
-// 火焰特效精灵图常量（叠加在子弹上的火焰特效）
-// fire_effect.png 实际尺寸：320 x 448 像素
-// 7行5列网格，每帧 64 x 64 像素
-pub const FIRE_EFFECT_TILE_WIDTH: f32 = 64.0; // 火焰特效瓦片宽度（320/5）
-pub const FIRE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 火焰特效瓦片高度（320/5）
-pub const FIRE_EFFECT_COLUMNS: usize = 5; // 火焰特效列数
-pub const FIRE_EFFECT_ROWS: usize = 7; // 火焰特效行数
-pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最后一行只有2帧）
-pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间隔
+// 动画帧间隔常量
+pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03;
+pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05;
+pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.03;
+pub const POWER_UP_ANIMATION_FRAME: f32 = 0.1; // 道具动画帧间隔
 
-// 穿透效果精灵图常量（叠加在子弹上的穿透特效）
-// spark_03.png 实际尺寸：1024 x 512 像素
-// 2行4列网格，每帧 256 x 256 像素
-pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 256.0; // 穿透特效瓦片宽度
-pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 256.0; // 穿透特效瓦片高度
-pub const PENETRATE_EFFECT_COLUMNS: usize = 4; // 穿透特效列数
-pub const PENETRATE_EFFECT_ROWS: usize = 2; // 穿透特效行数
-pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 8; // 穿透特效总帧数（2×4=8）
-pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05; // 穿透特效动画帧间隔
-
-// 敌方坦克纹理路径常量
-pub const TEXTURE_ENEMY_TANK1: &str = "enemy_tank/enemy_tank1_sprite.png";
-
-// 地图纹理路径常量
+// 地图纹理路径常量（静态）
 pub const TEXTURE_BARRIER: &str = "maps/barrier.png";
 pub const TEXTURE_BRICK: &str = "maps/brick.png";
-pub const TEXTURE_SEA: &str = "maps/sea_sheet.png";
 pub const TEXTURE_STEEL: &str = "maps/steel.png";
-pub const TEXTURE_TREE: &str = "maps/tree.png";
-pub const TEXTURE_TREE_FIRE_SHEET: &str = "maps/tree_fire_sheet.png";
-
-// 背景纹理路径常量
-pub const TEXTURE_BACKGROUND: &str = "texture/background.png";
-
-// 开始界面背景精灵图常量
-// texture/background.png: 4800 x 4800 像素, 5行5列
-// 每帧: 960 x 960 像素
-pub const BACKGROUND_TILE_WIDTH: f32 = 960.0; // 背景瓦片宽度 (4800/5)
-pub const BACKGROUND_TILE_HEIGHT: f32 = 960.0; // 背景瓦片高度 (4800/5)
-pub const BACKGROUND_COLUMNS: usize = 5; // 背景列数（宽度方向）
-pub const BACKGROUND_ROWS: usize = 5; // 背景行数（高度方向）
-pub const BACKGROUND_TOTAL_FRAMES: usize = 25; // 背景总帧数 (5*5)
-pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.03; // 背景动画帧间隔
-
-// 开始界面背景色常量（与精灵图第一帧左上角像素颜色相同）
-// 使用 COLOR_GRAY
 
 // 收款码路径常量
 pub const IMAGE_ALIPAY: &str = "alipay.png";
 pub const IMAGE_WECHAT: &str = "wechat.png";
+pub const PAYMENT_CODE_SIZE: f32 = 400.0;
 
-// 特效纹理路径常量
+// 特效纹理路径常量（静态）
 pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
-pub const TEXTURE_ENEMY_BORN: &str = "effect/enemy_born.png";
-pub const TEXTURE_ENERGY_BLUE_BALL: &str = "effect/energy_blue_ball.png";
-pub const TEXTURE_ENERGY_RED_BALL: &str = "effect/energy_red_ball.png";
-pub const TEXTURE_EXPLOSION: &str = "effect/explosion.png";
-pub const TEXTURE_MUSIC_NOTE: &str = "effect/music_note_sheet.png";
-pub const TEXTURE_SMOKE: &str = "effect/smoke_sprite.png";
-pub const TEXTURE_STEEL_HIT: &str = "effect/steel_hit.png";
-pub const TEXTURE_LASER_BLUE: &str = "effect/texture_laser_blue.png";
-pub const TEXTURE_LASER_RED: &str = "effect/texture_laser_red.png";
 
-// 角色纹理路径常量
-pub const TEXTURE_COMMANDER: &str = "texture/commander.png";
+// 角色纹理路径常量（静态）
 pub const TEXTURE_COMMANDER_DEAD: &str = "texture/commander_dead.png";
-pub const TEXTURE_AVATAR: &str = "texture/avatar.png";
-pub const TEXTURE_PLAYER_TANK1: &str = "texture/player_tank1.png";
-pub const TEXTURE_PLAYER_TANK2: &str = "texture/player_tank2.png";
 pub const TEXTURE_SINGLE_BARREL: &str = "texture/single_barrel.png";
 pub const TEXTURE_DOUBLE_BARREL: &str = "texture/double_barrel.png";
 pub const TEXTURE_AVATAR_DEATH: &str = "texture/avatar_death.png";
@@ -122,11 +73,12 @@ pub const TANK_SPEED: f32 = 200.0;
 pub const PLAYER_TANK_SPEED: f32 = 150.0;
 pub const BULLET_SPEED: f32 = 900.0;
 pub const PLAYER_BULLET_SPEED: f32 = 600.0;
-pub const BULLET_SIZE: f32 = 10.0;
+
 pub const RECALL_TIME: f32 = 2.0; // 回城时间（秒）
 pub const VERTICAL_OFFSET: f32 = (BOTTOM_PADDING - TOP_PADDING) / 2.0; // 由于下边不留白，会导致坐标垂直便移-50
 pub const WINDOW_WIDTH: u32 = (MAP_WIDTH + LEFT_PADDING + RIGHT_PADDING) as u32; // 总宽度
 pub const WINDOW_HEIGHT: u32 = (MAP_HEIGHT + TOP_PADDING + BOTTOM_PADDING) as u32; // 总高度
+pub const WINDOW_SIZE: Vec2 = Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32); // 窗口尺寸
 pub const WINDOW_LEFT_X: f32 = -(WINDOW_WIDTH as f32) / 2.0;
 pub const WINDOW_RIGHT_X: f32 = (WINDOW_WIDTH as f32) / 2.0;
 pub const WINDOW_TOP_Y: f32 = (WINDOW_HEIGHT as f32) / 2.0;
@@ -138,23 +90,19 @@ pub const MAP_BOTTOM_Y: f32 = -MAP_HEIGHT / 2.0 + VERTICAL_OFFSET;
 
 pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
     Vec3::new(
-        MAP_LEFT_X + ENEMY_TANK_DISPLAY_WIDTH / 2.0,
-        MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
+        MAP_LEFT_X + TANK_DISPLAY_SIZE.x / 2.0,
+        MAP_TOP_Y - TANK_DISPLAY_SIZE.y / 2.0,
         0.0,
     ),
-    Vec3::new(0.0, MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0, 0.0),
+    Vec3::new(0.0, MAP_TOP_Y - TANK_DISPLAY_SIZE.y / 2.0, 0.0),
     Vec3::new(
-        MAP_RIGHT_X - ENEMY_TANK_DISPLAY_WIDTH / 2.0,
-        MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
+        MAP_RIGHT_X - TANK_DISPLAY_SIZE.x / 2.0,
+        MAP_TOP_Y - TANK_DISPLAY_SIZE.y / 2.0,
         0.0,
     ),
 ];
 
 // ==================== 履带道具常量 ====================
-pub const TRACK_CHAIN_TILE_WIDTH: f32 = 69.0; // 履带瓦片宽度 (138 / 2帧)
-pub const TRACK_CHAIN_TILE_HEIGHT: f32 = 77.0; // 履带瓦片高度
-pub const TRACK_CHAIN_DISPLAY_WIDTH: f32 = 80.0; // 履带显示宽度
-pub const TRACK_CHAIN_DISPLAY_HEIGHT: f32 = 90.0; // 履带显示高度
 pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
 
 // ==================== 颜色常量 ====================
@@ -171,8 +119,67 @@ pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明
 pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
 pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
 
-pub const COMMANDER_WIDTH: f32 = 100.0;
-pub const COMMANDER_HEIGHT: f32 = 100.0;
+// ==================== 尺寸常量（合并版） ====================
+pub const COMMANDER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+pub const BARRIER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+pub const TANK_DISPLAY_SIZE: Vec2 = Vec2::new(80.0, 90.0); // 玩家/敌方/炮管显示尺寸
+pub const BULLET_DISPLAY_SIZE: Vec2 = Vec2::new(60.0, 40.0);
+pub const BULLET_COLLIDER_SIZE: f32 = 10.0; // 子弹碰撞体大小
+pub const HUD_BAR_SIZE: Vec2 = Vec2::new(150.0, 15.0);
+pub const COMMANDER_BAR_SIZE: Vec2 = Vec2::new(160.0, 15.0);
+
+// 碰撞体尺寸（半尺寸）
+pub const ENEMY_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(38.0, 43.0);
+pub const PLAYER_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(35.0, 35.0);
+pub const WALL_COLLIDER_SIZE: Vec2 = Vec2::new(46.0, 46.0); // 砖块/钢铁
+pub const WALL_TEXTURE_SIZE: Vec2 = Vec2::new(50.0, 50.0); // 砖块/钢铁
+pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
+
+// ==================== UI 位置常量（Vec3） ====================
+// ==================== UI 位置常量（Vec3） ====================
+
+// 菜单 Y 坐标数组
+
+
+// HUD Y 坐标数组
+#[derive(Clone, Copy)]
+pub enum HudYPosition {
+    Name,
+    Speed,
+    FireSpeed,
+    Protection,
+    Shells,
+    EffectsTitle,
+    FireShell,
+    Penetrate,
+    TrackChain,
+    AirCushion,
+    InsufficientEnergy,
+    Score,
+    Avatar,
+    BarHealth,
+    BarBlue,
+}
+
+pub const HUD_Y_POSITIONS: [f32; 15] = [
+    780.0,  // Name
+    830.0,  // Speed
+    880.0,  // FireSpeed
+    930.0,  // Protection
+    980.0,  // Shells
+    320.0,  // EffectsTitle
+    370.0,  // FireShell
+    420.0,  // Penetrate
+    470.0,  // TrackChain
+    520.0,  // AirCushion
+    610.0,  // InsufficientEnergy
+    50.0,   // Score
+    150.0,  // Avatar
+    235.0,  // BarHealth
+    250.0,  // BarBlue
+];
+
+
 
 pub const DIRECTIONS: [Vec2; 4] = [
     Vec2::new(0.0, 1.0),  // 上
@@ -183,7 +190,7 @@ pub const DIRECTIONS: [Vec2; 4] = [
 
 // 冲刺相关常量
 pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
-pub const DASH_DISTANCE: f32 = PLAYER_TANK_DISPLAY_HEIGHT * 2.0; // 冲刺距离（两个坦克长度）
+pub const DASH_DISTANCE: f32 = TANK_DISPLAY_SIZE.y * 2.0; // 冲刺距离（两个坦克长度）
 
 // 关卡俏皮话中文版
 pub const STAGE_QUOTES_CN: [&str; 17] = [
@@ -349,6 +356,21 @@ pub struct AnimationIndices {
     pub last: usize,
 }
 
+impl AnimationIndices {
+    /// 从第一帧播放到最后一帧（total_frames - 1）
+    pub fn from_total_frames(total_frames: usize) -> Self {
+        Self {
+            first: 0,
+            last: total_frames - 1,
+        }
+    }
+
+    /// 从 TextureAtlasInfo 创建（使用 total_frames）
+    pub fn from_atlas_info(atlas_info: &crate::atlas::TextureAtlasInfo) -> Self {
+        Self::from_total_frames(atlas_info.total_frames)
+    }
+}
+
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(pub Timer);
 
@@ -370,6 +392,11 @@ pub enum AnimationMode {
         start_frame: usize,
         /// 循环结束帧
         end_frame: usize,
+    },
+    /// 条件动画，只有条件满足时才播放（例如：履带动画只在移动时播放）
+    Conditional {
+        /// 玩家坦克类型（用于查询按键状态）
+        tank_type: TankType,
     },
 }
 
@@ -543,31 +570,16 @@ pub struct SeaAmbiencePlayer;
 pub struct CommanderAmbiencePlayer;
 
 #[derive(Component)]
-pub struct CommanderMusicAnimation;
+pub struct MusicNoteAnimation;
 
 #[derive(Component)]
 pub struct Barrier;
-
-pub const BARRIER_WIDTH: f32 = 100.0;
-pub const BARRIER_HEIGHT: f32 = 100.0;
 
 #[derive(Component)]
 pub struct Brick;
 
 #[derive(Component)]
 pub struct Steel;
-
-// 纹理大小
-pub const BRICK_TEXTURE_WIDTH: f32 = 50.0;
-pub const BRICK_TEXTURE_HEIGHT: f32 = 50.0;
-pub const STEEL_TEXTURE_WIDTH: f32 = 50.0;
-pub const STEEL_TEXTURE_HEIGHT: f32 = 50.0;
-
-// 碰撞体积大小
-pub const BRICK_COLLIDER_WIDTH: f32 = 46.0;
-pub const BRICK_COLLIDER_HEIGHT: f32 = 46.0;
-pub const STEEL_COLLIDER_WIDTH: f32 = 46.0;
-pub const STEEL_COLLIDER_HEIGHT: f32 = 46.0;
 
 #[derive(Component)]
 pub struct Commander;
@@ -670,12 +682,13 @@ pub const DETECTION_RADIUS: f32 = 100.0;
 // ==================== 动画时间常量 ====================
 pub const ANIMATION_FRAME_EXPLOSION: f32 = 0.01; // 爆炸动画帧间隔
 pub const ANIMATION_FRAME_SPARK: f32 = 0.02; // 火花动画帧间隔
+pub const ANIMATION_FRAME_FOREST_FIRE: f32 = 0.15; // 森林火灾动画帧间隔，1.5秒播完10帧
 pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共0.72秒
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
 pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.03; // 能量球动画帧间隔
-pub const ANIMATION_FRAME_COMMANDER_MUSIC: f32 = 0.1; // 指挥官音乐动画帧间隔
+pub const ANIMATION_FRAME_MUSIC_NOTE: f32 = 0.1; // 音符动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
 pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
@@ -705,95 +718,34 @@ pub const PROGRESS_BAR_INITIAL_WIDTH: f32 = 100.0; // 回城进度条初始宽�
 
 // 墙壁和地形
 pub const BRICK_GROUP_OFFSET: f32 = 25.0; // 砖块组偏移
+
+// 砖块组四个方向的位置偏移常量
+pub const BRICK_GROUP_TOP_LEFT: Vec2 = Vec2::new(-BRICK_GROUP_OFFSET, BRICK_GROUP_OFFSET);
+pub const BRICK_GROUP_TOP_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, BRICK_GROUP_OFFSET);
+pub const BRICK_GROUP_BOTTOM_LEFT: Vec2 = Vec2::new(-BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
+pub const BRICK_GROUP_BOTTOM_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
+
 pub const CHARACTER_CONTROLLER_OFFSET: f32 = 0.01; // CharacterController offset
 pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max_height
 pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
 
 // 激光
+
+pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）
 pub const LASER_POSITION_OFFSET: f32 = -40.0; // 激光位置偏移（炮口向前的距离）
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
 pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
 
-// 敌方坦克
-pub const ENEMY_TANK_DISPLAY_WIDTH: f32 = 80.0; // 敌方坦克显示宽度
-pub const ENEMY_TANK_DISPLAY_HEIGHT: f32 = 90.0; // 敌方坦克显示高度
-pub const ENEMY_COLLIDER_HALF_WIDTH: f32 = 38.0; // 敌方坦克碰撞体半宽 ((80-4)/2)
-pub const ENEMY_COLLIDER_HALF_HEIGHT: f32 = 43.0; // 敌方坦克碰撞体半高 ((90-4)/2)
-pub const ENEMY_BORN_ANIMATION_SIZE: f32 = 100.0; // 敌方坦克出生动画尺寸
-pub const ENEMY_TILE_WIDTH: f32 = 137.0; // 敌方坦克纹理瓦片宽度
-pub const ENEMY_TILE_HEIGHT: f32 = 183.0; // 敌方坦克纹理瓦片高度
-pub const ENEMY_BORN_TILE_SIZE: f32 = 340.0; // 敌方出生动画瓦片尺寸
-
 // 玩家坦克
-pub const PLAYER_TANK_DISPLAY_WIDTH: f32 = 80.0; // 玩家坦克显示宽度
-pub const PLAYER_TANK_DISPLAY_HEIGHT: f32 = 90.0; // 玩家坦克显示高度
-pub const PLAYER_COLLIDER_HALF: f32 = 35.0; // 玩家坦克碰撞体半宽/高
 pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移
-pub const PLAYER_TILE_WIDTH: f32 = 293.0; // 玩家坦克瓦片宽度
-pub const PLAYER_TILE_HEIGHT: f32 = 328.0; // 玩家坦克瓦片高度
 
-// 炮管显示尺寸
-pub const SINGLE_BARREL_DISPLAY_WIDTH: f32 = 80.0; // 单管炮管显示宽度
-pub const SINGLE_BARREL_DISPLAY_HEIGHT: f32 = 90.0; // 单管炮管显示高度
-pub const DOUBLE_BARREL_DISPLAY_WIDTH: f32 = 80.0; // 双管炮管显示宽度
-pub const DOUBLE_BARREL_DISPLAY_HEIGHT: f32 = 90.0; // 双管炮管显示高度
-
-// 子弹
-pub const BULLET_WIDTH: f32 = 60.0; // 子弹宽度
-pub const BULLET_HEIGHT: f32 = 40.0; // 子弹高度
 
 // 特效纹理瓦片尺寸
-pub const EXPLOSION_TILE_SIZE: f32 = 256.0; // 爆炸瓦片尺寸
-pub const SPARK_TILE_SIZE: f32 = 256.0; // 火花瓦片尺寸
-pub const SMOKE_TILE_SIZE: f32 = 100.0; // 烟雾瓦片尺寸
-pub const SMOKE_COLUMNS: usize = 5; // 烟雾列数
-pub const SMOKE_ROWS: usize = 3; // 烟雾行数
-pub const SMOKE_TOTAL_FRAMES: usize = 15; // 烟雾总帧数
-pub const FOREST_FIRE_TILE_SIZE: f32 = 131.0; // 森林燃烧瓦片尺寸
-pub const ENERGY_BALL_TILE_WIDTH: f32 = 675.0; // 能量球瓦片宽度
-pub const ENERGY_BALL_TILE_HEIGHT: f32 = 488.0; // 能量球瓦片高度
 
-// 特效显示尺寸
-pub const SMOKE_DISPLAY_SIZE: f32 = 100.0; // 烟雾显示尺寸
-pub const EXPLOSION_DISPLAY_SIZE: f32 = 300.0; // 爆炸显示尺寸
-pub const SPARK_DISPLAY_SIZE: f32 = 200.0; // 火花显示尺寸
-pub const ENERGY_BALL_DISPLAY_WIDTH: f32 = 405.0; // 能量球显示宽度 (675 * 0.6)
-pub const ENERGY_BALL_DISPLAY_HEIGHT: f32 = 293.0; // 能量球显示高度 (488 * 0.6)
 
-// 地形纹理和显示尺寸
-pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
-pub const COMMANDER_BRICK_SIZE: f32 = 50.0; // 司令官砖块大小
-pub const COMMANDER_TILE_WIDTH: f32 = 140.0; // 指挥官瓦片宽度
-pub const COMMANDER_TILE_HEIGHT: f32 = 120.0; // 指挥官瓦片高度
-pub const COMMANDER_DISPLAY_WIDTH: f32 = 100.0; // 指挥官显示宽度
-pub const COMMANDER_DISPLAY_HEIGHT: f32 = 100.0; // 指挥官显示高度
-pub const COMMANDER_MUSIC_TILE_WIDTH: f32 = 140.0; // 指挥官音乐瓦片宽度
-pub const COMMANDER_MUSIC_TILE_HEIGHT: f32 = 120.0; // 指挥官音乐瓦片高度
-pub const COMMANDER_MUSIC_DISPLAY_WIDTH: f32 = 70.0; // 指挥官音乐显示宽度
-pub const COMMANDER_MUSIC_DISPLAY_HEIGHT: f32 = 60.0; // 指挥官音乐显示高度
 
-// 激光尺寸
-pub const LASER_DISPLAY_WIDTH: f32 = 512.0; // 激光显示宽度
-pub const LASER_TILE_WIDTH: f32 = 512.0; // 激光瓦片宽度
-pub const LASER_TILE_HEIGHT: f32 = 683.0; // 激光瓦片高度
-pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）
-
-// UI 尺寸
-pub const PLAYER_AVATAR_TILE_WIDTH: f32 = 160.0; // 玩家头像瓦片宽度
-pub const PLAYER_AVATAR_TILE_HEIGHT: f32 = 147.0; // 玩家头像瓦片高度
-pub const PLAYER_AVATAR_DISPLAY_WIDTH: f32 = 160.0; // 玩家头像显示宽度
-pub const PLAYER_AVATAR_DISPLAY_HEIGHT: f32 = 147.0; // 玩家头像显示高度
-pub const HUD_BAR_HEIGHT: f32 = 15.0; // HUD 血条/蓝条高度
-pub const HUD_BAR_WIDTH: f32 = 150.0; // HUD 血条/蓝条宽度
-
-// UI
-pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸
-
-// 血条/蓝条
-pub const COMMANDER_BAR_WIDTH: f32 = 160.0; // 司令官血条宽度
-pub const COMMANDER_BAR_HEIGHT: f32 = 15.0; // 司令官血条高度
 
 // ==================== 速度和角度常量 ====================
 pub const ANGLE_DIFF_THRESHOLD: f32 = 0.01; // 角度差阈值
@@ -804,7 +756,6 @@ pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移�
 
 // ==================== 游戏数值常量 ====================
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
-pub const ENEMY_BORN_END_FRAME: usize = 12; // 敌方出生动画结束帧
 pub const ENERGY_BALL_END_FRAME: usize = 64; // 能量球动画结束帧（65帧：0-64）
 pub const ENERGY_BALL_LASER_LOOP_START: usize = 81; // 激光阶段循环起始帧
 pub const ENERGY_BALL_LASER_LOOP_END: usize = 84; // 激光阶段循环结束帧
@@ -816,7 +767,7 @@ pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
 
 // ==================== 比例和音量常量 ====================
 pub const VOLUME_HALF: f32 = 0.5; // 音效音量
-pub const VOLUME_COMMANDER_MUSIC: f32 = 0.4; // 指挥官音乐音量
+pub const VOLUME_MUSIC_NOTE: f32 = 0.4; // 音符动画音量
 
 // ==================== Z轴层级常量 ====================
 pub const Z_SEA: f32 = -0.5; // 海水层级
@@ -827,24 +778,6 @@ pub const Z_PROGRESS_BAR: f32 = 2.0; // 进度条层级
 pub const Z_UI: f32 = 10.0; // UI层级
 pub const Z_STAGE_INTRO_BG: f32 = 100.0; // 关卡介绍层级
 pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
-
-// ==================== HUD 位置常量 ====================
-// 玩家 HUD Y 轴偏移量（相对于 WINDOW_TOP_Y）
-pub const HUD_Y_NAME: f32 = 780.0; // 玩家名称
-pub const HUD_Y_SPEED: f32 = 830.0; // 速度
-pub const HUD_Y_FIRE_SPEED: f32 = 880.0; // 射速
-pub const HUD_Y_PROTECTION: f32 = 930.0; // 护盾
-pub const HUD_Y_SHELLS: f32 = 980.0; // 炮弹数量
-pub const HUD_Y_EFFECTS_TITLE: f32 = 320.0; // 效果标题
-pub const HUD_Y_FIRE_SHELL: f32 = 370.0; // 火焰炮弹效果
-pub const HUD_Y_PENETRATE: f32 = 420.0; // 穿透效果
-pub const HUD_Y_TRACK_CHAIN: f32 = 470.0; // 履带链效果
-pub const HUD_Y_AIR_CUSHION: f32 = 520.0; // 气垫效果
-pub const HUD_Y_INSUFFICIENT_ENERGY: f32 = 610.0; // 能量不足提示（在效果和名称中间，下移60像素）
-pub const HUD_Y_SCORE: f32 = 50.0; // 分数
-pub const HUD_Y_AVATAR: f32 = 150.0; // 玩家头像
-pub const HUD_BAR_Y_OFFSET_HEALTH: f32 = 235.0; // 血条 Y 偏移
-pub const HUD_BAR_Y_OFFSET_BLUE: f32 = 250.0; // 蓝条 Y 偏移
 
 // HUD 数值常量
 pub const HUD_MAX_PERCENT: usize = 100; // 最大百分比

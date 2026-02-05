@@ -83,7 +83,7 @@ pub fn spawn_stage_intro(
         StageIntroUI,
         Sprite {
             color: COLOR_WHITE, // 白色
-            custom_size: Some(Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f32)),
+            custom_size: Some(WINDOW_SIZE),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, Z_STAGE_INTRO_BG), // z=100.0 确保在所有游戏元素之上
@@ -458,7 +458,7 @@ pub fn spawn_insufficient_energy_warning(
     };
 
     // Y 位置在效果和名称中间
-    let y_pos = WINDOW_TOP_Y - HUD_Y_INSUFFICIENT_ENERGY;
+    let y_pos = WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::InsufficientEnergy as usize];
 
     // 使用金色字体
     commands.spawn((
