@@ -148,6 +148,13 @@
 - **作者**: JoesAlotofthings
 - **说明**: 火焰粒子特效精灵图，7行5列布局，每帧192x192像素，共32帧
 
+## Penetrate Effect (穿透特效)
+- **文件**: assets/texture/bullets/penetrate_effect.png
+- **来源**: https://opengameart.org/content/radial-lightning-effect
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: 13rice
+- **说明**: 径向闪电特效，2行4列布局，每帧256x256像素，共8帧，免费使用，无需署名
+
 ## 许可说明
 CC-BY 3.0 许可证要求：
 1. **署名** - 必须提供原作者的署名

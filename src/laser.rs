@@ -8,7 +8,10 @@ use bevy::prelude::*;
 
 use crate::bullet::Bullet;
 use crate::constants::*;
-use crate::resources::{GameTextureResources, GameAudioResources, PlayerInfo, InsufficientEnergyTracker, Language, GameAtlasLayoutResources};
+use crate::resources::{
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, InsufficientEnergyTracker,
+    Language, PlayerInfo,
+};
 use crate::utils;
 
 /// 激光命中结果
@@ -44,7 +47,8 @@ pub fn spawn_laser(
         TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
     };
     let laser_tile_size = UVec2::new(LASER_TILE_WIDTH as u32, LASER_TILE_HEIGHT as u32);
-    let laser_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, laser_tile_size, 4, 3);
+    let laser_texture_atlas =
+        utils::add_texture_atlas(texture_atlas_layouts, laser_tile_size, 4, 3);
     let laser_animation_indices = AnimationIndices { first: 0, last: 11 };
 
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
@@ -71,35 +75,33 @@ pub fn spawn_laser(
         PlayingEntity,
         bullet_type,
         Sprite {
-                image: laser_texture,
-                texture_atlas: Some(TextureAtlas {
-                    layout: laser_texture_atlas,
-                    index: laser_animation_indices.first,
-                }),
-                custom_size: Some(Vec2::new(LASER_DISPLAY_WIDTH, LASER_HEIGHT)),
-                ..default()
-            },
-            Transform {
-                translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER),
-                rotation: Quat::from_rotation_z(angle),
-                ..default()
-            },
-            laser_animation_indices,
-            AnimationTimer(Timer::from_seconds(
-                ANIMATION_FRAME_LASER,
-                TimerMode::Repeating,
-            )),
-            CurrentAnimationFrame(0),
-            // 保存激光方向和位置，用于碰撞检测
-            LaserDirection(params.direction),
-            LaserStartPoint(params.position),
-        ));
+            image: laser_texture,
+            texture_atlas: Some(TextureAtlas {
+                layout: laser_texture_atlas,
+                index: laser_animation_indices.first,
+            }),
+            custom_size: Some(Vec2::new(LASER_DISPLAY_WIDTH, LASER_HEIGHT)),
+            ..default()
+        },
+        Transform {
+            translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER),
+            rotation: Quat::from_rotation_z(angle),
+            ..default()
+        },
+        laser_animation_indices,
+        AnimationTimer(Timer::from_seconds(
+            ANIMATION_FRAME_LASER,
+            TimerMode::Repeating,
+        )),
+        CurrentAnimationFrame(0),
+        // 保存激光方向和位置，用于碰撞检测
+        LaserDirection(params.direction),
+        LaserStartPoint(params.position),
+    ));
 
     // 如果有关联的能量球，添加 LaserWithEnergyBall 组件
     if let Some(energy_ball_entity) = params.energy_ball_entity {
-        laser_entity.insert(LaserWithEnergyBall {
-            energy_ball_entity,
-        });
+        laser_entity.insert(LaserWithEnergyBall { energy_ball_entity });
     }
 
     laser_entity.id()
@@ -113,15 +115,7 @@ pub fn player_laser_system(
     _atlas_layouts: Res<GameAtlasLayoutResources>,
     time: Res<Time>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-    mut query: Query<
-        (
-            Entity,
-            &Transform,
-            &RotationTimer,
-            &PlayerTank,
-        ),
-        With<PlayerTank>,
-    >,
+    mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank), With<PlayerTank>>,
     mut charge_query: Query<(Entity, &mut LaserCharge)>,
     mut energy_ball_query: Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: Query<(Entity, &LaserChargeSound)>,
@@ -164,40 +158,41 @@ pub fn player_laser_system(
         }
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
-            energy_tracker.tick_all(time.delta());
-        
-            // 处理蓄力逻辑
-            if has_charge {
-                update_charge(
-                    &mut commands,
-                    &texture_resources,
-                    &mut texture_atlas_layouts,
-                    &mut player_info,
-                    &mut energy_ball_query,
-                    &sound_query,
-                    entity,
-                    transform,
-                    player_tank.tank_type,
-                    &mut charge_query,
-                    &time,
-                    &audio_resources,
-                );
-            } else {
-                start_charge(
-                    &mut commands,
-                    &player_info,
-                    &texture_resources,
-                    &mut texture_atlas_layouts,
-                    entity,
-                    transform,
-                    player_tank.tank_type,
-                    &audio_resources,
-                    &mut energy_tracker,
-                    &font_resources.cn,
-                    &font_resources.en,
-                    &language,
-                );
-            }    }
+        energy_tracker.tick_all(time.delta());
+
+        // 处理蓄力逻辑
+        if has_charge {
+            update_charge(
+                &mut commands,
+                &texture_resources,
+                &mut texture_atlas_layouts,
+                &mut player_info,
+                &mut energy_ball_query,
+                &sound_query,
+                entity,
+                transform,
+                player_tank.tank_type,
+                &mut charge_query,
+                &time,
+                &audio_resources,
+            );
+        } else {
+            start_charge(
+                &mut commands,
+                &player_info,
+                &texture_resources,
+                &mut texture_atlas_layouts,
+                entity,
+                transform,
+                player_tank.tank_type,
+                &audio_resources,
+                &mut energy_tracker,
+                &font_resources.cn,
+                &font_resources.en,
+                &language,
+            );
+        }
+    }
 }
 
 /// 取消蓄力
@@ -236,7 +231,9 @@ fn start_charge(
     font_en: &Handle<Font>,
     language: &Language,
 ) {
-    let player_stats = player_info.get_stats(tank_type).expect("Player should exist");
+    let player_stats = player_info
+        .get_stats(tank_type)
+        .expect("Player should exist");
 
     // 检查蓝量是否足够（需要3点蓝量）
     if player_stats.energy_points < 3 {
@@ -271,9 +268,16 @@ fn start_charge(
         TankType::Enemy => unreachable!(),
     };
 
-    let energy_ball_tile_size = UVec2::new(ENERGY_BALL_TILE_WIDTH as u32, ENERGY_BALL_TILE_HEIGHT as u32);
-    let energy_ball_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, energy_ball_tile_size, 17, 5);
-    let energy_ball_animation_indices = AnimationIndices { first: 0, last: ENERGY_BALL_END_FRAME };
+    let energy_ball_tile_size = UVec2::new(
+        ENERGY_BALL_TILE_WIDTH as u32,
+        ENERGY_BALL_TILE_HEIGHT as u32,
+    );
+    let energy_ball_texture_atlas =
+        utils::add_texture_atlas(texture_atlas_layouts, energy_ball_tile_size, 17, 5);
+    let energy_ball_animation_indices = AnimationIndices {
+        first: 0,
+        last: ENERGY_BALL_END_FRAME,
+    };
 
     // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
     let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
@@ -296,14 +300,20 @@ fn start_charge(
             player_entity: entity,
         },
         crate::constants::EnergyBallPhase::Charging,
-        AnimationMode::LoopRange { start_frame: 20, end_frame: 64 },
+        AnimationMode::LoopRange {
+            start_frame: 20,
+            end_frame: 64,
+        },
         Sprite {
             image: energy_ball_texture,
             texture_atlas: Some(TextureAtlas {
                 layout: energy_ball_texture_atlas,
                 index: energy_ball_animation_indices.first,
             }),
-            custom_size: Some(Vec2::new(ENERGY_BALL_DISPLAY_WIDTH, ENERGY_BALL_DISPLAY_HEIGHT)),
+            custom_size: Some(Vec2::new(
+                ENERGY_BALL_DISPLAY_WIDTH,
+                ENERGY_BALL_DISPLAY_HEIGHT,
+            )),
             ..default()
         },
         Transform {
@@ -402,13 +412,16 @@ fn fire_laser(
 
     // 给能量球切换到激光阶段，更新动画循环范围
     if let Some(energy_ball_entity) = energy_ball_entity {
-        commands.entity(energy_ball_entity)
+        commands
+            .entity(energy_ball_entity)
             .insert(crate::constants::EnergyBallPhase::Lasering)
             .insert(AnimationMode::LoopRange {
                 start_frame: crate::constants::ENERGY_BALL_LASER_LOOP_START,
                 end_frame: crate::constants::ENERGY_BALL_LASER_LOOP_END,
             })
-            .insert(CurrentAnimationFrame(crate::constants::ENERGY_BALL_LASER_LOOP_START));
+            .insert(CurrentAnimationFrame(
+                crate::constants::ENERGY_BALL_LASER_LOOP_START,
+            ));
     }
 
     // 播放激光音效
@@ -439,7 +452,18 @@ fn fire_laser(
 fn check_laser_collision(
     laser_start: Vec3,
     laser_direction: Vec2,
-    collidables: &Query<(Entity, &Transform), Or<(With<EnemyTank>, With<Bullet>, With<Brick>, With<Steel>, With<Forest>, With<Barrier>, With<Sea>)>>,
+    collidables: &Query<
+        (Entity, &Transform),
+        Or<(
+            With<EnemyTank>,
+            With<Bullet>,
+            With<Brick>,
+            With<Steel>,
+            With<Forest>,
+            With<Barrier>,
+            With<Sea>,
+        )>,
+    >,
     player_tanks: &Query<(), With<PlayerTank>>,
     commanders: &Query<(), With<Commander>>,
 ) -> Vec<HitResult> {
@@ -487,11 +511,11 @@ fn check_laser_collision(
         }
 
         // 命中！
-            hit_entities.push(HitResult {
-                entity,
-                position: transform.translation,
-            });
-        }
+        hit_entities.push(HitResult {
+            entity,
+            position: transform.translation,
+        });
+    }
     hit_entities
 }
 
@@ -540,66 +564,96 @@ pub fn animate_laser(
         ),
         With<Laser>,
     >,
-    collidables: Query<(Entity, &Transform), Or<(With<EnemyTank>, With<Bullet>, With<Brick>, With<Steel>, With<Forest>, With<Barrier>, With<Sea>)>>,
+    collidables: Query<
+        (Entity, &Transform),
+        Or<(
+            With<EnemyTank>,
+            With<Bullet>,
+            With<Brick>,
+            With<Steel>,
+            With<Forest>,
+            With<Barrier>,
+            With<Sea>,
+        )>,
+    >,
     player_tanks: Query<(), With<PlayerTank>>,
     commanders: Query<(), With<Commander>>,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame, laser_direction, laser_start, energy_ball_link) in &mut query {
+    for (
+        entity,
+        mut timer,
+        mut sprite,
+        indices,
+        mut current_frame,
+        laser_direction,
+        laser_start,
+        energy_ball_link,
+    ) in &mut query
+    {
         let prev_frame = current_frame.0;
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        crate::utils::animate_sprite(
+            &mut timer,
+            &mut sprite,
+            indices,
+            &mut current_frame,
+            time.delta(),
+        );
 
-        if prev_frame != current_frame.0 && timer.just_finished()
-            && current_frame.0 >= indices.last {
-                // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
-                let hit_entities = check_laser_collision(
-                    laser_start.0,
-                    laser_direction.0,
-                    &collidables,
-                    &player_tanks,
-                    &commanders,
-                );
+        if prev_frame != current_frame.0 && timer.just_finished() && current_frame.0 >= indices.last
+        {
+            // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
+            let hit_entities = check_laser_collision(
+                laser_start.0,
+                laser_direction.0,
+                &collidables,
+                &player_tanks,
+                &commanders,
+            );
 
-                // 销毁关联的能量球
-                if let Some(link) = energy_ball_link {
-                    let () = commands.entity(link.energy_ball_entity).try_despawn();
-                }
-
-                // 销毁激光实体和所有标记的实体，生成烟雾特效
-                for hit_result in hit_entities {
-                    let despawn_entity = hit_result.entity;
-                    let transform = hit_result.position;
-                    // 使用预加载的烟雾图集布局
-                    let smoke_animation_indices = AnimationIndices { first: 0, last: SMOKE_TOTAL_FRAMES - 1 };
-
-                    commands.spawn((
-                        PlayingEntity,
-                        crate::constants::Smoke,
-                        AnimationMode::OneShot,
-                        Sprite {
-                            image: texture_resources.smoke.clone(),
-                            texture_atlas: Some(TextureAtlas {
-                                layout: atlas_layouts.smoke_atlas.clone(),
-                                index: smoke_animation_indices.first,
-                            }),
-                            custom_size: Some(Vec2::new(SMOKE_DISPLAY_SIZE, SMOKE_DISPLAY_SIZE)),
-                            ..default()
-                        },
-                        Transform {
-                            translation: transform,
-                            rotation: Quat::IDENTITY,
-                            scale: Vec3::ONE,
-                        },
-                        smoke_animation_indices,
-                        AnimationTimer(Timer::from_seconds(
-                            ANIMATION_FRAME_SMOKE,
-                            TimerMode::Repeating,
-                        )),
-                        CurrentAnimationFrame(0),
-                    ));
-
-                    let () = commands.entity(despawn_entity).try_despawn();
-                }
-                let () = commands.entity(entity).try_despawn();
+            // 销毁关联的能量球
+            if let Some(link) = energy_ball_link {
+                let () = commands.entity(link.energy_ball_entity).try_despawn();
             }
+
+            // 销毁激光实体和所有标记的实体，生成烟雾特效
+            for hit_result in hit_entities {
+                let despawn_entity = hit_result.entity;
+                let transform = hit_result.position;
+                // 使用预加载的烟雾图集布局
+                let smoke_animation_indices = AnimationIndices {
+                    first: 0,
+                    last: SMOKE_TOTAL_FRAMES - 1,
+                };
+
+                commands.spawn((
+                    PlayingEntity,
+                    crate::constants::Smoke,
+                    AnimationMode::OneShot,
+                    Sprite {
+                        image: texture_resources.smoke.clone(),
+                        texture_atlas: Some(TextureAtlas {
+                            layout: atlas_layouts.smoke_atlas.clone(),
+                            index: smoke_animation_indices.first,
+                        }),
+                        custom_size: Some(Vec2::new(SMOKE_DISPLAY_SIZE, SMOKE_DISPLAY_SIZE)),
+                        ..default()
+                    },
+                    Transform {
+                        translation: transform,
+                        rotation: Quat::IDENTITY,
+                        scale: Vec3::ONE,
+                    },
+                    smoke_animation_indices,
+                    AnimationTimer(Timer::from_seconds(
+                        ANIMATION_FRAME_SMOKE,
+                        TimerMode::Repeating,
+                    )),
+                    CurrentAnimationFrame(0),
+                ));
+
+                let () = commands.entity(despawn_entity).try_despawn();
+            }
+            let () = commands.entity(entity).try_despawn();
+        }
     }
 }

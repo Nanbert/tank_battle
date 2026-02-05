@@ -208,23 +208,14 @@ pub fn spawn_pause_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font = match *language {
-        Language::Chinese => font_resources.cn.clone(),
-        Language::English => font_resources.en.clone(),
-    };
+    let font = font_resources.get_font(*language);
 
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
 
     let (title_text, instruction_text) = match *language {
-        Language::Chinese => (
-            "已暂停",
-            "按 SPACE 继续 | B 返回菜单 | ESC 退出",
-        ),
-        Language::English => (
-            "PAUSED",
-            "Press SPACE to resume | B to menu | ESC to exit",
-        ),
+        Language::Chinese => ("已暂停", "按 SPACE 继续 | B 返回菜单 | ESC 退出"),
+        Language::English => ("PAUSED", "Press SPACE to resume | B to menu | ESC to exit"),
     };
 
     commands.spawn((
@@ -301,10 +292,7 @@ pub fn spawn_game_over_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font = match *language {
-        Language::Chinese => font_resources.cn.clone(),
-        Language::English => font_resources.en.clone(),
-    };
+    let font = font_resources.get_font(*language);
 
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
@@ -529,10 +517,7 @@ pub fn despawn_insufficient_energy_warnings(
 }
 
 /// 清理开始界面的UI元素
-pub fn cleanup_start_screen_ui(
-    mut commands: Commands,
-    query: Query<Entity, With<StartScreenUI>>,
-) {
+pub fn cleanup_start_screen_ui(mut commands: Commands, query: Query<Entity, With<StartScreenUI>>) {
     crate::utils::cleanup_entities(&mut commands, query.iter());
 }
 
@@ -547,6 +532,9 @@ pub fn despawn_credits_screen(mut commands: Commands, query: Query<Entity, With<
 }
 
 /// 销毁所有道具
-pub fn despawn_powerups(mut commands: Commands, powerups: Query<Entity, With<crate::powerup::PowerUp>>) {
+pub fn despawn_powerups(
+    mut commands: Commands,
+    powerups: Query<Entity, With<crate::powerup::PowerUp>>,
+) {
     crate::utils::cleanup_entities(&mut commands, powerups.iter());
 }

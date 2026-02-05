@@ -94,12 +94,7 @@ pub fn update_menu_blink(
             );
         }
         GameState::StartScreen => {
-            update_start_screen_blink(
-                &time,
-                &menu_selection,
-                &mut blink_timer,
-                &mut text_query,
-            );
+            update_start_screen_blink(&time, &menu_selection, &mut blink_timer, &mut text_query);
         }
         _ => {}
     }
@@ -162,11 +157,7 @@ fn update_start_screen_blink(
 
         let linear = text_color.0.to_linear();
         let is_yellow = linear.red > 0.9 && linear.green > 0.9 && linear.blue < 0.1;
-        text_color.0 = if is_yellow {
-            COLOR_WHITE
-        } else {
-            COLOR_YELLOW
-        };
+        text_color.0 = if is_yellow { COLOR_WHITE } else { COLOR_YELLOW };
     }
 }
 

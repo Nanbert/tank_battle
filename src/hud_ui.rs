@@ -110,12 +110,12 @@ pub struct BlueBarForeground;
 
 #[derive(Clone, Copy)]
 struct HudTextLabels {
-    player1_name: (&'static str, &'static str),      // (中文, 英文)
+    player1_name: (&'static str, &'static str), // (中文, 英文)
     player2_name: (&'static str, &'static str),
     effects_title: (&'static str, &'static str),
     commander_life: (&'static str, &'static str),
-    on_off: (&'static str, &'static str),           // (开启, On)
-    off_label: (&'static str, &'static str),        // (关闭, Off)
+    on_off: (&'static str, &'static str),    // (开启, On)
+    off_label: (&'static str, &'static str), // (关闭, Off)
 }
 
 #[derive(Clone, Copy)]
@@ -171,8 +171,6 @@ fn get_player_name(player_type: TankType, language: Language) -> &'static str {
     }
 }
 
-
-
 // ============================================================================
 // HUD Spawn Functions
 // ============================================================================
@@ -192,10 +190,7 @@ fn spawn_player_hud(
     // 只在 HUD 不存在时才创建，以保留颜色状态
     // 关卡切换时，白色背景会自然遮挡 HUD
 
-    let font = match *language {
-        Language::Chinese => font_resources.cn.clone(),
-        Language::English => font_resources.en.clone(),
-    };
+    let font = font_resources.get_font(*language);
 
     // 玩家1 HUD
     if player1_hud_query.is_empty() {
@@ -393,7 +388,8 @@ fn spawn_single_player_hud(
         PLAYER_AVATAR_TILE_WIDTH as u32,
         PLAYER_AVATAR_TILE_HEIGHT as u32,
     );
-    let player_avatar_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, player_avatar_tile_size, 13, 3);
+    let player_avatar_texture_atlas =
+        utils::add_texture_atlas(texture_atlas_layouts, player_avatar_tile_size, 13, 3);
     let player_avatar_animation_indices = AnimationIndices { first: 0, last: 32 };
     commands.spawn((
         marker.clone(),
@@ -405,7 +401,10 @@ fn spawn_single_player_hud(
                 layout: player_avatar_texture_atlas,
                 index: 0,
             }),
-            custom_size: Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT)),
+            custom_size: Some(Vec2::new(
+                PLAYER_AVATAR_DISPLAY_WIDTH,
+                PLAYER_AVATAR_DISPLAY_HEIGHT,
+            )),
             ..default()
         },
         Transform::from_xyz(x_pos, WINDOW_TOP_Y - HUD_Y_AVATAR, Z_UI),
@@ -476,7 +475,15 @@ fn spawn_single_player_hud(
 /// 销毁 HUD
 pub fn despawn_hud(
     mut commands: Commands,
-    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    top_hud_query: Query<
+        Entity,
+        Or<(
+            With<StageText>,
+            With<CommanderText>,
+            With<CommanderHealthBar>,
+            With<EnemyCountText>,
+        )>,
+    >,
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
 ) {
     // 销毁顶部 HUD
@@ -580,11 +587,7 @@ fn spawn_percent_text<T1: Component, T2: Component>(
 fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -> PlayerStats {
     match player_type {
         TankType::Player1 => player_info.player1.clone(),
-        TankType::Player2 => player_info
-            .player2
-            .as_ref()
-            .cloned()
-            .unwrap_or_default(),
+        TankType::Player2 => player_info.player2.as_ref().cloned().unwrap_or_default(),
         TankType::Enemy => PlayerStats::default(),
     }
 }
@@ -597,7 +600,7 @@ fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -
 /// 优化: "MAX" 使用 &'static str，避免不必要的 String 分配
 fn format_percent_value(value: usize, is_max: bool) -> String {
     if is_max {
-        String::from("MAX")  // 仍然是 String，但明确表达意图
+        String::from("MAX") // 仍然是 String，但明确表达意图
     } else {
         format!("{}%", value)
     }
@@ -632,15 +635,27 @@ fn update_single_player_text(
     match stat_type {
         HudStatType::Speed => {
             let prefix = get_label(HUD_STAT_LABELS.speed, language);
-            format!("{}{}", prefix, format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT))
+            format!(
+                "{}{}",
+                prefix,
+                format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT)
+            )
         }
         HudStatType::FireSpeed => {
             let prefix = get_label(HUD_STAT_LABELS.fire_speed, language);
-            format!("{}{}", prefix, format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT))
+            format!(
+                "{}{}",
+                prefix,
+                format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT)
+            )
         }
         HudStatType::Protection => {
             let prefix = get_label(HUD_STAT_LABELS.protection, language);
-            format!("{}{}", prefix, format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT))
+            format!(
+                "{}{}",
+                prefix,
+                format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT)
+            )
         }
         HudStatType::Shells => {
             let prefix = get_label(HUD_STAT_LABELS.shells, language);
@@ -648,7 +663,11 @@ fn update_single_player_text(
         }
         HudStatType::FireShell => {
             let prefix = get_label(HUD_STAT_LABELS.fire_shell, language);
-            let on_off = if stats.fire_shell { label_on } else { label_off };
+            let on_off = if stats.fire_shell {
+                label_on
+            } else {
+                label_off
+            };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Penetrate => {
@@ -658,12 +677,20 @@ fn update_single_player_text(
         }
         HudStatType::TrackChain => {
             let prefix = get_label(HUD_STAT_LABELS.track_chain, language);
-            let on_off = if stats.track_chain { label_on } else { label_off };
+            let on_off = if stats.track_chain {
+                label_on
+            } else {
+                label_off
+            };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::AirCushion => {
             let prefix = get_label(HUD_STAT_LABELS.air_cushion, language);
-            let on_off = if stats.air_cushion { label_on } else { label_off };
+            let on_off = if stats.air_cushion {
+                label_on
+            } else {
+                label_off
+            };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Score => {
@@ -768,16 +795,17 @@ pub fn update_player_hud(
 
     // 更新玩家2 HUD（仅在双人模式下）
     if *game_mode == GameMode::TwoPlayers
-        && let Some(stats2) = &player_info.player2 {
-            update_single_player_hud(
-                stats2,
-                WINDOW_RIGHT_X - 115.0,
-                &mut player_hud_query,
-                &mut bar_query,
-                false,
-                *language,
-            );
-        }
+        && let Some(stats2) = &player_info.player2
+    {
+        update_single_player_hud(
+            stats2,
+            WINDOW_RIGHT_X - 115.0,
+            &mut player_hud_query,
+            &mut bar_query,
+            false,
+            *language,
+        );
+    }
 }
 
 // ============================================================================
@@ -842,16 +870,14 @@ pub fn handle_hud_stat_changed(
 pub fn animate_hud_text(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<
-        (
-            Entity,
-            &mut PlayerInfoBlinkTimer,
-            &mut TextColor,
-            &HudStatType,
-            Option<&Player1Hud>,
-            Option<&Player2Hud>,
-        ),
-    >,
+    mut query: Query<(
+        Entity,
+        &mut PlayerInfoBlinkTimer,
+        &mut TextColor,
+        &HudStatType,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
     player_info: Res<PlayerInfo>,
 ) {
     for (entity, mut timer, mut color, stat_type, is_p1, is_p2) in &mut query {
@@ -921,10 +947,7 @@ fn spawn_top_hud(
     stage_level: &Res<StageLevel>,
     language: Language,
 ) {
-    let font = match language {
-        Language::Chinese => font_resources.cn.clone(),
-        Language::English => font_resources.en.clone(),
-    };
+    let font = font_resources.get_font(language);
     // 其他游戏信息 UI 元素配置
     let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
 
@@ -974,7 +997,7 @@ fn spawn_top_hud(
         Transform::from_xyz(commander_text_x + 172.0, WINDOW_TOP_Y - 50.0, 1.0), // 与文字同一Y坐标
     ));
 
-// 敌方剩余数量显示在右侧
+    // 敌方剩余数量显示在右侧
     let enemy_count_text = match language {
         Language::Chinese => "敌方剩余: 20/20".to_string(),
         Language::English => "Enemy Left: 20/20".to_string(),
@@ -1003,7 +1026,15 @@ pub fn spawn_hud(
     game_mode: Res<GameMode>,
     player1_hud_query: Query<(), With<Player1Hud>>,
     player2_hud_query: Query<(), With<Player2Hud>>,
-    top_hud_query: Query<Entity, Or<(With<StageText>, With<CommanderText>, With<CommanderHealthBar>, With<EnemyCountText>)>>,
+    top_hud_query: Query<
+        Entity,
+        Or<(
+            With<StageText>,
+            With<CommanderText>,
+            With<CommanderHealthBar>,
+            With<EnemyCountText>,
+        )>,
+    >,
     player_hud_query: Query<Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>,
     stage_level: Res<StageLevel>,
     language: Res<Language>,
@@ -1012,8 +1043,23 @@ pub fn spawn_hud(
     crate::utils::cleanup_entities(&mut commands, top_hud_query.iter());
     crate::utils::cleanup_entities(&mut commands, player_hud_query.iter());
 
-    spawn_top_hud(commands.reborrow(), &font_resources, &stage_level, *language);
-    spawn_player_hud(commands, font_resources, commander_resources, texture_atlas_layouts, player_info, game_mode, player1_hud_query, player2_hud_query, language);
+    spawn_top_hud(
+        commands.reborrow(),
+        &font_resources,
+        &stage_level,
+        *language,
+    );
+    spawn_player_hud(
+        commands,
+        font_resources,
+        commander_resources,
+        texture_atlas_layouts,
+        player_info,
+        game_mode,
+        player1_hud_query,
+        player2_hud_query,
+        language,
+    );
 }
 
 /// 更新关卡信息文本
@@ -1093,7 +1139,13 @@ pub fn animate_player_avatar(
             continue;
         }
 
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        crate::utils::animate_sprite(
+            &mut timer,
+            &mut sprite,
+            indices,
+            &mut current_frame,
+            time.delta(),
+        );
     }
 }
 
@@ -1112,7 +1164,10 @@ pub fn handle_player_avatar_death(
             if player_ui.player_type == TankType::Player1 {
                 sprite.image = texture_resources.avatar_death.clone();
                 sprite.texture_atlas = None; // 死亡头像不需要动画
-                sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
+                sprite.custom_size = Some(Vec2::new(
+                    PLAYER_AVATAR_DISPLAY_WIDTH,
+                    PLAYER_AVATAR_DISPLAY_HEIGHT,
+                ));
                 break;
             }
         }
@@ -1127,11 +1182,15 @@ pub fn handle_player_avatar_death(
         if player2_dead && !*has_handled_player2 {
             for (mut sprite, player_ui) in &mut player_avatars {
                 if player_ui.player_type == TankType::Player2 {
-                                sprite.image = texture_resources.avatar_death.clone();
-                                sprite.texture_atlas = None; // 死亡头像不需要动画
-                                sprite.custom_size = Some(Vec2::new(PLAYER_AVATAR_DISPLAY_WIDTH, PLAYER_AVATAR_DISPLAY_HEIGHT));
-                                break;
-                            }            }
+                    sprite.image = texture_resources.avatar_death.clone();
+                    sprite.texture_atlas = None; // 死亡头像不需要动画
+                    sprite.custom_size = Some(Vec2::new(
+                        PLAYER_AVATAR_DISPLAY_WIDTH,
+                        PLAYER_AVATAR_DISPLAY_HEIGHT,
+                    ));
+                    break;
+                }
+            }
             *has_handled_player2 = true;
         } else if !player2_dead && *has_handled_player2 {
             *has_handled_player2 = false; // 重置状态，以便下次死亡时再次处理
@@ -1204,5 +1263,3 @@ pub fn handle_commander_death(
         sprite.texture_atlas = None;
     }
 }
-
-

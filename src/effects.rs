@@ -9,7 +9,9 @@ use rand::Rng;
 use std::time::Duration;
 
 use crate::constants::*;
-use crate::resources::{GameAudioResources, GameTextureResources, PlayerInfo, GameAtlasLayoutResources};
+use crate::resources::{
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+};
 use crate::utils;
 
 /// 通用动画特效生成函数
@@ -188,7 +190,13 @@ pub fn animate_sprites(
 
         match animation_mode {
             AnimationMode::OneShot => {
-                crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+                crate::utils::animate_sprite(
+                    &mut timer,
+                    &mut sprite,
+                    indices,
+                    &mut current_frame,
+                    time.delta(),
+                );
                 // 播放一次后销毁
                 if prev_frame != current_frame.0 && current_frame.0 >= indices.last {
                     let () = commands.entity(entity).try_despawn();
@@ -196,11 +204,27 @@ pub fn animate_sprites(
             }
             AnimationMode::Looping => {
                 // 循环播放，animate_sprite 已经处理
-                crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+                crate::utils::animate_sprite(
+                    &mut timer,
+                    &mut sprite,
+                    indices,
+                    &mut current_frame,
+                    time.delta(),
+                );
             }
-            AnimationMode::LoopRange { start_frame, end_frame } => {
+            AnimationMode::LoopRange {
+                start_frame,
+                end_frame,
+            } => {
                 // 在指定帧范围内循环播放（用于能量球）
-                advance_loop_frame(&mut timer, &mut sprite, &mut current_frame, time.delta(), *start_frame, *end_frame);
+                advance_loop_frame(
+                    &mut timer,
+                    &mut sprite,
+                    &mut current_frame,
+                    time.delta(),
+                    *start_frame,
+                    *end_frame,
+                );
             }
         }
     }
@@ -219,7 +243,8 @@ pub fn update_air_cushion_effect(
         let has_air_cushion = player_info.has_air_cushion(player_tank.tank_type);
 
         // 检查是否已经有气泡特效子实体
-        let has_bubble = children.is_some_and(|c| c.iter().any(|child| bubble_entities.contains(child)));
+        let has_bubble =
+            children.is_some_and(|c| c.iter().any(|child| bubble_entities.contains(child)));
 
         if has_air_cushion && !has_bubble {
             // 创建气泡特效
@@ -264,7 +289,11 @@ pub fn play_ambience_generic<T, P>(
 
     for player_transform in player_tanks.iter() {
         for terrain_transform in terrain_entities.iter() {
-            if player_transform.translation.distance(terrain_transform.translation) < DETECTION_RADIUS {
+            if player_transform
+                .translation
+                .distance(terrain_transform.translation)
+                < DETECTION_RADIUS
+            {
                 is_near = true;
                 break;
             }
@@ -341,7 +370,10 @@ pub fn play_commander_ambience(
     // 检查是否有玩家坦克在司令官附近
     let is_near_commander = player_tanks.iter().any(|player_transform| {
         commander.iter().any(|commander_transform| {
-            player_transform.translation.distance(commander_transform.translation) < DETECTION_RADIUS
+            player_transform
+                .translation
+                .distance(commander_transform.translation)
+                < DETECTION_RADIUS
         })
     });
 
@@ -353,5 +385,3 @@ pub fn play_commander_ambience(
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }
 }
-
-

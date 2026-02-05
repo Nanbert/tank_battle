@@ -1,7 +1,7 @@
 //! Game constants for the Tank Battle game
 
-use bevy::prelude::*;
 use bevy::ecs::entity::EntityHashMap;
+use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 // 字体路径常量
@@ -22,6 +22,7 @@ pub const SOUND_HIT: &str = "music/hit_sound.ogg";
 pub const SOUND_LASER_CHARGE: &str = "music/laser_charge.ogg";
 pub const SOUND_LASER: &str = "music/laser.ogg";
 pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
+pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
@@ -43,13 +44,13 @@ pub const FIRE_EFFECT_TOTAL_FRAMES: usize = 32; // 火焰特效总帧数（最�
 pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03; // 火焰特效动画帧间隔
 
 // 穿透效果精灵图常量（叠加在子弹上的穿透特效）
-// penetrate_effect.png 实际尺寸：600 x 150 像素
-// 1行6列网格，每帧 100 x 100 像素
-pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 64.0; // 穿透特效瓦片宽度（320/5）
-pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 64.0; // 穿透特效瓦片高度（320/5）
-pub const PENETRATE_EFFECT_COLUMNS: usize = 6; // 穿透特效列数
-pub const PENETRATE_EFFECT_ROWS: usize = 1; // 穿透特效行数
-pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 6; // 穿透特效总帧数
+// spark_03.png 实际尺寸：1024 x 512 像素
+// 2行4列网格，每帧 256 x 256 像素
+pub const PENETRATE_EFFECT_TILE_WIDTH: f32 = 256.0; // 穿透特效瓦片宽度
+pub const PENETRATE_EFFECT_TILE_HEIGHT: f32 = 256.0; // 穿透特效瓦片高度
+pub const PENETRATE_EFFECT_COLUMNS: usize = 4; // 穿透特效列数
+pub const PENETRATE_EFFECT_ROWS: usize = 2; // 穿透特效行数
+pub const PENETRATE_EFFECT_TOTAL_FRAMES: usize = 8; // 穿透特效总帧数（2×4=8）
 pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05; // 穿透特效动画帧间隔
 
 // 敌方坦克纹理路径常量
@@ -356,8 +357,7 @@ pub struct CurrentAnimationFrame(pub usize);
 
 /// 动画模式枚举
 /// 定义动画的播放模式
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Component, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AnimationMode {
     /// 循环播放（用于敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
     #[default]
@@ -372,7 +372,6 @@ pub enum AnimationMode {
         end_frame: usize,
     },
 }
-
 
 /// 待销毁标记
 #[derive(Component, Clone, Copy, Debug, Default)]
@@ -401,8 +400,7 @@ pub struct EnemyTank {
 pub struct EnemyBornAnimation;
 
 /// 坦克类型枚举
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum TankType {
     Player1,
     Player2,
@@ -420,8 +418,7 @@ impl TankType {
     }
 }
 
-#[derive(Component)]
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 pub struct PlayerTank {
     pub tank_type: TankType, // TankType::Player1 或 TankType::Player2
 }
@@ -867,5 +864,3 @@ pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体
 pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
 pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）
-
-

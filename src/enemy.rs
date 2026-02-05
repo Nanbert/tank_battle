@@ -8,7 +8,7 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{GameTextureResources, EnemySpawnState};
+use crate::resources::{EnemySpawnState, GameTextureResources};
 use crate::utils;
 
 /// 敌方坦克出生动画系统
@@ -75,7 +75,10 @@ pub fn spawn_enemy_born_animation(
         enemy_born_animation_indices,
         ANIMATION_FRAME_ENEMY_BORN,
         position,
-        Some(Vec2::new(ENEMY_BORN_ANIMATION_SIZE, ENEMY_BORN_ANIMATION_SIZE)),
+        Some(Vec2::new(
+            ENEMY_BORN_ANIMATION_SIZE,
+            ENEMY_BORN_ANIMATION_SIZE,
+        )),
         (EnemyBornAnimation, PlayingEntity, BornPosition(position)),
     )
 }
@@ -122,7 +125,8 @@ pub fn animate_enemy_born_animation(
                     let enemy_texture = texture_resources.enemy_tank.clone();
                     let enemy_tile_size =
                         UVec2::new(ENEMY_TILE_WIDTH as u32, ENEMY_TILE_HEIGHT as u32);
-                    let enemy_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, enemy_tile_size, 2, 1);
+                    let enemy_texture_atlas =
+                        utils::add_texture_atlas(&mut texture_atlas_layouts, enemy_tile_size, 2, 1);
                     let enemy_animation_indices = AnimationIndices { first: 0, last: 1 };
 
                     // 生成敌方坦克
@@ -202,7 +206,9 @@ pub fn collect_enemy_collisions(
 ) {
     for event in events.read() {
         // 只处理碰撞开始事件
-        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
 
         // 判断是否是敌方坦克参与的碰撞
         let enemy_entity = if all_tanks.contains(*e1) {
@@ -276,11 +282,12 @@ pub fn move_enemy_tanks(
         if collision_cooldown.is_finished() {
             // 优先使用事件缓存（事件驱动模式）
             if let Some(collision_normal) = collision_cache.take(entity)
-                && collision_normal.length() > 0.0 {
-                    enemy_tank.direction = get_new_direction(collision_normal);
-                    direction_timer.reset();
-                    collision_cooldown.reset();
-                }
+                && collision_normal.length() > 0.0
+            {
+                enemy_tank.direction = get_new_direction(collision_normal);
+                direction_timer.reset();
+                collision_cooldown.reset();
+            }
 
             // 边界碰撞仍然需要手动检测（边界不是物理实体，无碰撞事件）
             if let Some(boundary_normal) = check_boundary_collision(
@@ -329,13 +336,10 @@ pub fn move_enemy_tanks(
         }
 
         // 限制敌方坦克在地图边界内
-        transform.translation.x = transform.translation.x.clamp(
-            MAP_LEFT_X + ENEMY_TANK_DISPLAY_WIDTH / 2.0,
-            MAP_RIGHT_X - ENEMY_TANK_DISPLAY_WIDTH / 2.0,
-        );
-        transform.translation.y = transform.translation.y.clamp(
-            MAP_BOTTOM_Y + ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
-            MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
+        utils::clamp_entity_position(
+            &mut transform,
+            ENEMY_TANK_DISPLAY_WIDTH / 2.0,
+            ENEMY_TANK_DISPLAY_HEIGHT / 2.0,
         );
     }
 }
@@ -449,10 +453,7 @@ fn update_enemy_tank_movement(
 }
 
 /// 销毁所有敌方坦克
-pub fn despawn_enemy_tank(
-    mut commands: Commands,
-    enemy_tanks: Query<Entity, With<EnemyTank>>,
-) {
+pub fn despawn_enemy_tank(mut commands: Commands, enemy_tanks: Query<Entity, With<EnemyTank>>) {
     for entity in enemy_tanks.iter() {
         let () = commands.entity(entity).try_despawn();
     }
@@ -464,5 +465,3 @@ pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
 }
-
-

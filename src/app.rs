@@ -62,15 +62,13 @@ fn register_start_screen_systems(app: &mut App) {
         Update,
         (
             // 清理游戏实体
-            |mut commands: Commands, entities: Query<Entity, With<crate::constants::PlayingEntity>>| {
+            |mut commands: Commands,
+             entities: Query<Entity, With<crate::constants::PlayingEntity>>| {
                 crate::utils::cleanup_entities(&mut commands, entities.iter());
             },
             // 生成开始菜单
-            menus_ui::spawn_start_screen.run_if(
-                |query: Query<(), With<crate::constants::StartScreenUI>>| {
-                    query.is_empty()
-                }
-            ),
+            menus_ui::spawn_start_screen
+                .run_if(|query: Query<(), With<crate::constants::StartScreenUI>>| query.is_empty()),
             // 语言变化时重新生成菜单
             (
                 overlay_ui::cleanup_start_screen_ui,
@@ -92,11 +90,19 @@ fn register_start_screen_systems(app: &mut App) {
 fn register_about_credits_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::About),
-        (overlay_ui::cleanup_start_screen_ui, menus_ui::spawn_about_screen).chain(),
+        (
+            overlay_ui::cleanup_start_screen_ui,
+            menus_ui::spawn_about_screen,
+        )
+            .chain(),
     )
     .add_systems(
         OnExit(GameState::About),
-        (overlay_ui::despawn_about_screen, menus_ui::spawn_start_screen).chain(),
+        (
+            overlay_ui::despawn_about_screen,
+            menus_ui::spawn_start_screen,
+        )
+            .chain(),
     )
     .add_systems(
         Update,
@@ -104,11 +110,19 @@ fn register_about_credits_systems(app: &mut App) {
     )
     .add_systems(
         OnEnter(GameState::Credits),
-        (overlay_ui::cleanup_start_screen_ui, menus_ui::spawn_credits_screen).chain(),
+        (
+            overlay_ui::cleanup_start_screen_ui,
+            menus_ui::spawn_credits_screen,
+        )
+            .chain(),
     )
     .add_systems(
         OnExit(GameState::Credits),
-        (overlay_ui::despawn_credits_screen, menus_ui::spawn_start_screen).chain(),
+        (
+            overlay_ui::despawn_credits_screen,
+            menus_ui::spawn_start_screen,
+        )
+            .chain(),
     )
     .add_systems(
         Update,
@@ -121,22 +135,18 @@ fn register_stage_intro_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::StageIntro),
         (
-            player::init_players.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
-            ),
+            player::init_players
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             map::spawn_map,
-            overlay_ui::despawn_powerups,            powerup::spawn_test_powerup_stage1.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
-            ),
-            powerup::spawn_power_ups_random.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1,
-            ),
-            hud_ui::spawn_hud.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
-            ),
-            hud_ui::update_stage_text.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1,
-            ),
+            overlay_ui::despawn_powerups,
+            powerup::spawn_test_powerup_stage1
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
+            powerup::spawn_power_ups_random
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
+            hud_ui::spawn_hud
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
+            hud_ui::update_stage_text
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
             player::reset_player_positions,
             enemy::reset_enemy_spawn_state,
         )
@@ -145,9 +155,8 @@ fn register_stage_intro_systems(app: &mut App) {
     .add_systems(
         OnEnter(GameState::StageIntro),
         (
-            commander::spawn_commander.run_if(
-                |stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1,
-            ),
+            commander::spawn_commander
+                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             overlay_ui::spawn_stage_intro,
         )
             .chain(),
@@ -170,9 +179,18 @@ fn register_stage_intro_systems(app: &mut App) {
 /// 注册 Paused 状态的系统
 fn register_paused_systems(app: &mut App) {
     app.add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
-        .add_systems(OnExit(GameState::Paused),
-            (overlay_ui::despawn_pause_ui, overlay_ui::despawn_insufficient_energy_warnings).chain())
-        .add_systems(Update, overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)));
+        .add_systems(
+            OnExit(GameState::Paused),
+            (
+                overlay_ui::despawn_pause_ui,
+                overlay_ui::despawn_insufficient_energy_warnings,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)),
+        );
 }
 
 /// 注册 GameOver 状态的系统
@@ -191,7 +209,10 @@ fn register_game_over_systems(app: &mut App) {
         )
         .add_systems(
             Update,
-            (overlay_ui::handle_game_over_input, menus_ui::update_option_colors)
+            (
+                overlay_ui::handle_game_over_input,
+                menus_ui::update_option_colors,
+            )
                 .chain()
                 .run_if(in_state(GameState::GameOver)),
         );
@@ -201,10 +222,7 @@ fn register_game_over_systems(app: &mut App) {
 fn register_fading_out_systems(app: &mut App) {
     app.add_systems(
         Update,
-        (
-            game_state::update_menu_blink,
-            overlay_ui::fade_out_screen,
-        )
+        (game_state::update_menu_blink, overlay_ui::fade_out_screen)
             .run_if(in_state(GameState::FadingOut)),
     );
 }
@@ -297,10 +315,7 @@ fn register_playing_systems(app: &mut App) {
     // 特效和动画系统集
     app.add_systems(
         Update,
-        (
-            effects::animate_sprites,
-            effects::update_air_cushion_effect,
-        )
+        (effects::animate_sprites, effects::update_air_cushion_effect)
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );
 
@@ -320,10 +335,8 @@ fn register_playing_systems(app: &mut App) {
             hud_ui::animate_hud_text,
             hud_ui::update_enemy_count_text
                 .run_if(resource_changed::<crate::resources::EnemySpawnState>),
-            hud_ui::update_commander_health_bar
-                .run_if(resource_changed::<CommanderLife>),
-            hud_ui::update_player_hud
-                .run_if(resource_changed::<PlayerInfo>),
+            hud_ui::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),
+            hud_ui::update_player_hud.run_if(resource_changed::<PlayerInfo>),
             hud_ui::handle_commander_death,
         )
             .in_set(GameSystemSet::HudSystems),
@@ -383,8 +396,8 @@ use crate::enemy;
 use crate::game_state;
 use crate::hud_ui;
 use crate::laser;
-use crate::menus_ui;
 use crate::map;
+use crate::menus_ui;
 use crate::overlay_ui;
 use crate::player;
 use crate::powerup;
@@ -482,6 +495,7 @@ pub fn configure_game_resources(app: &mut App) {
             metal_crash: Handle::default(),
             laser_charge: Handle::default(),
             laser: Handle::default(),
+            powerup_sound: Handle::default(),
             commander_get_shot: Handle::default(),
             commander_death: Handle::default(),
             player_shot: Handle::default(),
@@ -536,11 +550,7 @@ pub fn register_game_systems(app: &mut App) {
         .init_resource::<BulletTracker>()
         .add_systems(
             Startup,
-            (
-                setup,
-                crate::levels::load_level_assets,
-                init_game_resources,
-            )
+            (setup, crate::levels::load_level_assets, init_game_resources),
         );
 
     // 注册各游戏状态系统
@@ -568,9 +578,16 @@ pub fn init_game_resources(
     // 纹理图集布局
     let sea_tile_size = UVec2::new(100, 100);
     let forest_tile_size = UVec2::new(131, 131);
-    let forest_fire_tile_size = UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32);
-    let fire_effect_tile_size = UVec2::new(FIRE_EFFECT_TILE_WIDTH as u32, FIRE_EFFECT_TILE_HEIGHT as u32);
-    let penetrate_effect_tile_size = UVec2::new(PENETRATE_EFFECT_TILE_WIDTH as u32, PENETRATE_EFFECT_TILE_HEIGHT as u32);
+    let forest_fire_tile_size =
+        UVec2::new(FOREST_FIRE_TILE_SIZE as u32, FOREST_FIRE_TILE_SIZE as u32);
+    let fire_effect_tile_size = UVec2::new(
+        FIRE_EFFECT_TILE_WIDTH as u32,
+        FIRE_EFFECT_TILE_HEIGHT as u32,
+    );
+    let penetrate_effect_tile_size = UVec2::new(
+        PENETRATE_EFFECT_TILE_WIDTH as u32,
+        PENETRATE_EFFECT_TILE_HEIGHT as u32,
+    );
     let smoke_tile_size = UVec2::new(SMOKE_TILE_SIZE as u32, SMOKE_TILE_SIZE as u32);
     let background_atlas = utils::add_texture_atlas(
         &mut texture_atlas_layouts,
@@ -646,10 +663,10 @@ pub fn init_game_resources(
         metal_crash: asset_server.load(SOUND_METAL_CRASH),
         laser_charge: asset_server.load(SOUND_LASER_CHARGE),
         laser: asset_server.load(SOUND_LASER),
+        powerup_sound: asset_server.load(SOUND_POWERUP),
         commander_get_shot: asset_server.load(SOUND_COMMANDER_GET_SHOT),
         commander_death: asset_server.load(SOUND_COMMANDER_DEATH),
-        player_shot: asset_server.load(SOUND_PLAYER_SHOT),
-        // 环境音效
+        player_shot: asset_server.load(SOUND_PLAYER_SHOT), // 环境音效
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
         commander_music_000: asset_server.load(SOUND_COMMANDER_MUSIC_000),
@@ -664,14 +681,34 @@ pub fn init_game_resources(
         // 地形
         sea: utils::add_texture_atlas(&mut texture_atlas_layouts, sea_tile_size, 3, 1),
         forest: utils::add_texture_atlas(&mut texture_atlas_layouts, forest_tile_size, 10, 1),
-        forest_fire: utils::add_texture_atlas(&mut texture_atlas_layouts, forest_fire_tile_size, 10, 1),
+        forest_fire: utils::add_texture_atlas(
+            &mut texture_atlas_layouts,
+            forest_fire_tile_size,
+            10,
+            1,
+        ),
         // 背景
         background: background_atlas,
         // 子弹特效
-        fire_effect: utils::add_texture_atlas(&mut texture_atlas_layouts, fire_effect_tile_size, FIRE_EFFECT_COLUMNS as u32, FIRE_EFFECT_ROWS as u32),
-        penetrate_effect: utils::add_texture_atlas(&mut texture_atlas_layouts, penetrate_effect_tile_size, PENETRATE_EFFECT_COLUMNS as u32, PENETRATE_EFFECT_ROWS as u32),
+        fire_effect: utils::add_texture_atlas(
+            &mut texture_atlas_layouts,
+            fire_effect_tile_size,
+            FIRE_EFFECT_COLUMNS as u32,
+            FIRE_EFFECT_ROWS as u32,
+        ),
+        penetrate_effect: utils::add_texture_atlas(
+            &mut texture_atlas_layouts,
+            penetrate_effect_tile_size,
+            PENETRATE_EFFECT_COLUMNS as u32,
+            PENETRATE_EFFECT_ROWS as u32,
+        ),
         // 烟雾特效
-        smoke_atlas: utils::add_texture_atlas(&mut texture_atlas_layouts, smoke_tile_size, SMOKE_COLUMNS as u32, SMOKE_ROWS as u32),
+        smoke_atlas: utils::add_texture_atlas(
+            &mut texture_atlas_layouts,
+            smoke_tile_size,
+            SMOKE_COLUMNS as u32,
+            SMOKE_ROWS as u32,
+        ),
     };
 
     // 插入所有资源

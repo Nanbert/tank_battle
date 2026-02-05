@@ -9,7 +9,10 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{CommanderLife, PlayerInfo, PlayerStatChanged, GameTextureResources, GameAudioResources, StatType};
+use crate::resources::{
+    CommanderLife, GameAudioResources, GameTextureResources, PlayerInfo, PlayerStatChanged,
+    StatType,
+};
 use crate::utils;
 
 /// 道具碰撞检测距离
@@ -50,7 +53,13 @@ pub fn animate_powerup(
     >,
 ) {
     for (mut timer, mut sprite, indices, mut current_frame) in &mut query {
-        crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+        crate::utils::animate_sprite(
+            &mut timer,
+            &mut sprite,
+            indices,
+            &mut current_frame,
+            time.delta(),
+        );
     }
 }
 
@@ -74,7 +83,8 @@ pub fn handle_powerup_collision(
 
     for (tank_transform, player_tank, tank_entity) in player_tanks.iter() {
         // 查找碰撞的道具（使用工具函数简化代码）
-        let picked = powerups.iter()
+        let picked = powerups
+            .iter()
             .find(|(_, powerup_transform, _)| {
                 (powerup_transform.translation - tank_transform.translation).length()
                     < POWERUP_COLLISION_DISTANCE
@@ -86,7 +96,11 @@ pub fn handle_powerup_collision(
 
         if let Some(picked) = picked {
             // 播放道具音效
-            crate::utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
+            crate::utils::play_one_shot_sound(
+                &mut commands,
+                audio_resources.powerup_sound.clone(),
+                1.0,
+            );
             let () = commands.entity(picked.entity).try_despawn();
 
             // 根据道具类型应用效果并发送事件
@@ -157,18 +171,18 @@ pub fn handle_powerup_collision(
 
             // 处理汉堡道具效果（修改 Commander 生命）
             if let PowerUp::Hamburger = picked.powerup_type
-                && commander_life.life_points < COMMANDER_LIFE_MAX {
-                    commander_life.life_points += 1;
-                }
+                && commander_life.life_points < COMMANDER_LIFE_MAX
+            {
+                commander_life.life_points += 1;
+            }
 
             // 更新 filter_groups，排除海（GROUP_2）
-            if update_filter_groups
-                && let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                    controller.filter_groups = Some(CollisionGroups::new(
-                        Group::all(),
-                        Group::all() & !SEA_GROUP,
-                    ));
-                }
+            if update_filter_groups && let Ok(mut controller) = controllers.get_mut(tank_entity) {
+                controller.filter_groups = Some(CollisionGroups::new(
+                    Group::all(),
+                    Group::all() & !SEA_GROUP,
+                ));
+            }
 
             // 发送属性变更事件（如果有）
             if let Some(st) = stat_type {
@@ -190,7 +204,7 @@ pub fn spawn_test_powerup_stage1(
     texture_resources: Res<GameTextureResources>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
-    let powerup_type = PowerUp::FireShell; // 第一关测试用：改为 fire_shell
+    let powerup_type = PowerUp::Penetrate; // 第一关测试用：改为 penetrate
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - ENEMY_TANK_DISPLAY_HEIGHT 到 MAP_TOP_Y）
@@ -319,10 +333,13 @@ pub fn update_track_chain_effect(
 ) {
     for (entity, children, player_tank) in player_tanks.iter() {
         // 检查玩家是否有 track_chain 能力
-        let has_track_chain = player_info.get_stat_value(player_tank.tank_type, |stats| stats.track_chain as usize) > 0;
+        let has_track_chain = player_info
+            .get_stat_value(player_tank.tank_type, |stats| stats.track_chain as usize)
+            > 0;
 
         // 检查是否已经有履带特效子实体
-        let has_track_chain_sprite = children.is_some_and(|c| c.iter().any(|child| track_chain_entities.contains(child)));
+        let has_track_chain_sprite =
+            children.is_some_and(|c| c.iter().any(|child| track_chain_entities.contains(child)));
 
         if has_track_chain && !has_track_chain_sprite {
             // 创建履带特效
@@ -331,7 +348,8 @@ pub fn update_track_chain_effect(
                 crate::constants::TRACK_CHAIN_TILE_WIDTH as u32,
                 crate::constants::TRACK_CHAIN_TILE_HEIGHT as u32,
             );
-            let track_train_texture_atlas = utils::add_texture_atlas(&mut texture_atlas_layouts, track_train_tile_size, 2, 1);
+            let track_train_texture_atlas =
+                utils::add_texture_atlas(&mut texture_atlas_layouts, track_train_tile_size, 2, 1);
             let track_train_animation_indices = AnimationIndices { first: 0, last: 1 };
 
             commands.entity(entity).with_children(|parent| {
@@ -360,7 +378,11 @@ pub fn update_track_chain_effect(
             });
         } else if !has_track_chain && has_track_chain_sprite {
             // 移除所有履带特效子实体
-            crate::utils::cleanup_children_by_marker(&mut commands, children, &track_chain_entities);
+            crate::utils::cleanup_children_by_marker(
+                &mut commands,
+                children,
+                &track_chain_entities,
+            );
         }
     }
 }
@@ -407,7 +429,8 @@ pub fn animate_track_chain(
     }
 
     // 更新履带动画
-    for (entity, mut timer, mut sprite, indices, mut current_frame) in track_chain_query.iter_mut() {
+    for (entity, mut timer, mut sprite, indices, mut current_frame) in track_chain_query.iter_mut()
+    {
         // 检查父坦克是否在移动
         let is_moving = track_chain_moving.get(&entity).copied().unwrap_or(false);
 

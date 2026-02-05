@@ -82,8 +82,15 @@ pub fn spawn_commander(
         music_animation_indices,
         ANIMATION_FRAME_COMMANDER_MUSIC,
         Vec3::new(commander_x, commander_y, Z_FOREST),
-        Some(Vec2::new(COMMANDER_MUSIC_DISPLAY_WIDTH, COMMANDER_MUSIC_DISPLAY_HEIGHT)),
-        (CommanderMusicAnimation, PlayingEntity, AnimationMode::Looping),
+        Some(Vec2::new(
+            COMMANDER_MUSIC_DISPLAY_WIDTH,
+            COMMANDER_MUSIC_DISPLAY_HEIGHT,
+        )),
+        (
+            CommanderMusicAnimation,
+            PlayingEntity,
+            AnimationMode::Looping,
+        ),
     );
 }
 
@@ -110,7 +117,13 @@ pub fn animate_commander(
     for (mut timer, mut sprite, indices, mut current_frame, animation_mode) in &mut query {
         // 只处理循环动画模式
         if *animation_mode == AnimationMode::Looping {
-            crate::utils::animate_sprite(&mut timer, &mut sprite, indices, &mut current_frame, time.delta());
+            crate::utils::animate_sprite(
+                &mut timer,
+                &mut sprite,
+                indices,
+                &mut current_frame,
+                time.delta(),
+            );
         }
     }
 }

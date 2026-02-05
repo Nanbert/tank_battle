@@ -10,9 +10,8 @@ use bevy_rapier2d::prelude::*;
 use crate::constants::*;
 use crate::powerup;
 use crate::resources::{
-    BarrierDamageTracker, BlueBarRegenTimer,
-    GameMode, PlayerInfo, PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers,
-    StatType, GameTextureResources,
+    BarrierDamageTracker, BlueBarRegenTimer, GameMode, GameTextureResources, PlayerInfo,
+    PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StatType,
 };
 use crate::utils;
 
@@ -65,11 +64,7 @@ pub fn spawn_player_tank(
             custom_size: Some(display_size),
             ..default()
         })
-        .insert(Transform::from_xyz(
-            x_pos,
-            PLAYER_START_Y,
-            0.0,
-        ))
+        .insert(Transform::from_xyz(x_pos, PLAYER_START_Y, 0.0))
         .insert(Velocity {
             linvel: Vec2::default(),
             angvel: 0.0,
@@ -222,14 +217,7 @@ pub fn move_player_tank(
         }
 
         // 限制坦克在地图边界内
-        transform.translation.x = transform.translation.x.clamp(
-            MAP_LEFT_X + PLAYER_COLLIDER_HALF,
-            MAP_RIGHT_X - PLAYER_COLLIDER_HALF,
-        );
-        transform.translation.y = transform.translation.y.clamp(
-            MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF,
-            MAP_TOP_Y - PLAYER_COLLIDER_HALF,
-        );
+        utils::clamp_entity_position(&mut transform, PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF);
     }
 }
 
@@ -277,7 +265,9 @@ pub fn handle_recall_input(
                 },
                 Transform::from_xyz(
                     transform.translation.x,
-                    transform.translation.y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + PROGRESS_BAR_Y_OFFSET,
+                    transform.translation.y
+                        + PLAYER_TANK_DISPLAY_HEIGHT / 2.0
+                        + PROGRESS_BAR_Y_OFFSET,
                     Z_PROGRESS_BAR,
                 ), // 在坦克上方
             ));
@@ -305,16 +295,25 @@ pub fn update_recall_timers(
 ) {
     for (entity, mut transform, player_tank, is_recalling, children) in &mut player_query {
         // 卫语句：不在回城状态则跳过
-        let Some(IsRecalling) = is_recalling else { continue; };
-        
-        let Some(recall_timer) = recall_timers.timers.get_mut(&entity) else { continue; };
+        let Some(IsRecalling) = is_recalling else {
+            continue;
+        };
+
+        let Some(recall_timer) = recall_timers.timers.get_mut(&entity) else {
+            continue;
+        };
 
         let is_recall_key_pressed = is_recall_key_pressed(&keyboard_input, player_tank.tank_type);
         let is_interrupted = utils::is_movement_interrupted(&keyboard_input, player_tank.tank_type);
 
         // 卫语句：取消回城
         if !is_recall_key_pressed || is_interrupted {
-            cancel_recall(&mut commands, &mut progress_bar_query, entity, &mut recall_timers);
+            cancel_recall(
+                &mut commands,
+                &mut progress_bar_query,
+                entity,
+                &mut recall_timers,
+            );
             continue;
         }
 
@@ -325,8 +324,15 @@ pub fn update_recall_timers(
         // 卫语句：回城完成
         if recall_timer.timer.just_finished() {
             let start_position = recall_timer.start_position;
-            complete_recall(&mut commands, &mut progress_bar_query, entity, &mut recall_timers,
-                           &mut transform, children, start_position);
+            complete_recall(
+                &mut commands,
+                &mut progress_bar_query,
+                entity,
+                &mut recall_timers,
+                &mut transform,
+                children,
+                start_position,
+            );
         }
     }
 }
@@ -405,8 +411,6 @@ pub fn update_recall_progress_bars(
         }
     }
 }
-
-
 
 /// 重置玩家坦克位置到出生点
 pub fn reset_player_positions(
@@ -489,12 +493,10 @@ pub fn handle_barrier_collision(
 
                 if can_take_damage {
                     // 设置屏障伤害冷却时间
-                    barrier_damage_tracker
-                        .cooldowns
-                        .insert(
-                            player_entity,
-                            Timer::from_seconds(BARRIER_DAMAGE_COOLDOWN, TimerMode::Once),
-                        );
+                    barrier_damage_tracker.cooldowns.insert(
+                        player_entity,
+                        Timer::from_seconds(BARRIER_DAMAGE_COOLDOWN, TimerMode::Once),
+                    );
 
                     // 永久减少 speed 20 和 protection 20（固定值）
                     player_info.with_stats_mut(tank_type, |player_stats| {
@@ -533,7 +535,8 @@ fn spawn_players(
     let player1_texture = texture_resources.player1.clone();
     let player2_texture = texture_resources.player2.clone();
     let player_tile_size = UVec2::new(PLAYER_TILE_WIDTH as u32, PLAYER_TILE_HEIGHT as u32);
-    let player_texture_atlas = utils::add_texture_atlas(texture_atlas_layouts, player_tile_size, 2, 1);
+    let player_texture_atlas =
+        utils::add_texture_atlas(texture_atlas_layouts, player_tile_size, 2, 1);
     let player_animation_indices = AnimationIndices { first: 0, last: 1 };
 
     // 根据游戏模式生成玩家

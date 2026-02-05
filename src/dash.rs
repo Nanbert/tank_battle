@@ -8,11 +8,12 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::effects;
+use crate::utils;
 
 use crate::constants::*;
 use crate::resources::{
-    DashDamageTracker, DashTimer, DashTimers, PlayerInfo, PlayerStatChanged, StatType, GameTextureResources, GameAudioResources,
-    InsufficientEnergyTracker,
+    DashDamageTracker, DashTimer, DashTimers, GameAudioResources, GameTextureResources,
+    InsufficientEnergyTracker, PlayerInfo, PlayerStatChanged, StatType,
 };
 
 /// 处理冲刺输入
@@ -53,9 +54,9 @@ pub fn handle_dash_input(
             });
 
             if has_enough_energy {
-
                 // 计算坦克当前朝向
-                let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
+                let direction =
+                    crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
                 // 开始冲刺
                 let dash_timer = DashTimer::new(direction, DASH_DURATION);
@@ -108,13 +109,10 @@ pub fn update_dash_movement(
             character_controller.translation = Some(movement);
 
             // 限制坦克在地图边界内
-            transform.translation.x = transform.translation.x.clamp(
-                MAP_LEFT_X + PLAYER_TANK_DISPLAY_WIDTH / 2.0,
-                MAP_RIGHT_X - PLAYER_TANK_DISPLAY_WIDTH / 2.0,
-            );
-            transform.translation.y = transform.translation.y.clamp(
-                MAP_BOTTOM_Y + PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
-                MAP_TOP_Y - PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
+            utils::clamp_entity_position(
+                &mut transform,
+                PLAYER_TANK_DISPLAY_WIDTH / 2.0,
+                PLAYER_TANK_DISPLAY_HEIGHT / 2.0,
             );
 
             // 检查是否完成
@@ -148,11 +146,16 @@ pub fn handle_dash_collision(
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
-        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
 
         // 提取碰撞信息（一次性查询所有需要的实体和位置）
-        let Some(collision_info) = extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels)
-        else { continue; };
+        let Some(collision_info) =
+            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels)
+        else {
+            continue;
+        };
 
         // 卫语句：不在冲刺状态则跳过
         if !collision_info.is_dashing {
@@ -193,7 +196,9 @@ pub fn handle_dash_collision(
 
             DashTarget::Steel { entity, position } => {
                 // 检查 protection 是否为 100%
-                let can_break_steel = player_info.get_stat_value(collision_info.player_tank.tank_type, |p| p.protection) >= 100;
+                let can_break_steel = player_info
+                    .get_stat_value(collision_info.player_tank.tank_type, |p| p.protection)
+                    >= 100;
 
                 if can_break_steel {
                     // protection = 100%，可以撞碎铁块，不扣血
@@ -287,27 +292,29 @@ fn extract_dash_collision_info(
 ) -> Option<DashCollisionInfo> {
     // 尝试从 e1 获取玩家坦克
     if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1)
-        && let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels) {
-            return Some(DashCollisionInfo {
-                player_entity,
-                player_tank: *player_tank,
-                tank_position: tank_transform.translation,
-                is_dashing: is_dashing.is_some(),
-                target,
-            });
-        }
+        && let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels)
+    {
+        return Some(DashCollisionInfo {
+            player_entity,
+            player_tank: *player_tank,
+            tank_position: tank_transform.translation,
+            is_dashing: is_dashing.is_some(),
+            target,
+        });
+    }
 
     // 尝试从 e2 获取玩家坦克
     if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2)
-        && let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels) {
-            return Some(DashCollisionInfo {
-                player_entity,
-                player_tank: *player_tank,
-                tank_position: tank_transform.translation,
-                is_dashing: is_dashing.is_some(),
-                target,
-            });
-        }
+        && let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels)
+    {
+        return Some(DashCollisionInfo {
+            player_entity,
+            player_tank: *player_tank,
+            tank_position: tank_transform.translation,
+            is_dashing: is_dashing.is_some(),
+            target,
+        });
+    }
 
     None
 }

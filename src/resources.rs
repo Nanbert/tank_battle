@@ -1,7 +1,7 @@
 //! Game resources for the Tank Battle game
 
-use bevy::prelude::*;
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
+use bevy::prelude::*;
 use std::time::Duration;
 
 use crate::constants::{
@@ -95,10 +95,10 @@ pub enum Language {
 
 #[derive(Resource)]
 pub struct EnemySpawnState {
-    pub has_spawned: usize,               // 已生成数量
-    pub max_count: usize,                 // 总数量（每关固定20个）
-    pub spawn_cooldown: Timer,            // 生成冷却时间
-    pub stage_complete_delay: Timer,      // 关卡完成延迟计时器（2秒后进入下一关）
+    pub has_spawned: usize,          // 已生成数量
+    pub max_count: usize,            // 总数量（每关固定20个）
+    pub spawn_cooldown: Timer,       // 生成冷却时间
+    pub stage_complete_delay: Timer, // 关卡完成延迟计时器（2秒后进入下一关）
 }
 
 impl Default for EnemySpawnState {
@@ -200,7 +200,10 @@ impl PlayerInfo {
     /// 检查是否有任何玩家需要恢复能量
     pub fn needs_energy_regen(&self) -> bool {
         self.player1.energy_points < crate::constants::MAX_ENERGY_POINTS
-            || self.player2.as_ref().is_some_and(|p| p.energy_points < crate::constants::MAX_ENERGY_POINTS)
+            || self
+                .player2
+                .as_ref()
+                .is_some_and(|p| p.energy_points < crate::constants::MAX_ENERGY_POINTS)
     }
 
     /// 对指定玩家的统计数据执行操作
@@ -230,7 +233,7 @@ pub struct PlayerStats {
     pub track_chain: bool,
     pub air_cushion: bool,
     pub fire_shell: bool,
-    pub life_points: usize,    // max 3
+    pub life_points: usize,   // max 3
     pub energy_points: usize, // max 3
     pub score: usize,
 }
@@ -398,9 +401,7 @@ impl InsufficientEnergyTracker {
             TankType::Enemy => return false, // 敌方坦克不显示提示
         };
 
-        let can_show_warning = cooldown
-            .as_ref()
-            .is_none_or(|t| t.is_finished());
+        let can_show_warning = cooldown.as_ref().is_none_or(|t| t.is_finished());
 
         if can_show_warning {
             *cooldown = Some(Timer::from_seconds(
@@ -484,6 +485,16 @@ pub struct GameTextureResources {
     pub music_note: Handle<Image>,
 }
 
+impl GameTextureResources {
+    /// 根据语言获取对应的字体
+    pub fn get_font(&self, language: Language) -> Handle<Font> {
+        match language {
+            Language::Chinese => self.cn.clone(),
+            Language::English => self.en.clone(),
+        }
+    }
+}
+
 /// 统一的音频资源结构体
 /// 合并所有游戏音频资源，减少资源结构体数量
 #[derive(Resource)]
@@ -495,6 +506,7 @@ pub struct GameAudioResources {
     pub metal_crash: Handle<AudioSource>,
     pub laser_charge: Handle<AudioSource>,
     pub laser: Handle<AudioSource>,
+    pub powerup_sound: Handle<AudioSource>,
     pub commander_get_shot: Handle<AudioSource>,
     pub commander_death: Handle<AudioSource>,
     pub player_shot: Handle<AudioSource>,
@@ -510,12 +522,7 @@ pub struct GameAudioResources {
 
 impl GameAudioResources {
     /// 播放音效
-    pub fn play(
-        &self,
-        commands: &mut Commands,
-        audio_source: Handle<AudioSource>,
-        volume: f32,
-    ) {
+    pub fn play(&self, commands: &mut Commands, audio_source: Handle<AudioSource>, volume: f32) {
         utils::play_one_shot_sound(commands, audio_source, volume);
     }
 }
@@ -536,7 +543,3 @@ pub struct GameAtlasLayoutResources {
     // 烟雾特效
     pub smoke_atlas: Handle<TextureAtlasLayout>,
 }
-
-
-
-

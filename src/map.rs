@@ -118,7 +118,11 @@ fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
         Wall,
         PlayingEntity,
         Sprite::from_color(COLOR_WHITE, Vec2::ONE),
-        Transform { translation: position, scale, ..default() },
+        Transform {
+            translation: position,
+            scale,
+            ..default()
+        },
     ));
 }
 
@@ -393,10 +397,23 @@ fn spawn_map_terrain(
             if let Some((tile_type, layout)) = get_terrain_config(*terrain) {
                 match layout {
                     Some(layout_type) => {
-                        spawn_tile_group(commands, texture_resources, atlas_layouts, pos, tile_type, layout_type);
+                        spawn_tile_group(
+                            commands,
+                            texture_resources,
+                            atlas_layouts,
+                            pos,
+                            tile_type,
+                            layout_type,
+                        );
                     }
                     None => {
-                        spawn_terrain_tile(commands, texture_resources, atlas_layouts, pos, tile_type);
+                        spawn_terrain_tile(
+                            commands,
+                            texture_resources,
+                            atlas_layouts,
+                            pos,
+                            tile_type,
+                        );
                     }
                 }
             }
@@ -461,7 +478,13 @@ fn spawn_wall_column(
         } else {
             Vec2::new(pos, fixed_axis)
         };
-        spawn_terrain_tile(commands, texture_resources, atlas_layouts, position, TerrainTileType::Brick);
+        spawn_terrain_tile(
+            commands,
+            texture_resources,
+            atlas_layouts,
+            position,
+            TerrainTileType::Brick,
+        );
     }
 }
 
@@ -517,4 +540,3 @@ pub fn spawn_commander_fortress(
         false,
     );
 }
-

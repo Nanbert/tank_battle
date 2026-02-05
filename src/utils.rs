@@ -18,9 +18,7 @@ use crate::constants::*;
 /// # 返回值
 /// 最小角度差，范围在 -π 到 π 之间
 pub fn calculate_angle_difference(target_angle: f32, current_angle: f32) -> f32 {
-    
-    std::f32::consts::PI.mul_add(3.0, target_angle - current_angle)
-        % (std::f32::consts::PI * 2.0)
+    std::f32::consts::PI.mul_add(3.0, target_angle - current_angle) % (std::f32::consts::PI * 2.0)
         - std::f32::consts::PI
 }
 
@@ -38,28 +36,36 @@ pub fn is_movement_interrupted(keyboard: &ButtonInput<KeyCode>, tank_type: TankT
 }
 
 /// 创建纹理图集布局的辅助函数
-pub fn create_texture_atlas(
-    tile_size: UVec2,
-    columns: u32,
-    rows: u32,
-) -> TextureAtlasLayout {
+pub fn create_texture_atlas(tile_size: UVec2, columns: u32, rows: u32) -> TextureAtlasLayout {
     TextureAtlasLayout::from_grid(tile_size, columns, rows, None, None)
 }
 
 /// 播放一次性音效
-pub fn play_one_shot_sound(commands: &mut Commands, audio_source: Handle<AudioSource>, volume: f32) -> Entity {
-    commands.spawn((
-        AudioPlayer::new(audio_source),
-        PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(volume)),
-    )).id()
+pub fn play_one_shot_sound(
+    commands: &mut Commands,
+    audio_source: Handle<AudioSource>,
+    volume: f32,
+) -> Entity {
+    commands
+        .spawn((
+            AudioPlayer::new(audio_source),
+            PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(volume)),
+        ))
+        .id()
 }
 
 /// 播放循环音效
-pub fn play_looping_sound(commands: &mut Commands, audio_source: Handle<AudioSource>, volume: f32) -> Entity {
-    commands.spawn((
-        AudioPlayer::new(audio_source),
-        PlaybackSettings::LOOP.with_volume(bevy::audio::Volume::Linear(volume)),
-    )).id()
+pub fn play_looping_sound(
+    commands: &mut Commands,
+    audio_source: Handle<AudioSource>,
+    volume: f32,
+) -> Entity {
+    commands
+        .spawn((
+            AudioPlayer::new(audio_source),
+            PlaybackSettings::LOOP.with_volume(bevy::audio::Volume::Linear(volume)),
+        ))
+        .id()
 }
 
 /// 处理精灵图动画播放
@@ -180,7 +186,13 @@ pub fn spawn_animated_sprite(
 /// - `enemy_velocity_query`: 敌方坦克速度查询
 pub fn stop_all_tanks_velocity(
     player_velocity_query: &mut Query<&mut Velocity, With<crate::constants::PlayerTank>>,
-    enemy_velocity_query: &mut Query<&mut Velocity, (With<crate::constants::EnemyTank>, Without<crate::constants::PlayerTank>)>,
+    enemy_velocity_query: &mut Query<
+        &mut Velocity,
+        (
+            With<crate::constants::EnemyTank>,
+            Without<crate::constants::PlayerTank>,
+        ),
+    >,
 ) {
     // 停止玩家坦克的移动
     for mut velocity in player_velocity_query.iter_mut() {
@@ -255,4 +267,28 @@ pub fn cleanup_entities(commands: &mut Commands, entities: impl IntoIterator<Ite
     for entity in entities {
         let () = commands.entity(entity).try_despawn();
     }
+}
+
+/// 限制实体在地图边界内
+///
+/// 通用的边界限制函数，用于玩家坦克、敌方坦克等各种实体
+///
+/// # 参数
+/// - `transform`: 需要限制的实体变换
+/// - `half_width`: 实体半宽（用于计算边界偏移）
+/// - `half_height`: 实体半高（用于计算边界偏移）
+///
+/// # 示例
+/// ```rust
+/// clamp_entity_position(&mut transform, PLAYER_COLLIDER_HALF, PLAYER_COLLIDER_HALF);
+/// ```
+pub fn clamp_entity_position(transform: &mut Transform, half_width: f32, half_height: f32) {
+    transform.translation.x = transform
+        .translation
+        .x
+        .clamp(MAP_LEFT_X + half_width, MAP_RIGHT_X - half_width);
+    transform.translation.y = transform
+        .translation
+        .y
+        .clamp(MAP_BOTTOM_Y + half_height, MAP_TOP_Y - half_height);
 }

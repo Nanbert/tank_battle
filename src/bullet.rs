@@ -8,9 +8,12 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
-use crate::effects;
 use crate::constants::*;
-use crate::resources::{BulletTracker, GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo, PlayerStatChanged, StatType};
+use crate::effects;
+use crate::resources::{
+    BulletTracker, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+    PlayerStatChanged, StatType,
+};
 use crate::utils;
 
 /// 特效事件枚举
@@ -140,7 +143,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.1), // 略高于子弹
                     rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转 90 度
-                    scale: Vec3::splat(1.65), // 放大到 165% (因为纹理缩小到33%)
+                    scale: Vec3::splat(1.65),              // 放大到 165% (因为纹理缩小到33%)
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(
@@ -177,7 +180,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.2), // 略高于火焰特效
                     rotation: Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2), // 旋转 -90 度
-                    scale: Vec3::splat(0.3), // 放大到 0.3 倍 (因为纹理缩小到33%)
+                    scale: Vec3::splat(0.15),            // 缩小到 0.15 倍 (原0.3的1/2)
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(
@@ -226,8 +229,8 @@ pub fn enemy_shoot_system(
             };
 
             // 计算子弹初始位置（坦克前方）
-            let bullet_pos =
-                transform.translation + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
+            let bullet_pos = transform.translation
+                + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
 
             // 生成子弹
             let bullet_entity = spawn_bullet(
@@ -292,7 +295,9 @@ pub fn player_shoot_system(
         }
 
         // 获取玩家属性
-        let player_stats = player_info.get_stats(player_tank.tank_type).expect("Player should exist");
+        let player_stats = player_info
+            .get_stats(player_tank.tank_type)
+            .expect("Player should exist");
 
         // 检查是否可以射击（使用 player_stats.shells 作为最大子弹数）
         if !bullet_tracker.can_fire(entity, player_stats.shells) {
@@ -303,8 +308,8 @@ pub fn player_shoot_system(
         let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
         // 计算子弹初始位置（坦克前方）
-        let bullet_pos =
-            transform.translation + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
+        let bullet_pos = transform.translation
+            + direction.extend(0.0) * (PLAYER_TANK_DISPLAY_HEIGHT / 2.0 + BULLET_SIZE);
 
         // 玩家子弹速度 = PLAYER_BULLET_SPEED × (1 + fire_speed百分比/100)
         let fire_speed_bonus = player_stats.fire_speed as f32 / 100.0;
@@ -348,7 +353,11 @@ pub fn player_shoot_system(
 }
 
 /// 销毁子弹实体并清理所有者引用
-fn despawn_bullet(commands: &mut Commands, bullet_tracker: &mut BulletTracker, bullet_entity: Entity) {
+fn despawn_bullet(
+    commands: &mut Commands,
+    bullet_tracker: &mut BulletTracker,
+    bullet_entity: Entity,
+) {
     bullet_tracker.remove_bullet(bullet_entity);
     let () = commands.entity(bullet_entity).try_despawn();
 }
@@ -377,10 +386,11 @@ fn extract_bullet_collision<'a>(
     e2: Entity,
     bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
 ) -> Option<(Entity, Entity, &'a Bullet, &'a Transform)> {
-    bullets.get(e1).ok()
+    bullets
+        .get(e1)
+        .ok()
         .map(|(be, b, t)| (be, e2, b, t))
-        .or_else(|| bullets.get(e2).ok()
-        .map(|(be, b, t)| (be, e1, b, t)))
+        .or_else(|| bullets.get(e2).ok().map(|(be, b, t)| (be, e1, b, t)))
 }
 
 /// 查找碰撞中的子弹和坦克，同时返回子弹信息
@@ -391,13 +401,15 @@ pub fn find_bullet_and_tank_in_collision<'a>(
     all_tanks: &Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
 ) -> Option<(Entity, Entity, &'a Bullet)> {
     if let Ok((_, bullet, _)) = bullets.get(e1)
-        && all_tanks.contains(e2) {
-            return Some((e1, e2, bullet));
-        }
+        && all_tanks.contains(e2)
+    {
+        return Some((e1, e2, bullet));
+    }
     if let Ok((_, bullet, _)) = bullets.get(e2)
-        && all_tanks.contains(e1) {
-            return Some((e2, e1, bullet));
-        }
+        && all_tanks.contains(e1)
+    {
+        return Some((e2, e1, bullet));
+    }
     None
 }
 
@@ -418,12 +430,16 @@ pub fn bullet_terrain_collision_system(
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
-        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
 
         // 提取子弹和地形实体
         let Some((bullet_entity, terrain_entity, bullet, bullet_transform)) =
             extract_bullet_collision(*e1, *e2, &bullets)
-        else { continue; };
+        else {
+            continue;
+        };
 
         // 跳过已被标记销毁的实体（被激光击中的）
         if despawned_entities.contains(terrain_entity) {
@@ -434,18 +450,23 @@ pub fn bullet_terrain_collision_system(
         if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
             if bullet.is_player()
                 && let Some(player_stats) = player_info.get_stats(bullet.owner_type())
-                    && player_stats.fire_shell {
-                        effect_events.write(EffectEvent::ForestFire {
-                            position: forest_transform.translation,
-                        });
-                        let () = commands.entity(forest_entity).try_despawn();
-                    }
+                && player_stats.fire_shell
+            {
+                effect_events.write(EffectEvent::ForestFire {
+                    position: forest_transform.translation,
+                });
+                let () = commands.entity(forest_entity).try_despawn();
+            }
             continue;
         }
 
         // 处理砖块碰撞
         if bricks.get(terrain_entity).is_ok() {
-            audio_resources.play(&mut commands, audio_resources.brick_hit.clone(), VOLUME_HALF);
+            audio_resources.play(
+                &mut commands,
+                audio_resources.brick_hit.clone(),
+                VOLUME_HALF,
+            );
             effect_events.write(EffectEvent::Spark {
                 position: bullet_transform.translation,
             });
@@ -476,8 +497,6 @@ pub fn bullet_terrain_collision_system(
     }
 }
 
-
-
 /// 子弹与坦克碰撞检测系统
 pub fn bullet_tank_collision_system(
     mut commands: Commands,
@@ -496,12 +515,16 @@ pub fn bullet_tank_collision_system(
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
-        let CollisionEvent::Started(e1, e2, _) = event else { continue; };
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
 
         // 提取子弹和坦克实体，同时获取子弹信息
         let Some((bullet_entity, tank_entity, bullet)) =
             find_bullet_and_tank_in_collision(*e1, *e2, &bullets, &all_tanks)
-        else { continue; };
+        else {
+            continue;
+        };
 
         // 跳过已被标记销毁的实体（被激光击中的）
         if despawned_entities.contains(tank_entity) {
@@ -533,76 +556,89 @@ pub fn bullet_tank_collision_system(
 
         // 敌方子弹击中玩家坦克
         if bullet.is_enemy()
-            && let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity) {
-                let player_type = player_tank.tank_type;
+            && let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity)
+        {
+            let player_type = player_tank.tank_type;
 
-                audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
-                effect_events.write(EffectEvent::Spark {
-                    position: tank_transform.translation,
-                });
+            audio_resources.play(&mut commands, audio_resources.hit.clone(), 1.0);
+            effect_events.write(EffectEvent::Spark {
+                position: tank_transform.translation,
+            });
 
-                let mut need_update_filter_groups = false;
-                let mut need_despawn = false;
-                let mut explosion_position = None;
+            let mut need_update_filter_groups = false;
+            let mut need_despawn = false;
+            let mut explosion_position = None;
 
-                player_info.with_stats_mut(player_type, |player_stats| {
-                    // 按优先级移除道具：fire_shell > track_chain > penetrate > air_cushion > shells
-                    let has_fire_shell = player_stats.fire_shell;
-                    let has_track_chain = player_stats.track_chain;
-                    let has_penetrate = player_stats.penetrate;
-                    let has_air_cushion = player_stats.air_cushion;
-                    let has_shells = player_stats.shells > 1;
+            player_info.with_stats_mut(player_type, |player_stats| {
+                // 按优先级移除道具：fire_shell > track_chain > penetrate > air_cushion > shells
+                let has_fire_shell = player_stats.fire_shell;
+                let has_track_chain = player_stats.track_chain;
+                let has_penetrate = player_stats.penetrate;
+                let has_air_cushion = player_stats.air_cushion;
+                let has_shells = player_stats.shells > 1;
 
-                    if has_fire_shell {
-                        player_stats.fire_shell = false;
-                        stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::FireShell });
-                    } else if has_track_chain {
-                        player_stats.track_chain = false;
-                        stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::TrackChain });
-                    } else if has_penetrate {
-                        player_stats.penetrate = false;
-                        stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::Penetrate });
-                    } else if has_air_cushion {
-                        player_stats.air_cushion = false;
-                        need_update_filter_groups = true;
-                        stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::AirCushion });
-                    } else if has_shells {
-                        player_stats.shells -= 1;
-                        stat_changed_events.write(PlayerStatChanged { player_type, stat_type: StatType::Shell });
-                    } else {
-                        // 造成伤害
-                        if player_stats.life_points > 0 {
-                            player_stats.life_points -= 1;
-                        }
-                        if player_stats.life_points == 0 {
-                            explosion_position = Some(tank_transform.translation);
-                            need_despawn = true;
-                        }
+                if has_fire_shell {
+                    player_stats.fire_shell = false;
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type,
+                        stat_type: StatType::FireShell,
+                    });
+                } else if has_track_chain {
+                    player_stats.track_chain = false;
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type,
+                        stat_type: StatType::TrackChain,
+                    });
+                } else if has_penetrate {
+                    player_stats.penetrate = false;
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type,
+                        stat_type: StatType::Penetrate,
+                    });
+                } else if has_air_cushion {
+                    player_stats.air_cushion = false;
+                    need_update_filter_groups = true;
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type,
+                        stat_type: StatType::AirCushion,
+                    });
+                } else if has_shells {
+                    player_stats.shells -= 1;
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type,
+                        stat_type: StatType::Shell,
+                    });
+                } else {
+                    // 造成伤害
+                    if player_stats.life_points > 0 {
+                        player_stats.life_points -= 1;
                     }
-                });
-
-                // 更新 filter_groups
-                if need_update_filter_groups
-                    && let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                        controller.filter_groups = None;
+                    if player_stats.life_points == 0 {
+                        explosion_position = Some(tank_transform.translation);
+                        need_despawn = true;
                     }
-
-                // 销毁坦克
-                if need_despawn {
-                    if let Some(pos) = explosion_position {
-                        effect_events.write(EffectEvent::Explosion {
-                            position: pos,
-                        });
-                    }
-                    let () = commands.entity(tank_entity).try_despawn();
                 }
+            });
 
-                despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+            // 更新 filter_groups
+            if need_update_filter_groups
+                && let Ok(mut controller) = controllers.get_mut(tank_entity)
+            {
+                controller.filter_groups = None;
             }
+
+            // 销毁坦克
+            if need_despawn {
+                if let Some(pos) = explosion_position {
+                    effect_events.write(EffectEvent::Explosion { position: pos });
+                }
+                let () = commands.entity(tank_entity).try_despawn();
+            }
+
+            despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+        }
     }
 }
-
-
 
 /// 特效处理系统
 /// 监听特效事件并生成对应的视觉效果
@@ -658,12 +694,16 @@ pub fn bullet_commander_collision_system(
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
-        let CollisionEvent::Started(e1, e2, _) = event else { continue };
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
 
         // 提取子弹信息
         let Some((bullet_entity, other_entity, bullet, bullet_transform)) =
             extract_bullet_collision(*e1, *e2, &bullets)
-        else { continue; };
+        else {
+            continue;
+        };
 
         // 验证另一个实体是司令官
         if commanders.get(other_entity).is_err() {
@@ -676,7 +716,11 @@ pub fn bullet_commander_collision_system(
         }
 
         // 碰撞确认，播放受击音效
-        audio_resources.play(&mut commands, audio_resources.commander_get_shot.clone(), 1.0);
+        audio_resources.play(
+            &mut commands,
+            audio_resources.commander_get_shot.clone(),
+            1.0,
+        );
 
         // 发送火花特效事件
         effect_events.write(EffectEvent::Spark {
@@ -697,5 +741,3 @@ pub fn bullet_commander_collision_system(
         despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
     }
 }
-
-
