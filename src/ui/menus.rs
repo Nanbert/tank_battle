@@ -162,7 +162,7 @@ pub fn spawn_start_screen_title(
     ));
 
     // 菜单选项，从上到下 0-5
-    let y_positions = [250.0, 150.0, 50.0, -50.0, -150.0, -250.0];
+    let y_positions = common::generate_menu_y_positions(250.0, 100.0, 6);
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         commands.spawn((
             StartScreenUI,
@@ -489,18 +489,14 @@ pub fn handle_start_screen_input(
         let _ = app_exit.write(AppExit::Success);
     }
 
-    // W 键向上选择
-    if keyboard_input.just_pressed(KeyCode::KeyW) {
-        menu_selection.selected_index = if menu_selection.selected_index > 0 {
-            menu_selection.selected_index - 1
-        } else {
-            5
-        };
-    }
-    // S 键向下选择
-    if keyboard_input.just_pressed(KeyCode::KeyS) {
-        menu_selection.selected_index = (menu_selection.selected_index + 1) % 6;
-    }
+    // 使用通用菜单导航函数
+    common::handle_menu_navigation(
+        &keyboard_input,
+        &mut menu_selection.selected_index,
+        5, // 最大索引（6个选项：0-5）
+        common::NavigationWrap::WrapAround,
+    );
+
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
         match menu_selection.selected_index {

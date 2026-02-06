@@ -70,7 +70,7 @@ fn register_start_screen_systems(app: &mut App) {
                 .run_if(|query: Query<(), With<crate::constants::StartScreenUI>>| query.is_empty()),
             // 语言变化时重新生成菜单
             (
-                ui::overlay::cleanup_start_screen_ui,
+                ui::overlay::despawn_start_screen_ui,
                 ui::menus::spawn_start_screen,
             )
                 .chain()
@@ -90,7 +90,7 @@ fn register_about_credits_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::About),
         (
-            ui::overlay::cleanup_start_screen_ui,
+            ui::overlay::despawn_start_screen_ui,
             ui::menus::spawn_about_screen,
         )
             .chain(),
@@ -110,7 +110,7 @@ fn register_about_credits_systems(app: &mut App) {
     .add_systems(
         OnEnter(GameState::Credits),
         (
-            ui::overlay::cleanup_start_screen_ui,
+            ui::overlay::despawn_start_screen_ui,
             ui::menus::spawn_credits_screen,
         )
             .chain(),

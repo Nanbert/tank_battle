@@ -410,18 +410,14 @@ pub fn handle_game_over_input(
     mut menu_selection: ResMut<CurrentMenuSelection>,
     mut app_exit: MessageWriter<AppExit>,
 ) {
-    // W 键向上选择
-    if keyboard_input.just_pressed(KeyCode::KeyW) {
-        menu_selection.selected_index = if menu_selection.selected_index == 0 {
-            2
-        } else {
-            menu_selection.selected_index - 1
-        };
-    }
-    // S 键向下选择
-    if keyboard_input.just_pressed(KeyCode::KeyS) {
-        menu_selection.selected_index = (menu_selection.selected_index + 1) % 3;
-    }
+    // 使用通用菜单导航函数
+    common::handle_menu_navigation(
+        &keyboard_input,
+        &mut menu_selection.selected_index,
+        2, // 最大索引（3个选项：0-2）
+        common::NavigationWrap::Clamped,
+    );
+
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
         match menu_selection.selected_index {
@@ -532,18 +528,19 @@ pub fn despawn_insufficient_energy_warnings(
 }
 
 /// 清理开始界面的UI元素
-pub fn cleanup_start_screen_ui(mut commands: Commands, query: Query<Entity, With<StartScreenUI>>) {
-    crate::utils::cleanup_entities(&mut commands, query.iter());
+/// 销毁开始界面
+pub fn despawn_start_screen_ui(mut commands: Commands, query: Query<Entity, With<StartScreenUI>>) {
+    common::despawn_by_marker::<StartScreenUI>(&mut commands, query);
 }
 
 /// 销毁关于界面
 pub fn despawn_about_screen(mut commands: Commands, query: Query<Entity, With<AboutUI>>) {
-    crate::utils::cleanup_entities(&mut commands, query.iter());
+    common::despawn_by_marker::<AboutUI>(&mut commands, query);
 }
 
 /// 销毁致谢界面
 pub fn despawn_credits_screen(mut commands: Commands, query: Query<Entity, With<CreditsUI>>) {
-    crate::utils::cleanup_entities(&mut commands, query.iter());
+    common::despawn_by_marker::<CreditsUI>(&mut commands, query);
 }
 
 /// 销毁所有道具
@@ -551,5 +548,5 @@ pub fn despawn_powerups(
     mut commands: Commands,
     powerups: Query<Entity, With<crate::powerup::PowerUp>>,
 ) {
-    crate::utils::cleanup_entities(&mut commands, powerups.iter());
+    common::despawn_by_marker::<crate::powerup::PowerUp>(&mut commands, powerups);
 }
