@@ -283,7 +283,7 @@ pub fn update_air_cushion_effect(
 /// 通用环境音效播放系统
 /// T: 地形组件标记 (Sea, Forest, Commander)
 /// P: 音效播放器标记 (SeaAmbiencePlayer, TreeAmbiencePlayer, CommanderAmbiencePlayer)
-pub fn play_ambience_generic<T, P>(
+fn play_ambience_generic<T, P>(
     mut commands: Commands,
     ambience_sound: Handle<AudioSource>,
     player_tanks: Query<&Transform, With<PlayerTank>>,

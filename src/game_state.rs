@@ -80,7 +80,7 @@ pub fn update_menu_blink(
     fading_out: Res<FadingOut>,
     menu_selection: Res<CurrentMenuSelection>,
     mut blink_timer: ResMut<MenuBlinkTimer>,
-    mut text_query: Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+    mut text_query: Query<(&MenuOption, &mut TextColor)>,
     game_state: Res<State<GameState>>,
 ) {
     match game_state.get() {
@@ -106,7 +106,7 @@ fn update_fading_out_blink(
     fading_out: &Res<FadingOut>,
     menu_selection: &Res<CurrentMenuSelection>,
     blink_timer: &mut ResMut<MenuBlinkTimer>,
-    text_query: &mut Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+    text_query: &mut Query<(&MenuOption, &mut TextColor)>,
 ) {
     const FADE_OUT_BLINK_PERIOD: f32 = MENU_BLINK_PERIOD;
 
@@ -137,7 +137,7 @@ fn update_start_screen_blink(
     time: &Res<Time>,
     menu_selection: &Res<CurrentMenuSelection>,
     blink_timer: &mut ResMut<MenuBlinkTimer>,
-    text_query: &mut Query<(&MenuOption, &mut TextColor), Without<MenuArrow>>,
+    text_query: &mut Query<(&MenuOption, &mut TextColor)>,
 ) {
     // 初始化计时器
     if blink_timer.0.duration().is_zero() {

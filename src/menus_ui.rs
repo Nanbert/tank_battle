@@ -48,29 +48,67 @@ const MENU_OPTION_EXIT: LocalizedText = LocalizedText {
 };
 
 // 操作说明文本常量
-const CONTROLS_P1_CN: &str = "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光";
-const CONTROLS_P1_EN: &str = "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser";
+const CONTROLS_P1: LocalizedText = LocalizedText {
+    cn: "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光",
+    en: "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser",
+};
 
-const CONTROLS_P2_CN: &str = "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光";
-const CONTROLS_P2_EN: &str = "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser";
+const CONTROLS_P2: LocalizedText = LocalizedText {
+    cn: "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光",
+    en: "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser",
+};
 
-const CONTROLS_GENERAL_CN: &str = "W/S 选择 | SPACE 确认/暂停 | ESC 退出";
-const CONTROLS_GENERAL_EN: &str = "W/S to select | SPACE to select/pause | ESC to exit";
+const CONTROLS_GENERAL: LocalizedText = LocalizedText {
+    cn: "W/S 选择 | SPACE 确认/暂停 | ESC 退出",
+    en: "W/S to select | SPACE to select/pause | ESC to exit",
+};
 
 // 关于界面文本常量
-const ABOUT_TITLE_CN: &str = "关于";
-const ABOUT_TITLE_EN: &str = "ABOUT";
+const ABOUT_TITLE: LocalizedText = LocalizedText {
+    cn: "关于",
+    en: "ABOUT",
+};
 
 // 致谢界面文本常量
-const CREDITS_TITLE_CN: &str = "制作人员";
-const CREDITS_TITLE_EN: &str = "CREDITS";
+const CREDITS_TITLE: LocalizedText = LocalizedText {
+    cn: "制作人员",
+    en: "CREDITS",
+};
 
-const CREDITS_RETURN_CN: &str = "按 SPACE 返回";
-const CREDITS_RETURN_EN: &str = "Press SPACE to return";
+const CREDITS_RETURN: LocalizedText = LocalizedText {
+    cn: "按 SPACE 返回",
+    en: "Press SPACE to return",
+};
 
-const CREDITS_TEXT_CN: &str = "素材来源致谢\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        通义千问 (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        字体:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        详见 COPYRIGHT 文件。";
+const ABOUT_TEXT: LocalizedText = LocalizedText {
+    cn: "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证",
+    en: "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License",
+};
 
-const CREDITS_TEXT_EN: &str = "Asset Credits\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        Tongyi Qianwen (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        Fonts:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        See COPYRIGHT file for full details.";
+const ABOUT_SUPPORT: LocalizedText = LocalizedText {
+    cn: "如果你喜欢这个游戏,\n请给我买杯咖啡! (咖啡是程序员的燃料)",
+    en: "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)",
+};
+
+const ABOUT_RETURN: LocalizedText = LocalizedText {
+    cn: "按 SPACE 返回",
+    en: "Press SPACE to return",
+};
+
+const PAYMENT_METHOD_ALIPAY: LocalizedText = LocalizedText {
+    cn: "支付宝",
+    en: "Alipay",
+};
+
+const PAYMENT_METHOD_WECHAT: LocalizedText = LocalizedText {
+    cn: "微信",
+    en: "WeChat",
+};
+
+const CREDITS_TEXT: LocalizedText = LocalizedText {
+    cn: "素材来源致谢\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        通义千问 (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        字体:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        详见 COPYRIGHT 文件。",
+    en: "Asset Credits\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        Tongyi Qianwen (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        Fonts:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        See COPYRIGHT file for full details.",
+};
 
 // 菜单选项文本数组
 const MENU_OPTIONS: &[LocalizedText; 6] = &[
@@ -105,24 +143,17 @@ pub fn spawn_start_screen_background(
 /// 生成开始界面的标题和菜单选项
 pub fn spawn_start_screen_title(
     commands: &mut Commands,
-    font_en: Handle<Font>,
-    font_cn: Handle<Font>,
+    font: Handle<Font>,
     language: Language,
 ) {
     let title = MENU_TITLE.get(language);
-    let use_cn_font = matches!(language, Language::Chinese);
-    let title_font = if use_cn_font {
-        font_cn.clone()
-    } else {
-        font_en.clone()
-    };
 
     commands.spawn((
         StartScreenUI,
         Text2d(title.to_string()),
         TextFont {
             font_size: FONT_SIZE_TITLE,
-            font: title_font,
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_RED),
@@ -132,19 +163,12 @@ pub fn spawn_start_screen_title(
     // 菜单选项，从上到下 0-5
     let y_positions = [250.0, 150.0, 50.0, -50.0, -150.0, -250.0];
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
-        // 语言选项使用英文字体（因为文本是双语的），其他选项使用对应语言的字体
-        let item_font = if i == 2 {
-            font_en.clone()
-        } else {
-            font_cn.clone()
-        };
-
         commands.spawn((
             StartScreenUI,
             Text2d(option_text.get(language).to_string()),
             TextFont {
                 font_size: FONT_SIZE_MENU,
-                font: item_font,
+                font: font.clone(),
                 ..default()
             },
             TextColor(if i == 0 { COLOR_YELLOW } else { COLOR_WHITE }),
@@ -152,90 +176,55 @@ pub fn spawn_start_screen_title(
             MenuOption { index: i },
         ));
     }
-
-    // 生成箭头指示器
-    commands.spawn((
-        StartScreenUI,
-        MenuArrow,
-        Text2d(">".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: font_cn.clone(),
-            ..default()
-        },
-        TextColor(COLOR_YELLOW),
-        Transform::from_xyz(-200.0, y_positions[0], 1.0),
-    ));
 }
 
 /// 生成开始界面的操作说明
 pub fn spawn_start_screen_instructions(
     commands: &mut Commands,
-    font_en: &Handle<Font>,
-    font_cn: &Handle<Font>,
+    font: Handle<Font>,
     language: Language,
 ) {
-    let (p1_text, p2_text, general_text, use_cn_font) = match language {
-        Language::Chinese => (
-            CONTROLS_P1_CN,
-            CONTROLS_P2_CN,
-            CONTROLS_GENERAL_CN,
-            true,
-        ),
-        Language::English => (
-            CONTROLS_P1_EN,
-            CONTROLS_P2_EN,
-            CONTROLS_GENERAL_EN,
-            false,
-        ),
-    };
+    let p1_text = CONTROLS_P1.get(language);
+    let p2_text = CONTROLS_P2.get(language);
+    let general_text = CONTROLS_GENERAL.get(language);
 
-    let font = if use_cn_font {
-        font_cn.clone()
-    } else {
-        font_en.clone()
-    };
-
-    // 玩家1操作说明
+    // 玩家1操作说明 - 蓝色
     commands.spawn((
         StartScreenUI,
         Text2d(p1_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
-            font_smoothing: default(),
-            line_height: default(),
+            ..default()
         },
-        TextColor(COLOR_BLUE), // 蓝色
-        Transform::from_xyz(0.0, -450.0, 1.0),
+        TextColor(COLOR_BLUE),
+        Transform::from_xyz(0.0, -350.0, 1.0),
     ));
 
-    // 玩家2操作说明
+    // 玩家2操作说明 - 红色
     commands.spawn((
         StartScreenUI,
         Text2d(p2_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
-            font_smoothing: default(),
-            line_height: default(),
+            ..default()
         },
-        TextColor(COLOR_RED), // 红色
-        Transform::from_xyz(0.0, -480.0, 1.0),
+        TextColor(COLOR_RED),
+        Transform::from_xyz(0.0, -380.0, 1.0),
     ));
 
-    // 添加通用操作说明
+    // 通用操作说明 - 深灰色
     commands.spawn((
         StartScreenUI,
         Text2d(general_text.to_string()),
         TextFont {
-            font_size: FONT_SIZE_INFO,
+            font_size: FONT_SIZE_INSTRUCTION,
             font,
-            font_smoothing: default(),
-            line_height: default(),
+            ..default()
         },
-        TextColor(COLOR_YELLOW), // 黄色
-        Transform::from_xyz(0.0, -510.0, 1.0),
+        TextColor(COLOR_DARK_GRAY),
+        Transform::from_xyz(0.0, -410.0, 1.0),
     ));
 }
 
@@ -259,24 +248,22 @@ pub fn spawn_start_screen(
         return;
     }
 
+    // 根据语言选择字体
+    let use_cn_font = matches!(*language, Language::Chinese);
+    let font = if use_cn_font {
+        font_resources.cn.clone()
+    } else {
+        font_resources.en.clone()
+    };
+
     // 添加动态背景
     spawn_start_screen_background(&mut commands, &texture_resources, &atlas_layouts);
 
     // 添加标题文字
-    spawn_start_screen_title(
-        &mut commands,
-        font_resources.en.clone(),
-        font_resources.cn.clone(),
-        *language,
-    );
+    spawn_start_screen_title(&mut commands, font.clone(), *language);
 
     // 添加操作说明
-    spawn_start_screen_instructions(
-        &mut commands,
-        &font_resources.en,
-        &font_resources.cn,
-        *language,
-    );
+    spawn_start_screen_instructions(&mut commands, font, *language);
 }
 
 /// 生成关于界面
@@ -292,46 +279,7 @@ pub fn spawn_about_screen(
 
     let use_cn_font = matches!(*language, Language::Chinese);
 
-    let title = if use_cn_font {
-        ABOUT_TITLE_CN
-    } else {
-        ABOUT_TITLE_EN
-    };
-
-    let about_text = if use_cn_font {
-        "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证"
-    } else {
-        "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License"
-    };
-
-    let support_text = if use_cn_font {
-        "如果你喜欢这个游戏,\n请给我买杯咖啡! (咖啡是程序员的燃料)"
-    } else {
-        "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)"
-    };
-
-    let return_text = if use_cn_font {
-        "按 SPACE 返回"
-    } else {
-        "Press SPACE to return"
-    };
-
-    let title_font = if use_cn_font {
-        cn_font.clone()
-    } else {
-        en_font.clone()
-    };
-    let body_font = if use_cn_font {
-        cn_font.clone()
-    } else {
-        en_font.clone()
-    };
-    let label_font = if use_cn_font {
-        cn_font.clone()
-    } else {
-        en_font.clone()
-    };
-    let return_font = if use_cn_font {
+    let font = if use_cn_font {
         cn_font.clone()
     } else {
         en_font.clone()
@@ -348,26 +296,26 @@ pub fn spawn_about_screen(
         Transform::from_xyz(0.0, 0.0, 0.0),
     ));
 
-    // 添加标题（位置不变）
+    // 添加标题
     commands.spawn((
         AboutUI,
-        Text2d(title.to_string()),
+        Text2d(ABOUT_TITLE.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_CREDITS_TITLE,
-            font: title_font,
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
         Transform::from_xyz(0.0, 600.0, 1.0),
     ));
 
-    // 显示信息（向下平移10像素）
+    // 显示信息
     commands.spawn((
         AboutUI,
-        Text2d(about_text.to_string()),
+        Text2d(ABOUT_TEXT.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
-            font: body_font.clone(),
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
@@ -375,13 +323,13 @@ pub fn spawn_about_screen(
         Transform::from_xyz(0.0, 340.0, 1.0),
     ));
 
-    // 添加收款码文案（向下平移10像素）
+    // 添加收款码文案
     commands.spawn((
         AboutUI,
-        Text2d(support_text.to_string()),
+        Text2d(ABOUT_SUPPORT.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_MEDIUM,
-            font: body_font.clone(),
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
@@ -407,26 +355,20 @@ pub fn spawn_about_screen(
         Transform::from_xyz(-250.0, -260.0, 1.0),
     ));
 
-    // 支付宝标签（向下平移10像素）
+    // 支付宝标签
     commands.spawn((
         AboutUI,
-        Text2d(
-            match *language {
-                Language::Chinese => "支付宝",
-                Language::English => "Alipay",
-            }
-            .to_string(),
-        ),
+        Text2d(PAYMENT_METHOD_ALIPAY.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_SMALL,
-            font: label_font.clone(),
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
         Transform::from_xyz(-250.0, -480.0, 1.0),
     ));
 
-    // 微信收款码（向下平移10像素）
+    // 微信收款码
     commands.spawn((
         AboutUI,
         Sprite {
@@ -437,38 +379,31 @@ pub fn spawn_about_screen(
         Transform::from_xyz(250.0, -260.0, 1.0),
     ));
 
-    // 微信标签（向下平移10像素）
-    commands.spawn((
-        AboutUI,
-        Text2d(
-            match *language {
-                Language::Chinese => "微信",
-                Language::English => "WeChat",
-            }
-            .to_string(),
-        ),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            font: label_font,
-            ..default()
-        },
-        TextColor(COLOR_BLACK),
-        Transform::from_xyz(250.0, -480.0, 1.0),
-    ));
-
-    // 添加返回提示（向下平移10像素）
-    commands.spawn((
-        AboutUI,
-        Text2d(return_text.to_string()),
-        TextFont {
-            font_size: FONT_SIZE_MEDIUM,
-            font: return_font,
-            ..default()
-        },
-        TextColor(COLOR_BLACK),
-        Transform::from_xyz(0.0, -560.0, 1.0),
-    ));
-}
+    // 微信标签
+        commands.spawn((
+            AboutUI,
+            Text2d(PAYMENT_METHOD_WECHAT.get(*language).to_string()),
+            TextFont {
+                font_size: FONT_SIZE_SMALL,
+                font: font.clone(),
+                ..default()
+            },
+            TextColor(COLOR_BLACK),
+            Transform::from_xyz(250.0, -480.0, 1.0),
+        ));
+    
+        // 添加返回提示
+        commands.spawn((
+            AboutUI,
+            Text2d(ABOUT_RETURN.get(*language).to_string()),
+            TextFont {
+                font_size: FONT_SIZE_UI,
+                font: font.clone(),
+                ..default()
+            },
+            TextColor(COLOR_BLACK),
+            Transform::from_xyz(0.0, -580.0, 1.0),
+        ));}
 
 /// 处理关于界面的输入
 pub fn handle_about_input(
@@ -493,25 +428,7 @@ pub fn spawn_credits_screen(
 
     let use_cn_font = matches!(*language, Language::Chinese);
 
-    let title = if use_cn_font {
-        CREDITS_TITLE_CN
-    } else {
-        CREDITS_TITLE_EN
-    };
-
-    let credits_text = if use_cn_font {
-        CREDITS_TEXT_CN
-    } else {
-        CREDITS_TEXT_EN
-    };
-
-    let return_text = if use_cn_font {
-        CREDITS_RETURN_CN
-    } else {
-        CREDITS_RETURN_EN
-    };
-
-    let custom_font = if use_cn_font {
+    let font = if use_cn_font {
         cn_font
     } else {
         en_font
@@ -531,10 +448,10 @@ pub fn spawn_credits_screen(
     // 添加标题
     commands.spawn((
         CreditsUI,
-        Text2d(title.to_string()),
+        Text2d(CREDITS_TITLE.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_MENU,
-            font: custom_font.clone(),
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
@@ -544,10 +461,10 @@ pub fn spawn_credits_screen(
     // 使用多行文本显示素材来源
     commands.spawn((
         CreditsUI,
-        Text2d(credits_text.to_string()),
+        Text2d(CREDITS_TEXT.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_INSTRUCTION,
-            font: custom_font.clone(),
+            font: font.clone(),
             ..default()
         },
         TextColor(COLOR_BLACK),
@@ -558,10 +475,10 @@ pub fn spawn_credits_screen(
     // 添加返回提示
     commands.spawn((
         CreditsUI,
-        Text2d(return_text.to_string()),
+        Text2d(CREDITS_RETURN.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
-            font: custom_font,
+            font: font,
             ..default()
         },
         TextColor(COLOR_BLACK),
@@ -650,31 +567,6 @@ pub fn update_option_colors(
             text_color.0 = COLOR_YELLOW;
         } else {
             text_color.0 = COLOR_WHITE; // 白色
-        }
-    }
-}
-
-/// 更新箭头指示器的位置
-pub fn update_arrow_position(
-    menu_selection: Res<CurrentMenuSelection>,
-    mut queries: ParamSet<(
-        Query<(&MenuOption, &Transform)>,
-        Query<&mut Transform, With<MenuArrow>>,
-    )>,
-) {
-    // 获取选中的菜单项位置
-    let mut selected_y = None;
-    for (option, transform) in queries.p0().iter() {
-        if option.index == menu_selection.selected_index {
-            selected_y = Some(transform.translation.y);
-            break;
-        }
-    }
-
-    // 更新箭头位置
-    if let Some(y) = selected_y {
-        for mut transform in queries.p1().iter_mut() {
-            transform.translation.y = y;
         }
     }
 }

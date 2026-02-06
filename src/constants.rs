@@ -337,9 +337,6 @@ pub struct MenuOption {
 }
 
 #[derive(Component)]
-pub struct MenuArrow;
-
-#[derive(Component)]
 pub struct PauseUI;
 
 #[derive(Component)]

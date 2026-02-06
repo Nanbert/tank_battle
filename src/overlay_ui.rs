@@ -55,13 +55,13 @@ const INSUFFICIENT_ENERGY_EN: &str = "Insufficient Energy!";
 // ==================== 辅助函数 ====================
 
 /// 更新 Sprite 的透明度
-pub fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
+fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
     let linear = sprite.color.to_linear();
     sprite.color = Color::srgba(linear.red, linear.green, linear.blue, alpha);
 }
 
 /// 更新 `TextColor` 的透明度
-pub fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
+fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
     let linear = text_color.0.to_linear();
     text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, alpha);
 }

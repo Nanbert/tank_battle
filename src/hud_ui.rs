@@ -109,64 +109,103 @@ pub struct BlueBarForeground;
 
 #[derive(Clone, Copy)]
 struct HudTextLabels {
-    player1_name: (&'static str, &'static str), // (中文, 英文)
-    player2_name: (&'static str, &'static str),
-    effects_title: (&'static str, &'static str),
-    commander_life: (&'static str, &'static str),
-    on_off: (&'static str, &'static str),    // (开启, On)
-    off_label: (&'static str, &'static str), // (关闭, Off)
+    player1_name: LocalizedText,
+    player2_name: LocalizedText,
+    effects_title: LocalizedText,
+    commander_life: LocalizedText,
+    on_off: LocalizedText,
+    off_label: LocalizedText,
 }
 
 #[derive(Clone, Copy)]
 struct HudStatLabels {
-    speed: (&'static str, &'static str),
-    fire_speed: (&'static str, &'static str),
-    protection: (&'static str, &'static str),
-    shells: (&'static str, &'static str),
-    fire_shell: (&'static str, &'static str),
-    penetrate: (&'static str, &'static str),
-    track_chain: (&'static str, &'static str),
-    air_cushion: (&'static str, &'static str),
-    score: (&'static str, &'static str),
+    speed: LocalizedText,
+    fire_speed: LocalizedText,
+    protection: LocalizedText,
+    shells: LocalizedText,
+    fire_shell: LocalizedText,
+    penetrate: LocalizedText,
+    track_chain: LocalizedText,
+    air_cushion: LocalizedText,
+    score: LocalizedText,
 }
 
+// ==================== 本地化文本常量 ====================
+
+// HUD 文本标签
 const HUD_TEXT_LABELS: HudTextLabels = HudTextLabels {
-    player1_name: ("李云龙", "Li Yun Long"),
-    player2_name: ("楚云飞", "Chu Yun Fei"),
-    effects_title: ("效果", "Effects"),
-    commander_life: ("司令官生命:", "Commander Life:"),
-    on_off: ("开启", "On"),
-    off_label: ("关闭", "Off"),
+    player1_name: LocalizedText {
+        cn: "李云龙",
+        en: "Li Yun Long",
+    },
+    player2_name: LocalizedText {
+        cn: "楚云飞",
+        en: "Chu Yun Fei",
+    },
+    effects_title: LocalizedText {
+        cn: "效果",
+        en: "Effects",
+    },
+    commander_life: LocalizedText {
+        cn: "司令官生命:",
+        en: "Commander Life:",
+    },
+    on_off: LocalizedText {
+        cn: "开启",
+        en: "On",
+    },
+    off_label: LocalizedText {
+        cn: "关闭",
+        en: "Off",
+    },
 };
 
+// HUD 属性标签
 const HUD_STAT_LABELS: HudStatLabels = HudStatLabels {
-    speed: ("速度:", "Speed:"),
-    fire_speed: ("射速:", "Fire Speed:"),
-    protection: ("护盾:", "Protection:"),
-    shells: ("炮弹:", "Shells:"),
-    fire_shell: ("火焰炮弹", "Fire Shell"),
-    penetrate: ("穿透", "Penetrate"),
-    track_chain: ("履带链", "Track Chain"),
-    air_cushion: ("气垫", "Air Cushion"),
-    score: ("分数:", "Scores:"),
+    speed: LocalizedText {
+        cn: "速度:",
+        en: "Speed:",
+    },
+    fire_speed: LocalizedText {
+        cn: "射速:",
+        en: "Fire Speed:",
+    },
+    protection: LocalizedText {
+        cn: "护盾:",
+        en: "Protection:",
+    },
+    shells: LocalizedText {
+        cn: "炮弹:",
+        en: "Shells:",
+    },
+    fire_shell: LocalizedText {
+        cn: "火焰炮弹",
+        en: "Fire Shell",
+    },
+    penetrate: LocalizedText {
+        cn: "穿透",
+        en: "Penetrate",
+    },
+    track_chain: LocalizedText {
+        cn: "履带链",
+        en: "Track Chain",
+    },
+    air_cushion: LocalizedText {
+        cn: "气垫",
+        en: "Air Cushion",
+    },
+    score: LocalizedText {
+        cn: "分数:",
+        en: "Scores:",
+    },
 };
-
-/// 辅助函数：根据语言选择文本
-fn get_label(labels: (&'static str, &'static str), language: Language) -> &'static str {
-    match language {
-        Language::Chinese => labels.0,
-        Language::English => labels.1,
-    }
-}
 
 /// 辅助函数：获取玩家名称
 fn get_player_name(player_type: TankType, language: Language) -> &'static str {
-    match (player_type, language) {
-        (TankType::Player1, Language::Chinese) => HUD_TEXT_LABELS.player1_name.0,
-        (TankType::Player1, Language::English) => HUD_TEXT_LABELS.player1_name.1,
-        (TankType::Player2, Language::Chinese) => HUD_TEXT_LABELS.player2_name.0,
-        (TankType::Player2, Language::English) => HUD_TEXT_LABELS.player2_name.1,
-        (TankType::Enemy, _) => "Enemy",
+    match player_type {
+        TankType::Player1 => HUD_TEXT_LABELS.player1_name.get(language),
+        TankType::Player2 => HUD_TEXT_LABELS.player2_name.get(language),
+        TankType::Enemy => "Enemy",
     }
 }
 
@@ -249,7 +288,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         SpeedText,
         font,
-        get_label(HUD_STAT_LABELS.speed, language),
+        HUD_STAT_LABELS.speed.get(language),
         stats.speed,
         HUD_Y_POSITIONS[HudYPosition::Speed as usize],
         x_pos,
@@ -260,7 +299,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         FireSpeedText,
         font,
-        get_label(HUD_STAT_LABELS.fire_speed, language),
+        HUD_STAT_LABELS.fire_speed.get(language),
         stats.fire_speed,
         HUD_Y_POSITIONS[HudYPosition::FireSpeed as usize],
         x_pos,
@@ -271,7 +310,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         ProtectionText,
         font,
-        get_label(HUD_STAT_LABELS.protection, language),
+        HUD_STAT_LABELS.protection.get(language),
         stats.protection,
         HUD_Y_POSITIONS[HudYPosition::Protection as usize],
         x_pos,
@@ -279,7 +318,7 @@ fn spawn_single_player_hud(
     );
 
     // 炮弹数量
-    let prefix_shells = get_label(HUD_STAT_LABELS.shells, language);
+    let prefix_shells = HUD_STAT_LABELS.shells.get(language);
     commands.spawn((
         marker.clone(),
         ShellsText,
@@ -298,7 +337,7 @@ fn spawn_single_player_hud(
     commands.spawn((
         marker.clone(),
         EffectsTitle,
-        Text2d(get_label(HUD_TEXT_LABELS.effects_title, language).to_string()),
+        Text2d(HUD_TEXT_LABELS.effects_title.get(language).to_string()),
         TextFont {
             font_size: 32.0,
             font: font.clone(),
@@ -314,7 +353,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         FireShellText,
         font,
-        get_label(HUD_STAT_LABELS.fire_shell, language),
+        HUD_STAT_LABELS.fire_shell.get(language),
         stats.fire_shell,
         HUD_Y_POSITIONS[HudYPosition::FireShell as usize],
         x_pos,
@@ -326,7 +365,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         PenetrateText,
         font,
-        get_label(HUD_STAT_LABELS.penetrate, language),
+        HUD_STAT_LABELS.penetrate.get(language),
         stats.penetrate,
         HUD_Y_POSITIONS[HudYPosition::Penetrate as usize],
         x_pos,
@@ -338,7 +377,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         TrackChainText,
         font,
-        get_label(HUD_STAT_LABELS.track_chain, language),
+        HUD_STAT_LABELS.track_chain.get(language),
         stats.track_chain,
         HUD_Y_POSITIONS[HudYPosition::TrackChain as usize],
         x_pos,
@@ -350,7 +389,7 @@ fn spawn_single_player_hud(
         marker.clone(),
         AirCushionText,
         font,
-        get_label(HUD_STAT_LABELS.air_cushion, language),
+        HUD_STAT_LABELS.air_cushion.get(language),
         stats.air_cushion,
         HUD_Y_POSITIONS[HudYPosition::AirCushion as usize],
         x_pos,
@@ -359,7 +398,7 @@ fn spawn_single_player_hud(
     );
 
     // 分数
-    let prefix_scores = get_label(HUD_STAT_LABELS.score, language);
+    let prefix_scores = HUD_STAT_LABELS.score.get(language);
     commands.spawn((
         marker.clone(),
         ScoreText,
@@ -505,9 +544,9 @@ fn spawn_effect_text<T1: Component, T2: Component>(
     stat_type: HudStatType,
 ) {
     let on_off_label = if value {
-        get_label(HUD_TEXT_LABELS.on_off, language)
+        HUD_TEXT_LABELS.on_off.get(language)
     } else {
-        get_label(HUD_TEXT_LABELS.off_label, language)
+        HUD_TEXT_LABELS.off_label.get(language)
     };
     commands.spawn((
         marker1,
@@ -601,13 +640,13 @@ fn update_single_player_text(
     stat_type: HudStatType,
     language: Language,
 ) -> String {
-    // 缓存常用的标签，避免重复调用 get_label
-    let label_on = get_label(HUD_TEXT_LABELS.on_off, language);
-    let label_off = get_label(HUD_TEXT_LABELS.off_label, language);
+    // 缓存常用的标签，避免重复调用 .get(language)
+let label_on = HUD_TEXT_LABELS.on_off.get(language);
+    let label_off = HUD_TEXT_LABELS.off_label.get(language);
 
     match stat_type {
         HudStatType::Speed => {
-            let prefix = get_label(HUD_STAT_LABELS.speed, language);
+            let prefix = HUD_STAT_LABELS.speed.get(language);
             format!(
                 "{}{}",
                 prefix,
@@ -615,7 +654,7 @@ fn update_single_player_text(
             )
         }
         HudStatType::FireSpeed => {
-            let prefix = get_label(HUD_STAT_LABELS.fire_speed, language);
+            let prefix = HUD_STAT_LABELS.fire_speed.get(language);
             format!(
                 "{}{}",
                 prefix,
@@ -623,7 +662,7 @@ fn update_single_player_text(
             )
         }
         HudStatType::Protection => {
-            let prefix = get_label(HUD_STAT_LABELS.protection, language);
+            let prefix = HUD_STAT_LABELS.protection.get(language);
             format!(
                 "{}{}",
                 prefix,
@@ -631,11 +670,11 @@ fn update_single_player_text(
             )
         }
         HudStatType::Shells => {
-            let prefix = get_label(HUD_STAT_LABELS.shells, language);
+            let prefix = HUD_STAT_LABELS.shells.get(language);
             format!("{} {}", prefix, stats.shells)
         }
         HudStatType::FireShell => {
-            let prefix = get_label(HUD_STAT_LABELS.fire_shell, language);
+            let prefix = HUD_STAT_LABELS.fire_shell.get(language);
             let on_off = if stats.fire_shell {
                 label_on
             } else {
@@ -644,12 +683,12 @@ fn update_single_player_text(
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Penetrate => {
-            let prefix = get_label(HUD_STAT_LABELS.penetrate, language);
+            let prefix = HUD_STAT_LABELS.penetrate.get(language);
             let on_off = if stats.penetrate { label_on } else { label_off };
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::TrackChain => {
-            let prefix = get_label(HUD_STAT_LABELS.track_chain, language);
+            let prefix = HUD_STAT_LABELS.track_chain.get(language);
             let on_off = if stats.track_chain {
                 label_on
             } else {
@@ -658,7 +697,7 @@ fn update_single_player_text(
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::AirCushion => {
-            let prefix = get_label(HUD_STAT_LABELS.air_cushion, language);
+            let prefix = HUD_STAT_LABELS.air_cushion.get(language);
             let on_off = if stats.air_cushion {
                 label_on
             } else {
@@ -667,7 +706,7 @@ fn update_single_player_text(
             format!("{}: {}", prefix, on_off)
         }
         HudStatType::Score => {
-            let prefix = get_label(HUD_STAT_LABELS.score, language);
+            let prefix = HUD_STAT_LABELS.score.get(language);
             format!("{} {}", prefix, stats.score)
         }
     }
@@ -943,7 +982,7 @@ fn spawn_top_hud(
     ));
 
     // Commander 文本和血条
-    let commander_text = get_label(HUD_TEXT_LABELS.commander_life, language);
+    let commander_text = HUD_TEXT_LABELS.commander_life.get(language);
     // Commander 文字（在血条左侧）
     commands.spawn((
         PlayingEntity,
