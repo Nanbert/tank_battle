@@ -11,6 +11,7 @@ use rand::Rng;
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
+use super::common;
 
 // ==================== 本地化文本常量 ====================
 
@@ -250,7 +251,7 @@ pub fn spawn_pause_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font = font_resources.get_font(*language);
+    let font = common::get_font(&font_resources, *language);
 
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
@@ -329,7 +330,7 @@ pub fn spawn_game_over_ui(
     mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
     mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
-    let font = font_resources.get_font(*language);
+    let font = common::get_font(&font_resources, *language);
 
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);

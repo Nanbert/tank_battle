@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
+use super::common;
 
 // ============================================================================
 // HUD Marker Components
@@ -292,7 +293,7 @@ fn spawn_player_hud(
     game_mode: Res<GameMode>,
     language: Res<Language>,
 ) {
-    let font = font_resources.get_font(*language);
+    let font = common::get_font(&font_resources, *language);
 
     // 玩家1 HUD
     spawn_single_player_hud(
@@ -678,20 +679,6 @@ fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -
 // ============================================================================
 
 /// 更新血条或蓝条
-fn update_bar(
-    sprite: &mut Sprite,
-    transform: &mut Transform,
-    value: f32,
-    max_value: f32,
-    base_x: f32,
-    bar_width: f32,
-) {
-    let width = bar_width * (value / max_value);
-    sprite.custom_size = Some(Vec2::new(width, HUD_BAR_SIZE.y));
-    transform.translation.x = base_x - bar_width / 2.0 + width / 2.0;
-}
-
-/// 更新单个玩家的文本
 /// 优化：使用 HudStatType 方法统一处理，消除重复代码
 fn update_single_player_text(
     stats: &PlayerStats,
@@ -747,22 +734,24 @@ fn update_single_player_hud(
     {
         if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
             if is_health_foreground.is_some() {
-                update_bar(
+                common::update_bar(
                     &mut sprite,
                     &mut transform,
                     stats.life_points as f32,
                     HUD_MAX_LIFE_POINTS,
                     x_pos,
                     HUD_BAR_SIZE.x,
+                    HUD_BAR_SIZE.y,
                 );
             } else if is_blue_foreground.is_some() {
-                update_bar(
+                common::update_bar(
                     &mut sprite,
                     &mut transform,
                     stats.energy_points as f32,
                     HUD_MAX_LIFE_POINTS,
                     x_pos,
                     HUD_BAR_SIZE.x,
+                    HUD_BAR_SIZE.y,
                 );
             }
         }
@@ -955,7 +944,7 @@ fn spawn_top_hud(
     stage_level: &Res<StageLevel>,
     language: Language,
 ) {
-    let font = font_resources.get_font(language);
+    let font = common::get_font(&font_resources, language);
     // 其他游戏信息 UI 元素配置
     let commander_text_x = WINDOW_LEFT_X + 435.0; // 往左平移30像素
 
@@ -1094,13 +1083,14 @@ pub fn update_commander_health_bar(
     >,
 ) {
     for (mut sprite, original_pos, mut transform) in &mut health_bars {
-        update_bar(
+        common::update_bar(
             &mut sprite,
             &mut transform,
             commander_life.life_points as f32,
             3.0,
             original_pos.0,
             COMMANDER_BAR_SIZE.x,
+            COMMANDER_BAR_SIZE.y,
         );
     }
 }
