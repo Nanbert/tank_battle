@@ -91,6 +91,75 @@ pub enum HudStatType {
     Score,
 }
 
+/// HUD 属性值的统一表示
+enum StatValue {
+    /// 百分比值（速度、射速、护盾）
+    Percent(usize),
+    /// 计数值（炮弹数、分数）
+    Count(usize),
+    /// 布尔值（道具状态）
+    Bool(bool),
+}
+
+impl HudStatType {
+    /// 获取属性的标签文本
+    fn get_label(self, language: Language) -> &'static str {
+        match self {
+            HudStatType::Speed => HUD_STAT_LABELS.speed.get(language),
+            HudStatType::FireSpeed => HUD_STAT_LABELS.fire_speed.get(language),
+            HudStatType::Protection => HUD_STAT_LABELS.protection.get(language),
+            HudStatType::Shells => HUD_STAT_LABELS.shells.get(language),
+            HudStatType::FireShell => HUD_STAT_LABELS.fire_shell.get(language),
+            HudStatType::Penetrate => HUD_STAT_LABELS.penetrate.get(language),
+            HudStatType::TrackChain => HUD_STAT_LABELS.track_chain.get(language),
+            HudStatType::AirCushion => HUD_STAT_LABELS.air_cushion.get(language),
+            HudStatType::Score => HUD_STAT_LABELS.score.get(language),
+        }
+    }
+
+    /// 获取属性的值（从 PlayerStats 中）
+    fn get_value(self, stats: &PlayerStats) -> StatValue {
+        match self {
+            HudStatType::Speed => StatValue::Percent(stats.speed),
+            HudStatType::FireSpeed => StatValue::Percent(stats.fire_speed),
+            HudStatType::Protection => StatValue::Percent(stats.protection),
+            HudStatType::Shells => StatValue::Count(stats.shells),
+            HudStatType::FireShell => StatValue::Bool(stats.fire_shell),
+            HudStatType::Penetrate => StatValue::Bool(stats.penetrate),
+            HudStatType::TrackChain => StatValue::Bool(stats.track_chain),
+            HudStatType::AirCushion => StatValue::Bool(stats.air_cushion),
+            HudStatType::Score => StatValue::Count(stats.score),
+        }
+    }
+
+    /// 检查是否达到最大值
+    fn is_max(self, stats: &PlayerStats) -> bool {
+        match self {
+            HudStatType::Speed => stats.speed >= HUD_MAX_PERCENT,
+            HudStatType::FireSpeed => stats.fire_speed >= HUD_MAX_PERCENT,
+            HudStatType::Protection => stats.protection >= HUD_MAX_PERCENT,
+            _ => false,
+        }
+    }
+}
+
+impl StatValue {
+    /// 格式化属性值为字符串
+    fn format(self, is_max: bool, label_on: &'static str, label_off: &'static str) -> String {
+        match self {
+            StatValue::Percent(v) => {
+                if is_max {
+                    String::from("MAX")
+                } else {
+                    format!("{}%", v)
+                }
+            }
+            StatValue::Count(v) => format!("{}", v),
+            StatValue::Bool(v) => if v { label_on } else { label_off }.to_string(),
+        }
+    }
+}
+
 /// 蓝条标记
 #[derive(Component, Clone)]
 pub struct BlueBar;
@@ -608,16 +677,6 @@ fn get_player_stats_for_spawn(player_info: &PlayerInfo, player_type: TankType) -
 // HUD Helper Functions
 // ============================================================================
 
-/// 格式化百分比属性值
-/// 优化: "MAX" 使用 &'static str，避免不必要的 String 分配
-fn format_percent_value(value: usize, is_max: bool) -> String {
-    if is_max {
-        String::from("MAX") // 仍然是 String，但明确表达意图
-    } else {
-        format!("{}%", value)
-    }
-}
-
 /// 更新血条或蓝条
 fn update_bar(
     sprite: &mut Sprite,
@@ -633,83 +692,20 @@ fn update_bar(
 }
 
 /// 更新单个玩家的文本
-/// 优化：使用组件标记直接更新属性值，避免字符串匹配
-/// 优化：缓存常用的标签文本，减少重复调用
+/// 优化：使用 HudStatType 方法统一处理，消除重复代码
 fn update_single_player_text(
     stats: &PlayerStats,
     stat_type: HudStatType,
     language: Language,
 ) -> String {
-    // 缓存常用的标签，避免重复调用 .get(language)
-let label_on = HUD_TEXT_LABELS.on_off.get(language);
+    let prefix = stat_type.get_label(language);
+    let value = stat_type.get_value(stats);
+    let is_max = stat_type.is_max(stats);
+    let label_on = HUD_TEXT_LABELS.on_off.get(language);
     let label_off = HUD_TEXT_LABELS.off_label.get(language);
 
-    match stat_type {
-        HudStatType::Speed => {
-            let prefix = HUD_STAT_LABELS.speed.get(language);
-            format!(
-                "{}{}",
-                prefix,
-                format_percent_value(stats.speed, stats.speed >= HUD_MAX_PERCENT)
-            )
-        }
-        HudStatType::FireSpeed => {
-            let prefix = HUD_STAT_LABELS.fire_speed.get(language);
-            format!(
-                "{}{}",
-                prefix,
-                format_percent_value(stats.fire_speed, stats.fire_speed >= HUD_MAX_PERCENT)
-            )
-        }
-        HudStatType::Protection => {
-            let prefix = HUD_STAT_LABELS.protection.get(language);
-            format!(
-                "{}{}",
-                prefix,
-                format_percent_value(stats.protection, stats.protection >= HUD_MAX_PERCENT)
-            )
-        }
-        HudStatType::Shells => {
-            let prefix = HUD_STAT_LABELS.shells.get(language);
-            format!("{} {}", prefix, stats.shells)
-        }
-        HudStatType::FireShell => {
-            let prefix = HUD_STAT_LABELS.fire_shell.get(language);
-            let on_off = if stats.fire_shell {
-                label_on
-            } else {
-                label_off
-            };
-            format!("{}: {}", prefix, on_off)
-        }
-        HudStatType::Penetrate => {
-            let prefix = HUD_STAT_LABELS.penetrate.get(language);
-            let on_off = if stats.penetrate { label_on } else { label_off };
-            format!("{}: {}", prefix, on_off)
-        }
-        HudStatType::TrackChain => {
-            let prefix = HUD_STAT_LABELS.track_chain.get(language);
-            let on_off = if stats.track_chain {
-                label_on
-            } else {
-                label_off
-            };
-            format!("{}: {}", prefix, on_off)
-        }
-        HudStatType::AirCushion => {
-            let prefix = HUD_STAT_LABELS.air_cushion.get(language);
-            let on_off = if stats.air_cushion {
-                label_on
-            } else {
-                label_off
-            };
-            format!("{}: {}", prefix, on_off)
-        }
-        HudStatType::Score => {
-            let prefix = HUD_STAT_LABELS.score.get(language);
-            format!("{} {}", prefix, stats.score)
-        }
-    }
+    let formatted_value = value.format(is_max, label_on, label_off);
+    format!("{}{}", prefix, formatted_value)
 }
 
 // ============================================================================
