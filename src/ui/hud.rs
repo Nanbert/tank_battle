@@ -589,15 +589,14 @@ fn spawn_bar<T: Component + Clone>(
     width: f32,
     z: f32,
 ) {
-    commands.spawn((
+    common::spawn_bar_colored(
+        commands,
+        color,
+        Vec3::new(x, y, z),
+        Vec2::new(width, HUD_BAR_SIZE.y),
+        z,
         marker,
-        Sprite {
-            color,
-            custom_size: Some(Vec2::new(width, HUD_BAR_SIZE.y)),
-            ..default()
-        },
-        Transform::from_xyz(x, y, z),
-    ));
+    );
 }
 
 /// 生成效果开关文本

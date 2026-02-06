@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
+use super::common;
 
 // ==================== 本地化文本常量 ====================
 
@@ -249,12 +250,7 @@ pub fn spawn_start_screen(
     }
 
     // 根据语言选择字体
-    let use_cn_font = matches!(*language, Language::Chinese);
-    let font = if use_cn_font {
-        font_resources.cn.clone()
-    } else {
-        font_resources.en.clone()
-    };
+    let font = common::get_font_by_language(&font_resources.cn, &font_resources.en, *language);
 
     // 添加动态背景
     spawn_start_screen_background(&mut commands, &texture_resources, &atlas_layouts);
@@ -274,16 +270,7 @@ pub fn spawn_about_screen(
     language: Res<Language>,
 ) {
     // 加载自定义字体
-    let cn_font = font_resources.cn.clone();
-    let en_font = font_resources.en.clone();
-
-    let use_cn_font = matches!(*language, Language::Chinese);
-
-    let font = if use_cn_font {
-        cn_font.clone()
-    } else {
-        en_font.clone()
-    };
+    let font = common::get_font_by_language(&font_resources.cn, &font_resources.en, *language);
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -423,16 +410,7 @@ pub fn spawn_credits_screen(
     language: Res<Language>,
 ) {
     // 加载自定义字体
-    let cn_font = font_resources.cn.clone();
-    let en_font = font_resources.en.clone();
-
-    let use_cn_font = matches!(*language, Language::Chinese);
-
-    let font = if use_cn_font {
-        cn_font
-    } else {
-        en_font
-    };
+    let font = common::get_font_by_language(&font_resources.cn, &font_resources.en, *language);
 
     // 添加白色背景覆盖
     commands.spawn((
