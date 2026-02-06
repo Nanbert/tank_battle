@@ -135,9 +135,6 @@ pub const WALL_COLLIDER_SIZE: Vec2 = Vec2::new(46.0, 46.0); // 砖块/钢铁
 pub const WALL_TEXTURE_SIZE: Vec2 = Vec2::new(50.0, 50.0); // 砖块/钢铁
 pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
 
-// ==================== UI 位置常量（Vec3） ====================
-// ==================== UI 位置常量（Vec3） ====================
-
 // 菜单 Y 坐标数组
 
 
@@ -181,11 +178,16 @@ pub const HUD_Y_POSITIONS: [f32; 15] = [
 
 
 
+pub const DIRECTION_UP: Vec2 = Vec2::new(0.0, 1.0);
+pub const DIRECTION_DOWN: Vec2 = Vec2::new(0.0, -1.0);
+pub const DIRECTION_LEFT: Vec2 = Vec2::new(-1.0, 0.0);
+pub const DIRECTION_RIGHT: Vec2 = Vec2::new(1.0, 0.0);
+
 pub const DIRECTIONS: [Vec2; 4] = [
-    Vec2::new(0.0, 1.0),  // 上
-    Vec2::new(0.0, -1.0), // 下
-    Vec2::new(-1.0, 0.0), // 左
-    Vec2::new(1.0, 0.0),  // 右
+    DIRECTION_UP,
+    DIRECTION_DOWN,
+    DIRECTION_LEFT,
+    DIRECTION_RIGHT,
 ];
 
 // 冲刺相关常量
@@ -532,7 +534,6 @@ pub struct Explosion;
 #[derive(Component)]
 pub struct Laser;
 
-/// 敌方坦克碰撞缓存
 /// 用于事件驱动模式，缓存碰撞事件和法线信息
 #[derive(Resource, Default)]
 pub struct EnemyCollisionCache {
@@ -767,12 +768,6 @@ pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（�
 
 // 玩家坦克
 pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移
-
-
-// 特效纹理瓦片尺寸
-
-
-
 
 // ==================== 速度和角度常量 ====================
 pub const ANGLE_DIFF_THRESHOLD: f32 = 0.01; // 角度差阈值

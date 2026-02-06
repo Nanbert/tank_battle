@@ -302,22 +302,22 @@ fn check_boundary_collision(
 
     // 左边界：朝左且距离过近
     if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER && current_direction.x < -0.5 {
-        return Some(DIRECTIONS[1]); // 返回右方向
+        return Some(crate::constants::DIRECTION_RIGHT); // 返回右方向
     }
 
     // 右边界：朝右且距离过近
     if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER && current_direction.x > 0.5 {
-        return Some(DIRECTIONS[2]); // 返回左方向
+        return Some(crate::constants::DIRECTION_LEFT); // 返回左方向
     }
 
     // 上边界：朝上且距离过近
     if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER && current_direction.y > 0.5 {
-        return Some(DIRECTIONS[0]); // 返回下方向
+        return Some(crate::constants::DIRECTION_DOWN); // 返回下方向
     }
 
     // 下边界：朝下且距离过近
     if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER && current_direction.y < -0.5 {
-        return Some(DIRECTIONS[3]); // 返回上方向
+        return Some(crate::constants::DIRECTION_UP); // 返回上方向
     }
 
     None
@@ -342,15 +342,16 @@ fn get_new_direction(collision_normal: Vec2) -> Vec2 {
     };
 
     // 从三个可用方向中随机选择一个
-    // 可用索引：0,1,2,3 中除了 blocked_index 的三个
-    let available: [usize; 3] = [0, 1, 2, 3]
+    let available: [Vec2; 3] = crate::constants::DIRECTIONS
         .into_iter()
-        .filter(|&i| i != blocked_index)
+        .enumerate()
+        .filter(|(i, _)| *i != blocked_index)
+        .map(|(_, dir)| dir)
         .collect::<Vec<_>>()
         .try_into()
-        .unwrap_or([0, 1, 2]);
+        .unwrap_or([crate::constants::DIRECTION_UP, crate::constants::DIRECTION_DOWN, crate::constants::DIRECTION_LEFT]);
 
-    DIRECTIONS[available[rng.random_range(0..3)]]
+    available[rng.random_range(0..3)]
 }
 
 /// 处理随机方向改变
@@ -360,8 +361,8 @@ fn handle_random_direction_change(
 ) {
     let mut rng = rand::rng();
     if rng.random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
-        let random_index = rng.random_range(0..DIRECTIONS.len());
-        enemy_tank.direction = DIRECTIONS[random_index];
+        let random_index = rng.random_range(0..crate::constants::DIRECTIONS.len());
+        enemy_tank.direction = crate::constants::DIRECTIONS[random_index];
     }
     direction_timer.reset();
 }
