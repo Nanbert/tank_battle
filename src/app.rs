@@ -45,11 +45,11 @@ fn register_start_screen_systems(app: &mut App) {
             player::despawn_players,
             enemy::despawn_enemy_tank,
             map::despawn_map,
-            overlay_ui::despawn_powerups,
+            ui::overlay::despawn_powerups,
             |mut stage_level: ResMut<crate::resources::StageLevel>| {
                 stage_level.0 = 1;
             },
-            hud_ui::despawn_hud,
+            ui::hud::despawn_hud,
             game_state::reset_fading_out,
             |mut clear_color: ResMut<ClearColor>| {
                 clear_color.0 = crate::constants::COLOR_GRAY;
@@ -66,18 +66,18 @@ fn register_start_screen_systems(app: &mut App) {
                 crate::utils::cleanup_entities(&mut commands, entities.iter());
             },
             // 生成开始菜单
-            menus_ui::spawn_start_screen
+            ui::menus::spawn_start_screen
                 .run_if(|query: Query<(), With<crate::constants::StartScreenUI>>| query.is_empty()),
             // 语言变化时重新生成菜单
             (
-                overlay_ui::cleanup_start_screen_ui,
-                menus_ui::spawn_start_screen,
+                ui::overlay::cleanup_start_screen_ui,
+                ui::menus::spawn_start_screen,
             )
                 .chain()
                 .run_if(|language: Res<crate::resources::Language>| language.is_changed()),
             // 处理菜单输入
-            menus_ui::handle_start_screen_input,
-            menus_ui::update_option_colors,
+            ui::menus::handle_start_screen_input,
+            ui::menus::update_option_colors,
             game_state::update_menu_blink,
             effects::animate_effects,
         )
@@ -90,42 +90,42 @@ fn register_about_credits_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::About),
         (
-            overlay_ui::cleanup_start_screen_ui,
-            menus_ui::spawn_about_screen,
+            ui::overlay::cleanup_start_screen_ui,
+            ui::menus::spawn_about_screen,
         )
             .chain(),
     )
     .add_systems(
         OnExit(GameState::About),
         (
-            overlay_ui::despawn_about_screen,
-            menus_ui::spawn_start_screen,
+            ui::overlay::despawn_about_screen,
+            ui::menus::spawn_start_screen,
         )
             .chain(),
     )
     .add_systems(
         Update,
-        menus_ui::handle_about_input.run_if(in_state(GameState::About)),
+        ui::menus::handle_about_input.run_if(in_state(GameState::About)),
     )
     .add_systems(
         OnEnter(GameState::Credits),
         (
-            overlay_ui::cleanup_start_screen_ui,
-            menus_ui::spawn_credits_screen,
+            ui::overlay::cleanup_start_screen_ui,
+            ui::menus::spawn_credits_screen,
         )
             .chain(),
     )
     .add_systems(
         OnExit(GameState::Credits),
         (
-            overlay_ui::despawn_credits_screen,
-            menus_ui::spawn_start_screen,
+            ui::overlay::despawn_credits_screen,
+            ui::menus::spawn_start_screen,
         )
             .chain(),
     )
     .add_systems(
         Update,
-        menus_ui::handle_credits_input.run_if(in_state(GameState::Credits)),
+        ui::menus::handle_credits_input.run_if(in_state(GameState::Credits)),
     );
 }
 
@@ -137,14 +137,14 @@ fn register_stage_intro_systems(app: &mut App) {
             player::spawn_players
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             map::spawn_map,
-            overlay_ui::despawn_powerups,
+            ui::overlay::despawn_powerups,
             powerup::spawn_test_powerup_stage1
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             powerup::spawn_power_ups_random
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
-            hud_ui::spawn_hud
+            ui::hud::spawn_hud
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
-            hud_ui::update_stage_text
+            ui::hud::update_stage_text
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
             player::reset_player_positions,
             enemy::reset_enemy_spawn_state,
@@ -156,7 +156,7 @@ fn register_stage_intro_systems(app: &mut App) {
         (
             commander::spawn_commander
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
-            overlay_ui::spawn_stage_intro,
+            ui::overlay::spawn_stage_intro,
         )
             .chain(),
     )
@@ -165,52 +165,52 @@ fn register_stage_intro_systems(app: &mut App) {
         (
             game_state::cleanup_effects_and_bullets,
             game_state::cleanup_trackers_and_timers,
-            overlay_ui::handle_stage_intro_timer,
+            ui::overlay::handle_stage_intro_timer,
         )
             .run_if(in_state(GameState::StageIntro)),
     )
     .add_systems(
         OnExit(GameState::StageIntro),
-        overlay_ui::despawn_stage_intro,
+        ui::overlay::despawn_stage_intro,
     );
 }
 
 /// 注册 Paused 状态的系统
 fn register_paused_systems(app: &mut App) {
-    app.add_systems(OnEnter(GameState::Paused), overlay_ui::spawn_pause_ui)
+    app.add_systems(OnEnter(GameState::Paused), ui::overlay::spawn_pause_ui)
         .add_systems(
             OnExit(GameState::Paused),
             (
-                overlay_ui::despawn_pause_ui,
-                overlay_ui::despawn_insufficient_energy_warnings,
+                ui::overlay::despawn_pause_ui,
+                ui::overlay::despawn_insufficient_energy_warnings,
             )
                 .chain(),
         )
         .add_systems(
             Update,
-            overlay_ui::handle_pause_input.run_if(in_state(GameState::Paused)),
+            ui::overlay::handle_pause_input.run_if(in_state(GameState::Paused)),
         );
 }
 
 /// 注册 GameOver 状态的系统
 fn register_game_over_systems(app: &mut App) {
-    app.add_systems(OnEnter(GameState::GameOver), overlay_ui::spawn_game_over_ui)
+    app.add_systems(OnEnter(GameState::GameOver), ui::overlay::spawn_game_over_ui)
         .add_systems(
             OnExit(GameState::GameOver),
             (
-                overlay_ui::despawn_game_over_ui,
+                ui::overlay::despawn_game_over_ui,
                 enemy::despawn_enemy_tank,
                 |mut stage_level: ResMut<crate::resources::StageLevel>| {
                     stage_level.0 = 1;
                 },
-                hud_ui::despawn_hud,
+                ui::hud::despawn_hud,
             ),
         )
         .add_systems(
             Update,
             (
-                overlay_ui::handle_game_over_input,
-                menus_ui::update_option_colors,
+                ui::overlay::handle_game_over_input,
+                ui::menus::update_option_colors,
             )
                 .chain()
                 .run_if(in_state(GameState::GameOver)),
@@ -221,7 +221,7 @@ fn register_game_over_systems(app: &mut App) {
 fn register_fading_out_systems(app: &mut App) {
     app.add_systems(
         Update,
-        (game_state::update_menu_blink, overlay_ui::fade_out_screen)
+        (game_state::update_menu_blink, ui::overlay::fade_out_screen)
             .run_if(in_state(GameState::FadingOut)),
     );
 }
@@ -328,14 +328,14 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            hud_ui::handle_player_avatar_death,
-            hud_ui::handle_hud_stat_changed,
-            hud_ui::animate_hud_text,
-            hud_ui::update_enemy_count_text
+            ui::hud::handle_player_avatar_death,
+            ui::hud::handle_hud_stat_changed,
+            ui::hud::animate_hud_text,
+            ui::hud::update_enemy_count_text
                 .run_if(resource_changed::<crate::resources::EnemySpawnState>),
-            hud_ui::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),
-            hud_ui::update_player_hud.run_if(resource_changed::<PlayerInfo>),
-            hud_ui::handle_commander_death,
+            ui::hud::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),
+            ui::hud::update_player_hud.run_if(resource_changed::<PlayerInfo>),
+            ui::hud::handle_commander_death,
         )
             .in_set(GameSystemSet::HudSystems),
     );
@@ -376,8 +376,8 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            overlay_ui::handle_game_input,
-            overlay_ui::update_insufficient_energy_warnings,
+            ui::overlay::handle_game_input,
+            ui::overlay::update_insufficient_energy_warnings,
         )
             .run_if(in_state(GameState::Playing)),
     );
@@ -390,13 +390,11 @@ use crate::dash;
 use crate::effects;
 use crate::enemy;
 use crate::game_state;
-use crate::hud_ui;
 use crate::laser;
 use crate::map;
-use crate::menus_ui;
-use crate::overlay_ui;
 use crate::player;
 use crate::powerup;
+use crate::ui;
 
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {

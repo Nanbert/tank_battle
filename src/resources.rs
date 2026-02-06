@@ -455,7 +455,7 @@ impl InsufficientEnergyTracker {
                 TimerMode::Once,
             ));
 
-            crate::overlay_ui::spawn_insufficient_energy_warning(
+            crate::ui::overlay::spawn_insufficient_energy_warning(
                 commands.reborrow(),
                 font_cn,
                 font_en,

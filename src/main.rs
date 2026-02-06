@@ -10,17 +10,15 @@ mod dash;
 mod effects;
 mod enemy;
 mod game_state;
-mod hud_ui;
 mod laser;
 mod levels;
 mod map;
-mod menus_ui;
-mod overlay_ui;
 mod player;
 mod powerup;
 mod resources;
 mod atlas;
 mod utils;
+mod ui;
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
