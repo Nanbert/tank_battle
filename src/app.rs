@@ -541,19 +541,13 @@ pub fn configure_game_resources(app: &mut App) {
         })
         .insert_resource(PlayerInfo::default())
         .insert_resource(EnemySpawnState::default())
-        .insert_resource(RecallTimers::default())
-        .insert_resource(DashTimers::default())
-        .insert_resource(DashDamageTracker::default())
-        .insert_resource(BarrierDamageTracker::default())
-        .insert_resource(InsufficientEnergyTracker::default())
         .insert_resource(FadingOut { alpha: 1.0 })
         .insert_resource(CurrentMenuSelection { selected_index: 0 })
         .insert_resource(AnimationIndices { first: 0, last: 14 })
         .insert_resource(CurrentAnimationFrame(0))
-        .insert_resource(MenuBlinkTimer(Timer::default()))
         .init_resource::<EnemyCollisionCache>()
-        .init_resource::<BlueBarRegenTimer>()
-        .init_resource::<StageIntroTimer>()
+        .init_resource::<GameTrackers>()
+        .init_resource::<GameTimers>()
         .init_resource::<crate::levels::LevelAssets>();
 }
 

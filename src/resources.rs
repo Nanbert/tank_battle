@@ -120,10 +120,10 @@ impl Default for StageLevel {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct MenuBlinkTimer(pub Timer);
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct StageIntroTimer {
     pub fade_in: Timer,
     pub stay: Timer,
@@ -315,6 +315,53 @@ impl Default for BlueBarRegenTimer {
     fn default() -> Self {
         Self {
             timer: Timer::from_seconds(BLUE_BAR_REGEN_INTERVAL, TimerMode::Repeating),
+        }
+    }
+}
+
+// 统一的游戏追踪器资源
+// 合并所有追踪器，减少资源数量，便于统一管理
+#[derive(Resource, Default)]
+pub struct GameTrackers {
+    // 子弹追踪
+    pub bullets: BulletTracker,
+
+    // 技能相关追踪
+    pub recall_timers: RecallTimers,
+    pub dash_timers: DashTimers,
+    pub dash_damage_tracker: DashDamageTracker,
+    pub barrier_damage_tracker: BarrierDamageTracker,
+
+    // UI 追踪
+    pub insufficient_energy_tracker: InsufficientEnergyTracker,
+}
+
+// 统一的游戏计时器资源
+// 合并所有计时器，减少资源数量，便于统一管理
+#[derive(Resource, Default)]
+pub struct GameTimers {
+    // 游戏机制计时器
+    pub blue_bar_regen: BlueBarRegenTimer,
+
+    // UI 计时器
+    pub menu_blink: MenuBlinkTimer,
+
+    // 动画计时器
+    pub stage_intro: StageIntroTimer,
+}
+
+impl Default for MenuBlinkTimer {
+    fn default() -> Self {
+        Self(Timer::default())
+    }
+}
+
+impl Default for StageIntroTimer {
+    fn default() -> Self {
+        Self {
+            fade_in: Timer::from_seconds(1.0, TimerMode::Once),
+            stay: Timer::from_seconds(1.0, TimerMode::Once),
+            fade_out: Timer::from_seconds(1.0, TimerMode::Once),
         }
     }
 }

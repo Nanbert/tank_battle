@@ -79,7 +79,7 @@ pub fn update_menu_blink(
     time: Res<Time>,
     fading_out: Res<FadingOut>,
     menu_selection: Res<CurrentMenuSelection>,
-    mut blink_timer: ResMut<MenuBlinkTimer>,
+    game_timers: ResMut<GameTimers>,
     mut text_query: Query<(&MenuOption, &mut TextColor)>,
     game_state: Res<State<GameState>>,
 ) {
@@ -89,12 +89,12 @@ pub fn update_menu_blink(
                 &time,
                 &fading_out,
                 &menu_selection,
-                &mut blink_timer,
+                game_timers,
                 &mut text_query,
             );
         }
         GameState::StartScreen => {
-            update_start_screen_blink(&time, &menu_selection, &mut blink_timer, &mut text_query);
+            update_start_screen_blink(&time, &menu_selection, game_timers, &mut text_query);
         }
         _ => {}
     }
@@ -105,24 +105,24 @@ fn update_fading_out_blink(
     time: &Res<Time>,
     fading_out: &Res<FadingOut>,
     menu_selection: &Res<CurrentMenuSelection>,
-    blink_timer: &mut ResMut<MenuBlinkTimer>,
+    mut game_timers: ResMut<GameTimers>,
     text_query: &mut Query<(&MenuOption, &mut TextColor)>,
 ) {
     const FADE_OUT_BLINK_PERIOD: f32 = MENU_BLINK_PERIOD;
 
     // 初始化计时器
-    if blink_timer.0.duration().is_zero() {
-        blink_timer.0 = Timer::from_seconds(FADE_OUT_BLINK_PERIOD, TimerMode::Repeating);
+    if game_timers.menu_blink.0.duration().is_zero() {
+        game_timers.menu_blink.0 = Timer::from_seconds(FADE_OUT_BLINK_PERIOD, TimerMode::Repeating);
     }
 
-    blink_timer.0.tick(time.delta());
+    game_timers.menu_blink.0.tick(time.delta());
 
     for (option, mut text_color) in text_query.iter_mut() {
         if option.index != menu_selection.selected_index {
             continue;
         }
 
-        let elapsed = blink_timer.0.elapsed_secs();
+        let elapsed = game_timers.menu_blink.0.elapsed_secs();
         let cycle = elapsed % FADE_OUT_BLINK_PERIOD;
         let half_period = FADE_OUT_BLINK_PERIOD / 2.0;
         let blink_alpha = (cycle / half_period * std::f32::consts::PI).sin().max(0.0);
@@ -136,17 +136,17 @@ fn update_fading_out_blink(
 fn update_start_screen_blink(
     time: &Res<Time>,
     menu_selection: &Res<CurrentMenuSelection>,
-    blink_timer: &mut ResMut<MenuBlinkTimer>,
+    mut game_timers: ResMut<GameTimers>,
     text_query: &mut Query<(&MenuOption, &mut TextColor)>,
 ) {
     // 初始化计时器
-    if blink_timer.0.duration().is_zero() {
-        blink_timer.0 = Timer::from_seconds(MENU_BLINK_PERIOD, TimerMode::Repeating);
+    if game_timers.menu_blink.0.duration().is_zero() {
+        game_timers.menu_blink.0 = Timer::from_seconds(MENU_BLINK_PERIOD, TimerMode::Repeating);
     }
 
-    blink_timer.0.tick(time.delta());
+    game_timers.menu_blink.0.tick(time.delta());
 
-    if !blink_timer.0.just_finished() {
+    if !game_timers.menu_blink.0.just_finished() {
         return;
     }
 

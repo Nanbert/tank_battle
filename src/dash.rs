@@ -12,8 +12,8 @@ use crate::utils;
 
 use crate::constants::*;
 use crate::resources::{
-    DashDamageTracker, DashTimer, DashTimers, GameAtlasLayoutResources, GameAudioResources, GameTextureResources,
-    InsufficientEnergyTracker, PlayerInfo, PlayerStatChanged, StatType,
+    DashTimer, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, GameTrackers,
+    PlayerInfo, PlayerStatChanged, StatType,
 };
 
 /// 处理冲刺输入
@@ -21,19 +21,20 @@ pub fn handle_dash_input(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
-    mut dash_timers: ResMut<DashTimers>,
+    mut game_trackers: ResMut<GameTrackers>,
     mut player_info: ResMut<PlayerInfo>,
-    mut energy_tracker: ResMut<InsufficientEnergyTracker>,
     font_resources: Res<crate::resources::GameTextureResources>,
     language: Res<crate::resources::Language>,
     time: Res<Time>,
 ) {
     // 更新所有能量不足冷却计时器
-    energy_tracker.tick_all(time.delta());
+    game_trackers
+        .insufficient_energy_tracker
+        .tick_all(time.delta());
 
     for (entity, transform, player_tank) in &query {
         // 检查是否正在冲刺
-        let is_dashing = dash_timers.timers.contains_key(&entity);
+        let is_dashing = game_trackers.dash_timers.timers.contains_key(&entity);
 
         // 根据玩家类型选择按键绑定
         let key_bindings = player_tank.tank_type.get_key_bindings();
@@ -60,19 +61,21 @@ pub fn handle_dash_input(
 
                 // 开始冲刺
                 let dash_timer = DashTimer::new(direction, DASH_DURATION);
-                dash_timers.timers.insert(entity, dash_timer);
+                game_trackers.dash_timers.timers.insert(entity, dash_timer);
 
                 // 添加冲刺标记
                 commands.entity(entity).insert(IsDashing);
             } else {
                 // 能量不足，显示提示
-                energy_tracker.try_show_warning(
-                    &mut commands,
-                    player_tank.tank_type,
-                    font_resources.cn.clone(),
-                    font_resources.en.clone(),
-                    *language,
-                );
+                game_trackers
+                    .insufficient_energy_tracker
+                    .try_show_warning(
+                        &mut commands,
+                        player_tank.tank_type,
+                        font_resources.cn.clone(),
+                        font_resources.en.clone(),
+                        *language,
+                    );
             }
         }
     }
@@ -91,12 +94,11 @@ pub fn update_dash_movement(
         ),
         With<PlayerTank>,
     >,
-    mut dash_timers: ResMut<DashTimers>,
-    mut dash_damage_tracker: ResMut<DashDamageTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
 ) {
     for (entity, mut character_controller, mut transform, is_dashing) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
-            && let Some(dash_timer) = dash_timers.timers.get_mut(&entity)
+            && let Some(dash_timer) = game_trackers.dash_timers.timers.get_mut(&entity)
         {
             // 更新计时器
             dash_timer.timer.tick(time.delta());
@@ -119,10 +121,10 @@ pub fn update_dash_movement(
             if dash_timer.timer.just_finished() {
                 // 移除冲刺标记和计时器
                 commands.entity(entity).remove::<IsDashing>();
-                dash_timers.timers.remove(&entity);
+                game_trackers.dash_timers.timers.remove(&entity);
 
                 // 清理扣血追踪
-                dash_damage_tracker.has_taken_damage.remove(&entity);
+                game_trackers.dash_damage_tracker.has_taken_damage.remove(&entity);
             }
         }
     }
@@ -140,7 +142,7 @@ pub fn handle_dash_collision(
     steels: Query<(Entity, &Transform), With<Steel>>,
     mut player_info: ResMut<PlayerInfo>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
-    mut dash_damage_tracker: ResMut<DashDamageTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     texture_resources: Res<GameTextureResources>,
     audio_resources: Res<GameAudioResources>,
 ) {
@@ -178,7 +180,7 @@ pub fn handle_dash_collision(
                 let (_, is_dead) = apply_dash_damage(
                     &mut player_info,
                     &collision_info.player_tank,
-                    &mut dash_damage_tracker,
+                    &mut game_trackers,
                     collision_info.player_entity,
                 );
 
@@ -254,7 +256,7 @@ pub fn handle_dash_collision(
                 let (_, is_dead) = apply_dash_damage(
                     &mut player_info,
                     &collision_info.player_tank,
-                    &mut dash_damage_tracker,
+                    &mut game_trackers,
                     collision_info.player_entity,
                 );
 
@@ -352,11 +354,12 @@ fn get_collision_target(
 fn apply_dash_damage(
     player_info: &mut ResMut<PlayerInfo>,
     player_tank: &PlayerTank,
-    dash_damage_tracker: &mut DashDamageTracker,
+    game_trackers: &mut GameTrackers,
     player_entity: Entity,
 ) -> (usize, bool) {
     // 检查本次 dash 是否已经扣过血
-    if dash_damage_tracker
+    if game_trackers
+        .dash_damage_tracker
         .has_taken_damage
         .contains(&player_entity)
     {
@@ -380,7 +383,7 @@ fn apply_dash_damage(
 
     // 标记本次 dash 已经扣过血
     if health_cost > 0 {
-        dash_damage_tracker.has_taken_damage.insert(player_entity);
+        game_trackers.dash_damage_tracker.has_taken_damage.insert(player_entity);
     }
 
     (health_cost, is_dead)

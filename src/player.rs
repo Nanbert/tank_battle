@@ -10,8 +10,8 @@ use bevy_rapier2d::prelude::*;
 use crate::constants::*;
 use crate::powerup;
 use crate::resources::{
-    BarrierDamageTracker, BlueBarRegenTimer, GameMode, GameTextureResources, PlayerInfo,
-    PlayerStatChanged, PlayerStats, RecallTimer, RecallTimers, StatType,
+    GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo,
+    PlayerStatChanged, PlayerStats, RecallTimer, StatType,
 };
 use crate::utils;
 
@@ -189,11 +189,11 @@ pub fn handle_recall_input(
     mut commands: Commands,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     query: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
-    mut recall_timers: ResMut<RecallTimers>,
+    mut game_trackers: ResMut<GameTrackers>,
 ) {
     for (entity, transform, player_tank) in &query {
         // 检查是否正在回城
-        let is_recalling = recall_timers.timers.contains_key(&entity);
+        let is_recalling = game_trackers.recall_timers.timers.contains_key(&entity);
 
         // 根据玩家类型选择按键绑定
         let key_bindings = player_tank.tank_type.get_key_bindings();
@@ -210,7 +210,7 @@ pub fn handle_recall_input(
 
             // 开始回城
             let recall_timer = RecallTimer::new(initial_position, RECALL_TIME);
-            recall_timers.timers.insert(entity, recall_timer);
+            game_trackers.recall_timers.timers.insert(entity, recall_timer);
 
             // 添加回城标记
             commands.entity(entity).insert(IsRecalling);
@@ -253,7 +253,7 @@ pub fn update_recall_timers(
         ),
         With<PlayerTank>,
     >,
-    mut recall_timers: ResMut<RecallTimers>,
+    mut game_trackers: ResMut<GameTrackers>,
     mut progress_bar_query: Query<(Entity, &mut Sprite, &RecallProgressBar)>,
 ) {
     for (entity, mut transform, player_tank, is_recalling, children) in &mut player_query {
@@ -262,7 +262,7 @@ pub fn update_recall_timers(
             continue;
         };
 
-        let Some(recall_timer) = recall_timers.timers.get_mut(&entity) else {
+        let Some(recall_timer) = game_trackers.recall_timers.timers.get_mut(&entity) else {
             continue;
         };
 
@@ -275,7 +275,7 @@ pub fn update_recall_timers(
                 &mut commands,
                 &mut progress_bar_query,
                 entity,
-                &mut recall_timers,
+                game_trackers.reborrow(),
             );
             continue;
         }
@@ -291,7 +291,7 @@ pub fn update_recall_timers(
                 &mut commands,
                 &mut progress_bar_query,
                 entity,
-                &mut recall_timers,
+                game_trackers.reborrow(),
                 &mut transform,
                 children,
                 start_position,
@@ -310,10 +310,10 @@ fn cancel_recall(
     commands: &mut Commands,
     progress_bar_query: &mut Query<(Entity, &mut Sprite, &RecallProgressBar)>,
     entity: Entity,
-    recall_timers: &mut ResMut<RecallTimers>,
+    mut game_trackers: bevy::ecs::change_detection::Mut<GameTrackers>,
 ) {
     commands.entity(entity).remove::<IsRecalling>();
-    recall_timers.timers.remove(&entity);
+    game_trackers.recall_timers.timers.remove(&entity);
 
     crate::utils::cleanup_progress_bar(commands, progress_bar_query, entity);
 }
@@ -339,7 +339,7 @@ fn complete_recall(
     commands: &mut Commands,
     progress_bar_query: &mut Query<(Entity, &mut Sprite, &RecallProgressBar)>,
     entity: Entity,
-    recall_timers: &mut ResMut<RecallTimers>,
+    mut game_trackers: bevy::ecs::change_detection::Mut<GameTrackers>,
     transform: &mut Transform,
     children: Option<&Children>,
     initial_position: Vec3,
@@ -354,7 +354,7 @@ fn complete_recall(
     transform.translation = initial_position;
 
     commands.entity(entity).remove::<IsRecalling>();
-    recall_timers.timers.remove(&entity);
+    game_trackers.recall_timers.timers.remove(&entity);
 
     crate::utils::cleanup_progress_bar(commands, progress_bar_query, entity);
 }
@@ -416,13 +416,13 @@ pub fn handle_barrier_collision(
     player_tanks: Query<(Entity, &Transform, &PlayerTank), With<PlayerTank>>,
     barriers: Query<(&Transform, Entity), With<Barrier>>,
     mut player_info: ResMut<PlayerInfo>,
-    mut barrier_damage_tracker: ResMut<BarrierDamageTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
 ) {
     const COLLISION_THRESHOLD: f32 = BARRIER_SIZE.x;
 
     // 更新所有冷却计时器
-    for timer in barrier_damage_tracker.cooldowns.values_mut() {
+    for timer in game_trackers.barrier_damage_tracker.cooldowns.values_mut() {
         let t: &mut Timer = timer;
         t.tick(time.delta());
     }
@@ -449,14 +449,15 @@ pub fn handle_barrier_collision(
             // 如果距离小于阈值，则认为碰撞
             if distance < COLLISION_THRESHOLD {
                 // 检查冷却是否结束
-                let can_take_damage = barrier_damage_tracker
+                let can_take_damage = game_trackers
+                    .barrier_damage_tracker
                     .cooldowns
                     .get(&player_entity)
                     .is_none_or(bevy::prelude::Timer::is_finished);
 
                 if can_take_damage {
                     // 设置屏障伤害冷却时间
-                    barrier_damage_tracker.cooldowns.insert(
+                    game_trackers.barrier_damage_tracker.cooldowns.insert(
                         player_entity,
                         Timer::from_seconds(BARRIER_DAMAGE_COOLDOWN, TimerMode::Once),
                     );
@@ -550,20 +551,20 @@ pub fn despawn_players(
 /// 恢复玩家能量点数
 pub fn recover_energy(
     time: Res<Time>,
-    mut regen_timer: ResMut<BlueBarRegenTimer>,
+    mut game_timers: ResMut<GameTimers>,
     mut player_info: ResMut<PlayerInfo>,
 ) {
     // 检查是否有玩家能量不满
     if player_info.needs_energy_regen() {
-        regen_timer.timer.tick(time.delta());
+        game_timers.blue_bar_regen.timer.tick(time.delta());
 
         // 当计时器触发时，恢复1点能量
-        if regen_timer.timer.just_finished() {
+        if game_timers.blue_bar_regen.timer.just_finished() {
             player_info.recover_all_energy();
         }
     } else {
         // 所有玩家能量都满时，重置计时器
-        regen_timer.timer.reset();
+        game_timers.blue_bar_regen.timer.reset();
     }
 }
 

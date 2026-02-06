@@ -106,7 +106,7 @@ pub fn fade_out_screen(
 /// 生成关卡介绍界面
 pub fn spawn_stage_intro(
     mut commands: Commands,
-    mut stage_intro_timer: ResMut<StageIntroTimer>,
+    mut game_timers: ResMut<GameTimers>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
     font_resources: Res<GameTextureResources>,
@@ -116,9 +116,9 @@ pub fn spawn_stage_intro(
     clear_color.0 = COLOR_WHITE;
 
     // 初始化计时器
-    stage_intro_timer.fade_in = Timer::from_seconds(STAGE_FADE_IN_DURATION, TimerMode::Once);
-    stage_intro_timer.stay = Timer::from_seconds(STAGE_FADE_HOLD_DURATION, TimerMode::Once);
-    stage_intro_timer.fade_out = Timer::from_seconds(STAGE_FADE_OUT_DURATION, TimerMode::Once);
+    game_timers.stage_intro.fade_in = Timer::from_seconds(STAGE_FADE_IN_DURATION, TimerMode::Once);
+    game_timers.stage_intro.stay = Timer::from_seconds(STAGE_FADE_HOLD_DURATION, TimerMode::Once);
+    game_timers.stage_intro.fade_out = Timer::from_seconds(STAGE_FADE_OUT_DURATION, TimerMode::Once);
 
     // 创建全屏白色背景方块，遮挡所有游戏元素
     commands.spawn((
@@ -190,15 +190,15 @@ pub fn spawn_stage_intro(
 /// 处理关卡介绍界面的计时器
 pub fn handle_stage_intro_timer(
     time: Res<Time>,
-    mut stage_intro_timer: ResMut<StageIntroTimer>,
+    mut game_timers: ResMut<GameTimers>,
     mut next_state: ResMut<NextState<GameState>>,
     mut text_query: Query<&mut TextColor, With<StageIntroUI>>,
 ) {
     // 淡入阶段
-    if !stage_intro_timer.fade_in.is_finished() {
-        stage_intro_timer.fade_in.tick(time.delta());
-        let progress = stage_intro_timer.fade_in.elapsed_secs()
-            / stage_intro_timer.fade_in.duration().as_secs_f32();
+    if !game_timers.stage_intro.fade_in.is_finished() {
+        game_timers.stage_intro.fade_in.tick(time.delta());
+        let progress = game_timers.stage_intro.fade_in.elapsed_secs()
+            / game_timers.stage_intro.fade_in.duration().as_secs_f32();
         let alpha = progress.min(1.0);
         for mut text_color in &mut text_query {
             // 获取当前颜色（不包含透明度）
@@ -208,14 +208,14 @@ pub fn handle_stage_intro_timer(
         }
     }
     // 停留阶段
-    else if !stage_intro_timer.stay.is_finished() {
-        stage_intro_timer.stay.tick(time.delta());
+    else if !game_timers.stage_intro.stay.is_finished() {
+        game_timers.stage_intro.stay.tick(time.delta());
     }
     // 淡出阶段
-    else if !stage_intro_timer.fade_out.is_finished() {
-        stage_intro_timer.fade_out.tick(time.delta());
-        let progress = stage_intro_timer.fade_out.elapsed_secs()
-            / stage_intro_timer.fade_out.duration().as_secs_f32();
+    else if !game_timers.stage_intro.fade_out.is_finished() {
+        game_timers.stage_intro.fade_out.tick(time.delta());
+        let progress = game_timers.stage_intro.fade_out.elapsed_secs()
+            / game_timers.stage_intro.fade_out.duration().as_secs_f32();
         let alpha = 1.0 - progress.min(1.0);
         for mut text_color in &mut text_query {
             // 获取当前颜色（不包含透明度）

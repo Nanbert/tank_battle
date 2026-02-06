@@ -11,7 +11,7 @@ use rand::Rng;
 use crate::constants::*;
 use crate::effects;
 use crate::resources::{
-    BulletTracker, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, GameTrackers, PlayerInfo,
     PlayerStatChanged, StatType,
 };
 use crate::utils;
@@ -210,11 +210,11 @@ pub fn enemy_shoot_system(
         ),
         With<EnemyTank>,
     >,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
 ) {
     for (entity, transform, enemy_tank, fire_config) in &mut query {
         // 检查是否可以射击
-        if !bullet_tracker.can_fire(entity, fire_config.max_bullets) {
+        if !game_trackers.bullets.can_fire(entity, fire_config.max_bullets) {
             continue;
         }
 
@@ -247,7 +247,7 @@ pub fn enemy_shoot_system(
             );
 
             // 记录子弹的所有者
-            bullet_tracker.add_bullet(bullet_entity, entity);
+            game_trackers.bullets.add_bullet(bullet_entity, entity);
         }
     }
 }
@@ -269,7 +269,7 @@ pub fn player_shoot_system(
         ),
         With<PlayerTank>,
     >,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     player_info: Res<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
     barrel_query: Query<(), With<Barrel>>,
@@ -300,7 +300,7 @@ pub fn player_shoot_system(
             .expect("Player should exist");
 
         // 检查是否可以射击（使用 player_stats.shells 作为最大子弹数）
-        if !bullet_tracker.can_fire(entity, player_stats.shells) {
+        if !game_trackers.bullets.can_fire(entity, player_stats.shells) {
             continue;
         }
 
@@ -329,7 +329,7 @@ pub fn player_shoot_system(
         );
 
         // 记录子弹的所有者
-        bullet_tracker.add_bullet(bullet_entity, entity);
+        game_trackers.bullets.add_bullet(bullet_entity, entity);
 
         // 播放玩家射击音效，音量 0.4
         utils::play_one_shot_sound(&mut commands, audio_resources.player_shot.clone(), 0.4);
@@ -354,17 +354,17 @@ pub fn player_shoot_system(
 /// 销毁子弹实体并清理所有者引用
 fn despawn_bullet(
     commands: &mut Commands,
-    bullet_tracker: &mut BulletTracker,
+    game_trackers: &mut GameTrackers,
     bullet_entity: Entity,
 ) {
-    bullet_tracker.remove_bullet(bullet_entity);
+    game_trackers.bullets.remove_bullet(bullet_entity);
     let () = commands.entity(bullet_entity).try_despawn();
 }
 
 /// 子弹边界检查系统
 pub fn bullet_bounds_check_system(
     mut commands: Commands,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     mut query: Query<(Entity, &Transform), With<Bullet>>,
 ) {
     for (entity, transform) in &mut query {
@@ -373,7 +373,7 @@ pub fn bullet_bounds_check_system(
 
         // 检查子弹是否超出游戏窗口边界
         if !(MAP_LEFT_X..=MAP_RIGHT_X).contains(&x) || !(MAP_BOTTOM_Y..=MAP_TOP_Y).contains(&y) {
-            despawn_bullet(&mut commands, &mut bullet_tracker, entity);
+            despawn_bullet(&mut commands, &mut game_trackers, entity);
         }
     }
 }
@@ -426,7 +426,7 @@ pub fn bullet_terrain_collision_system(
     steels: Query<(), With<Steel>>,
     despawned_entities: Query<(), With<DespawnMarker>>,
     player_info: Res<PlayerInfo>,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
@@ -469,7 +469,7 @@ pub fn bullet_terrain_collision_system(
                 volume: VOLUME_HALF,
             });
             let () = commands.entity(terrain_entity).try_despawn();
-            despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+            despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
             continue;
         }
 
@@ -499,7 +499,7 @@ pub fn bullet_terrain_collision_system(
                 }
             }
 
-            despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+            despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
         }
     }
 }
@@ -509,7 +509,7 @@ pub fn bullet_tank_collision_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     mut effect_events: MessageWriter<EffectEvent>,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     all_tanks: Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
@@ -557,7 +557,7 @@ pub fn bullet_tank_collision_system(
                     stat_type: StatType::Score,
                 });
             });
-            despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+            despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
             continue;
         }
 
@@ -643,7 +643,7 @@ pub fn bullet_tank_collision_system(
                 let () = commands.entity(tank_entity).try_despawn();
             }
 
-            despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+            despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
         }
     }
 }
@@ -703,7 +703,7 @@ pub fn bullet_commander_collision_system(
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
     mut commander_life: ResMut<crate::resources::CommanderLife>,
-    mut bullet_tracker: ResMut<BulletTracker>,
+    mut game_trackers: ResMut<GameTrackers>,
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
@@ -753,6 +753,6 @@ pub fn bullet_commander_collision_system(
             utils::play_one_shot_sound(&mut commands, audio_resources.commander_death.clone(), 1.0);
         }
 
-        despawn_bullet(&mut commands, &mut bullet_tracker, bullet_entity);
+        despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
     }
 }
