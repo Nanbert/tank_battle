@@ -140,7 +140,7 @@ pub fn animate_effects(
                 start_frame,
                 end_frame,
             } => {
-                // 在指定帧范围内循环播放（用于能量球）
+                // 在指定帧范围内循环播放（用于能量球激光阶段）
                 utils::advance_next_frame(
                     &mut timer,
                     &mut sprite,
@@ -149,6 +149,35 @@ pub fn animate_effects(
                     *start_frame,
                     *end_frame,
                 );
+            }
+            AnimationMode::OneShotThenLoop {
+                first,
+                last,
+                loop_start,
+                loop_end,
+            } => {
+                // 先播放一次完整动画，完成后再循环播放指定帧范围（用于能量球蓄力动画）
+                if current_frame.0 >= *last {
+                    // 已完成一次性播放，进入循环播放阶段
+                    utils::advance_next_frame(
+                        &mut timer,
+                        &mut sprite,
+                        &mut current_frame,
+                        time.delta(),
+                        *loop_start,
+                        *loop_end,
+                    );
+                } else {
+                    // 未完成一次性播放，继续播放 first-last
+                    utils::advance_next_frame(
+                        &mut timer,
+                        &mut sprite,
+                        &mut current_frame,
+                        time.delta(),
+                        *first,
+                        *last,
+                    );
+                }
             }
             AnimationMode::Conditional { tank_type } => {
                 // 只有条件满足时才播放动画（用于履带、玩家坦克纹理等）

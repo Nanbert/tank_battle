@@ -393,6 +393,17 @@ pub enum AnimationMode {
         /// 循环结束帧
         end_frame: usize,
     },
+    /// 先播放一次完整动画，完成后再循环播放指定帧范围（用于能量球蓄力动画）
+    OneShotThenLoop {
+        /// 一次性播放的起始帧
+        first: usize,
+        /// 一次性播放的结束帧
+        last: usize,
+        /// 循环播放的起始帧
+        loop_start: usize,
+        /// 循环播放的结束帧
+        loop_end: usize,
+    },
     /// 条件动画，只有条件满足时才播放（例如：履带动画只在移动时播放）
     Conditional {
         /// 玩家坦克类型（用于查询按键状态）

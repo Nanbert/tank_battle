@@ -341,9 +341,11 @@ fn start_charge(
             player_entity: entity,
         },
         crate::constants::EnergyBallPhase::Charging,
-        AnimationMode::LoopRange {
-            start_frame: 20,
-            end_frame: 64,
+        AnimationMode::OneShotThenLoop {
+            first: 0,
+            last: ENERGY_BALL_END_FRAME,
+            loop_start: 20,
+            loop_end: ENERGY_BALL_END_FRAME,
         },
         Sprite {
             image: resources.energy_ball_texture.clone(),
