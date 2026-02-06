@@ -12,6 +12,48 @@ use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
 
+// ==================== 本地化文本常量 ====================
+
+const PAUSED_TITLE: LocalizedText = LocalizedText {
+    cn: "已暂停",
+    en: "PAUSED",
+};
+
+const PAUSED_INSTRUCTION: LocalizedText = LocalizedText {
+    cn: "按 SPACE 继续 | B 返回菜单 | ESC 退出",
+    en: "Press SPACE to resume | B to menu | ESC to exit",
+};
+
+const GAME_OVER_TITLE: LocalizedText = LocalizedText {
+    cn: "游戏结束",
+    en: "GAME OVER",
+};
+
+const GAME_OVER_RESTART: LocalizedText = LocalizedText {
+    cn: "重新开始",
+    en: "RESTART",
+};
+
+const GAME_OVER_MENU: LocalizedText = LocalizedText {
+    cn: "返回菜单",
+    en: "MENU",
+};
+
+const GAME_OVER_EXIT: LocalizedText = LocalizedText {
+    cn: "退出",
+    en: "EXIT",
+};
+
+const GAME_OVER_INSTRUCTION: LocalizedText = LocalizedText {
+    cn: "W/S 选择 | SPACE 确认",
+    en: "W/S select | SPACE confirm",
+};
+
+const INSUFFICIENT_ENERGY_CN: &str = "能量不足！";
+const INSUFFICIENT_ENERGY_EN: &str = "Insufficient Energy!";
+
+// ==================== 辅助函数 ====================
+
 /// 更新 Sprite 的透明度
 pub fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
     let linear = sprite.color.to_linear();
@@ -213,14 +255,9 @@ pub fn spawn_pause_ui(
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
 
-    let (title_text, instruction_text) = match *language {
-        Language::Chinese => ("已暂停", "按 SPACE 继续 | B 返回菜单 | ESC 退出"),
-        Language::English => ("PAUSED", "Press SPACE to resume | B to menu | ESC to exit"),
-    };
-
     commands.spawn((
         PauseUI,
-        Text2d(title_text.to_string()),
+        Text2d(PAUSED_TITLE.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
@@ -232,7 +269,7 @@ pub fn spawn_pause_ui(
 
     commands.spawn((
         PauseUI,
-        Text2d(instruction_text.to_string()),
+        Text2d(PAUSED_INSTRUCTION.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
             font,
@@ -297,26 +334,9 @@ pub fn spawn_game_over_ui(
     // 停止所有坦克的移动
     crate::utils::stop_all_tanks_velocity(&mut player_velocity_query, &mut enemy_velocity_query);
 
-    let (title_text, option_restart, option_menu, option_exit, instruction_text) = match *language {
-        Language::Chinese => (
-            "游戏结束",
-            "重新开始",
-            "返回菜单",
-            "退出",
-            "W/S 选择 | SPACE 确认",
-        ),
-        Language::English => (
-            "GAME OVER",
-            "RESTART",
-            "BACK TO MENU",
-            "EXIT",
-            "W/S to select | SPACE to confirm",
-        ),
-    };
-
     commands.spawn((
         GameOverUI,
-        Text2d(title_text.to_string()),
+        Text2d(GAME_OVER_TITLE.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_GAME_OVER,
             font: font.clone(),
@@ -329,7 +349,7 @@ pub fn spawn_game_over_ui(
     // Restart 选项
     commands.spawn((
         GameOverUI,
-        Text2d(option_restart.to_string()),
+        Text2d(GAME_OVER_RESTART.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -343,7 +363,7 @@ pub fn spawn_game_over_ui(
     // Back to Menu 选项
     commands.spawn((
         GameOverUI,
-        Text2d(option_menu.to_string()),
+        Text2d(GAME_OVER_MENU.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -357,7 +377,7 @@ pub fn spawn_game_over_ui(
     // Exit 选项
     commands.spawn((
         GameOverUI,
-        Text2d(option_exit.to_string()),
+        Text2d(GAME_OVER_EXIT.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_OPTION,
             font: font.clone(),
@@ -371,7 +391,7 @@ pub fn spawn_game_over_ui(
     // 操作说明
     commands.spawn((
         GameOverUI,
-        Text2d(instruction_text.to_string()),
+        Text2d(GAME_OVER_INSTRUCTION.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
             font,
@@ -439,15 +459,9 @@ pub fn spawn_insufficient_energy_warning(
         Language::English => font_en,
     };
 
-    let (text_cn, text_en) = match tank_type {
-        TankType::Player1 => ("能量不足!!", "Insufficient Energy!!"),
-        TankType::Player2 => ("能量不足!!", "Insufficient Energy!!"),
-        TankType::Enemy => unreachable!("敌方坦克不应该触发能量不足提示"),
-    };
-
     let text = match language {
-        Language::Chinese => text_cn,
-        Language::English => text_en,
+        Language::Chinese => INSUFFICIENT_ENERGY_CN,
+        Language::English => INSUFFICIENT_ENERGY_EN,
     };
 
     // 根据玩家类型选择 X 位置（玩家1在左侧，玩家2在右侧）

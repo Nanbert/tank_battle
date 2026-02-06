@@ -4,6 +4,8 @@ use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+use crate::resources::Language;
+
 // 字体路径常量
 pub const FONT_CN: &str = "font/LiuHuanKaTongShouShu1.5-2.ttf";
 pub const FONT_EN: &str = "font/ChelaOne-Regular-2.ttf";
@@ -555,6 +557,24 @@ impl EnemyCollisionCache {
     /// 清空所有缓存
     pub fn clear(&mut self) {
         self.collisions.clear();
+    }
+}
+
+/// 本地化文本结构
+/// 用于存储多语言文本
+#[derive(Clone, Copy)]
+pub struct LocalizedText {
+    pub cn: &'static str,
+    pub en: &'static str,
+}
+
+impl LocalizedText {
+    /// 根据语言获取对应文本
+    pub fn get(&self, language: Language) -> &'static str {
+        match language {
+            Language::Chinese => self.cn,
+            Language::English => self.en,
+        }
     }
 }
 

@@ -10,6 +10,80 @@ use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
 
+// ==================== 本地化文本常量 ====================
+
+const MENU_TITLE: LocalizedText = LocalizedText {
+    cn: "钢铁指令",
+    en: "Steel Command",
+};
+
+const MENU_OPTION_1P: LocalizedText = LocalizedText {
+    cn: "单人游戏",
+    en: "1 Player",
+};
+
+const MENU_OPTION_2P: LocalizedText = LocalizedText {
+    cn: "双人对战",
+    en: "2 Player",
+};
+
+const MENU_OPTION_LANGUAGE: LocalizedText = LocalizedText {
+    cn: "语言 / Language",
+    en: "语言 / Language",
+};
+
+const MENU_OPTION_ABOUT: LocalizedText = LocalizedText {
+    cn: "关于",
+    en: "About",
+};
+
+const MENU_OPTION_CREDITS: LocalizedText = LocalizedText {
+    cn: "制作人员",
+    en: "Credits",
+};
+
+const MENU_OPTION_EXIT: LocalizedText = LocalizedText {
+    cn: "退出",
+    en: "EXIT",
+};
+
+// 操作说明文本常量
+const CONTROLS_P1_CN: &str = "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光";
+const CONTROLS_P1_EN: &str = "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser";
+
+const CONTROLS_P2_CN: &str = "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光";
+const CONTROLS_P2_EN: &str = "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser";
+
+const CONTROLS_GENERAL_CN: &str = "W/S 选择 | SPACE 确认/暂停 | ESC 退出";
+const CONTROLS_GENERAL_EN: &str = "W/S to select | SPACE to select/pause | ESC to exit";
+
+// 关于界面文本常量
+const ABOUT_TITLE_CN: &str = "关于";
+const ABOUT_TITLE_EN: &str = "ABOUT";
+
+// 致谢界面文本常量
+const CREDITS_TITLE_CN: &str = "制作人员";
+const CREDITS_TITLE_EN: &str = "CREDITS";
+
+const CREDITS_RETURN_CN: &str = "按 SPACE 返回";
+const CREDITS_RETURN_EN: &str = "Press SPACE to return";
+
+const CREDITS_TEXT_CN: &str = "素材来源致谢\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        通义千问 (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        字体:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        详见 COPYRIGHT 文件。";
+
+const CREDITS_TEXT_EN: &str = "Asset Credits\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        Tongyi Qianwen (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        Fonts:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        See COPYRIGHT file for full details.";
+
+// 菜单选项文本数组
+const MENU_OPTIONS: &[LocalizedText; 6] = &[
+    MENU_OPTION_1P,
+    MENU_OPTION_2P,
+    MENU_OPTION_LANGUAGE,
+    MENU_OPTION_ABOUT,
+    MENU_OPTION_CREDITS,
+    MENU_OPTION_EXIT,
+];
+
+// ==================== 开始界面相关函数 ====================
+
 /// 生成开始界面的背景动画
 pub fn spawn_start_screen_background(
     commands: &mut Commands,
@@ -35,39 +109,9 @@ pub fn spawn_start_screen_title(
     font_cn: Handle<Font>,
     language: Language,
 ) {
-    let (title, menu_text, use_cn_font) = match language {
-        Language::Chinese => (
-            "钢铁指令",
-            vec![
-                "单人游戏",
-                "双人对战",
-                "语言 / Language", // 双语显示
-                "关于",
-                "制作人员",
-                "退出",
-            ],
-            true,
-        ),
-        Language::English => (
-            "Steel Command",
-            vec![
-                "1 Player",
-                "2 Player",
-                "语言 / Language", // 双语显示
-                "About",
-                "Credits",
-                "EXIT",
-            ],
-            false,
-        ),
-    };
-
+    let title = MENU_TITLE.get(language);
+    let use_cn_font = matches!(language, Language::Chinese);
     let title_font = if use_cn_font {
-        font_cn.clone()
-    } else {
-        font_en.clone()
-    };
-    let menu_font = if use_cn_font {
         font_cn.clone()
     } else {
         font_en.clone()
@@ -87,17 +131,17 @@ pub fn spawn_start_screen_title(
 
     // 菜单选项，从上到下 0-5
     let y_positions = [250.0, 150.0, 50.0, -50.0, -150.0, -250.0];
-    for (i, text) in menu_text.iter().enumerate() {
+    for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         // 语言选项使用英文字体（因为文本是双语的），其他选项使用对应语言的字体
         let item_font = if i == 2 {
             font_en.clone()
         } else {
-            menu_font.clone()
+            font_cn.clone()
         };
 
         commands.spawn((
             StartScreenUI,
-            Text2d(text.to_string()),
+            Text2d(option_text.get(language).to_string()),
             TextFont {
                 font_size: FONT_SIZE_MENU,
                 font: item_font,
@@ -108,6 +152,20 @@ pub fn spawn_start_screen_title(
             MenuOption { index: i },
         ));
     }
+
+    // 生成箭头指示器
+    commands.spawn((
+        StartScreenUI,
+        MenuArrow,
+        Text2d(">".to_string()),
+        TextFont {
+            font_size: FONT_SIZE_MENU,
+            font: font_cn.clone(),
+            ..default()
+        },
+        TextColor(COLOR_YELLOW),
+        Transform::from_xyz(-200.0, y_positions[0], 1.0),
+    ));
 }
 
 /// 生成开始界面的操作说明
@@ -119,15 +177,15 @@ pub fn spawn_start_screen_instructions(
 ) {
     let (p1_text, p2_text, general_text, use_cn_font) = match language {
         Language::Chinese => (
-            "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光",
-            "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光",
-            "W/S 选择 | SPACE 确认/暂停 | ESC 退出",
+            CONTROLS_P1_CN,
+            CONTROLS_P2_CN,
+            CONTROLS_GENERAL_CN,
             true,
         ),
         Language::English => (
-            "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser",
-            "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser",
-            "W/S to select | SPACE to select/pause | ESC to exit",
+            CONTROLS_P1_EN,
+            CONTROLS_P2_EN,
+            CONTROLS_GENERAL_EN,
             false,
         ),
     };
@@ -232,21 +290,30 @@ pub fn spawn_about_screen(
     let cn_font = font_resources.cn.clone();
     let en_font = font_resources.en.clone();
 
-    let (title, about_text, support_text, return_text, use_cn_font) = match *language {
-        Language::Chinese => (
-            "关于",
-            "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证",
-            "如果你喜欢这个游戏,\n请给我买杯咖啡! (咖啡是程序员的燃料)",
-            "按 SPACE 返回",
-            true,
-        ),
-        Language::English => (
-            "About",
-            "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License",
-            "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)",
-            "Press SPACE to return",
-            false,
-        ),
+    let use_cn_font = matches!(*language, Language::Chinese);
+
+    let title = if use_cn_font {
+        ABOUT_TITLE_CN
+    } else {
+        ABOUT_TITLE_EN
+    };
+
+    let about_text = if use_cn_font {
+        "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证"
+    } else {
+        "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License"
+    };
+
+    let support_text = if use_cn_font {
+        "如果你喜欢这个游戏,\n请给我买杯咖啡! (咖啡是程序员的燃料)"
+    } else {
+        "If you enjoyed the game,\nplease buy me a coffee! ☕️\n(Caffeine is a programmer's fuel)"
+    };
+
+    let return_text = if use_cn_font {
+        "按 SPACE 返回"
+    } else {
+        "Press SPACE to return"
     };
 
     let title_font = if use_cn_font {
@@ -415,9 +482,40 @@ pub fn handle_about_input(
 }
 
 /// 生成致谢界面
-pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameTextureResources>) {
+pub fn spawn_credits_screen(
+    mut commands: Commands,
+    font_resources: Res<GameTextureResources>,
+    language: Res<Language>,
+) {
     // 加载自定义字体
-    let custom_font = font_resources.en.clone();
+    let cn_font = font_resources.cn.clone();
+    let en_font = font_resources.en.clone();
+
+    let use_cn_font = matches!(*language, Language::Chinese);
+
+    let title = if use_cn_font {
+        CREDITS_TITLE_CN
+    } else {
+        CREDITS_TITLE_EN
+    };
+
+    let credits_text = if use_cn_font {
+        CREDITS_TEXT_CN
+    } else {
+        CREDITS_TEXT_EN
+    };
+
+    let return_text = if use_cn_font {
+        CREDITS_RETURN_CN
+    } else {
+        CREDITS_RETURN_EN
+    };
+
+    let custom_font = if use_cn_font {
+        cn_font
+    } else {
+        en_font
+    };
 
     // 添加白色背景覆盖
     commands.spawn((
@@ -433,7 +531,7 @@ pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameText
     // 添加标题
     commands.spawn((
         CreditsUI,
-        Text2d("Credits".to_string()),
+        Text2d(title.to_string()),
         TextFont {
             font_size: FONT_SIZE_MENU,
             font: custom_font.clone(),
@@ -444,8 +542,6 @@ pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameText
     ));
 
     // 使用多行文本显示素材来源
-    let credits_text = "Asset Credits\n\n\n        OpenGameArt.org:\n        • Bubbles by HorrorPen (CC-BY 3.0)\n        • Explosion by Sinestesia (CC0 1.0)\n        • Laser by netcake3 (CC-BY-SA 3.0/4.0)\n        • Enemy Born by Skorpio (CC-BY 3.0)\n        • Fire Effect by JoesAlotofthings (CC-BY 4.0)\n        • Player/Enemy Tanks & Barrels by irmirx (CC-BY 3.0)\n        • Smoke by Skorpio (CC-BY 3.0)\n        • Hit Spark by Sinestesia (CC0 1.0)\n        • Bullets by Wenrexa (CC0 1.0)\n        • Penetrate Effect by 13rice (CC0 1.0)\n\n\n        通义千问 (AI Generated):\n        • Background, Music Notes (CC0 1.0)\n        • Maps (Brick, Steel, Sea, Tree, Barrier) (CC0 1.0)\n        • Power-ups (10 types) (CC0 1.0)\n        • Track Train (CC0 1.0)\n        • Avatars & Commander (CC0 1.0)\n\n\n        Fonts:\n        • ChelaOne by Latinotype\n        • Corben\n        • Matemasie\n        • LiuHuanKaTongShouShu by 刘欢\n\n\n        See COPYRIGHT file for full details.";
-
     commands.spawn((
         CreditsUI,
         Text2d(credits_text.to_string()),
@@ -462,7 +558,7 @@ pub fn spawn_credits_screen(mut commands: Commands, font_resources: Res<GameText
     // 添加返回提示
     commands.spawn((
         CreditsUI,
-        Text2d("Press SPACE to return".to_string()),
+        Text2d(return_text.to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
             font: custom_font,
@@ -554,6 +650,31 @@ pub fn update_option_colors(
             text_color.0 = COLOR_YELLOW;
         } else {
             text_color.0 = COLOR_WHITE; // 白色
+        }
+    }
+}
+
+/// 更新箭头指示器的位置
+pub fn update_arrow_position(
+    menu_selection: Res<CurrentMenuSelection>,
+    mut queries: ParamSet<(
+        Query<(&MenuOption, &Transform)>,
+        Query<&mut Transform, With<MenuArrow>>,
+    )>,
+) {
+    // 获取选中的菜单项位置
+    let mut selected_y = None;
+    for (option, transform) in queries.p0().iter() {
+        if option.index == menu_selection.selected_index {
+            selected_y = Some(transform.translation.y);
+            break;
+        }
+    }
+
+    // 更新箭头位置
+    if let Some(y) = selected_y {
+        for mut transform in queries.p1().iter_mut() {
+            transform.translation.y = y;
         }
     }
 }

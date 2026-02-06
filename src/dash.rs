@@ -216,6 +216,10 @@ pub fn handle_dash_collision(
                     });
 
                     let transform = Transform::from_translation(collision_info.tank_position);
+                    // 直接杀死玩家（将生命值设为0并销毁）
+                    player_info.with_stats_mut(collision_info.player_tank.tank_type, |player_stats| {
+                        player_stats.life_points = 0;
+                    });
                     kill_player_tank(
                         &mut commands,
                         &atlas_layouts,
@@ -397,7 +401,7 @@ fn apply_dash_damage(
     (health_cost, is_dead)
 }
 
-/// 销毁玩家坦克
+/// 销毁玩家坦克（不减少生命值，只销毁实体）
 fn kill_player_tank(
     commands: &mut Commands,
     atlas_layouts: &GameAtlasLayoutResources,

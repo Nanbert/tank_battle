@@ -78,6 +78,7 @@ fn register_start_screen_systems(app: &mut App) {
             // 处理菜单输入
             menus_ui::handle_start_screen_input,
             menus_ui::update_option_colors,
+            menus_ui::update_arrow_position,
             game_state::update_menu_blink,
             effects::animate_effects,
         )
