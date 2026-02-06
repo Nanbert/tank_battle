@@ -120,7 +120,9 @@ pub fn spawn_laser(
     // 获取动画帧范围
     let animation_indices = resources.laser_atlas_info.animation_indices_full();
 
-    let entity = crate::utils::spawn_animated_sprite(
+    
+
+    crate::utils::spawn_animated_sprite(
         commands,
         resources.laser_texture.clone(),
         resources.laser_texture_atlas.clone(),
@@ -146,9 +148,7 @@ pub fn spawn_laser(
                 },
             },
         ),
-    );
-
-    entity
+    )
 }
 
 /// 玩家激光射击系统（蓄力发射）

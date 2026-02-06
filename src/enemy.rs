@@ -120,7 +120,7 @@ pub fn handle_spawn_enemy_event(
                 angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
             })
             .insert(Velocity {
-                linvel: Vec2::new(0.0, -TANK_SPEED),
+                linvel: Vec2::new(0.0, -ENEMY_TANK_SPEED),
                 angvel: 0.0,
             })
             .insert(RigidBody::Dynamic)
@@ -391,7 +391,7 @@ fn update_enemy_tank_movement(
             rotation_timer.reset();
         } else {
             // 不需要转向，正常移动
-            velocity.linvel = enemy_tank.direction * TANK_SPEED;
+            velocity.linvel = enemy_tank.direction * ENEMY_TANK_SPEED;
         }
     }
 }

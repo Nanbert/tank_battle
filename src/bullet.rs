@@ -75,11 +75,7 @@ pub fn spawn_bullet(
     atlas_layouts: &GameAtlasLayoutResources,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
-    let bullet_texture = match params.owner_type {
-        TankType::Player1 => texture_resources.bullet_player1.clone(),
-        TankType::Player2 => texture_resources.bullet_player2.clone(),
-        TankType::Enemy => texture_resources.bullet_enemy.clone(),
-    };
+    let bullet_texture = texture_resources.get_bullet_texture(params.owner_type);
 
     // 检查玩家是否拥有 fire_shell 能力
     let has_fire_shell = player_info.has_fire_shell(params.owner_type);
@@ -389,11 +385,13 @@ fn extract_bullet_collision<'a>(
     e2: Entity,
     bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
 ) -> Option<(Entity, Entity, &'a Bullet, &'a Transform)> {
-    bullets
-        .get(e1)
-        .ok()
-        .map(|(be, b, t)| (be, e2, b, t))
-        .or_else(|| bullets.get(e2).ok().map(|(be, b, t)| (be, e1, b, t)))
+    if let Some((bullet_entity, other_entity)) = crate::utils::extract_collision_pair(e1, e2, bullets) {
+        bullets.get(bullet_entity).ok().map(|(_, bullet, transform)| {
+            (bullet_entity, other_entity, bullet, transform)
+        })
+    } else {
+        None
+    }
 }
 
 /// 查找碰撞中的子弹和坦克，同时返回子弹信息

@@ -38,7 +38,9 @@ pub fn spawn_player_tank(
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
 
-    let entity = crate::utils::spawn_animated_sprite(
+    
+
+    crate::utils::spawn_animated_sprite(
         commands,
         texture,
         texture_atlas_layout,
@@ -77,9 +79,7 @@ pub fn spawn_player_tank(
                 ..default()
             },
         ),
-    );
-
-    entity
+    )
 }
 
 /// 生成玩家1坦克
@@ -498,7 +498,7 @@ pub fn spawn_players(
     // 清理可能存在的旧玩家坦克
     crate::utils::cleanup_entities(&mut commands, existing_players.iter());
 
-    let player1_texture = texture_resources.player1.clone();
+    let player1_texture = texture_resources.get_player_texture(TankType::Player1);
     let player1_texture_atlas =
         crate::atlas::PLAYER_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts);
     let player_animation_indices = crate::atlas::PLAYER_TANK1_ATLAS.animation_indices_full();
@@ -514,7 +514,7 @@ pub fn spawn_players(
 
     // 根据游戏模式判断是否生成玩家2
     if *game_mode == GameMode::TwoPlayers {
-        let player2_texture = texture_resources.player2.clone();
+        let player2_texture = texture_resources.get_player_texture(TankType::Player2);
         let player2_texture_atlas =
             crate::atlas::PLAYER_TANK2_ATLAS.add_to_assets(&mut texture_atlas_layouts);
         spawn_player_tank(

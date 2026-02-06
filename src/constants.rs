@@ -71,8 +71,8 @@ pub const LEFT_PADDING: f32 = 230.0; // 左侧留白
 pub const RIGHT_PADDING: f32 = 230.0; // 右侧留白
 pub const TOP_PADDING: f32 = 100.0; // 上方留白
 pub const BOTTOM_PADDING: f32 = 0.0; // 下方不留白
-pub const TANK_SPEED: f32 = 200.0;
-pub const PLAYER_TANK_SPEED: f32 = 150.0;
+pub const ENEMY_TANK_SPEED: f32 = 200.0; // 敌方坦克速度
+pub const PLAYER_TANK_SPEED: f32 = 150.0; // 玩家坦克速度
 pub const BULLET_SPEED: f32 = 900.0;
 pub const PLAYER_BULLET_SPEED: f32 = 600.0;
 
@@ -825,7 +825,6 @@ pub const HUD_MAX_SHELLS: usize = 2; // 最大炮弹数
 
 // ==================== UI字体大小常量 ====================
 pub const FONT_SIZE_SMALL: f32 = 18.0; // 小字体
-pub const FONT_SIZE_INFO: f32 = 20.0; // 说明文字字体
 pub const FONT_SIZE_MEDIUM: f32 = 22.0; // 中等字体
 pub const FONT_SIZE_INSTRUCTION: f32 = 24.0; // 说明文字字体
 pub const FONT_SIZE_SCORE: f32 = 28.0; // 分数字体

@@ -492,6 +492,24 @@ impl GameTextureResources {
             Language::English => self.en.clone(),
         }
     }
+
+    /// 根据坦克类型获取玩家坦克纹理
+    pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
+        match tank_type {
+            TankType::Player1 => self.player1.clone(),
+            TankType::Player2 => self.player2.clone(),
+            TankType::Enemy => self.enemy_tank.clone(),
+        }
+    }
+
+    /// 根据坦克类型获取子弹纹理
+    pub fn get_bullet_texture(&self, tank_type: TankType) -> Handle<Image> {
+        match tank_type {
+            TankType::Player1 => self.bullet_player1.clone(),
+            TankType::Player2 => self.bullet_player2.clone(),
+            TankType::Enemy => self.bullet_enemy.clone(),
+        }
+    }
 }
 
 /// 统一的音频资源结构体

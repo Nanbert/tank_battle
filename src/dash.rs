@@ -299,32 +299,17 @@ fn extract_dash_collision_info(
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
 ) -> Option<DashCollisionInfo> {
-    // 尝试从 e1 获取玩家坦克
-    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e1)
-        && let Some(target) = get_collision_target(e2, enemy_tanks, bricks, steels)
-    {
-        return Some(DashCollisionInfo {
-            player_entity,
-            player_tank: *player_tank,
-            tank_position: tank_transform.translation,
-            is_dashing: is_dashing.is_some(),
-            target,
-        });
-    }
-
-    // 尝试从 e2 获取玩家坦克
-    if let Ok((player_entity, player_tank, tank_transform, is_dashing)) = player_tanks.get(e2)
-        && let Some(target) = get_collision_target(e1, enemy_tanks, bricks, steels)
-    {
-        return Some(DashCollisionInfo {
-            player_entity,
-            player_tank: *player_tank,
-            tank_position: tank_transform.translation,
-            is_dashing: is_dashing.is_some(),
-            target,
-        });
-    }
-
+    if let Some((player_entity, other_entity)) = crate::utils::extract_collision_pair(e1, e2, player_tanks)
+        && let Ok((_, player_tank, tank_transform, is_dashing)) = player_tanks.get(player_entity)
+            && let Some(target) = get_collision_target(other_entity, enemy_tanks, bricks, steels) {
+                return Some(DashCollisionInfo {
+                    player_entity,
+                    player_tank: *player_tank,
+                    tank_position: tank_transform.translation,
+                    is_dashing: is_dashing.is_some(),
+                    target,
+                });
+            }
     None
 }
 

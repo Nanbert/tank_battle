@@ -478,7 +478,7 @@ pub fn spawn_credits_screen(
         Text2d(CREDITS_RETURN.get(*language).to_string()),
         TextFont {
             font_size: FONT_SIZE_UI,
-            font: font,
+            font,
             ..default()
         },
         TextColor(COLOR_BLACK),

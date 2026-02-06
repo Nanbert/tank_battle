@@ -256,3 +256,37 @@ pub fn clamp_entity_position(transform: &mut Transform, half_width: f32, half_he
         .y
         .clamp(MAP_BOTTOM_Y + half_height, MAP_TOP_Y - half_height);
 }
+
+/// 从两个碰撞实体中提取特定类型的实体
+///
+/// # 参数
+/// - `e1`: 第一个碰撞实体
+/// - `e2`: 第二个碰撞实体
+/// - `query`: 实体查询
+///
+/// # 返回值
+/// 返回 (匹配的实体, 另一个实体)，如果都没有匹配则返回 None
+///
+/// # 示例
+/// ```rust
+/// if let Some((bullet_entity, other_entity)) = extract_collision_pair(e1, e2, &bullets) {
+///     // 处理子弹碰撞
+/// }
+/// ```
+pub fn extract_collision_pair<D, F>(
+    e1: Entity,
+    e2: Entity,
+    query: &Query<D, F>,
+) -> Option<(Entity, Entity)>
+where
+    D: bevy::ecs::query::QueryData,
+    F: bevy::ecs::query::QueryFilter,
+{
+    if query.get(e1).is_ok() {
+        Some((e1, e2))
+    } else if query.get(e2).is_ok() {
+        Some((e2, e1))
+    } else {
+        None
+    }
+}
