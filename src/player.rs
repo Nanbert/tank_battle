@@ -44,7 +44,7 @@ pub fn spawn_player_tank(
         texture_atlas_layout,
         animation_indices,
         ANIMATION_FRAME_ENEMY_MOVE,
-        Vec3::new(x_pos, PLAYER_START_Y, 0.0),
+        Transform::from_translation(Vec3::new(x_pos, PLAYER_START_Y, 0.0)),
         TANK_DISPLAY_SIZE,
         (
             PlayerTank { tank_type },

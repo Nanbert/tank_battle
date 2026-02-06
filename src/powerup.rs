@@ -321,7 +321,7 @@ fn spawn_powerup(
         atlas_layout.clone(),
         atlas_info.animation_indices_full(),
         crate::constants::POWER_UP_ANIMATION_FRAME,
-        position,
+        Transform::from_translation(position),
         atlas_info.display_size,
         (powerup_type, PlayingEntity, AnimationMode::Looping),
     );
@@ -357,7 +357,7 @@ pub fn update_track_chain_effect(
                         atlas_layouts.track_chain_effect.clone(),
                         crate::atlas::TRACK_CHAIN_ATLAS.animation_indices_full(),
                         crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
-                        Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1),
+                        Transform::from_translation(Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1)),
                         crate::constants::TANK_DISPLAY_SIZE,
                         (crate::constants::TrackChainEffect, AnimationMode::Conditional { tank_type: player_tank.tank_type }),
                     );

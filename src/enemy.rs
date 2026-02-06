@@ -54,7 +54,7 @@ pub fn enemy_spawn_system(
             atlas_layouts.enemy_born.clone(),
             crate::atlas::ENEMY_BORN_ATLAS.animation_indices_full(),
             ANIMATION_FRAME_ENEMY_BORN,
-            position,
+            Transform::from_translation(position),
             crate::atlas::ENEMY_BORN_ATLAS.display_size,
             (
                 EnemyBornAnimation,
@@ -90,7 +90,7 @@ pub fn handle_spawn_enemy_event(
             atlas_layouts.enemy_tank.clone(),
             crate::atlas::ENEMY_TANK1_ATLAS.animation_indices_full(),
             ANIMATION_FRAME_ENEMY_MOVE,
-            event.position,
+            Transform::from_translation(event.position),
             crate::constants::TANK_DISPLAY_SIZE,
             (
                 EnemyTank {

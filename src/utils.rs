@@ -105,7 +105,7 @@ pub fn advance_next_frame(
 /// * `texture_atlas` - 纹理图集布局句柄（预加载）
 /// * `animation_indices` - 动画索引配置
 /// * `frame_time` - 每帧时间（秒）
-/// * `position` - 位置
+/// * `transform` - 变换（位置、旋转、缩放）
 /// * `display_size` - 显示尺寸
 /// * `components` - 额外的组件
 ///
@@ -117,7 +117,7 @@ pub fn spawn_animated_sprite(
     texture_atlas: Handle<TextureAtlasLayout>,
     animation_indices: AnimationIndices,
     frame_time: f32,
-    position: Vec3,
+    transform: Transform,
     display_size: Vec2,
     components: impl Bundle,
 ) -> Entity {
@@ -132,7 +132,7 @@ pub fn spawn_animated_sprite(
                 custom_size: Some(display_size),
                 ..default()
             },
-            Transform::from_translation(position),
+            transform,
             animation_indices,
             AnimationTimer(Timer::from_seconds(frame_time, TimerMode::Repeating)),
             CurrentAnimationFrame(0),

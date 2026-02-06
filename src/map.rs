@@ -221,7 +221,7 @@ pub fn spawn_terrain_tile(
                 atlas_layouts.forest.clone(),
                 crate::atlas::FOREST_ATLAS.animation_indices_full(),
                 ANIMATION_FRAME_FOREST,
-                Vec3::new(position.x, position.y, Z_FOREST),
+                Transform::from_translation(Vec3::new(position.x, position.y, Z_FOREST)),
                 crate::atlas::FOREST_ATLAS.display_size,
                 (Forest, PlayingEntity, AnimationMode::Looping),
             );
@@ -241,7 +241,7 @@ pub fn spawn_terrain_tile(
                 atlas_layouts.sea.clone(),
                 crate::atlas::SEA_ATLAS.animation_indices_full(),
                 ANIMATION_FRAME_SEA,
-                Vec3::new(position.x, position.y, Z_SEA),
+                Transform::from_translation(Vec3::new(position.x, position.y, Z_SEA)),
                 crate::atlas::SEA_ATLAS.display_size,
                 (Sea, PlayingEntity, AnimationMode::Looping),
             );

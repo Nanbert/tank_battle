@@ -31,7 +31,7 @@ pub fn spawn_explosion(
         atlas_layouts.explosion.clone(),
         crate::atlas::EXPLOSION_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_EXPLOSION,
-        position,
+        Transform::from_translation(position),
         crate::atlas::EXPLOSION_ATLAS.display_size,
         (AnimationMode::OneShot, Explosion, PlayingEntity),
     );
@@ -53,7 +53,7 @@ pub fn spawn_forest_fire(
         atlas_layouts.forest_fire.clone(),
         crate::atlas::FOREST_FIRE_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_FOREST_FIRE,
-        position,
+        Transform::from_translation(position),
         crate::atlas::FOREST_FIRE_ATLAS.display_size,
         (AnimationMode::OneShot, ForestFire, PlayingEntity),
     );
@@ -76,7 +76,7 @@ pub fn spawn_spark(
         atlas_layouts.spark.clone(),
         crate::atlas::SPARK_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_SPARK,
-        position,
+        Transform::from_translation(position),
         crate::atlas::SPARK_ATLAS.display_size,
         (AnimationMode::OneShot, Spark, PlayingEntity),
     );

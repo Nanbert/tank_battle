@@ -381,7 +381,7 @@ fn spawn_single_player_hud(
         atlas_layouts.player_avatar.clone(),
         crate::atlas::PLAYER_AVATAR_ATLAS.animation_indices_full(),
         0.2,
-        Vec3::new(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Avatar as usize], Z_UI),
+        Transform::from_translation(Vec3::new(x_pos, WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::Avatar as usize], Z_UI)),
         crate::atlas::PLAYER_AVATAR_ATLAS.display_size,
         (marker.clone(), PlayerAvatar, PlayerUI { player_type }, AnimationMode::Looping),
     );

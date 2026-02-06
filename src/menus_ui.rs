@@ -22,7 +22,7 @@ pub fn spawn_start_screen_background(
         atlas_layouts.background.clone(),
         crate::atlas::BACKGROUND_ATLAS.animation_indices_full(),
         BACKGROUND_ANIMATION_FRAME,
-        Vec3::new(0.0, 0.0, 0.0),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
         WINDOW_SIZE,
         (StartScreenUI, AnimationMode::Looping),
     );

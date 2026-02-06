@@ -1,6 +1,27 @@
 //! 激光系统模块
 //!
 //! 处理激光的生成、动画和蓝量消耗
+//!
+//! # 激光动画逻辑
+//!
+//! ## 能量球动画
+//!
+//! ### 蓄力阶段（4秒）
+//! - 帧序列：0 → 1 → 2 → ... → 64
+//! - 播放模式：
+//!   - 先播放第 0-64 帧（一次性）
+//!   - 播放完成后，循环播放第 20-64 帧
+//!
+//! ### 激光发射阶段
+//! - 帧序列：81 → 82 → 83 → 84 → 81 → 82 → ...
+//! - 播放模式：循环播放第 81-84 帧
+//!
+//! ## 激光动画
+//!
+//! ### 激光发射阶段
+//! - 帧序列：0 → 1 → 2 → ... → 11（共 12 帧）
+//! - 播放模式：一次性播放（不循环）
+//! - 播放完毕后：销毁整个激光系统（激光实体 + 能量球实体）
 
 #![allow(clippy::wildcard_imports)]
 
@@ -33,29 +54,57 @@ pub struct LaserSpawnParams {
     pub energy_ball_entity: Option<Entity>,
 }
 
+/// 激光资源打包结构体
+pub struct LaserResources {
+    pub laser_texture: Handle<Image>,
+    pub laser_texture_atlas: Handle<TextureAtlasLayout>,
+    pub laser_atlas_info: &'static crate::atlas::TextureAtlasInfo,
+    pub energy_ball_texture: Handle<Image>,
+    pub energy_ball_texture_atlas: Handle<TextureAtlasLayout>,
+    pub energy_ball_atlas_info: &'static crate::atlas::TextureAtlasInfo,
+}
+
+impl LaserResources {
+    /// 根据玩家类型获取对应的激光资源
+    pub fn from_player_type(
+        tank_type: TankType,
+        texture_resources: &GameTextureResources,
+        atlas_layouts: &GameAtlasLayoutResources,
+    ) -> Self {
+        match tank_type {
+            TankType::Player1 => Self {
+                laser_texture: texture_resources.laser_blue.clone(),
+                laser_texture_atlas: atlas_layouts.laser_blue.clone(),
+                laser_atlas_info: &crate::atlas::LASER_BLUE_ATLAS,
+                energy_ball_texture: texture_resources.energy_blue_ball.clone(),
+                energy_ball_texture_atlas: atlas_layouts.energy_blue_ball.clone(),
+                energy_ball_atlas_info: &crate::atlas::ENERGY_BALL_BLUE_ATLAS,
+            },
+            TankType::Player2 => Self {
+                laser_texture: texture_resources.laser_red.clone(),
+                laser_texture_atlas: atlas_layouts.laser_red.clone(),
+                laser_atlas_info: &crate::atlas::LASER_RED_ATLAS,
+                energy_ball_texture: texture_resources.energy_red_ball.clone(),
+                energy_ball_texture_atlas: atlas_layouts.energy_red_ball.clone(),
+                energy_ball_atlas_info: &crate::atlas::ENERGY_BALL_RED_ATLAS,
+            },
+            TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
+        }
+    }
+}
+
 /// 生成激光实体（像手电筒一样，瞬间出现，不移动）
 pub fn spawn_laser(
     commands: &mut Commands,
-    texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+    resources: &LaserResources,
     params: LaserSpawnParams,
 ) -> Entity {
-    // 根据玩家类型加载不同的激光纹理图（12帧，3行4列布局，每帧512x683）
-    let laser_texture = match params.owner_type {
-        TankType::Player1 => texture_resources.laser_blue.clone(),
-        TankType::Player2 => texture_resources.laser_red.clone(),
-        TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
-    };
-    let laser_texture_atlas =
-        crate::atlas::LASER_BLUE_ATLAS.add_to_assets(texture_atlas_layouts);
-    let laser_animation_indices = crate::atlas::LASER_BLUE_ATLAS.animation_indices_full();
-
     // 计算激光旋转角度，激光原始是竖着的，需要根据方向旋转
     // 纹理默认向上（0度），需要根据方向计算旋转角度
     let angle = params.direction.y.atan2(params.direction.x) - std::f32::consts::FRAC_PI_2;
 
     // 激光束高度的一半（原本长度），用于位置偏移
-    let laser_half_height = LASER_HEIGHT / 2.0;
+    let laser_half_height = resources.laser_atlas_info.display_size.y / 2.0;
 
     // 计算激光位置：从坦克炮口向前延伸
     // 激光束的底部在坦克炮口，激光束向前延伸
@@ -68,42 +117,27 @@ pub fn spawn_laser(
         Bullet::Player(params.owner_type)
     };
 
-    // 创建激光实体
-    let mut laser_entity = commands.spawn((
-        Laser,
-        PlayingEntity,
-        bullet_type,
-        Sprite {
-            image: laser_texture,
-            texture_atlas: Some(TextureAtlas {
-                layout: laser_texture_atlas,
-                index: laser_animation_indices.first,
-            }),
-            custom_size: Some(Vec2::new(crate::atlas::LASER_BLUE_ATLAS.display_size.x, LASER_HEIGHT)),
-            ..default()
-        },
+    let entity = crate::utils::spawn_animated_sprite(
+        commands,
+        resources.laser_texture.clone(),
+        resources.laser_texture_atlas.clone(),
+        resources.laser_atlas_info.animation_indices_full(),
+        ANIMATION_FRAME_LASER,
         Transform {
             translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER),
             rotation: Quat::from_rotation_z(angle),
             ..default()
         },
-        laser_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_LASER,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-        // 保存激光方向和位置，用于碰撞检测
-        LaserDirection(params.direction),
-        LaserStartPoint(params.position),
-    ));
+        resources.laser_atlas_info.display_size,
+        (Laser, PlayingEntity, bullet_type, LaserDirection(params.direction), LaserStartPoint(params.position)),
+    );
 
     // 如果有关联的能量球，添加 LaserWithEnergyBall 组件
     if let Some(energy_ball_entity) = params.energy_ball_entity {
-        laser_entity.insert(LaserWithEnergyBall { energy_ball_entity });
+        commands.entity(entity).insert(LaserWithEnergyBall { energy_ball_entity });
     }
 
-    laser_entity.id()
+    entity
 }
 
 /// 玩家激光射击系统（蓄力发射）
@@ -111,9 +145,8 @@ pub fn player_laser_system(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
     audio_resources: Res<GameAudioResources>,
-    _atlas_layouts: Res<GameAtlasLayoutResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     time: Res<Time>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     mut query: Query<(Entity, &Transform, &RotationTimer, &PlayerTank), With<PlayerTank>>,
     mut charge_query: Query<(Entity, &mut LaserCharge)>,
     mut energy_ball_query: Query<(Entity, &mut Sprite, &EnergyBall)>,
@@ -161,10 +194,15 @@ pub fn player_laser_system(
 
         // 处理蓄力逻辑
         if has_charge {
+            // 根据玩家类型预先获取对应的激光资源
+            let resources = LaserResources::from_player_type(
+                player_tank.tank_type,
+                &texture_resources,
+                &atlas_layouts,
+            );
+
             update_charge(
                 &mut commands,
-                &texture_resources,
-                &mut texture_atlas_layouts,
                 &mut player_info,
                 &mut energy_ball_query,
                 &sound_query,
@@ -174,13 +212,19 @@ pub fn player_laser_system(
                 &mut charge_query,
                 &time,
                 &audio_resources,
+                &resources,
             );
         } else {
+            // 根据玩家类型预先获取对应的激光资源
+            let resources = LaserResources::from_player_type(
+                player_tank.tank_type,
+                &texture_resources,
+                &atlas_layouts,
+            );
+
             start_charge(
                 &mut commands,
                 &player_info,
-                &texture_resources,
-                &mut texture_atlas_layouts,
                 entity,
                 transform,
                 player_tank.tank_type,
@@ -189,6 +233,7 @@ pub fn player_laser_system(
                 &font_resources.cn,
                 &font_resources.en,
                 &language,
+                &resources,
             );
         }
     }
@@ -219,8 +264,6 @@ fn cancel_charge(
 fn start_charge(
     commands: &mut Commands,
     player_info: &ResMut<PlayerInfo>,
-    texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     entity: Entity,
     transform: &Transform,
     tank_type: TankType,
@@ -229,6 +272,7 @@ fn start_charge(
     font_cn: &Handle<Font>,
     font_en: &Handle<Font>,
     language: &Language,
+    resources: &LaserResources,
 ) {
     let player_stats = player_info
         .get_stats(tank_type)
@@ -260,15 +304,6 @@ fn start_charge(
         LaserChargeSound,
     ));
 
-    // 根据玩家类型选择能量球颜色
-    let energy_ball_texture = match tank_type {
-        TankType::Player1 => texture_resources.energy_blue_ball.clone(),
-        TankType::Player2 => texture_resources.energy_red_ball.clone(),
-        TankType::Enemy => unreachable!(),
-    };
-
-    let energy_ball_texture_atlas =
-        crate::atlas::ENERGY_BALL_BLUE_ATLAS.add_to_assets(texture_atlas_layouts);
     let energy_ball_animation_indices = AnimationIndices {
         first: 0,
         last: ENERGY_BALL_END_FRAME,
@@ -300,12 +335,12 @@ fn start_charge(
             end_frame: 64,
         },
         Sprite {
-            image: energy_ball_texture,
+            image: resources.energy_ball_texture.clone(),
             texture_atlas: Some(TextureAtlas {
-                layout: energy_ball_texture_atlas,
+                layout: resources.energy_ball_texture_atlas.clone(),
                 index: energy_ball_animation_indices.first,
             }),
-            custom_size: Some(crate::atlas::ENERGY_BALL_BLUE_ATLAS.display_size),
+            custom_size: Some(resources.energy_ball_atlas_info.display_size),
             ..default()
         },
         Transform {
@@ -325,8 +360,6 @@ fn start_charge(
 /// 更新蓄力
 fn update_charge(
     commands: &mut Commands,
-    texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
     energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
@@ -336,6 +369,7 @@ fn update_charge(
     charge_query: &mut Query<(Entity, &mut LaserCharge)>,
     time: &Res<Time>,
     audio_resources: &GameAudioResources,
+    resources: &LaserResources,
 ) {
     if let Ok((_, mut charge)) = charge_query.get_mut(entity) {
         charge.timer.tick(time.delta());
@@ -344,8 +378,6 @@ fn update_charge(
         if charge.timer.just_finished() {
             fire_laser(
                 commands,
-                texture_resources,
-                texture_atlas_layouts,
                 player_info,
                 energy_ball_query,
                 sound_query,
@@ -353,6 +385,7 @@ fn update_charge(
                 transform,
                 tank_type,
                 audio_resources,
+                resources,
             );
         }
     }
@@ -361,8 +394,6 @@ fn update_charge(
 /// 发射激光
 fn fire_laser(
     commands: &mut Commands,
-    texture_resources: &GameTextureResources,
-    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
     player_info: &mut ResMut<PlayerInfo>,
     energy_ball_query: &mut Query<(Entity, &mut Sprite, &EnergyBall)>,
     sound_query: &Query<(Entity, &LaserChargeSound)>,
@@ -370,6 +401,7 @@ fn fire_laser(
     transform: &Transform,
     tank_type: TankType,
     audio_resources: &GameAudioResources,
+    resources: &LaserResources,
 ) {
     // 消耗整个蓝条
     player_info.with_stats_mut(tank_type, |stats| {
@@ -392,8 +424,7 @@ fn fire_laser(
     // 生成激光
     spawn_laser(
         commands,
-        texture_resources,
-        texture_atlas_layouts,
+        resources,
         LaserSpawnParams {
             position: laser_pos,
             direction,
@@ -444,6 +475,7 @@ fn fire_laser(
 fn check_laser_collision(
     laser_start: Vec3,
     laser_direction: Vec2,
+    laser_atlas_info: &crate::atlas::TextureAtlasInfo,
     collidables: &Query<
         (Entity, &Transform),
         Or<(
@@ -462,7 +494,7 @@ fn check_laser_collision(
     // 激光起点（坦克炮口）
     let laser_origin = laser_start + laser_direction.extend(0.0) * LASER_POSITION_OFFSET;
     // 激光终点
-    let laser_end = laser_origin + laser_direction.extend(0.0) * LASER_HEIGHT;
+    let laser_end = laser_origin + laser_direction.extend(0.0) * laser_atlas_info.display_size.y;
 
     // 激光宽度的一半（用于碰撞检测，使用实际可见宽度）
     let laser_half_width = LASER_COLLISION_WIDTH / 2.0;
@@ -489,7 +521,7 @@ fn check_laser_collision(
         let projection = to_entity.dot(laser_dir);
 
         // 检查是否在激光长度范围内
-        if !(0.0..=LASER_HEIGHT).contains(&projection) {
+        if !(0.0..=laser_atlas_info.display_size.y).contains(&projection) {
             continue;
         }
 
@@ -553,6 +585,7 @@ pub fn animate_laser(
             &LaserDirection,
             &LaserStartPoint,
             Option<&LaserWithEnergyBall>,
+            &Bullet,
         ),
         With<Laser>,
     >,
@@ -580,6 +613,7 @@ pub fn animate_laser(
         laser_direction,
         laser_start,
         energy_ball_link,
+        bullet_type,
     ) in &mut query
     {
         let prev_frame = current_frame.0;
@@ -595,9 +629,18 @@ pub fn animate_laser(
         if prev_frame != current_frame.0 && timer.just_finished() && current_frame.0 >= indices.last
         {
             // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
+            // 根据子弹类型获取对应的激光 atlas info
+            let laser_atlas_info = match bullet_type {
+                Bullet::Player(TankType::Player1) => &crate::atlas::LASER_BLUE_ATLAS,
+                Bullet::Player(TankType::Player2) => &crate::atlas::LASER_RED_ATLAS,
+                Bullet::Enemy => unreachable!("敌方坦克没有激光大招"),
+                _ => &crate::atlas::LASER_BLUE_ATLAS, // 默认值，不应该到达这里
+            };
+
             let hit_entities = check_laser_collision(
                 laser_start.0,
                 laser_direction.0,
+                laser_atlas_info,
                 &collidables,
                 &player_tanks,
                 &commanders,
@@ -628,7 +671,7 @@ pub fn animate_laser(
                             layout: atlas_layouts.smoke_atlas.clone(),
                             index: smoke_animation_indices.first,
                         }),
-                        custom_size: Some(crate::atlas::SMOKE_ATLAS.display_size),
+                        custom_size: Some(Vec2::new(100.0, 100.0)),
                         ..default()
                     },
                     Transform {

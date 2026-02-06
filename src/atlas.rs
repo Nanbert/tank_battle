@@ -209,19 +209,19 @@ pub const COMMANDER_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 // 实际尺寸: 2048 x 2048, 4行4列, 每帧 512 x 512
 pub const LASER_BLUE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "effect/texture_laser_blue.png",
-    Vec2::new(512.0, 512.0),
+    Vec2::new(512.0, 683.0),
     4,
-    4,
-);
+    3,
+).with_display_size(Vec2::new(512.0, 1366.0));
 
 // 激光精灵图常量（红色）
 // 实际尺寸: 2048 x 2048, 4行4列, 每帧 512 x 512
 pub const LASER_RED_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "effect/texture_laser_red.png",
-    Vec2::new(512.0, 512.0),
+    Vec2::new(512.0, 683.0),
     4,
-    4,
-);
+    3,
+).with_display_size(Vec2::new(512.0, 1366.0));
 
 // 玩家头像精灵图常量
 // 实际尺寸: 2080 x 441, 3行13列, 每帧 160 x 147

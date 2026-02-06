@@ -47,7 +47,7 @@ pub fn spawn_commander(
         atlas_layouts.commander.clone(),
         commander_animation_indices,
         ANIMATION_FRAME_COMMANDER,
-        Vec3::new(commander_x, commander_y, 0.0),
+        Transform::from_translation(Vec3::new(commander_x, commander_y, 0.0)),
         crate::atlas::COMMANDER_ATLAS.display_size,
         (Commander, PlayingEntity, AnimationMode::Looping),
     );
@@ -69,7 +69,7 @@ pub fn spawn_commander(
         atlas_layouts.music_note.clone(),
         music_animation_indices,
         ANIMATION_FRAME_MUSIC_NOTE,
-        Vec3::new(commander_x, commander_y, Z_FOREST),
+        Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)),
         crate::atlas::MUSIC_NOTE_ATLAS.display_size,
         (
             MusicNoteAnimation,

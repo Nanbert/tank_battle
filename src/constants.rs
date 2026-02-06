@@ -745,7 +745,6 @@ pub const LASER_POSITION_OFFSET: f32 = -40.0; // 激光位置偏移（炮口向�
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
-pub const LASER_HEIGHT: f32 = 1366.0; // 激光高度
 
 // 玩家坦克
 pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移
