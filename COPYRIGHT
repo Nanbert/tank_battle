@@ -77,8 +77,8 @@
 - **作者**: Skorpio
 - **说明**: 烟雾精灵图
 
-## Steel Hit (钢铁击中特效)
-- **文件**: assets/effect/steel_hit.png
+## Hit Spark (击中火花特效)
+- **文件**: assets/effect/hit_spark.png
 - **来源**: https://opengameart.org/content/hit-animation-frame-by-frame
 - **许可**: CC0 1.0 (Public Domain Dedication)
 - **作者**: Sinestesia

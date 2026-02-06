@@ -163,7 +163,7 @@ fn update_start_screen_blink(
 
 pub fn check_stage_complete(
     mut enemy_spawn_state: ResMut<EnemySpawnState>,
-    enemies: Query<(), With<EnemyTank>>,
+    enemies: Query<(), Or<(With<EnemyTank>, With<EnemyBornAnimation>)>>,
     player_info: Res<PlayerInfo>,
     commander_life: Res<CommanderLife>,
     game_mode: Res<GameMode>,
@@ -172,6 +172,7 @@ pub fn check_stage_complete(
     time: Res<Time>,
 ) {
     // 卫语句：检查是否完成关卡
+    // 统计当前场上敌方坦克数量（包括已生成的和正在出生动画中的）
     let current_enemy_count = enemies.iter().count();
     if enemy_spawn_state.has_spawned < enemy_spawn_state.max_count || current_enemy_count > 0 {
         // 如果还有敌人，重置延迟计时器

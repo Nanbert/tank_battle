@@ -119,15 +119,17 @@ pub const SMOKE_ATLAS: TextureAtlasInfo = {
     atlas
 };
 
-// 履带精灵图常量
+// 履带精灵图常量（2列1行，横向排列，138x77，每帧69x77）
 pub const TRACK_CHAIN_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "texture/track_train.png",
     Vec2::new(69.0, 77.0),
-    2,
-    1,
-);
+    2,  // columns: 2列
+    1,  // rows: 1行
+)
+.with_display_size(TANK_DISPLAY_SIZE);
 
 // 爆炸精灵图常量
+// 实际尺寸: 2048 x 2048, 8行8列, 每帧 256 x 256
 pub const EXPLOSION_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "effect/explosion.png",
@@ -139,10 +141,11 @@ pub const EXPLOSION_ATLAS: TextureAtlasInfo = {
     atlas
 };
 
-// 火花精灵图常量
+// 火花精灵图常量（击中特效）
+// 实际尺寸: 1024 x 1024, 4行4列, 每帧 256 x 256
 pub const SPARK_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
-        "effect/explosion2.png",
+        "effect/hit_spark.png",
         Vec2::new(256.0, 256.0),
         4,
         4,
@@ -152,6 +155,7 @@ pub const SPARK_ATLAS: TextureAtlasInfo = {
 };
 
 // 敌方出生动画精灵图常量
+// 实际尺寸: 1700 x 1020, 3行5列, 每帧 340 x 340
 pub const ENEMY_BORN_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "effect/enemy_born.png",
@@ -175,7 +179,7 @@ pub const ENEMY_TANK1_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 
 // 玩家坦克精灵图常量
 pub const PLAYER_TANK1_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
-    "texture/player_tank1_sprite.png",
+    "texture/player_tank1.png",
     Vec2::new(293.0, 328.0),
     2,
     1,
@@ -184,7 +188,7 @@ pub const PLAYER_TANK1_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 
 // 玩家坦克2精灵图常量
 pub const PLAYER_TANK2_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
-    "texture/player_tank2_sprite.png",
+    "texture/player_tank2.png",
     Vec2::new(293.0, 328.0),
     2,
     1,
@@ -192,31 +196,35 @@ pub const PLAYER_TANK2_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 .with_display_size(TANK_DISPLAY_SIZE);
 
 // 指挥官精灵图常量
+// 实际尺寸: 1400 x 1200, 10行10列, 每帧 140 x 120
 pub const COMMANDER_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "texture/commander.png",
     Vec2::new(140.0, 120.0),
-    1,
-    1,
+    10,
+    10,
 )
 .with_display_size(COMMANDER_SIZE);
 
 // 激光精灵图常量（蓝色）
+// 实际尺寸: 2048 x 2048, 4行4列, 每帧 512 x 512
 pub const LASER_BLUE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "effect/texture_laser_blue.png",
-    Vec2::new(512.0, 683.0),
+    Vec2::new(512.0, 512.0),
     4,
-    3,
+    4,
 );
 
 // 激光精灵图常量（红色）
+// 实际尺寸: 2048 x 2048, 4行4列, 每帧 512 x 512
 pub const LASER_RED_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "effect/texture_laser_red.png",
-    Vec2::new(512.0, 683.0),
+    Vec2::new(512.0, 512.0),
     4,
-    3,
+    4,
 );
 
 // 玩家头像精灵图常量
+// 实际尺寸: 2080 x 441, 3行13列, 每帧 160 x 147
 pub const PLAYER_AVATAR_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "texture/avatar.png",
@@ -229,59 +237,65 @@ pub const PLAYER_AVATAR_ATLAS: TextureAtlasInfo = {
 };
 
 // 海水精灵图常量
+// 实际尺寸: 300 x 100, 1行3列, 每帧 100 x 100
 pub const SEA_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "maps/sea_sheet.png",
     Vec2::new(100.0, 100.0),
-    1,
+    3,
     1,
 );
 
 // 森林精灵图常量
+// 实际尺寸: 1310 x 131, 1行10列, 每帧 131 x 131
 pub const FOREST_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "maps/tree.png",
     Vec2::new(131.0, 131.0),
-    1,
+    10,
     1,
 );
 
 // 森林燃烧精灵图常量
+// 实际尺寸: 1310 x 131, 1行10列, 每帧 131 x 131
 pub const FOREST_FIRE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "maps/tree_fire_sheet.png",
     Vec2::new(131.0, 131.0),
-    1,
+    10,
     1,
 );
 
 // 能量球精灵图常量（蓝色）
+// 实际尺寸: 11475 x 2440, 5行17列, 每帧 675 x 488
 pub const ENERGY_BALL_BLUE_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "effect/energy_blue_ball.png",
         Vec2::new(675.0, 488.0),
+        17,
         5,
-        3,
     );
     atlas.display_size = Vec2::new(405.0, 293.0);
     atlas
 };
 
 // 能量球精灵图常量（红色）
+// 实际尺寸: 11475 x 2440, 5行17列, 每帧 675 x 488
 pub const ENERGY_BALL_RED_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "effect/energy_red_ball.png",
         Vec2::new(675.0, 488.0),
+        17,
         5,
-        3,
     );
     atlas.display_size = Vec2::new(405.0, 293.0);
     atlas
 };
 
 // 音符精灵图常量
+// 实际尺寸: 1400 x 120, 1行10列, 每帧 140 x 120
 pub const MUSIC_NOTE_ATLAS: TextureAtlasInfo = {
     let mut atlas = TextureAtlasInfo::new(
         "effect/music_note_sheet.png",
         Vec2::new(140.0, 120.0),
-        2,
+        10,
         1,
     );
     atlas.display_size = Vec2::new(70.0, 60.0);

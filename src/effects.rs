@@ -92,6 +92,7 @@ pub fn animate_effects(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
+    mut spawn_events: MessageWriter<crate::enemy::SpawnEnemyEvent>,
     mut query: Query<
         (
             Entity,
@@ -180,7 +181,7 @@ pub fn animate_effects(
                     match event_type {
                         AnimationEventType::SpawnEnemy => {
                             if let Ok(born_position) = born_position_query.get(entity) {
-                                commands.trigger(crate::enemy::SpawnEnemyEvent {
+                                spawn_events.write(crate::enemy::SpawnEnemyEvent {
                                     position: born_position.0,
                                 });
                             }

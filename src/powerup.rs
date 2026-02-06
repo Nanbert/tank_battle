@@ -179,7 +179,7 @@ pub fn spawn_test_powerup_stage1(
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
-    let powerup_type = PowerUp::Penetrate; // 第一关测试用：改为 penetrate
+    let powerup_type = PowerUp::FireShell; // 第一关测试用：fire_shell 用于测试火焰特效
 
 // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
@@ -265,56 +265,55 @@ fn spawn_powerup(
 ) {
     let (texture, atlas_info, atlas_layout) = match powerup_type {
         PowerUp::SpeedUp => (
-            texture_resources.speed_up.clone(),
+            texture_resources.speed_up_icon.clone(),
             &crate::atlas::POWER_UP_SPEED_UP_ATLAS,
-            &atlas_layouts.speed_up,
+            &atlas_layouts.speed_up_icon,
         ),
         PowerUp::Protection => (
-            texture_resources.protection.clone(),
+            texture_resources.protection_icon.clone(),
             &crate::atlas::POWER_UP_PROTECTION_ATLAS,
-            &atlas_layouts.protection,
+            &atlas_layouts.protection_icon,
         ),
         PowerUp::FireSpeed => (
-            texture_resources.fire_speed.clone(),
+            texture_resources.fire_speed_icon.clone(),
             &crate::atlas::POWER_UP_FIRE_SPEED_ATLAS,
-            &atlas_layouts.fire_speed,
+            &atlas_layouts.fire_speed_icon,
         ),
         PowerUp::FireShell => (
-            texture_resources.fire_shell.clone(),
+            texture_resources.fire_shell_icon.clone(),
             &crate::atlas::POWER_UP_FIRE_SHELL_ATLAS,
-            &atlas_layouts.fire_shell,
+            &atlas_layouts.fire_shell_icon,
         ),
         PowerUp::TrackChain => (
-            texture_resources.track_chain.clone(),
+            texture_resources.track_chain_icon.clone(),
             &crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS,
-            &atlas_layouts.track_chain,
+            &atlas_layouts.track_chain_icon,
         ),
         PowerUp::Penetrate => (
-            texture_resources.penetrate.clone(),
+            texture_resources.penetrate_icon.clone(),
             &crate::atlas::POWER_UP_PENETRATE_ATLAS,
-            &atlas_layouts.penetrate,
+            &atlas_layouts.penetrate_icon,
         ),
         PowerUp::Repair => (
-            texture_resources.repair.clone(),
+            texture_resources.repair_icon.clone(),
             &crate::atlas::POWER_UP_REPAIR_ATLAS,
-            &atlas_layouts.repair,
+            &atlas_layouts.repair_icon,
         ),
         PowerUp::Hamburger => (
-            texture_resources.hamburger.clone(),
+            texture_resources.hamburger_icon.clone(),
             &crate::atlas::POWER_UP_HAMBURGER_ATLAS,
-            &atlas_layouts.hamburger,
+            &atlas_layouts.hamburger_icon,
         ),
         PowerUp::AirCushion => (
-            texture_resources.air_cushion.clone(),
+            texture_resources.air_cushion_icon.clone(),
             &crate::atlas::POWER_UP_AIR_CUSHION_ATLAS,
-            &atlas_layouts.air_cushion,
+            &atlas_layouts.air_cushion_icon,
         ),
         PowerUp::Shell => (
-            texture_resources.shell.clone(),
+            texture_resources.shell_icon.clone(),
             &crate::atlas::POWER_UP_SHELL_ATLAS,
-            &atlas_layouts.shell,
-        ),
-    };
+            &atlas_layouts.shell_icon,
+        ),    };
 
     crate::utils::spawn_animated_sprite(
         commands,
@@ -354,8 +353,8 @@ pub fn update_track_chain_effect(
             // 创建履带特效
             let child_entity = crate::utils::spawn_animated_sprite(
                         &mut commands,
-                        texture_resources.track_train.clone(),
-                        atlas_layouts.track_chain.clone(),
+                        texture_resources.track_chain_effect.clone(),
+                        atlas_layouts.track_chain_effect.clone(),
                         crate::atlas::TRACK_CHAIN_ATLAS.animation_indices_full(),
                         crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
                         Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1),
