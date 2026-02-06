@@ -829,6 +829,7 @@ pub const FONT_SIZE_MEDIUM: f32 = 22.0; // 中等字体
 pub const FONT_SIZE_INSTRUCTION: f32 = 24.0; // 说明文字字体
 pub const FONT_SIZE_SCORE: f32 = 28.0; // 分数字体
 pub const FONT_SIZE_UI: f32 = 30.0; // UI字体
+pub const FONT_SIZE_HUD_NAME: f32 = 32.0; // HUD玩家名称字体大小
 pub const FONT_SIZE_OPTION: f32 = 50.0; // 选项字体
 pub const FONT_SIZE_TITLE: f32 = 60.0; // 标题字体
 pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体

@@ -92,6 +92,23 @@ pub enum HudStatType {
     Score,
 }
 
+/// StatType 到 HudStatType 的转换
+impl From<StatType> for HudStatType {
+    fn from(stat_type: StatType) -> Self {
+        match stat_type {
+            StatType::Speed => HudStatType::Speed,
+            StatType::FireSpeed => HudStatType::FireSpeed,
+            StatType::Protection => HudStatType::Protection,
+            StatType::Shell => HudStatType::Shells,
+            StatType::FireShell => HudStatType::FireShell,
+            StatType::Penetrate => HudStatType::Penetrate,
+            StatType::TrackChain => HudStatType::TrackChain,
+            StatType::AirCushion => HudStatType::AirCushion,
+            StatType::Score => HudStatType::Score,
+        }
+    }
+}
+
 /// HUD 属性值的统一表示
 enum StatValue {
     /// 百分比值（速度、射速、护盾）
@@ -139,7 +156,12 @@ impl HudStatType {
             HudStatType::Speed => stats.speed >= HUD_MAX_PERCENT,
             HudStatType::FireSpeed => stats.fire_speed >= HUD_MAX_PERCENT,
             HudStatType::Protection => stats.protection >= HUD_MAX_PERCENT,
-            _ => false,
+            HudStatType::Shells => stats.shells >= HUD_MAX_SHELLS,
+            HudStatType::FireShell => stats.fire_shell,
+            HudStatType::Penetrate => stats.penetrate,
+            HudStatType::TrackChain => stats.track_chain,
+            HudStatType::AirCushion => stats.air_cushion,
+            HudStatType::Score => false,
         }
     }
 }
@@ -344,7 +366,7 @@ fn spawn_single_player_hud(
         PlayerNameText,
         Text2d(get_player_name(player_type, language).to_string()),
         TextFont {
-            font_size: 32.0,
+            font_size: FONT_SIZE_HUD_NAME,
             font: font.clone(),
             ..default()
         },
@@ -395,7 +417,7 @@ fn spawn_single_player_hud(
         HudStatType::Shells,
         Text2d(format!("{} {}", prefix_shells, stats.shells)),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
             ..default()
         },
@@ -409,7 +431,7 @@ fn spawn_single_player_hud(
         EffectsTitle,
         Text2d(HUD_TEXT_LABELS.effects_title.get(language).to_string()),
         TextFont {
-            font_size: 32.0,
+            font_size: FONT_SIZE_HUD_NAME,
             font: font.clone(),
             ..default()
         },
@@ -475,7 +497,7 @@ fn spawn_single_player_hud(
         HudStatType::Score,
         Text2d(format!("{} {}", prefix_scores, stats.score)),
         TextFont {
-            font_size: 28.0,
+            font_size: FONT_SIZE_SCORE,
             font: font.clone(),
             ..default()
         },
@@ -623,7 +645,7 @@ fn spawn_effect_text<T1: Component, T2: Component>(
         stat_type,
         Text2d(format!("{}: {}", prefix, on_off_label)),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
             ..default()
         },
@@ -655,7 +677,7 @@ fn spawn_percent_text<T1: Component, T2: Component>(
         stat_type,
         Text2d(text),
         TextFont {
-            font_size: 24.0,
+            font_size: FONT_SIZE_INSTRUCTION,
             font: font.clone(),
             ..default()
         },
@@ -808,6 +830,16 @@ pub fn update_player_hud(
 // HUD Text Blink System
 // ============================================================================
 
+/// 触发文本闪烁计时器
+fn trigger_blink_timer(commands: &mut Commands, entity: Entity) {
+    commands
+        .entity(entity)
+        .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
+            TEXT_BLINK_CYCLE,
+            TimerMode::Once,
+        )));
+}
+
 /// 处理 HUD 属性变更事件，触发文字闪烁
 /// 优化：使用组件标记匹配而不是字符串前缀匹配
 pub fn handle_hud_stat_changed(
@@ -817,28 +849,13 @@ pub fn handle_hud_stat_changed(
     player2_hud_texts: Query<(Entity, &HudStatType), With<Player2Hud>>,
 ) {
     for event in events.read() {
-        let target_stat_type = match event.stat_type {
-            StatType::Speed => HudStatType::Speed,
-            StatType::FireSpeed => HudStatType::FireSpeed,
-            StatType::Protection => HudStatType::Protection,
-            StatType::Shell => HudStatType::Shells,
-            StatType::FireShell => HudStatType::FireShell,
-            StatType::Penetrate => HudStatType::Penetrate,
-            StatType::TrackChain => HudStatType::TrackChain,
-            StatType::AirCushion => HudStatType::AirCushion,
-            StatType::Score => HudStatType::Score,
-        };
+        let target_stat_type: HudStatType = event.stat_type.into();
 
         match event.player_type {
             TankType::Player1 => {
                 for (entity, stat_type) in player1_hud_texts.iter() {
                     if *stat_type == target_stat_type {
-                        commands
-                            .entity(entity)
-                            .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
-                                TEXT_BLINK_CYCLE,
-                                TimerMode::Once,
-                            )));
+                        trigger_blink_timer(&mut commands, entity);
                         break;
                     }
                 }
@@ -846,12 +863,7 @@ pub fn handle_hud_stat_changed(
             TankType::Player2 => {
                 for (entity, stat_type) in player2_hud_texts.iter() {
                     if *stat_type == target_stat_type {
-                        commands
-                            .entity(entity)
-                            .insert(PlayerInfoBlinkTimer(Timer::from_seconds(
-                                TEXT_BLINK_CYCLE,
-                                TimerMode::Once,
-                            )));
+                        trigger_blink_timer(&mut commands, entity);
                         break;
                     }
                 }
@@ -923,17 +935,8 @@ fn is_hud_stat_at_max_value(
         return false;
     };
 
-    match stat_type {
-        HudStatType::Speed => stats.speed >= HUD_MAX_PERCENT,
-        HudStatType::FireSpeed => stats.fire_speed >= HUD_MAX_PERCENT,
-        HudStatType::Protection => stats.protection >= HUD_MAX_PERCENT,
-        HudStatType::Shells => stats.shells >= HUD_MAX_SHELLS,
-        HudStatType::FireShell => stats.fire_shell,
-        HudStatType::Penetrate => stats.penetrate,
-        HudStatType::TrackChain => stats.track_chain,
-        HudStatType::AirCushion => stats.air_cushion,
-        HudStatType::Score => false, // 分数没有最大值
-    }
+    // 使用统一的 is_max 方法
+    stat_type.is_max(stats)
 }
 
 /// 生成顶部 HUD（关卡信息、司令官血条、敌方坦克数量）
@@ -957,7 +960,7 @@ fn spawn_top_hud(
         StageText,
         Text2d(stage_text),
         TextFont {
-            font_size: 28.0,
+            font_size: FONT_SIZE_SCORE,
             font: font.clone(),
             ..default()
         },
@@ -973,7 +976,7 @@ fn spawn_top_hud(
         CommanderText,
         Text2d(commander_text.to_string()),
         TextFont {
-            font_size: 28.0,
+            font_size: FONT_SIZE_SCORE,
             font: font.clone(),
             ..default()
         },
@@ -1003,7 +1006,7 @@ fn spawn_top_hud(
         EnemyCountText,
         Text2d(enemy_count_text),
         TextFont {
-            font_size: 28.0,
+            font_size: FONT_SIZE_SCORE,
             font,
             ..default()
         },
@@ -1113,7 +1116,28 @@ pub fn update_enemy_count_text(
     }
 }
 
-
+/// 处理单个玩家头像死亡的内部函数
+fn handle_avatar_death_internal(
+    player_dead: bool,
+    has_handled: &mut bool,
+    tank_type: TankType,
+    player_avatars: &mut Query<(&mut Sprite, &PlayerUI), With<PlayerAvatar>>,
+    texture_resources: &GameTextureResources,
+) {
+    if player_dead && !*has_handled {
+        for (mut sprite, player_ui) in player_avatars.iter_mut() {
+            if player_ui.player_type == tank_type {
+                sprite.image = texture_resources.avatar_death.clone();
+                sprite.texture_atlas = None; // 死亡头像不需要动画
+                sprite.custom_size = Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size);
+                break;
+            }
+        }
+        *has_handled = true;
+    } else if !player_dead && *has_handled {
+        *has_handled = false; // 重置状态，以便下次死亡时再次处理
+    }
+}
 
 /// 处理玩家头像死亡状态
 pub fn handle_player_avatar_death(
@@ -1125,36 +1149,24 @@ pub fn handle_player_avatar_death(
 ) {
     // 处理玩家1头像
     let player1_dead = player_info.player1.life_points == 0;
-    if player1_dead && !*has_handled_player1 {
-        for (mut sprite, player_ui) in &mut player_avatars {
-            if player_ui.player_type == TankType::Player1 {
-                sprite.image = texture_resources.avatar_death.clone();
-                sprite.texture_atlas = None; // 死亡头像不需要动画
-                sprite.custom_size = Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size);
-                break;
-            }
-        }
-        *has_handled_player1 = true;
-    } else if !player1_dead && *has_handled_player1 {
-        *has_handled_player1 = false; // 重置状态，以便下次死亡时再次处理
-    }
+    handle_avatar_death_internal(
+        player1_dead,
+        &mut has_handled_player1,
+        TankType::Player1,
+        &mut player_avatars,
+        &texture_resources,
+    );
 
     // 处理玩家2头像（如果存在）
     if let Some(ref player2_stats) = player_info.player2 {
         let player2_dead = player2_stats.life_points == 0;
-        if player2_dead && !*has_handled_player2 {
-            for (mut sprite, player_ui) in &mut player_avatars {
-                if player_ui.player_type == TankType::Player2 {
-                    sprite.image = texture_resources.avatar_death.clone();
-                    sprite.texture_atlas = None; // 死亡头像不需要动画
-                    sprite.custom_size = Some(crate::atlas::PLAYER_AVATAR_ATLAS.display_size);
-                    break;
-                }
-            }
-            *has_handled_player2 = true;
-        } else if !player2_dead && *has_handled_player2 {
-            *has_handled_player2 = false; // 重置状态，以便下次死亡时再次处理
-        }
+        handle_avatar_death_internal(
+            player2_dead,
+            &mut has_handled_player2,
+            TankType::Player2,
+            &mut player_avatars,
+            &texture_resources,
+        );
     }
 }
 
