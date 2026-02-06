@@ -208,7 +208,15 @@ pub fn cleanup_effects_and_bullets(
     forest_fires: Query<Entity, With<crate::constants::ForestFire>>,
     energy_balls: Query<Entity, With<crate::constants::EnergyBall>>,
     lasers: Query<Entity, With<crate::constants::Laser>>,
-    audio_players: Query<Entity, With<bevy::audio::AudioPlayer>>,
+    // 只清理环境音效播放器（循环音效），一次性音效会自动回收
+    ambience_players: Query<
+        Entity,
+        Or<(
+            With<crate::constants::SeaAmbiencePlayer>,
+            With<crate::constants::TreeAmbiencePlayer>,
+            With<crate::constants::CommanderAmbiencePlayer>,
+        )>,
+    >,
     mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
 ) {
     // 清理所有子弹（需要先从 tracker 中移除）
@@ -224,7 +232,8 @@ pub fn cleanup_effects_and_bullets(
     crate::utils::cleanup_entities(&mut commands, forest_fires.iter());
     crate::utils::cleanup_entities(&mut commands, energy_balls.iter());
     crate::utils::cleanup_entities(&mut commands, lasers.iter());
-    crate::utils::cleanup_entities(&mut commands, audio_players.iter());
+    // 只清理环境音效播放器（循环音效）
+    crate::utils::cleanup_entities(&mut commands, ambience_players.iter());
 
     // 强制重置 BulletTracker，防止状态不同步
     bullet_tracker.clear();

@@ -309,11 +309,8 @@ fn start_charge(
     });
 
     // 播放蓄力音效并添加标记组件
-    commands.spawn((
-        AudioPlayer::new(audio_resources.laser_charge.clone()),
-        PlaybackSettings::ONCE.with_volume(bevy::audio::Volume::Linear(1.0)),
-        LaserChargeSound,
-    ));
+    let sound_entity = utils::play_one_shot_sound(commands, audio_resources.laser_charge.clone(), 1.0);
+    commands.entity(sound_entity).insert(LaserChargeSound);
 
     let energy_ball_animation_indices = AnimationIndices {
         first: 0,
@@ -606,37 +603,17 @@ pub fn handle_laser_end_events(
         for hit_result in hit_entities {
             let despawn_entity = hit_result.entity;
             let transform = hit_result.position;
-            // 使用预加载的烟雾图集布局
-            let smoke_animation_indices = AnimationIndices {
-                first: 0,
-                last: crate::atlas::SMOKE_ATLAS.total_frames - 1,
-            };
-
-            commands.spawn((
-                PlayingEntity,
-                crate::constants::Smoke,
-                AnimationMode::OneShot,
-                Sprite {
-                    image: texture_resources.smoke.clone(),
-                    texture_atlas: Some(TextureAtlas {
-                        layout: atlas_layouts.smoke_atlas.clone(),
-                        index: smoke_animation_indices.first,
-                    }),
-                    custom_size: Some(Vec2::new(100.0, 100.0)),
-                    ..default()
-                },
-                Transform {
-                    translation: transform,
-                    rotation: Quat::IDENTITY,
-                    scale: Vec3::ONE,
-                },
-                smoke_animation_indices,
-                AnimationTimer(Timer::from_seconds(
-                    ANIMATION_FRAME_SMOKE,
-                    TimerMode::Repeating,
-                )),
-                CurrentAnimationFrame(0),
-            ));
+            // 使用预加载的烟雾图集布局和工具函数生成烟雾特效
+            let _ = utils::spawn_animated_sprite(
+                &mut commands,
+                texture_resources.smoke.clone(),
+                atlas_layouts.smoke_atlas.clone(),
+                crate::atlas::SMOKE_ATLAS.animation_indices_full(),
+                ANIMATION_FRAME_SMOKE,
+                Transform::from_translation(transform),
+                crate::atlas::SMOKE_ATLAS.display_size,
+                (PlayingEntity, crate::constants::Smoke, AnimationMode::OneShot),
+            );
 
             let () = commands.entity(despawn_entity).try_despawn();
         }

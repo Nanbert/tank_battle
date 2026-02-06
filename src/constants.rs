@@ -716,7 +716,7 @@ pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
 pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
-pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.03; // 能量球动画帧间隔
+pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.02; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_MUSIC_NOTE: f32 = 0.1; // 音符动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
@@ -734,7 +734,7 @@ pub const GAME_OVER_DELAY: f32 = 1.2; // Game Over 延迟
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
 pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间
-pub const LASER_CHARGE_TIME: f32 = 4.0; // 激光蓄力时间
+pub const LASER_CHARGE_TIME: f32 = 3.0; // 激光蓄力时间
 pub const BLUE_BAR_REGEN_INTERVAL: f32 = 5.0; // 蓝条恢复间隔
 pub const INSUFFICIENT_ENERGY_DISPLAY_DURATION: f32 = 2.0; // 能量不足提示显示时长（秒）
 
