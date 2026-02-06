@@ -233,6 +233,7 @@ pub const PLAYER_AVATAR_ATLAS: TextureAtlasInfo = {
         3,
     );
     atlas.display_size = Vec2::new(160.0, 147.0);
+    atlas.total_frames = 33;
     atlas
 };
 
