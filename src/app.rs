@@ -305,7 +305,7 @@ fn register_playing_systems(app: &mut App) {
         Update,
         (
             laser::player_laser_system,
-            laser::animate_laser,
+            laser::handle_laser_end_events,
             laser::handle_recoil_force,
         )
             .in_set(GameSystemSet::LaserSystems),
@@ -562,6 +562,7 @@ pub fn configure_game_resources(app: &mut App) {
 /// 将系统按游戏状态分组注册，使用辅助函数提高可维护性
 pub fn register_game_systems(app: &mut App) {
     app.init_state::<GameState>()
+        .add_message::<crate::constants::LaserEndEvent>()
         .add_message::<PlayerStatChanged>()
         .add_message::<crate::bullet::EffectEvent>()
         .add_message::<crate::enemy::SpawnEnemyEvent>()

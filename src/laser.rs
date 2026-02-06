@@ -117,11 +117,14 @@ pub fn spawn_laser(
         Bullet::Player(params.owner_type)
     };
 
+    // 获取动画帧范围
+    let animation_indices = resources.laser_atlas_info.animation_indices_full();
+
     let entity = crate::utils::spawn_animated_sprite(
         commands,
         resources.laser_texture.clone(),
         resources.laser_texture_atlas.clone(),
-        resources.laser_atlas_info.animation_indices_full(),
+        animation_indices,
         ANIMATION_FRAME_LASER,
         Transform {
             translation: Vec3::new(laser_position.x, laser_position.y, Z_LASER),
@@ -129,13 +132,21 @@ pub fn spawn_laser(
             ..default()
         },
         resources.laser_atlas_info.display_size,
-        (Laser, PlayingEntity, bullet_type, LaserDirection(params.direction), LaserStartPoint(params.position)),
+        (
+            Laser,
+            PlayingEntity,
+            bullet_type,
+            AnimationMode::AtFrameWithEvent {
+                trigger_frame: animation_indices.last,
+                event_type: crate::constants::AnimationEventType::LaserAnimationEnd {
+                    direction: params.direction,
+                    start_point: params.position,
+                    owner_type: params.owner_type,
+                    energy_ball_entity: params.energy_ball_entity,
+                },
+            },
+        ),
     );
-
-    // 如果有关联的能量球，添加 LaserWithEnergyBall 组件
-    if let Some(energy_ball_entity) = params.energy_ball_entity {
-        commands.entity(entity).insert(LaserWithEnergyBall { energy_ball_entity });
-    }
 
     entity
 }
@@ -543,6 +554,93 @@ fn check_laser_collision(
     hit_entities
 }
 
+/// 处理激光动画结束事件
+/// 在激光动画播放完最后一帧时由 animate_effects 触发
+/// 执行碰撞检测、销毁命中实体、生成烟雾特效
+pub fn handle_laser_end_events(
+    mut commands: Commands,
+    mut events: MessageReader<LaserEndEvent>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    texture_resources: Res<GameTextureResources>,
+    collidables: Query<
+        (Entity, &Transform),
+        Or<(
+            With<EnemyTank>,
+            With<Bullet>,
+            With<Brick>,
+            With<Steel>,
+            With<Forest>,
+            With<Barrier>,
+            With<Sea>,
+        )>,
+    >,
+    player_tanks: Query<(), With<PlayerTank>>,
+    commanders: Query<(), With<Commander>>,
+) {
+    for event in events.read() {
+        // 根据所有者类型获取对应的激光 atlas info
+        let laser_atlas_info = match event.owner_type {
+            TankType::Player1 => &crate::atlas::LASER_BLUE_ATLAS,
+            TankType::Player2 => &crate::atlas::LASER_RED_ATLAS,
+            TankType::Enemy => unreachable!("敌方坦克没有激光大招"),
+        };
+
+        // 执行碰撞检测
+        let hit_entities = check_laser_collision(
+            event.start_point,
+            event.direction,
+            laser_atlas_info,
+            &collidables,
+            &player_tanks,
+            &commanders,
+        );
+
+        // 销毁关联的能量球
+        if let Some(energy_ball_entity) = event.energy_ball_entity {
+            let () = commands.entity(energy_ball_entity).try_despawn();
+        }
+
+        // 销毁激光实体和所有标记的实体，生成烟雾特效
+        for hit_result in hit_entities {
+            let despawn_entity = hit_result.entity;
+            let transform = hit_result.position;
+            // 使用预加载的烟雾图集布局
+            let smoke_animation_indices = AnimationIndices {
+                first: 0,
+                last: crate::atlas::SMOKE_ATLAS.total_frames - 1,
+            };
+
+            commands.spawn((
+                PlayingEntity,
+                crate::constants::Smoke,
+                AnimationMode::OneShot,
+                Sprite {
+                    image: texture_resources.smoke.clone(),
+                    texture_atlas: Some(TextureAtlas {
+                        layout: atlas_layouts.smoke_atlas.clone(),
+                        index: smoke_animation_indices.first,
+                    }),
+                    custom_size: Some(Vec2::new(100.0, 100.0)),
+                    ..default()
+                },
+                Transform {
+                    translation: transform,
+                    rotation: Quat::IDENTITY,
+                    scale: Vec3::ONE,
+                },
+                smoke_animation_indices,
+                AnimationTimer(Timer::from_seconds(
+                    ANIMATION_FRAME_SMOKE,
+                    TimerMode::Repeating,
+                )),
+                CurrentAnimationFrame(0),
+            ));
+
+            let () = commands.entity(despawn_entity).try_despawn();
+        }
+    }
+}
+
 /// 处理后坐力效果
 pub fn handle_recoil_force(
     time: Res<Time>,
@@ -567,129 +665,4 @@ pub fn handle_recoil_force(
     }
 }
 
-/// 处理激光动画
-/// 优化版本：使用单一批量查询替代多个独立查询，提高碰撞检测性能
-/// 使用预加载的烟雾图集布局，避免重复创建
-pub fn animate_laser(
-    time: Res<Time>,
-    mut commands: Commands,
-    atlas_layouts: Res<GameAtlasLayoutResources>,
-    texture_resources: Res<GameTextureResources>,
-    mut query: Query<
-        (
-            Entity,
-            &mut AnimationTimer,
-            &mut Sprite,
-            &AnimationIndices,
-            &mut CurrentAnimationFrame,
-            &LaserDirection,
-            &LaserStartPoint,
-            Option<&LaserWithEnergyBall>,
-            &Bullet,
-        ),
-        With<Laser>,
-    >,
-    collidables: Query<
-        (Entity, &Transform),
-        Or<(
-            With<EnemyTank>,
-            With<Bullet>,
-            With<Brick>,
-            With<Steel>,
-            With<Forest>,
-            With<Barrier>,
-            With<Sea>,
-        )>,
-    >,
-    player_tanks: Query<(), With<PlayerTank>>,
-    commanders: Query<(), With<Commander>>,
-) {
-    for (
-        entity,
-        mut timer,
-        mut sprite,
-        indices,
-        mut current_frame,
-        laser_direction,
-        laser_start,
-        energy_ball_link,
-        bullet_type,
-    ) in &mut query
-    {
-        let prev_frame = current_frame.0;
-        crate::utils::advance_next_frame(
-            &mut timer,
-            &mut sprite,
-            &mut current_frame,
-            time.delta(),
-            indices.first,
-            indices.last,
-        );
 
-        if prev_frame != current_frame.0 && timer.just_finished() && current_frame.0 >= indices.last
-        {
-            // 动画播放完毕，执行一次碰撞检测（优化：使用批量查询）
-            // 根据子弹类型获取对应的激光 atlas info
-            let laser_atlas_info = match bullet_type {
-                Bullet::Player(TankType::Player1) => &crate::atlas::LASER_BLUE_ATLAS,
-                Bullet::Player(TankType::Player2) => &crate::atlas::LASER_RED_ATLAS,
-                Bullet::Enemy => unreachable!("敌方坦克没有激光大招"),
-                _ => &crate::atlas::LASER_BLUE_ATLAS, // 默认值，不应该到达这里
-            };
-
-            let hit_entities = check_laser_collision(
-                laser_start.0,
-                laser_direction.0,
-                laser_atlas_info,
-                &collidables,
-                &player_tanks,
-                &commanders,
-            );
-
-            // 销毁关联的能量球
-            if let Some(link) = energy_ball_link {
-                let () = commands.entity(link.energy_ball_entity).try_despawn();
-            }
-
-            // 销毁激光实体和所有标记的实体，生成烟雾特效
-            for hit_result in hit_entities {
-                let despawn_entity = hit_result.entity;
-                let transform = hit_result.position;
-                // 使用预加载的烟雾图集布局
-                let smoke_animation_indices = AnimationIndices {
-                    first: 0,
-                    last: crate::atlas::SMOKE_ATLAS.total_frames - 1,
-                };
-
-                commands.spawn((
-                    PlayingEntity,
-                    crate::constants::Smoke,
-                    AnimationMode::OneShot,
-                    Sprite {
-                        image: texture_resources.smoke.clone(),
-                        texture_atlas: Some(TextureAtlas {
-                            layout: atlas_layouts.smoke_atlas.clone(),
-                            index: smoke_animation_indices.first,
-                        }),
-                        custom_size: Some(Vec2::new(100.0, 100.0)),
-                        ..default()
-                    },
-                    Transform {
-                        translation: transform,
-                        rotation: Quat::IDENTITY,
-                        scale: Vec3::ONE,
-                    },
-                    smoke_animation_indices,
-                    AnimationTimer(Timer::from_seconds(
-                        ANIMATION_FRAME_SMOKE,
-                        TimerMode::Repeating,
-                    )),
-                    CurrentAnimationFrame(0),
-                ));
-
-                let () = commands.entity(despawn_entity).try_despawn();
-            }
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}

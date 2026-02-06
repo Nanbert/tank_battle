@@ -93,6 +93,7 @@ pub fn animate_effects(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut commands: Commands,
     mut spawn_events: MessageWriter<crate::enemy::SpawnEnemyEvent>,
+    mut laser_end_events: MessageWriter<crate::constants::LaserEndEvent>,
     mut query: Query<
         (
             Entity,
@@ -185,6 +186,19 @@ pub fn animate_effects(
                                     position: born_position.0,
                                 });
                             }
+                        }
+                        AnimationEventType::LaserAnimationEnd {
+                            direction,
+                            start_point,
+                            owner_type,
+                            energy_ball_entity,
+                        } => {
+                            laser_end_events.write(crate::constants::LaserEndEvent {
+                                direction: *direction,
+                                start_point: *start_point,
+                                owner_type: *owner_type,
+                                energy_ball_entity: *energy_ball_entity,
+                            });
                         }
                     }
                 }

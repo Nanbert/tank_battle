@@ -379,7 +379,7 @@ pub struct CurrentAnimationFrame(pub usize);
 
 /// 动画模式枚举
 /// 定义动画的播放模式
-#[derive(Component, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Component, Clone, Copy, PartialEq, Default)]
 pub enum AnimationMode {
     /// 循环播放（用于敌方坦克、火焰特效、穿透特效、森林、海洋、司令官音乐动画等）
     #[default]
@@ -434,10 +434,31 @@ pub struct EnemyTank {
 pub struct EnemyBornAnimation;
 
 /// 动画事件类型枚举
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AnimationEventType {
     /// 生成敌方坦克
     SpawnEnemy,
+    /// 激光动画结束事件
+    LaserAnimationEnd {
+        direction: Vec2,
+        start_point: Vec3,
+        owner_type: TankType,
+        energy_ball_entity: Option<Entity>,
+    },
+}
+
+/// 激光动画结束事件
+/// 由 animate_effects 在激光动画结束时发送
+#[derive(Message, Clone, Debug)]
+pub struct LaserEndEvent {
+    /// 激光方向
+    pub direction: Vec2,
+    /// 激光起点
+    pub start_point: Vec3,
+    /// 激光所有者类型
+    pub owner_type: TankType,
+    /// 关联的能量球实体
+    pub energy_ball_entity: Option<Entity>,
 }
 
 /// 坦克类型枚举
@@ -500,14 +521,6 @@ pub struct Explosion;
 #[derive(Component)]
 pub struct Laser;
 
-/// 激光方向
-#[derive(Component)]
-pub struct LaserDirection(pub Vec2);
-
-/// 激光发射起点
-#[derive(Component)]
-pub struct LaserStartPoint(pub Vec3);
-
 /// 敌方坦克碰撞缓存
 /// 用于事件驱动模式，缓存碰撞事件和法线信息
 #[derive(Resource, Default)]
@@ -552,11 +565,6 @@ pub enum EnergyBallPhase {
     Charging,
     /// 激光阶段：循环81-84帧
     Lasering,
-}
-
-#[derive(Component)]
-pub struct LaserWithEnergyBall {
-    pub energy_ball_entity: Entity,
 }
 
 #[derive(Component)]
