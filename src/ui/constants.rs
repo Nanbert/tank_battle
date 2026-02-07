@@ -256,23 +256,10 @@ pub const FONT_SIZE_UI: f32 = 30.0; // UI字体
 pub const FONT_SIZE_HUD_NAME: f32 = 32.0; // HUD玩家名称字体大小
 pub const FONT_SIZE_OPTION: f32 = 50.0; // 选项字体
 pub const FONT_SIZE_TITLE: f32 = 60.0; // 标题字体
-pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体
+pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 致谢标题字体
 pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
 pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）
-
-// ============================================================================
-// UI 时间常量
-// ============================================================================
-
-/// 菜单闪烁周期
-pub const MENU_BLINK_PERIOD: f32 = 0.5;
-
-/// 文字闪烁周期
-pub const TEXT_BLINK_CYCLE: f32 = 0.6;
-
-/// Game Over 延迟
-pub const GAME_OVER_DELAY: f32 = 1.2;
 
 // ============================================================================
 // Z 轴层级常量
@@ -286,7 +273,6 @@ pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
 // 颜色常量
 // ============================================================================
 
-// 颜色常量
 pub const COLOR_BACKGROUND: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
 pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 黑色
 pub const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0); // 白色
@@ -300,10 +286,31 @@ pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明
 pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
 pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
 
-// UI 时间常量（关卡相关）
-pub const STAGE_FADE_IN_DURATION: f32 = 1.0; // 关卡淡入时间
-pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0; // 关卡停留时间
-pub const STAGE_FADE_OUT_DURATION: f32 = 1.0; // 关卡淡出时间
+// ============================================================================
+// UI 时间常量
+// ============================================================================
 
+/// 菜单闪烁周期
+pub const MENU_BLINK_PERIOD: f32 = 0.5;
+
+/// 文字闪烁周期
+pub const TEXT_BLINK_CYCLE: f32 = 0.6;
+
+/// 关卡淡入时间
+pub const STAGE_FADE_IN_DURATION: f32 = 1.0;
+
+/// 关卡停留时间
+pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0;
+
+/// 关卡淡出时间
+pub const STAGE_FADE_OUT_DURATION: f32 = 1.0;
+
+/// Game Over 延迟
+pub const GAME_OVER_DELAY: f32 = 1.2;
+
+// ============================================================================
 // 其他 UI 常量
-pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸
+// ============================================================================
+
+/// 收款码尺寸
+pub const PAYMENT_CODE_SIZE: f32 = 400.0;
