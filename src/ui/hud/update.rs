@@ -359,7 +359,7 @@ pub fn update_enemy_count_text(
     let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
     let max_count = enemy_spawn_state.max_count;
 
-    let text = ENEMY_COUNT_TEXT.format_many(*language, &[remaining, max_count]);
+    let text = ENEMY_COUNT_TEXT.format_named(*language, &[("remaining", remaining), ("total", max_count)]);
 
     for mut text_mut in &mut query {
         text_mut.0 = text.clone();

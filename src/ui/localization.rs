@@ -249,8 +249,8 @@ pub const STAGE_TEXT: LocalizedTextFormat = LocalizedTextFormat {
     en: "Stage {var}",
 };
 
-/// 敌方剩余数量文本格式化（支持变量插值）
+/// 敌方剩余数量文本格式化（支持命名占位符）
 pub const ENEMY_COUNT_TEXT: LocalizedTextFormat = LocalizedTextFormat {
-    cn: "敌方剩余: {0}/{1}",
-    en: "Enemy Left: {0}/{1}",
+    cn: "敌方剩余: {remaining}/{total}",
+    en: "Enemy Left: {remaining}/{total}",
 };

@@ -48,7 +48,6 @@ pub const TEXTURE_STEEL: &str = "maps/steel.png";
 // 收款码路径常量
 pub const IMAGE_ALIPAY: &str = "alipay.png";
 pub const IMAGE_WECHAT: &str = "wechat.png";
-pub const PAYMENT_CODE_SIZE: f32 = 400.0;
 
 // 特效纹理路径常量（静态）
 pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
@@ -107,18 +106,7 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
 
 // ==================== 颜色常量 ====================
-pub const COLOR_BACKGROUND: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
-pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 黑色
-pub const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0); // 白色
-pub const COLOR_RED: Color = Color::srgb(1.0, 0.0, 0.0); // 红色
-pub const COLOR_GREEN: Color = Color::srgb(0.0, 1.0, 0.0); // 绿色
-pub const COLOR_BLUE: Color = Color::srgb(0.0, 0.5, 1.0); // 蓝色
-pub const COLOR_YELLOW: Color = Color::srgb(1.0, 1.0, 0.0); // 黄色
-pub const COLOR_GRAY: Color = Color::srgb(146.0 / 255.0, 159.0 / 255.0, 167.0 / 255.0); // 开始界面背景色
-pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 血条空槽背景色（深灰）
-pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明白色
-pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
-pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
+// 颜色常量已迁移到 ui::constants
 
 // ==================== 尺寸常量 ====================
 pub const COMMANDER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
@@ -680,13 +668,25 @@ impl LocalizedTextFormat {
         template.replace("{var}", &value.to_string())
     }
 
-    /// 格式化文本，替换多个变量
-    /// 使用 `{0}`, `{1}`, `{2}`... 作为占位符
-    pub fn format_many(&self, language: Language, values: &[impl std::fmt::Display]) -> String {
+    /// 格式化文本，使用命名占位符
+    /// 使用 `{name}`, `{name2}`... 作为占位符
+    ///
+    /// # 示例
+    /// ```rust
+    /// let text = LocalizedTextFormat {
+    ///     cn: "敌方剩余: {remaining}/{total}",
+    ///     en: "Enemy Left: {remaining}/{total}",
+    /// };
+    /// let result = text.format_named(language, &[
+    ///     ("remaining", remaining),
+    ///     ("total", max_count),
+    /// ]);
+    /// ```
+    pub fn format_named(&self, language: Language, values: &[(&str, impl std::fmt::Display)]) -> String {
         let template = self.get(language);
         let mut result = template.to_string();
-        for (i, value) in values.iter().enumerate() {
-            result = result.replace(&format!("{{{}}}", i), &value.to_string());
+        for (name, value) in values.iter() {
+            result = result.replace(&format!("{{{}}}", name), &value.to_string());
         }
         result
     }
@@ -721,9 +721,6 @@ pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
 // ==================== 游戏机制时间常量 ====================
 pub const RECOIL_DURATION: f32 = 0.3; // 后坐力持续时间
 pub const ENEMY_SPAWN_COOLDOWN: f32 = 0.8; // 敌方坦克生成冷却时间
-pub const STAGE_FADE_IN_DURATION: f32 = 1.0; // 关卡淡入时间
-pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0; // 关卡停留时间
-pub const STAGE_FADE_OUT_DURATION: f32 = 1.0; // 关卡淡出时间
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
 pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间

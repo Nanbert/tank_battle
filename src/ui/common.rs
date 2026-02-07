@@ -386,9 +386,9 @@ impl BlinkAnimation {
     pub fn gold_blink(duration: f32, remove_on_complete: bool) -> Self {
         Self::new(
             duration,
-            crate::constants::COLOR_GOLD,
-            crate::constants::COLOR_TRANSPARENT_BLACK,
-            crate::constants::COLOR_WHITE,
+            crate::ui::COLOR_GOLD,
+            crate::ui::COLOR_TRANSPARENT_BLACK,
+            crate::ui::COLOR_WHITE,
             remove_on_complete,
         )
     }

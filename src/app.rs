@@ -52,7 +52,7 @@ fn register_start_screen_systems(app: &mut App) {
             ui::hud::despawn_hud,
             game_state::reset_fading_out,
             |mut clear_color: ResMut<ClearColor>| {
-                clear_color.0 = crate::constants::COLOR_GRAY;
+                clear_color.0 = crate::ui::COLOR_GRAY;
             },
         )
             .chain(),
@@ -436,7 +436,7 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 }
 
 pub fn configure_game_resources(app: &mut App) {
-    app.insert_resource(ClearColor(crate::constants::COLOR_GRAY))
+    app.insert_resource(ClearColor(crate::ui::COLOR_GRAY))
         .insert_resource(crate::resources::GameTextureResources {
             cn: Handle::default(),
             en: Handle::default(),

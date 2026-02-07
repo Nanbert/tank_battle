@@ -281,3 +281,29 @@ pub const GAME_OVER_DELAY: f32 = 1.2;
 pub const Z_UI: f32 = 10.0; // UI层级
 pub const Z_STAGE_INTRO_BG: f32 = 100.0; // 关卡介绍层级
 pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
+
+// ============================================================================
+// 从 constants.rs 迁移的 UI 相关常量
+// ============================================================================
+
+// 颜色常量
+pub const COLOR_BACKGROUND: Color = Color::srgb(0.0, 0.5, 0.5); // 蓝绿色
+pub const COLOR_BLACK: Color = Color::srgb(0.0, 0.0, 0.0); // 黑色
+pub const COLOR_WHITE: Color = Color::srgb(1.0, 1.0, 1.0); // 白色
+pub const COLOR_RED: Color = Color::srgb(1.0, 0.0, 0.0); // 红色
+pub const COLOR_GREEN: Color = Color::srgb(0.0, 1.0, 0.0); // 绿色
+pub const COLOR_BLUE: Color = Color::srgb(0.0, 0.5, 1.0); // 蓝色
+pub const COLOR_YELLOW: Color = Color::srgb(1.0, 1.0, 0.0); // 黄色
+pub const COLOR_GRAY: Color = Color::srgb(146.0 / 255.0, 159.0 / 255.0, 167.0 / 255.0); // 开始界面背景色
+pub const COLOR_DARK_GRAY: Color = Color::srgb(0.3, 0.3, 0.3); // 血条空槽背景色（深灰）
+pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明白色
+pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
+pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
+
+// UI 时间常量（关卡相关）
+pub const STAGE_FADE_IN_DURATION: f32 = 1.0; // 关卡淡入时间
+pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0; // 关卡停留时间
+pub const STAGE_FADE_OUT_DURATION: f32 = 1.0; // 关卡淡出时间
+
+// 其他 UI 常量
+pub const PAYMENT_CODE_SIZE: f32 = 400.0; // 收款码尺寸

@@ -368,7 +368,7 @@ pub fn spawn_top_hud(
     ));
 
     // 敌方剩余数量显示在右侧（初始值）
-    let enemy_count_text = ENEMY_COUNT_TEXT.format_many(language, &[20, 20]);
+    let enemy_count_text = ENEMY_COUNT_TEXT.format_named(language, &[("remaining", 20), ("total", 20)]);
     commands.spawn((
         PlayingEntity,
         EnemyCountText,
