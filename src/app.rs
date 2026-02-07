@@ -62,12 +62,12 @@ fn register_start_screen_systems(app: &mut App) {
         (
             // 清理游戏实体
             |mut commands: Commands,
-             entities: Query<Entity, With<crate::constants::PlayingEntity>>| {
+             entities: Query<Entity, With<crate::ui::PlayingEntity>>| {
                 crate::utils::cleanup_entities(&mut commands, entities.iter());
             },
             // 生成开始菜单
             ui::menus::spawn_start_screen
-                .run_if(|query: Query<(), With<crate::constants::StartScreenUI>>| query.is_empty()),
+                .run_if(|query: Query<(), With<crate::ui::StartScreenUI>>| query.is_empty()),
             // 语言变化时重新生成菜单
             (
                 ui::overlay::despawn_start_screen_ui,
@@ -314,7 +314,12 @@ fn register_playing_systems(app: &mut App) {
     // 特效和动画系统集
     app.add_systems(
         Update,
-        (effects::animate_effects, effects::update_air_cushion_effect)
+        (
+            effects::animate_effects,
+            effects::update_air_cushion_effect,
+            ui::common::update_blink_animations, // 通用闪烁动画系统
+            ui::overlay::auto_remove_insufficient_energy_warnings, // 自动移除能量不足提示
+        )
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );
 
@@ -328,14 +333,14 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            ui::hud::handle_player_avatar_death,
-            ui::hud::handle_hud_stat_changed,
-            ui::hud::animate_hud_text,
-            ui::hud::update_enemy_count_text
+            ui::hud::update::handle_player_avatar_death,
+            ui::hud::blink::handle_hud_stat_changed,
+            ui::hud::blink::animate_hud_text,
+            ui::hud::update::update_enemy_count_text
                 .run_if(resource_changed::<crate::resources::EnemySpawnState>),
-            ui::hud::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),
-            ui::hud::update_player_hud.run_if(resource_changed::<PlayerInfo>),
-            ui::hud::handle_commander_death,
+            ui::hud::update::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),
+            ui::hud::update::update_player_hud.run_if(resource_changed::<PlayerInfo>),
+            ui::hud::update::handle_commander_death,
         )
             .in_set(GameSystemSet::HudSystems),
     );
@@ -375,10 +380,7 @@ fn register_playing_systems(app: &mut App) {
     // 其他系统（不属于特定集的 Playing 状态系统）
     app.add_systems(
         Update,
-        (
-            ui::overlay::handle_game_input,
-            ui::overlay::update_insufficient_energy_warnings,
-        )
+        ui::overlay::handle_game_input
             .run_if(in_state(GameState::Playing)),
     );
 }

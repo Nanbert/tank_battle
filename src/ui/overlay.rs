@@ -10,62 +10,12 @@ use rand::Rng;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
+#[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use super::common;
-
-// ==================== 本地化文本常量 ====================
-
-const PAUSED_TITLE: LocalizedText = LocalizedText {
-    cn: "已暂停",
-    en: "PAUSED",
-};
-
-const PAUSED_INSTRUCTION: LocalizedText = LocalizedText {
-    cn: "按 SPACE 继续 | B 返回菜单 | ESC 退出",
-    en: "Press SPACE to resume | B to menu | ESC to exit",
-};
-
-const GAME_OVER_TITLE: LocalizedText = LocalizedText {
-    cn: "游戏结束",
-    en: "GAME OVER",
-};
-
-const GAME_OVER_RESTART: LocalizedText = LocalizedText {
-    cn: "重新开始",
-    en: "RESTART",
-};
-
-const GAME_OVER_MENU: LocalizedText = LocalizedText {
-    cn: "返回菜单",
-    en: "MENU",
-};
-
-const GAME_OVER_EXIT: LocalizedText = LocalizedText {
-    cn: "退出",
-    en: "EXIT",
-};
-
-const GAME_OVER_INSTRUCTION: LocalizedText = LocalizedText {
-    cn: "W/S 选择 | SPACE 确认",
-    en: "W/S select | SPACE confirm",
-};
-
-const INSUFFICIENT_ENERGY_CN: &str = "能量不足！";
-const INSUFFICIENT_ENERGY_EN: &str = "Insufficient Energy!";
-
-// ==================== 辅助函数 ====================
-
-/// 更新 Sprite 的透明度
-fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
-    let linear = sprite.color.to_linear();
-    sprite.color = Color::srgba(linear.red, linear.green, linear.blue, alpha);
-}
-
-/// 更新 `TextColor` 的透明度
-fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
-    let linear = text_color.0.to_linear();
-    text_color.0 = Color::srgba(linear.red, linear.green, linear.blue, alpha);
-}
+use super::common::{self, update_sprite_alpha, update_text_color_alpha};
+// 从 localization 模块导入本地化常量
+use super::localization::*;
 
 /// 淡出屏幕效果
 pub fn fade_out_screen(
@@ -74,33 +24,36 @@ pub fn fade_out_screen(
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
     menu_selection: Res<CurrentMenuSelection>,
-    mut sprite_query: Query<(Entity, &mut Sprite), With<StartScreenUI>>,
-    mut text_query: Query<(Entity, &mut TextColor, Option<&MenuOption>), With<StartScreenUI>>,
-    start_screen_query: Query<Entity, With<StartScreenUI>>,
+    mut ui_query: Query<(Entity, Option<&mut Sprite>, Option<&mut TextColor>, Option<&MenuOption>), With<StartScreenUI>>,
 ) {
     // 减少透明度
     fading_out.alpha -= time.delta_secs() * (1.0 / FADE_OUT_SPEED); // 淡出速度，1.5秒完成
 
     // 更新所有 Sprite 元素的透明度
-    for (_, mut sprite) in &mut sprite_query {
-        update_sprite_alpha(fading_out.alpha, &mut sprite);
-    }
-
-    // 更新所有 Text 元素的颜色（选中的选项由 update_menu_blink 处理闪烁，但需要跟随淡出）
     let selected_index = menu_selection.selected_index;
 
-    for (_, mut text_color, menu_option) in &mut text_query {
-        // 如果是当前选中的选项，跳过透明度更新（闪烁由 update_menu_blink 处理）
-        if menu_option.is_some_and(|opt| opt.index == selected_index) {
-            continue;
+    for (_entity, sprite_opt, text_color_opt, menu_option_opt) in &mut ui_query {
+        // 更新 Sprite 透明度
+        if let Some(mut sprite) = sprite_opt {
+            update_sprite_alpha(fading_out.alpha, &mut sprite);
         }
-        update_text_color_alpha(fading_out.alpha, &mut text_color);
+
+        // 更新 Text 元素的颜色（选中的选项由 update_menu_blink 处理闪烁，但需要跟随淡出）
+        if let Some(mut text_color) = text_color_opt {
+            // 如果是当前选中的选项，跳过透明度更新（闪烁由 update_menu_blink 处理）
+            if menu_option_opt.is_some_and(|opt| opt.index == selected_index) {
+                continue;
+            }
+            update_text_color_alpha(fading_out.alpha, &mut text_color);
+        }
     }
 
     // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
     if fading_out.alpha <= 0.0 {
         next_state.set(GameState::StageIntro);
-        crate::utils::cleanup_entities(&mut commands, start_screen_query.iter());
+        for (entity, _, _, _) in &mut ui_query {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
@@ -161,31 +114,29 @@ pub fn spawn_stage_intro(
     };
 
     // Stage 标题（显示在屏幕中心）
-    commands.spawn((
+    common::spawn_simple_text_with_marker(
+        &mut commands,
+        stage_text,
+        &stage_font,
+        FONT_SIZE_MENU,
+        Vec3::new(0.0, 100.0, Z_STAGE_INTRO_TEXT),
+        COLOR_TRANSPARENT_BLACK, // 黑色，初始透明度为0
         StageIntroUI,
-        Text2d(stage_text),
-        TextFont {
-            font_size: FONT_SIZE_MENU,
-            font: stage_font,
-            ..default()
-        },
-        TextColor(COLOR_TRANSPARENT_BLACK), // 黑色，初始透明度为0
-        Transform::from_xyz(0.0, 100.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
-    ));
+        Z_STAGE_INTRO_TEXT,
+    );
 
     // 描述文字（俏皮话）
-    commands.spawn((
+    common::spawn_text_with_justify_and_marker(
+        &mut commands,
+        quote_text,
+        &quote_font,
+        FONT_SIZE_SCORE,
+        Vec3::new(0.0, -50.0, Z_STAGE_INTRO_TEXT),
+        COLOR_DARK_GRAY.with_alpha(0.0), // 暗灰色，初始透明度为0
         StageIntroUI,
-        Text2d(quote_text),
-        TextFont {
-            font_size: FONT_SIZE_SCORE,
-            font: quote_font,
-            ..default()
-        },
-        TextColor(COLOR_DARK_GRAY.with_alpha(0.0)), // 暗灰色，初始透明度为0
-        TextLayout::new_with_justify(Justify::Center),
-        Transform::from_xyz(0.0, -50.0, Z_STAGE_INTRO_TEXT), // z=101.0 在白色背景之上
-    ));
+        Justify::Center,
+        Z_STAGE_INTRO_TEXT,
+    );
 }
 
 /// 处理关卡介绍界面的计时器
@@ -198,15 +149,7 @@ pub fn handle_stage_intro_timer(
     // 淡入阶段
     if !game_timers.stage_intro.fade_in.is_finished() {
         game_timers.stage_intro.fade_in.tick(time.delta());
-        let progress = game_timers.stage_intro.fade_in.elapsed_secs()
-            / game_timers.stage_intro.fade_in.duration().as_secs_f32();
-        let alpha = progress.min(1.0);
-        for mut text_color in &mut text_query {
-            // 获取当前颜色（不包含透明度）
-            let color = text_color.0;
-            // 只更新透明度，保持原始颜色
-            text_color.0 = color.with_alpha(alpha);
-        }
+        common::update_text_alpha_from_timer(&game_timers.stage_intro.fade_in, true, &mut text_query);
     }
     // 停留阶段
     else if !game_timers.stage_intro.stay.is_finished() {
@@ -215,15 +158,7 @@ pub fn handle_stage_intro_timer(
     // 淡出阶段
     else if !game_timers.stage_intro.fade_out.is_finished() {
         game_timers.stage_intro.fade_out.tick(time.delta());
-        let progress = game_timers.stage_intro.fade_out.elapsed_secs()
-            / game_timers.stage_intro.fade_out.duration().as_secs_f32();
-        let alpha = 1.0 - progress.min(1.0);
-        for mut text_color in &mut text_query {
-            // 获取当前颜色（不包含透明度）
-            let color = text_color.0;
-            // 只更新透明度，保持原始颜色
-            text_color.0 = color.with_alpha(alpha);
-        }
+        common::update_text_alpha_from_timer(&game_timers.stage_intro.fade_out, false, &mut text_query);
     }
     // 所有阶段完成，切换到 Playing 状态
     else {
@@ -259,11 +194,7 @@ pub fn spawn_pause_ui(
     commands.spawn((
         PauseUI,
         Text2d(PAUSED_TITLE.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_GAME_OVER,
-            font: font.clone(),
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_GAME_OVER),
         TextColor(COLOR_YELLOW),
         Transform::from_xyz(0.0, 0.0, Z_UI),
     ));
@@ -271,11 +202,7 @@ pub fn spawn_pause_ui(
     commands.spawn((
         PauseUI,
         Text2d(PAUSED_INSTRUCTION.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_UI,
-            font,
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_UI),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -100.0, Z_UI),
     ));
@@ -351,11 +278,7 @@ pub fn spawn_game_over_ui(
     commands.spawn((
         GameOverUI,
         Text2d(GAME_OVER_RESTART.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_OPTION,
-            font: font.clone(),
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, 0.0, Z_UI),
         MenuOption { index: 0 },
@@ -365,11 +288,7 @@ pub fn spawn_game_over_ui(
     commands.spawn((
         GameOverUI,
         Text2d(GAME_OVER_MENU.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_OPTION,
-            font: font.clone(),
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -60.0, Z_UI),
         MenuOption { index: 1 },
@@ -379,11 +298,7 @@ pub fn spawn_game_over_ui(
     commands.spawn((
         GameOverUI,
         Text2d(GAME_OVER_EXIT.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_OPTION,
-            font: font.clone(),
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -120.0, Z_UI),
         MenuOption { index: 2 },
@@ -393,11 +308,7 @@ pub fn spawn_game_over_ui(
     commands.spawn((
         GameOverUI,
         Text2d(GAME_OVER_INSTRUCTION.get(*language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_UI,
-            font,
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_UI),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(0.0, -180.0, Z_UI),
     ));
@@ -445,17 +356,11 @@ pub fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<Ga
 
 /// 生成能量不足提示
 pub fn spawn_insufficient_energy_warning(
-    mut commands: Commands,
-    font_cn: Handle<Font>,
-    font_en: Handle<Font>,
+    commands: &mut Commands,
+    font_resources: &GameTextureResources,
     tank_type: TankType,
     language: Language,
 ) {
-    let font = match language {
-        Language::Chinese => font_cn,
-        Language::English => font_en,
-    };
-
     let text = match language {
         Language::Chinese => INSUFFICIENT_ENERGY_CN,
         Language::English => INSUFFICIENT_ENERGY_EN,
@@ -463,61 +368,35 @@ pub fn spawn_insufficient_energy_warning(
 
     // 根据玩家类型选择 X 位置（玩家1在左侧，玩家2在右侧）
     let x_pos = match tank_type {
-        TankType::Player1 => WINDOW_LEFT_X + 115.0,
-        TankType::Player2 => WINDOW_RIGHT_X - 115.0,
+        TankType::Player1 => WINDOW_LEFT_X + crate::ui::constants::HUD_PLAYER_OFFSET,
+        TankType::Player2 => WINDOW_RIGHT_X - crate::ui::constants::HUD_PLAYER_OFFSET,
         TankType::Enemy => unreachable!(),
     };
 
     // Y 位置在效果和名称中间
-    let y_pos = WINDOW_TOP_Y - HUD_Y_POSITIONS[HudYPosition::InsufficientEnergy as usize];
+    let y_pos = common::hud_y_position(HudYPosition::InsufficientEnergy);
 
-    // 使用金色字体
-    commands.spawn((
+    let font = common::get_font(&font_resources, language);
+
+    // 生成文本实体
+    let _entity = commands.spawn((
         InsufficientEnergyText,
         Text2d(text.to_string()),
-        TextFont {
-            font_size: FONT_SIZE_INSUFFICIENT_ENERGY,
-            font,
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
         TextColor(COLOR_GOLD),
         Transform::from_xyz(x_pos, y_pos, Z_UI),
-        InsufficientEnergyTimer(Timer::from_seconds(
+        // 使用新的通用闪烁动画系统，设置 remove_on_complete 为 true
+        // 动画完成后会移除 BlinkAnimation 组件，实体仍存在但不再闪烁
+        common::BlinkAnimation::gold_blink(INSUFFICIENT_ENERGY_DISPLAY_DURATION, true),
+        // 添加自动移除计时器：与闪烁动画同时完成，立即移除
+        crate::ui::UiTimer::new(
             INSUFFICIENT_ENERGY_DISPLAY_DURATION,
-            TimerMode::Once,
-        )),
-    ));
+            bevy::time::TimerMode::Once,
+        ),
+    )).id();
 }
 
-/// 更新能量不足提示计时器
-pub fn update_insufficient_energy_warnings(
-    time: Res<Time>,
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut InsufficientEnergyTimer, &mut TextColor)>,
-) {
-    for (entity, mut timer, mut color) in &mut query {
-        timer.tick(time.delta());
 
-        // 计算闪烁效果：2秒内闪烁2次
-        // 闪烁周期 = 2秒 / 2次 = 1秒
-        let elapsed = timer.elapsed_secs();
-        let blink_period = INSUFFICIENT_ENERGY_DISPLAY_DURATION / 2.0; // 1秒
-
-        // 计算当前在闪烁周期中的位置
-        let cycle_progress = (elapsed % blink_period) / blink_period;
-
-        // 前50%显示金色，后50%隐藏
-        if cycle_progress < 0.5 {
-            color.0 = COLOR_GOLD; // 显示金色
-        } else {
-            color.0 = COLOR_TRANSPARENT_BLACK; // 隐藏
-        }
-
-        if timer.just_finished() {
-            let () = commands.entity(entity).try_despawn();
-        }
-    }
-}
 
 /// 销毁所有能量不足提示
 pub fn despawn_insufficient_energy_warnings(
@@ -525,6 +404,20 @@ pub fn despawn_insufficient_energy_warnings(
     query: Query<Entity, With<InsufficientEnergyText>>,
 ) {
     crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 自动移除能量不足提示（当计时器完成后）
+pub fn auto_remove_insufficient_energy_warnings(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut crate::ui::UiTimer), (With<InsufficientEnergyText>, Without<common::BlinkAnimation>)>,
+) {
+    for (entity, mut timer) in query.iter_mut() {
+        timer.tick(time.delta());
+        if timer.is_finished() {
+            commands.entity(entity).despawn();
+        }
+    }
 }
 
 /// 清理开始界面的UI元素

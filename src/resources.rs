@@ -436,8 +436,7 @@ impl InsufficientEnergyTracker {
         &mut self,
         commands: &mut Commands,
         tank_type: TankType,
-        font_cn: Handle<Font>,
-        font_en: Handle<Font>,
+        font_resources: &GameTextureResources,
         language: Language,
     ) -> bool {
         // 根据玩家类型选择对应的冷却计时器
@@ -456,9 +455,8 @@ impl InsufficientEnergyTracker {
             ));
 
             crate::ui::overlay::spawn_insufficient_energy_warning(
-                commands.reborrow(),
-                font_cn,
-                font_en,
+                commands,
+                font_resources,
                 tank_type,
                 language,
             );

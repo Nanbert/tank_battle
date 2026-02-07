@@ -7,6 +7,8 @@
 use bevy::prelude::*;
 
 use crate::constants::*;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::resources::*;
 pub fn handle_game_over_delay(
     time: Res<Time>,
@@ -242,33 +244,28 @@ pub fn cleanup_effects_and_bullets(
 /// 清理所有追踪器和计时器
 /// 在进入 StageIntro 状态时调用，确保没有残留的追踪数据
 pub fn cleanup_trackers_and_timers(
-    mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
-    mut recall_timers: ResMut<crate::resources::RecallTimers>,
-    mut dash_timers: ResMut<crate::resources::DashTimers>,
-    mut dash_damage_tracker: ResMut<crate::resources::DashDamageTracker>,
-    mut barrier_damage_tracker: ResMut<crate::resources::BarrierDamageTracker>,
-    mut insufficient_energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+    mut game_trackers: ResMut<crate::resources::GameTrackers>,
     mut collision_cache: ResMut<crate::constants::EnemyCollisionCache>,
     mut enemy_spawn_state: ResMut<crate::resources::EnemySpawnState>,
 ) {
     // 清理 BulletTracker
-    bullet_tracker.clear();
+    game_trackers.bullets.clear();
 
     // 清理 RecallTimers
-    recall_timers.timers.clear();
+    game_trackers.recall_timers.timers.clear();
 
     // 清理 DashTimers
-    dash_timers.timers.clear();
+    game_trackers.dash_timers.timers.clear();
 
     // 清理 DashDamageTracker
-    dash_damage_tracker.has_taken_damage.clear();
+    game_trackers.dash_damage_tracker.has_taken_damage.clear();
 
     // 清理 BarrierDamageTracker
-    barrier_damage_tracker.cooldowns.clear();
+    game_trackers.barrier_damage_tracker.cooldowns.clear();
 
     // 清理 InsufficientEnergyTracker
-    insufficient_energy_tracker.p1_cooldown = None;
-    insufficient_energy_tracker.p2_cooldown = None;
+    game_trackers.insufficient_energy_tracker.p1_cooldown = None;
+    game_trackers.insufficient_energy_tracker.p2_cooldown = None;
 
     // 清理 EnemyCollisionCache（事件驱动缓存）
     collision_cache.clear();

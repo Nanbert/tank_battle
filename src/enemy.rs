@@ -8,6 +8,8 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::resources::{EnemySpawnState, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 

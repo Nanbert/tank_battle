@@ -84,7 +84,6 @@ pub const WINDOW_SIZE: Vec2 = Vec2::new(WINDOW_WIDTH as f32, WINDOW_HEIGHT as f3
 pub const WINDOW_LEFT_X: f32 = -(WINDOW_WIDTH as f32) / 2.0;
 pub const WINDOW_RIGHT_X: f32 = (WINDOW_WIDTH as f32) / 2.0;
 pub const WINDOW_TOP_Y: f32 = (WINDOW_HEIGHT as f32) / 2.0;
-//pub const WINDOW_BOTTOM_Y:f32 = -WINDOW_HEIGHT / 2.0;
 pub const MAP_LEFT_X: f32 = -MAP_WIDTH / 2.0;
 pub const MAP_RIGHT_X: f32 = MAP_WIDTH / 2.0;
 pub const MAP_TOP_Y: f32 = MAP_HEIGHT / 2.0 + VERTICAL_OFFSET;
@@ -121,14 +120,12 @@ pub const COLOR_TRANSPARENT: Color = Color::srgba(1.0, 1.0, 1.0, 0.0); // 透明
 pub const COLOR_TRANSPARENT_BLACK: Color = Color::srgba(0.0, 0.0, 0.0, 0.0); // 透明黑色
 pub const COLOR_GOLD: Color = Color::srgb(1.0, 0.84, 0.0); // 金色
 
-// ==================== 尺寸常量（合并版） ====================
+// ==================== 尺寸常量 ====================
 pub const COMMANDER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
 pub const BARRIER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
 pub const TANK_DISPLAY_SIZE: Vec2 = Vec2::new(80.0, 90.0); // 玩家/敌方/炮管显示尺寸
 pub const BULLET_DISPLAY_SIZE: Vec2 = Vec2::new(60.0, 40.0);
 pub const BULLET_COLLIDER_SIZE: f32 = 10.0; // 子弹碰撞体大小
-pub const HUD_BAR_SIZE: Vec2 = Vec2::new(150.0, 15.0);
-pub const COMMANDER_BAR_SIZE: Vec2 = Vec2::new(160.0, 15.0);
 
 // 碰撞体尺寸（半尺寸）
 pub const ENEMY_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(38.0, 43.0);
@@ -136,49 +133,6 @@ pub const PLAYER_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(35.0, 35.0);
 pub const WALL_COLLIDER_SIZE: Vec2 = Vec2::new(46.0, 46.0); // 砖块/钢铁
 pub const WALL_TEXTURE_SIZE: Vec2 = Vec2::new(50.0, 50.0); // 砖块/钢铁
 pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
-
-// 菜单 Y 坐标数组
-
-
-// HUD Y 坐标数组
-#[derive(Clone, Copy)]
-pub enum HudYPosition {
-    Name,
-    Speed,
-    FireSpeed,
-    Protection,
-    Shells,
-    EffectsTitle,
-    FireShell,
-    Penetrate,
-    TrackChain,
-    AirCushion,
-    InsufficientEnergy,
-    Score,
-    Avatar,
-    BarHealth,
-    BarBlue,
-}
-
-pub const HUD_Y_POSITIONS: [f32; 15] = [
-    780.0,  // Name
-    830.0,  // Speed
-    880.0,  // FireSpeed
-    930.0,  // Protection
-    980.0,  // Shells
-    320.0,  // EffectsTitle
-    370.0,  // FireShell
-    420.0,  // Penetrate
-    470.0,  // TrackChain
-    520.0,  // AirCushion
-    610.0,  // InsufficientEnergy
-    50.0,   // Score
-    150.0,  // Avatar
-    235.0,  // BarHealth
-    250.0,  // BarBlue
-];
-
-
 
 pub const DIRECTION_UP: Vec2 = Vec2::new(0.0, 1.0);
 pub const DIRECTION_DOWN: Vec2 = Vec2::new(0.0, -1.0);
@@ -237,7 +191,10 @@ pub const STAGE_QUOTES_EN: [&str; 17] = [
     "Enemies destroyed by lasers don't count towards your score.\nThe commander's reason is that lasers damage flowers and trees. That's absurd.",
 ];
 
-//Component
+// ============================================================================
+// Game States
+// ============================================================================
+
 #[derive(States, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum GameState {
     #[default]
@@ -328,28 +285,9 @@ impl PlayerKeyBindings {
     }
 }
 
-#[derive(Component)]
-pub struct StartScreenUI;
-
-#[derive(Component)]
-pub struct MenuOption {
-    pub index: usize,
-}
-
-#[derive(Component)]
-pub struct PauseUI;
-
-#[derive(Component)]
-pub struct GameOverUI;
-
-#[derive(Component)]
-pub struct StageIntroUI;
-
-#[derive(Component)]
-pub struct AboutUI;
-
-#[derive(Component)]
-pub struct CreditsUI;
+// ============================================================================
+// Animation Components
+// ============================================================================
 
 #[derive(Component, Resource, Copy, Clone)]
 pub struct AnimationIndices {
@@ -423,28 +361,6 @@ pub enum AnimationMode {
 #[derive(Component, Clone, Copy, Debug, Default)]
 pub struct DespawnMarker;
 
-#[derive(Component, Deref, DerefMut)]
-pub struct DirectionChangeTimer(pub Timer);
-
-#[derive(Component, Deref, DerefMut)]
-pub struct CollisionCooldownTimer(pub Timer);
-
-#[derive(Component, Deref, DerefMut)]
-pub struct RotationTimer(pub Timer);
-
-#[derive(Component)]
-pub struct TargetRotation {
-    pub angle: f32,
-}
-
-#[derive(Component, Copy, Clone)]
-pub struct EnemyTank {
-    pub direction: Vec2,
-}
-
-#[derive(Component)]
-pub struct EnemyBornAnimation;
-
 /// 动画事件类型枚举
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AnimationEventType {
@@ -473,6 +389,10 @@ pub struct LaserEndEvent {
     pub energy_ball_entity: Option<Entity>,
 }
 
+// ============================================================================
+// Tank Types
+// ============================================================================
+
 /// 坦克类型枚举
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum TankType {
@@ -491,6 +411,10 @@ impl TankType {
         }
     }
 }
+
+// ============================================================================
+// Tank Components
+// ============================================================================
 
 #[derive(Component, Clone, Copy)]
 pub struct PlayerTank {
@@ -527,11 +451,168 @@ pub struct PenetrateEffect;
 #[derive(Component)]
 pub struct Barrel;
 
+#[derive(Component, Copy, Clone)]
+pub struct EnemyTank {
+    pub direction: Vec2,
+}
+
+#[derive(Component)]
+pub struct EnemyBornAnimation;
+
+// ============================================================================
+// Timer Components
+// ============================================================================
+
+#[derive(Component, Deref, DerefMut)]
+pub struct DirectionChangeTimer(pub Timer);
+
+#[derive(Component, Deref, DerefMut)]
+pub struct CollisionCooldownTimer(pub Timer);
+
+#[derive(Component, Deref, DerefMut)]
+pub struct RotationTimer(pub Timer);
+
+#[derive(Component)]
+pub struct TargetRotation {
+    pub angle: f32,
+}
+
+#[derive(Component)]
+pub struct GameOverTimer;
+
+// ============================================================================
+// Effect Components
+// ============================================================================
+
 #[derive(Component)]
 pub struct Explosion;
 
 #[derive(Component)]
 pub struct Laser;
+
+#[derive(Component)]
+pub struct Spark;
+
+#[derive(Component)]
+pub struct Smoke;
+
+#[derive(Component)]
+pub struct EnergyBall {
+    pub player_entity: Entity,
+}
+
+/// 能量球阶段枚举
+/// 标记能量球当前所处的动画阶段
+#[derive(Component, Clone, Copy, PartialEq, Eq)]
+pub enum EnergyBallPhase {
+    /// 蓄力阶段：播放0-64帧，然后循环50-64帧
+    Charging,
+    /// 激光阶段：循环81-84帧
+    Lasering,
+}
+
+// ============================================================================
+// Map Components
+// ============================================================================
+
+#[derive(Component)]
+pub struct Wall;
+
+#[derive(Component)]
+pub struct Forest;
+
+#[derive(Component)]
+pub struct ForestFire;
+
+#[derive(Component)]
+pub struct Sea;
+
+#[derive(Component)]
+pub struct Barrier;
+
+#[derive(Component)]
+pub struct Brick;
+
+#[derive(Component)]
+pub struct Steel;
+
+#[derive(Component)]
+pub struct Commander;
+
+// ============================================================================
+// Ambience Components
+// ============================================================================
+
+#[derive(Component, Default)]
+pub struct TreeAmbiencePlayer;
+
+#[derive(Component, Default)]
+pub struct SeaAmbiencePlayer;
+
+#[derive(Component, Default)]
+pub struct CommanderAmbiencePlayer;
+
+#[derive(Component)]
+pub struct MusicNoteAnimation;
+
+// ============================================================================
+// Player Components
+// ============================================================================
+
+/// 回城进度条组件
+#[derive(Component)]
+pub struct RecallProgressBar {
+    pub player_entity: Entity,
+}
+
+/// 玩家正在回城标记
+#[derive(Component)]
+pub struct IsRecalling;
+
+/// 后坐力组件
+#[derive(Component)]
+pub struct RecoilForce {
+    pub original_pos: Vec3,  // 原始位置
+    pub target_offset: Vec2, // 目标偏移量
+    pub timer: Timer,        // 后坐力持续时间
+}
+
+/// 炮管后坐力组件
+#[derive(Component)]
+pub struct BarrelRecoilForce {
+    pub timer: Timer, // 后坐力持续时间
+}
+
+/// 激光蓄力组件
+#[derive(Component)]
+pub struct LaserCharge {
+    pub timer: Timer,        // 蓄力计时器
+    pub tank_type: TankType, // 坦克类型
+}
+
+/// 激光蓄力音效组件
+#[derive(Component)]
+pub struct LaserChargeSound;
+
+/// 坦克射击配置
+#[derive(Component)]
+pub struct TankFireConfig {
+    pub max_bullets: usize, // 最大同时子弹数
+    pub cooldown: Timer,    // 射击冷却时间
+}
+
+impl Default for TankFireConfig {
+    fn default() -> Self {
+        Self {
+            max_bullets: 1,
+            cooldown: Timer::from_seconds(0.2, TimerMode::Once),
+        }
+    }
+}
+
+// ============================================================================
+// Resource Components
+// ============================================================================
 
 /// 用于事件驱动模式，缓存碰撞事件和法线信息
 #[derive(Resource, Default)]
@@ -575,150 +656,47 @@ impl LocalizedText {
     }
 }
 
-#[derive(Component)]
-pub struct Spark;
-
-#[derive(Component)]
-pub struct Smoke;
-
-#[derive(Component)]
-pub struct EnergyBall {
-    pub player_entity: Entity,
+/// 本地化文本格式化结构
+/// 用于存储支持变量插值的多语言文本
+/// 使用 `{var}` 作为变量占位符
+#[derive(Clone, Copy)]
+pub struct LocalizedTextFormat {
+    pub cn: &'static str,
+    pub en: &'static str,
 }
 
-/// 能量球阶段枚举
-/// 标记能量球当前所处的动画阶段
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
-pub enum EnergyBallPhase {
-    /// 蓄力阶段：播放0-64帧，然后循环50-64帧
-    Charging,
-    /// 激光阶段：循环81-84帧
-    Lasering,
-}
-
-#[derive(Component)]
-pub struct GameOverTimer;
-
-#[derive(Component)]
-pub struct Wall;
-
-#[derive(Component)]
-pub struct Forest;
-
-#[derive(Component)]
-pub struct ForestFire;
-
-#[derive(Component, Default)]
-pub struct TreeAmbiencePlayer;
-
-#[derive(Component)]
-pub struct Sea;
-
-#[derive(Component, Default)]
-pub struct SeaAmbiencePlayer;
-
-#[derive(Component, Default)]
-pub struct CommanderAmbiencePlayer;
-
-#[derive(Component)]
-pub struct MusicNoteAnimation;
-
-#[derive(Component)]
-pub struct Barrier;
-
-#[derive(Component)]
-pub struct Brick;
-
-#[derive(Component)]
-pub struct Steel;
-
-#[derive(Component)]
-pub struct Commander;
-
-#[derive(Component)]
-pub struct CommanderText;
-
-#[derive(Component)]
-pub struct CommanderHealthBar;
-
-#[derive(Component)]
-pub struct CommanderHealthBarOriginalPosition(pub f32); // 记录 Commander 血条的原始 X 位置
-
-#[derive(Component)]
-pub struct EnemyCountText;
-
-/// 回城进度条组件
-#[derive(Component)]
-pub struct RecallProgressBar {
-    pub player_entity: Entity,
-}
-
-/// 玩家正在回城标记
-#[derive(Component)]
-pub struct IsRecalling;
-
-// 标记游戏过程中所有的Entity
-#[derive(Component)]
-pub struct PlayingEntity;
-
-/// 后坐力组件
-#[derive(Component)]
-pub struct RecoilForce {
-    pub original_pos: Vec3,  // 原始位置
-    pub target_offset: Vec2, // 目标偏移量
-    pub timer: Timer,        // 后坐力持续时间
-}
-
-/// 炮管后坐力组件
-#[derive(Component)]
-pub struct BarrelRecoilForce {
-    pub timer: Timer, // 后坐力持续时间
-}
-
-/// 激光蓄力组件
-#[derive(Component)]
-pub struct LaserCharge {
-    pub timer: Timer,        // 蓄力计时器
-    pub tank_type: TankType, // 坦克类型
-}
-
-/// 激光蓄力音效组件
-#[derive(Component)]
-pub struct LaserChargeSound;
-
-#[derive(Component, Deref, DerefMut)]
-pub struct PlayerInfoBlinkTimer(pub Timer);
-
-/// 能量不足提示文本组件
-#[derive(Component)]
-pub struct InsufficientEnergyText;
-
-/// 能量不足提示计时器
-#[derive(Component, Deref, DerefMut)]
-pub struct InsufficientEnergyTimer(pub Timer);
-
-/// 关卡信息文本标记
-#[derive(Component)]
-pub struct StageText;
-
-/// 坦克射击配置
-#[derive(Component)]
-pub struct TankFireConfig {
-    pub max_bullets: usize, // 最大同时子弹数
-    pub cooldown: Timer,    // 射击冷却时间
-}
-
-impl Default for TankFireConfig {
-    fn default() -> Self {
-        Self {
-            max_bullets: 1,
-            cooldown: Timer::from_seconds(0.2, TimerMode::Once),
+impl LocalizedTextFormat {
+    /// 根据语言获取对应文本
+    pub fn get(&self, language: Language) -> &'static str {
+        match language {
+            Language::Chinese => self.cn,
+            Language::English => self.en,
         }
     }
-}
-pub const COMMANDER_LIFE_MAX: usize = 3;
 
-// ==================== 玩家常量 ====================
+    /// 格式化文本，替换单个变量
+    pub fn format(&self, language: Language, value: impl std::fmt::Display) -> String {
+        let template = self.get(language);
+        template.replace("{var}", &value.to_string())
+    }
+
+    /// 格式化文本，替换多个变量
+    /// 使用 `{0}`, `{1}`, `{2}`... 作为占位符
+    pub fn format_many(&self, language: Language, values: &[impl std::fmt::Display]) -> String {
+        let template = self.get(language);
+        let mut result = template.to_string();
+        for (i, value) in values.iter().enumerate() {
+            result = result.replace(&format!("{{{}}}", i), &value.to_string());
+        }
+        result
+    }
+}
+
+// ============================================================================
+// Player Constants
+// ============================================================================
+
+pub const COMMANDER_LIFE_MAX: usize = 3;
 pub const MAX_LIFE_POINTS: usize = 3; // 最大生命值
 pub const MAX_ENERGY_POINTS: usize = 3; // 最大能量值
 pub const BARRIER_DAMAGE_COOLDOWN: f32 = 2.0; // 屏障伤害冷却时间（秒）
@@ -742,13 +720,10 @@ pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
 
 // ==================== 游戏机制时间常量 ====================
 pub const RECOIL_DURATION: f32 = 0.3; // 后坐力持续时间
-pub const MENU_BLINK_PERIOD: f32 = 0.5; // 菜单闪烁周期
-pub const TEXT_BLINK_CYCLE: f32 = 0.6; // 文字闪烁周期
 pub const ENEMY_SPAWN_COOLDOWN: f32 = 0.8; // 敌方坦克生成冷却时间
 pub const STAGE_FADE_IN_DURATION: f32 = 1.0; // 关卡淡入时间
 pub const STAGE_FADE_HOLD_DURATION: f32 = 1.0; // 关卡停留时间
 pub const STAGE_FADE_OUT_DURATION: f32 = 1.0; // 关卡淡出时间
-pub const GAME_OVER_DELAY: f32 = 1.2; // Game Over 延迟
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
 pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间
@@ -776,7 +751,6 @@ pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max
 pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
 
 // 激光
-
 pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）
 pub const LASER_POSITION_OFFSET: f32 = -40.0; // 激光位置偏移（炮口向前的距离）
 pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
@@ -814,25 +788,3 @@ pub const Z_DEFAULT: f32 = 0.0; // 默认层级
 pub const Z_LASER: f32 = 0.9; // 激光层级
 pub const Z_FOREST: f32 = 1.0; // 森林层级
 pub const Z_PROGRESS_BAR: f32 = 2.0; // 进度条层级
-pub const Z_UI: f32 = 10.0; // UI层级
-pub const Z_STAGE_INTRO_BG: f32 = 100.0; // 关卡介绍层级
-pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
-
-// HUD 数值常量
-pub const HUD_MAX_PERCENT: usize = 100; // 最大百分比
-pub const HUD_MAX_LIFE_POINTS: f32 = 3.0; // 最大生命值
-pub const HUD_MAX_SHELLS: usize = 2; // 最大炮弹数
-
-// ==================== UI字体大小常量 ====================
-pub const FONT_SIZE_SMALL: f32 = 18.0; // 小字体
-pub const FONT_SIZE_MEDIUM: f32 = 22.0; // 中等字体
-pub const FONT_SIZE_INSTRUCTION: f32 = 24.0; // 说明文字字体
-pub const FONT_SIZE_SCORE: f32 = 28.0; // 分数字体
-pub const FONT_SIZE_UI: f32 = 30.0; // UI字体
-pub const FONT_SIZE_HUD_NAME: f32 = 32.0; // HUD玩家名称字体大小
-pub const FONT_SIZE_OPTION: f32 = 50.0; // 选项字体
-pub const FONT_SIZE_TITLE: f32 = 60.0; // 标题字体
-pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 标题字体
-pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
-pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
-pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）

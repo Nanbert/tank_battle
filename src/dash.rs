@@ -72,8 +72,7 @@ pub fn handle_dash_input(
                     .try_show_warning(
                         &mut commands,
                         player_tank.tank_type,
-                        font_resources.cn.clone(),
-                        font_resources.en.clone(),
+                        &font_resources,
                         *language,
                     );
             }

@@ -9,6 +9,8 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::resources::{
     CommanderLife, GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo, PlayerStatChanged,
     StatType,

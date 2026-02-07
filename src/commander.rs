@@ -8,6 +8,8 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::resources::{CommanderLife, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 

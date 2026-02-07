@@ -29,8 +29,10 @@ use bevy::prelude::*;
 
 use crate::bullet::Bullet;
 use crate::constants::*;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::resources::{
-    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, InsufficientEnergyTracker,
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources,
     Language, PlayerInfo,
 };
 use crate::utils;
@@ -164,7 +166,7 @@ pub fn player_laser_system(
     sound_query: Query<(Entity, &LaserChargeSound)>,
     mut player_info: ResMut<PlayerInfo>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut energy_tracker: ResMut<crate::resources::InsufficientEnergyTracker>,
+    mut game_trackers: ResMut<crate::resources::GameTrackers>,
     font_resources: Res<GameTextureResources>,
     language: Res<crate::resources::Language>,
 ) {
@@ -201,7 +203,7 @@ pub fn player_laser_system(
         }
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
-        energy_tracker.tick_all(time.delta());
+        game_trackers.insufficient_energy_tracker.tick_all(time.delta());
 
         // 处理蓄力逻辑
         if has_charge {
@@ -240,9 +242,8 @@ pub fn player_laser_system(
                 transform,
                 player_tank.tank_type,
                 &audio_resources,
-                &mut energy_tracker,
-                &font_resources.cn,
-                &font_resources.en,
+                &mut game_trackers,
+                &font_resources,
                 &language,
                 &resources,
             );
@@ -279,9 +280,8 @@ fn start_charge(
     transform: &Transform,
     tank_type: TankType,
     audio_resources: &GameAudioResources,
-    energy_tracker: &mut InsufficientEnergyTracker,
-    font_cn: &Handle<Font>,
-    font_en: &Handle<Font>,
+    game_trackers: &mut crate::resources::GameTrackers,
+    font_resources: &GameTextureResources,
     language: &Language,
     resources: &LaserResources,
 ) {
@@ -292,11 +292,10 @@ fn start_charge(
     // 检查蓝量是否足够（需要3点蓝量）
     if player_stats.energy_points < 3 {
         // 能量不足，显示提示
-        energy_tracker.try_show_warning(
+        game_trackers.insufficient_energy_tracker.try_show_warning(
             commands,
             tank_type,
-            font_cn.clone(),
-            font_en.clone(),
+            font_resources,
             *language,
         );
         return;
@@ -612,7 +611,7 @@ pub fn handle_laser_end_events(
                 ANIMATION_FRAME_SMOKE,
                 Transform::from_translation(transform),
                 crate::atlas::SMOKE_ATLAS.display_size,
-                (PlayingEntity, crate::constants::Smoke, AnimationMode::OneShot),
+                (crate::ui::PlayingEntity, crate::constants::Smoke, AnimationMode::OneShot),
             );
 
             let () = commands.entity(despawn_entity).try_despawn();
