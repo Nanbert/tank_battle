@@ -10,16 +10,24 @@ use crate::constants::*;
 use crate::resources::*;
 use crate::ui::constants::*;
 use super::stats::*;
+use super::super::common;
 
 // ============================================================================
 // Blink Animation System
 // ============================================================================
 
 /// 触发文本闪烁计时器
+/// 使用统一的 BlinkAnimation 系统（绿色闪烁，完成后移除组件）
 fn trigger_blink_timer(commands: &mut Commands, entity: Entity) {
     commands
         .entity(entity)
-        .insert(UiTimer::new(TEXT_BLINK_CYCLE, TimerMode::Once));
+        .insert(common::BlinkAnimation::new_with_despawn(
+            TEXT_BLINK_CYCLE,
+            COLOR_GREEN,
+            COLOR_TRANSPARENT,
+            COLOR_WHITE,
+            false, // despawn_on_complete
+        ));
 }
 
 /// 处理 HUD 属性变更事件，触发文字闪烁
@@ -55,47 +63,30 @@ pub fn handle_hud_stat_changed(
     }
 }
 
-/// 动画化 HUD 文本闪烁效果
-/// 优化：使用组件标记判断是否达到最大值，避免字符串匹配
-pub fn animate_hud_text(
-    time: Res<Time>,
-    mut commands: Commands,
+/// 处理 HUD 属性达到最大值时变为红色
+/// 当属性达到最大值时，移除闪烁动画并设置为红色
+pub fn handle_hud_stat_max_value(
+    player_info: Res<PlayerInfo>,
     mut query: Query<(
-        Entity,
-        &mut PlayerInfoBlinkTimer,
         &mut TextColor,
         &HudStatType,
         Option<&Player1Hud>,
         Option<&Player2Hud>,
     )>,
-    player_info: Res<PlayerInfo>,
 ) {
-    for (entity, mut timer, mut color, stat_type, is_p1, is_p2) in &mut query {
-        timer.tick(time.delta());
-
-        // 判断是否达到最大值或On状态
-        let is_max = is_hud_stat_at_max_value(*stat_type, &player_info, is_p1, is_p2);
-
-        if is_max {
-            // 达到最大值：保持红色，移除闪烁计时器
-            commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
-            color.0 = COLOR_RED; // 红色
-        } else if timer.is_finished() {
-            // 闪烁结束，移除计时器组件
-            commands.entity(entity).remove::<PlayerInfoBlinkTimer>();
-            color.0 = COLOR_WHITE;
+    for (mut color, stat_type, is_p1, is_p2) in query.iter_mut() {
+        // 根据所属玩家选择对应的数据
+        let stats = if is_p1.is_some() {
+            &player_info.player1
+        } else if is_p2.is_some() {
+            player_info.player2.as_ref().unwrap()
         } else {
-            // 未达到最大值：闪烁效果
-            let elapsed = timer.elapsed_secs();
-            let cycle = elapsed % TEXT_BLINK_CYCLE;
+            continue;
+        };
 
-            if cycle < TEXT_BLINK_CYCLE / 2.0 {
-                // 亮状态：绿色
-                color.0 = COLOR_GREEN;
-            } else {
-                // 灭状态：透明
-                color.0 = COLOR_TRANSPARENT;
-            }
+        // 检查是否达到最大值
+        if stat_type.is_max(stats) {
+            color.0 = COLOR_RED;
         }
     }
 }

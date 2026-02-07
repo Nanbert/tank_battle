@@ -340,7 +340,7 @@ pub fn spawn_top_hud(
         Text2d(stage_text),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_YELLOW),
-        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, 1.0),
+        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
     ));
 
     // Commander 文本和血条
@@ -352,7 +352,7 @@ pub fn spawn_top_hud(
         Text2d(commander_text.to_string()),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(commander_text_x - HUD_COMMANDER_TEXT_OFFSET, WINDOW_TOP_Y - 50.0, 1.0),
+        Transform::from_xyz(commander_text_x - HUD_COMMANDER_TEXT_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
     ));
     // Commander 血条
     commands.spawn((
@@ -364,7 +364,7 @@ pub fn spawn_top_hud(
             custom_size: Some(COMMANDER_BAR_SIZE),
             ..default()
         },
-        Transform::from_xyz(commander_text_x + HUD_COMMANDER_BAR_OFFSET, WINDOW_TOP_Y - 50.0, 1.0),
+        Transform::from_xyz(commander_text_x + HUD_COMMANDER_BAR_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
     ));
 
     // 敌方剩余数量显示在右侧（初始值）
@@ -375,7 +375,7 @@ pub fn spawn_top_hud(
         Text2d(enemy_count_text),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(WINDOW_RIGHT_X - HUD_ENEMY_COUNT_OFFSET, WINDOW_TOP_Y - 50.0, 1.0),
+        Transform::from_xyz(WINDOW_RIGHT_X - HUD_ENEMY_COUNT_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
     ));
 }
 

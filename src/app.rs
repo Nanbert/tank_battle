@@ -334,7 +334,7 @@ fn register_playing_systems(app: &mut App) {
         (
             ui::hud::update::handle_player_avatar_death,
             ui::hud::blink::handle_hud_stat_changed,
-            ui::hud::blink::animate_hud_text,
+            ui::hud::blink::handle_hud_stat_max_value,
             ui::hud::update::update_enemy_count_text
                 .run_if(resource_changed::<crate::resources::EnemySpawnState>),
             ui::hud::update::update_commander_health_bar.run_if(resource_changed::<CommanderLife>),

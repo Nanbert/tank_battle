@@ -29,7 +29,7 @@ pub fn spawn_start_screen_background(
         atlas_layouts.background.clone(),
         crate::atlas::BACKGROUND_ATLAS.animation_indices_full(),
         BACKGROUND_ANIMATION_FRAME,
-        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+        Transform::from_translation(Vec3::new(0.0, 0.0, Z_UI_BACKGROUND)),
         WINDOW_SIZE,
         (StartScreenUI, AnimationMode::Looping),
     );
@@ -48,10 +48,10 @@ pub fn spawn_start_screen_title(
         title.to_string(),
         &font,
         FONT_SIZE_TITLE,
-        Vec3::new(0.0, 550.0, 1.0),
+        Vec3::new(0.0, 550.0, Z_UI_TEXT),
         COLOR_RED,
         StartScreenUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 菜单选项，从上到下 0-5
@@ -62,7 +62,7 @@ pub fn spawn_start_screen_title(
             Text2d(option_text.get(language).to_string()),
             common::create_text_font(&font, FONT_SIZE_MENU),
             TextColor(if i == 0 { COLOR_YELLOW } else { COLOR_WHITE }),
-            Transform::from_xyz(0.0, y_positions[i], 1.0),
+            Transform::from_xyz(0.0, y_positions[i], Z_UI_TEXT),
             MenuOption { index: i },
         ));
     }
@@ -84,10 +84,10 @@ pub fn spawn_start_screen_instructions(
         p1_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -350.0, 1.0),
+        Vec3::new(0.0, -350.0, Z_UI_TEXT),
         COLOR_BLUE,
         StartScreenUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 玩家2操作说明 - 红色
@@ -96,10 +96,10 @@ pub fn spawn_start_screen_instructions(
         p2_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -380.0, 1.0),
+        Vec3::new(0.0, -380.0, Z_UI_TEXT),
         COLOR_RED,
         StartScreenUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 通用操作说明 - 深灰色
@@ -108,10 +108,10 @@ pub fn spawn_start_screen_instructions(
         general_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -410.0, 1.0),
+        Vec3::new(0.0, -410.0, Z_UI_TEXT),
         COLOR_DARK_GRAY,
         StartScreenUI,
-        1.0,
+        Z_UI_TEXT,
     );
 }
 
@@ -168,10 +168,10 @@ pub fn spawn_about_screen(
         ABOUT_TITLE.get(*language).to_string(),
         &font,
         FONT_SIZE_CREDITS_TITLE,
-        Vec3::new(0.0, 600.0, 1.0),
+        Vec3::new(0.0, 600.0, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 显示信息
@@ -180,11 +180,11 @@ pub fn spawn_about_screen(
         ABOUT_TEXT.get(*language).to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, 340.0, 1.0),
+        Vec3::new(0.0, 340.0, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         bevy::text::Justify::Center,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 添加收款码文案
@@ -193,11 +193,11 @@ pub fn spawn_about_screen(
         ABOUT_SUPPORT.get(*language).to_string(),
         &font,
         FONT_SIZE_MEDIUM,
-        Vec3::new(0.0, 40.0, 1.0),
+        Vec3::new(0.0, 40.0, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         bevy::text::Justify::Center,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 加载收款码图片
@@ -215,7 +215,7 @@ pub fn spawn_about_screen(
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(-250.0, -260.0, 1.0),
+        Transform::from_xyz(-250.0, -260.0, Z_UI_TEXT),
     ));
 
     // 支付宝标签
@@ -224,10 +224,10 @@ pub fn spawn_about_screen(
         PAYMENT_METHOD_ALIPAY.get(*language).to_string(),
         &font,
         FONT_SIZE_SMALL,
-        Vec3::new(-250.0, -480.0, 1.0),
+        Vec3::new(-250.0, -480.0, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 微信收款码
@@ -238,7 +238,7 @@ pub fn spawn_about_screen(
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(250.0, -260.0, 1.0),
+        Transform::from_xyz(250.0, -260.0, Z_UI_TEXT),
     ));
 
     // 微信标签
@@ -247,20 +247,20 @@ pub fn spawn_about_screen(
             PAYMENT_METHOD_WECHAT.get(*language).to_string(),
             &font,
             FONT_SIZE_SMALL,
-            Vec3::new(250.0, -480.0, 1.0),
+            Vec3::new(250.0, -480.0, Z_UI_TEXT),
             COLOR_BLACK,
             AboutUI,
-            1.0,
+            Z_UI_TEXT,
         );        // 添加返回提示
         common::spawn_simple_text_with_marker(
             &mut commands,
             ABOUT_RETURN.get(*language).to_string(),
             &font,
             FONT_SIZE_UI,
-            Vec3::new(0.0, -580.0, 1.0),
+            Vec3::new(0.0, -580.0, Z_UI_TEXT),
             COLOR_BLACK,
             AboutUI,
-            1.0,
+            Z_UI_TEXT,
         );}
 
 /// 处理关于界面的输入
@@ -298,10 +298,10 @@ pub fn spawn_credits_screen(
         CREDITS_TITLE.get(*language).to_string(),
         &font,
         FONT_SIZE_MENU,
-        Vec3::new(0.0, 500.0, 1.0),
+        Vec3::new(0.0, 500.0, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 使用多行文本显示素材来源
@@ -310,11 +310,11 @@ pub fn spawn_credits_screen(
         CREDITS_TEXT.get(*language).to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(-400.0, 100.0, 1.0),
+        Vec3::new(-400.0, 100.0, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
         bevy::text::Justify::Left,
-        1.0,
+        Z_UI_TEXT,
     );
 
     // 添加返回提示
@@ -323,10 +323,10 @@ pub fn spawn_credits_screen(
         CREDITS_RETURN.get(*language).to_string(),
         &font,
         FONT_SIZE_UI,
-        Vec3::new(0.0, -500.0, 1.0),
+        Vec3::new(0.0, -500.0, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
-        1.0,
+        Z_UI_TEXT,
     );
 }
 

@@ -120,21 +120,7 @@ pub struct EnemyCountText;
 // Animation Markers
 // ============================================================================
 
-/// 通用 UI 计时器
-///
-/// 用于 UI 元素的计时效果，如闪烁、淡入淡出等
-#[derive(Component, Deref, DerefMut)]
-pub struct UiTimer(pub Timer);
 
-impl UiTimer {
-    /// 创建新的 UI 计时器
-    pub fn new(duration: f32, mode: TimerMode) -> Self {
-        Self(Timer::from_seconds(duration, mode))
-    }
-}
-
-/// HUD 文本闪烁计时器（类型别名）
-pub type PlayerInfoBlinkTimer = UiTimer;
 
 /// 能量不足提示文本组件
 #[derive(Component)]
@@ -265,9 +251,20 @@ pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体
 // Z 轴层级常量
 // ============================================================================
 
-pub const Z_UI: f32 = 10.0; // UI层级
-pub const Z_STAGE_INTRO_BG: f32 = 100.0; // 关卡介绍层级
-pub const Z_STAGE_INTRO_TEXT: f32 = 101.0; // 关卡介绍文字层级
+/// UI 基础层级
+pub const Z_UI: f32 = 10.0;
+
+/// UI 文本层级
+pub const Z_UI_TEXT: f32 = Z_UI;
+
+/// UI 背景层级（比文本稍低）
+pub const Z_UI_BACKGROUND: f32 = Z_UI - 0.1;
+
+/// 关卡介绍背景层级
+pub const Z_STAGE_INTRO_BG: f32 = 100.0;
+
+/// 关卡介绍文字层级
+pub const Z_STAGE_INTRO_TEXT: f32 = 101.0;
 
 // ============================================================================
 // 颜色常量

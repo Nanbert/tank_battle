@@ -193,23 +193,3 @@ pub fn update_single_player_text(
     let formatted_value = value.format(is_max, label_on, label_off);
     format!("{}{}", prefix, formatted_value)
 }
-
-/// 判断 HUD 属性是否达到最大值或On状态（用于动画系统）
-pub fn is_hud_stat_at_max_value(
-    stat_type: HudStatType,
-    player_info: &PlayerInfo,
-    player_hud: Option<&super::super::constants::Player1Hud>,
-    player_hud2: Option<&super::super::constants::Player2Hud>,
-) -> bool {
-    // 根据所属玩家选择对应的数据
-    let stats = if player_hud.is_some() {
-        &player_info.player1
-    } else if player_hud2.is_some() {
-        player_info.player2.as_ref().unwrap()
-    } else {
-        return false;
-    };
-
-    // 使用统一的 is_max 方法
-    stat_type.is_max(stats)
-}

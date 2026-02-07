@@ -361,10 +361,7 @@ pub fn spawn_insufficient_energy_warning(
     tank_type: TankType,
     language: Language,
 ) {
-    let text = match language {
-        Language::Chinese => INSUFFICIENT_ENERGY_CN,
-        Language::English => INSUFFICIENT_ENERGY_EN,
-    };
+    let text = INSUFFICIENT_ENERGY.get(language);
 
     // 根据玩家类型选择 X 位置（玩家1在左侧，玩家2在右侧）
     let x_pos = match tank_type {

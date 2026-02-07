@@ -159,8 +159,10 @@ pub const GAME_OVER_INSTRUCTION: LocalizedText = LocalizedText {
 
 // ==================== 能量不足提示文本 ====================
 
-pub const INSUFFICIENT_ENERGY_CN: &str = "能量不足！";
-pub const INSUFFICIENT_ENERGY_EN: &str = "Insufficient Energy!";
+pub const INSUFFICIENT_ENERGY: LocalizedText = LocalizedText {
+    cn: "能量不足！",
+    en: "Insufficient Energy!",
+};
 
 // ==================== HUD 文本标签 ====================
 
