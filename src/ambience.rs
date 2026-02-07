@@ -29,14 +29,6 @@ const SPLASH_LIFETIME: f32 = 0.3;
 
 // ==================== 落叶常量 ====================
 
-/// 落叶飘落速度范围（像素/秒）
-const LEAVES_FALL_SPEED_MIN: f32 = 160.0;
-const LEAVES_FALL_SPEED_MAX: f32 = 240.0;
-
-/// 落叶横向飘动速度范围
-const LEAVES_DRIFT_SPEED_MIN: f32 = -20.0;
-const LEAVES_DRIFT_SPEED_MAX: f32 = 20.0;
-
 /// 落叶旋转速度范围（弧度/秒）
 const LEAVES_ROTATION_SPEED_MIN: f32 = 1.0;
 const LEAVES_ROTATION_SPEED_MAX: f32 = 3.0;
@@ -44,13 +36,6 @@ const LEAVES_ROTATION_SPEED_MAX: f32 = 3.0;
 /// 落叶尺寸范围（放大5倍）
 const LEAVES_SIZE_MIN: f32 = 40.0;   // 8 * 5
 const LEAVES_SIZE_MAX: f32 = 60.0;   // 12 * 5
-
-/// 落叶飘动频率（用于正弦波飘动）
-const LEAVES_SWAY_FREQUENCY_MIN: f32 = 1.0;
-const LEAVES_SWAY_FREQUENCY_MAX: f32 = 2.5;
-
-/// 落叶飘动幅度
-const LEAVES_SWAY_AMPLITUDE: f32 = 15.0;
 
 /// 每帧生成落叶概率
 const LEAVES_SPAWN_CHANCE: f32 = 0.015; // 约1.5%的概率
@@ -69,16 +54,14 @@ pub struct RainSplashParticle {
 /// 落叶粒子组件
 #[derive(Component)]
 pub struct LeafParticle {
-    /// 飘落速度（下落）
-    pub fall_speed: f32,
-    /// 横向漂移速度
+    /// 飘动方向（角度）
+    pub drift_angle: f32,
+    /// 飘动速度
     pub drift_speed: f32,
     /// 旋转速度
     pub rotation_speed: f32,
-    /// 飘动相位（用于正弦波飘动）
-    pub sway_phase: f32,
-    /// 飘动频率
-    pub sway_frequency: f32,
+    /// 生命周期计时器
+    pub lifetime: Timer,
 }
 
 // ==================== 雨滴溅射系统 ====================
@@ -166,7 +149,7 @@ pub fn rain_splash_update_system(
 // ==================== 落叶系统 ====================
 
 /// 落叶生成系统
-/// 当玩家在森林附近时，从森林上方随机落下
+/// 当玩家在森林附近时，在地面随机位置生成，四处飘动
 pub fn leaves_spawn_system(
     mut commands: Commands,
     player_tanks: Query<&Transform, With<PlayerTank>>,
@@ -194,17 +177,15 @@ pub fn leaves_spawn_system(
         return;
     }
 
-    // 在地图顶部随机位置生成
+    // 在地面随机位置生成（在森林附近范围内）
     let spawn_x = rng.random_range(MAP_LEFT_X..MAP_RIGHT_X);
-    let spawn_y = MAP_TOP_Y + 50.0; // 地图顶部上方50像素
+    let spawn_y = rng.random_range(MAP_BOTTOM_Y..MAP_TOP_Y);
 
     // 随机落叶属性
     let size = rng.random_range(LEAVES_SIZE_MIN..LEAVES_SIZE_MAX);
-    let fall_speed = rng.random_range(LEAVES_FALL_SPEED_MIN..LEAVES_FALL_SPEED_MAX);
-    let drift_speed = rng.random_range(LEAVES_DRIFT_SPEED_MIN..LEAVES_DRIFT_SPEED_MAX);
+    let drift_angle = rng.random_range(0.0..std::f32::consts::PI * 2.0);
+    let drift_speed = rng.random_range(20.0..40.0); // 飘动速度
     let rotation_speed = rng.random_range(LEAVES_ROTATION_SPEED_MIN..LEAVES_ROTATION_SPEED_MAX);
-    let sway_frequency = rng.random_range(LEAVES_SWAY_FREQUENCY_MIN..LEAVES_SWAY_FREQUENCY_MAX);
-    let sway_phase = rng.random_range(0.0..std::f32::consts::PI * 2.0);
 
     // 随机初始旋转
     let initial_rotation = rng.random_range(0.0..std::f32::consts::PI * 2.0);
@@ -214,11 +195,10 @@ pub fn leaves_spawn_system(
 
     commands.spawn((
                 LeafParticle {
-                    fall_speed,
+                    drift_angle,
                     drift_speed,
                     rotation_speed,
-                    sway_phase,
-                    sway_frequency,
+                    lifetime: Timer::from_seconds(8.0, TimerMode::Once),
                 },        Sprite {
             image: texture_resources.leaves[leaves_index].clone(),
             custom_size: Some(Vec2::new(size, size)),
@@ -230,33 +210,46 @@ pub fn leaves_spawn_system(
 }
 
 /// 落叶更新系统
-/// 处理落叶的飘落、飘动、旋转和生命周期
+/// 处理落叶的飘动、旋转、缩小和生命周期
 pub fn leaves_update_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut Transform, &mut LeafParticle)>,
+    mut query: Query<(Entity, &mut Transform, &mut Sprite, &mut LeafParticle)>,
 ) {
-    for (entity, mut transform, leaf) in &mut query {
+    for (entity, mut transform, mut sprite, mut leaf) in &mut query {
         let delta = time.delta_secs();
 
-        // 基本下落
-        transform.translation.y -= leaf.fall_speed * delta;
+        // 更新生命周期
+        leaf.lifetime.tick(time.delta());
+        if leaf.lifetime.is_finished() {
+            commands.entity(entity).despawn();
+            continue;
+        }
 
-        // 横向漂移
-        transform.translation.x += leaf.drift_speed * delta;
+        // 向指定方向飘动
+        transform.translation.x += leaf.drift_angle.cos() * leaf.drift_speed * delta;
+        transform.translation.y += leaf.drift_angle.sin() * leaf.drift_speed * delta;
 
-        // 正弦波飘动效果（轻盈飘荡感）
-        let sway = (leaf.sway_phase + time.elapsed_secs() * leaf.sway_frequency).sin()
-            * LEAVES_SWAY_AMPLITUDE * delta;
-        transform.translation.x += sway;
+        // 旋转
+        let current_rotation = transform.rotation.to_euler(EulerRot::XYZ).2;
+        transform.rotation = Quat::from_rotation_z(current_rotation + leaf.rotation_speed * delta);
 
-        // 来回旋转（使用正弦波实现来回摆动）
-        let rotation_angle = (leaf.sway_phase + time.elapsed_secs() * leaf.rotation_speed).sin()
-            * std::f32::consts::PI * 0.5; // 最大旋转角度90度
-        transform.rotation = Quat::from_rotation_z(rotation_angle);
+        // 随着生命周期逐渐缩小
+        let life_fraction = leaf.lifetime.fraction();
+        let scale = 1.0 - life_fraction; // 从1缩小到0
+
+        if let Some(size) = sprite.custom_size.as_mut() {
+            *size = Vec2::new(
+                size.x * scale.powf(delta * 2.0), // 平滑缩小
+                size.y * scale.powf(delta * 2.0),
+            );
+        }
+
+        // 透明度逐渐降低
+        sprite.color.set_alpha(1.0 * scale);
 
         // 超出地图范围销毁
-        if transform.translation.y < MAP_BOTTOM_Y - 50.0
+        if transform.translation.y < MAP_BOTTOM_Y - 100.0
             || transform.translation.x < MAP_LEFT_X - 100.0
             || transform.translation.x > MAP_RIGHT_X + 100.0
         {
