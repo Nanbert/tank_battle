@@ -35,37 +35,7 @@ pub fn create_text_font(font: &Handle<Font>, font_size: f32) -> TextFont {
     }
 }
 
-/// 通用文本构建器
-///
-/// 统一的文本生成接口，支持：
-/// - 基本文本生成
-/// - 带标记组件的文本
-/// - 带对齐方式的文本
-///
-/// # 示例
-/// ```rust
-/// // 基本文本
-/// TextBuilder::new(commands, "Hello", font)
-///     .position(Vec3::new(100.0, 200.0, 0.0))
-///     .font_size(24.0)
-///     .color(Color::RED)
-///     .spawn();
-///
-/// // 带标记的文本
-/// TextBuilder::new(commands, "Player 1", font)
-///     .position(Vec3::new(0.0, 100.0, 1.0))
-///     .marker(Player1Hud)
-///     .spawn();
-///
-/// // 带对齐方式的文本
-/// TextBuilder::new(commands, "Centered", font)
-///     .position(Vec3::new(0.0, 0.0, 1.0))
-///     .justify(Justify::Center)
-///     .spawn();
-/// ```
-// ==================== 向后兼容的便捷函数 ====================
-
-/// 生成带标记的 2D 文本实体 - 向后兼容
+/// 生成带标记的 2D 文本实体
 #[inline]
 pub fn spawn_simple_text_with_marker<M: Component>(
     commands: &mut Commands,
@@ -91,7 +61,7 @@ pub fn spawn_simple_text_with_marker<M: Component>(
         .id()
 }
 
-/// 生成带标记和对齐方式的 2D 文本实体 - 向后兼容
+/// 生成带标记和对齐方式的 2D 文本实体
 #[inline]
 pub fn spawn_text_with_justify_and_marker<M: Component>(
     commands: &mut Commands,
@@ -146,18 +116,6 @@ impl AlphaMut for TextColor {
 /// 更新任意支持 AlphaMut 类型的透明度
 pub fn update_alpha<T: AlphaMut>(alpha: f32, target: &mut T) {
     target.set_alpha(alpha);
-}
-
-/// 更新 Sprite 的透明度（保留向后兼容）
-#[inline]
-pub fn update_sprite_alpha(alpha: f32, sprite: &mut Sprite) {
-    update_alpha(alpha, sprite);
-}
-
-/// 更新 TextColor 的透明度（保留向后兼容）
-#[inline]
-pub fn update_text_color_alpha(alpha: f32, text_color: &mut TextColor) {
-    update_alpha(alpha, text_color);
 }
 
 /// 根据计时器进度计算透明度并更新文本颜色

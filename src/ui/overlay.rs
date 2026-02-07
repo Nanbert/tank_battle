@@ -13,7 +13,7 @@ use crate::constants::*;
 use crate::ui::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use super::common::{self, update_sprite_alpha, update_text_color_alpha};
+use super::common;
 // 从 localization 模块导入本地化常量
 use super::localization::*;
 
@@ -35,7 +35,7 @@ pub fn fade_out_screen(
     for (_entity, sprite_opt, text_color_opt, menu_option_opt) in &mut ui_query {
         // 更新 Sprite 透明度
         if let Some(mut sprite) = sprite_opt {
-            update_sprite_alpha(fading_out.alpha, &mut sprite);
+            common::update_alpha(fading_out.alpha, sprite.as_mut());
         }
 
         // 更新 Text 元素的颜色（选中的选项由 update_menu_blink 处理闪烁，但需要跟随淡出）
@@ -44,7 +44,7 @@ pub fn fade_out_screen(
             if menu_option_opt.is_some_and(|opt| opt.index == selected_index) {
                 continue;
             }
-            update_text_color_alpha(fading_out.alpha, &mut text_color);
+            common::update_alpha(fading_out.alpha, text_color.as_mut());
         }
     }
 
