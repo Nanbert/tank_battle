@@ -3,6 +3,7 @@
 //!
 
 mod app;
+mod ambience;
 mod atlas;
 mod bullet;
 mod commander;
@@ -19,6 +20,7 @@ mod powerup;
 mod resources;
 mod ui;
 mod utils;
+mod weather;
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;

@@ -206,8 +206,8 @@ pub fn animate_effects(
                     indices.first,
                     indices.last,
                 );
-                // 在指定帧触发事件
-                if prev_frame != current_frame.0 && current_frame.0 == *trigger_frame {
+                // 在达到或超过指定帧时触发事件（避免因帧跳过导致事件未触发）
+                if prev_frame < *trigger_frame && current_frame.0 >= *trigger_frame {
                     match event_type {
                         AnimationEventType::SpawnEnemy => {
                             if let Ok(born_position) = born_position_query.get(entity) {
@@ -335,7 +335,7 @@ pub fn play_sea_ambience(
         player_tanks,
         seas,
         ambience_players,
-        VOLUME_HALF,
+        VOLUME_AMBIENCE,
     );
 }
 
@@ -353,7 +353,7 @@ pub fn play_tree_ambience(
         player_tanks,
         forests,
         ambience_players,
-        VOLUME_HALF,
+        VOLUME_AMBIENCE,
     );
 }
 

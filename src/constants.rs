@@ -51,6 +51,11 @@ pub const IMAGE_WECHAT: &str = "wechat.png";
 
 // 特效纹理路径常量（静态）
 pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
+pub const TEXTURE_LEAVES_1: &str = "ambience/leaves1.png";
+pub const TEXTURE_LEAVES_2: &str = "ambience/leaves2.png";
+pub const TEXTURE_LEAVES_3: &str = "ambience/leaves3.png";
+pub const TEXTURE_LEAVES_4: &str = "ambience/leaves4.png";
+pub const TEXTURE_LEAVES_5: &str = "ambience/leaves5.png";
 
 // 角色纹理路径常量（静态）
 pub const TEXTURE_COMMANDER_DEAD: &str = "texture/commander_dead.png";
@@ -783,10 +788,12 @@ pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
 // ==================== 比例和音量常量 ====================
 pub const VOLUME_HALF: f32 = 0.5; // 音效音量
 pub const VOLUME_MUSIC_NOTE: f32 = 0.4; // 音符动画音量
+pub const VOLUME_AMBIENCE: f32 = 0.7; // 环境音效音量
 
 // ==================== Z轴层级常量 ====================
 pub const Z_SEA: f32 = -0.5; // 海水层级
 pub const Z_DEFAULT: f32 = 0.0; // 默认层级
+pub const Z_RAIN: f32 = 0.5; // 雨水层级
 pub const Z_LASER: f32 = 0.9; // 激光层级
 pub const Z_FOREST: f32 = 1.0; // 森林层级
 pub const Z_PROGRESS_BAR: f32 = 2.0; // 进度条层级

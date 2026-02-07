@@ -503,6 +503,7 @@ pub struct GameTextureResources {
     pub forest_fire: Handle<Image>,
     pub laser_blue: Handle<Image>,
     pub laser_red: Handle<Image>,
+    pub leaves: [Handle<Image>; 5],
     // 地图
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,

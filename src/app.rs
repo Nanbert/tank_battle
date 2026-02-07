@@ -9,6 +9,7 @@ use bevy::window::{PresentMode, WindowResolution};
 
 use crate::constants::*;
 use crate::resources::*;
+use crate::weather;
 
 /// 游戏系统调度集
 /// 将系统按功能分组，减少 run_if 检查的开销
@@ -316,10 +317,19 @@ fn register_playing_systems(app: &mut App) {
         (
             effects::animate_effects,
             effects::update_air_cushion_effect,
+            weather::precipitation_spawn_system,
+            weather::precipitation_update_system,
             ui::common::update_blink_animations, // 通用闪烁动画系统
         )
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );
+
+    // 天气系统：进入/离开 Playing 状态时处理
+    app.add_systems(OnEnter(GameState::Playing), weather::on_playing_enter)
+        .add_systems(OnExit(GameState::Playing), (
+            weather::on_playing_exit,
+            crate::ambience::cleanup_leaves,
+        ).chain());
 
     // 司令官系统集
     app.add_systems(
@@ -371,6 +381,10 @@ fn register_playing_systems(app: &mut App) {
             effects::play_sea_ambience,
             effects::play_commander_ambience,
             effects::play_tree_ambience,
+            crate::ambience::rain_splash_spawn_system,
+            crate::ambience::rain_splash_update_system,
+            crate::ambience::leaves_spawn_system,
+            crate::ambience::leaves_update_system,
         )
             .in_set(GameSystemSet::AmbienceSystems),
     );
@@ -480,6 +494,7 @@ pub fn configure_game_resources(app: &mut App) {
             shell_icon: Handle::default(),
             background: Handle::default(),
             music_note: Handle::default(),
+            leaves: Default::default(),
         })
         .insert_resource(crate::resources::GameAudioResources {
             explosion: Handle::default(),
@@ -546,7 +561,8 @@ pub fn configure_game_resources(app: &mut App) {
         .init_resource::<EnemyCollisionCache>()
         .init_resource::<GameTrackers>()
         .init_resource::<GameTimers>()
-        .init_resource::<crate::levels::LevelAssets>();
+        .init_resource::<crate::levels::LevelAssets>()
+        .init_resource::<weather::CurrentWeather>();
 }
 
 /// 注册所有游戏系统
@@ -644,6 +660,13 @@ pub fn init_game_resources(
         shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(&asset_server), // 菜单
         background: crate::atlas::BACKGROUND_ATLAS.load_texture(&asset_server),
         music_note: crate::atlas::MUSIC_NOTE_ATLAS.load_texture(&asset_server),
+        leaves: [
+                asset_server.load(TEXTURE_LEAVES_1),
+                asset_server.load(TEXTURE_LEAVES_2),
+                asset_server.load(TEXTURE_LEAVES_3),
+                asset_server.load(TEXTURE_LEAVES_4),
+                asset_server.load(TEXTURE_LEAVES_5),
+            ],
     };
 
     // 音频资源
