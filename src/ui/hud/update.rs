@@ -33,54 +33,93 @@ pub fn despawn_hud(
 // Player HUD Update Functions
 // ============================================================================
 
-/// 宏：更新单个玩家的 HUD
-///
-/// 此宏消除了玩家1和玩家2 HUD 更新的重复逻辑
-macro_rules! update_single_player_hud {
-    (
-        $stats:expr,
-        $x_pos:expr,
-        $player_hud_query:expr,
-        $bar_query:expr,
-        $is_player1:expr,
-        $language:expr
-    ) => {
-        // 更新文本
-        for (mut text, stat_type, is_p1, is_p2) in $player_hud_query.iter_mut() {
-            if ($is_player1 && is_p1.is_some()) || (!$is_player1 && is_p2.is_some()) {
-                text.0 = update_single_player_text($stats, *stat_type, $language);
-            }
+/// 更新单个玩家的 HUD 文本（内部函数）
+fn update_single_player_hud_text(
+    stats: &PlayerStats,
+    player_hud_query: &mut Query<(
+        &mut Text2d,
+        &HudStatType,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
+    is_player1: bool,
+    language: Language,
+) {
+    for (mut text, stat_type, is_p1, is_p2) in player_hud_query.iter_mut() {
+        if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
+            text.0 = update_single_player_text(stats, *stat_type, language);
         }
+    }
+}
 
-        // 更新血条和蓝条
-        for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, is_p2) in
-            $bar_query.iter_mut()
-        {
-            if ($is_player1 && is_p1.is_some()) || (!$is_player1 && is_p2.is_some()) {
-                if is_health_foreground.is_some() {
-                    common::update_bar(
-                        &mut sprite,
-                        &mut transform,
-                        $stats.life_points as f32,
-                        HUD_MAX_LIFE_POINTS,
-                        $x_pos,
-                        HUD_BAR_SIZE.x,
-                        HUD_BAR_SIZE.y,
-                    );
-                } else if is_blue_foreground.is_some() {
-                    common::update_bar(
-                        &mut sprite,
-                        &mut transform,
-                        $stats.energy_points as f32,
-                        HUD_MAX_LIFE_POINTS,
-                        $x_pos,
-                        HUD_BAR_SIZE.x,
-                        HUD_BAR_SIZE.y,
-                    );
-                }
+/// 更新单个玩家的 HUD 血条和蓝条（内部函数）
+fn update_single_player_hud_bars(
+    stats: &PlayerStats,
+    x_pos: f32,
+    bar_query: &mut Query<(
+        &mut Sprite,
+        &mut Transform,
+        Option<&HealthBarForeground>,
+        Option<&BlueBarForeground>,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
+    is_player1: bool,
+) {
+    for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, is_p2) in
+        bar_query.iter_mut()
+    {
+        if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
+            if is_health_foreground.is_some() {
+                common::update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats.life_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos,
+                    HUD_BAR_SIZE.x,
+                    HUD_BAR_SIZE.y,
+                );
+            } else if is_blue_foreground.is_some() {
+                common::update_bar(
+                    &mut sprite,
+                    &mut transform,
+                    stats.energy_points as f32,
+                    HUD_MAX_LIFE_POINTS,
+                    x_pos,
+                    HUD_BAR_SIZE.x,
+                    HUD_BAR_SIZE.y,
+                );
             }
         }
-    };
+    }
+}
+
+/// 更新单个玩家的 HUD（组合函数）
+///
+/// 此函数消除了玩家1和玩家2 HUD 更新的重复逻辑，将逻辑拆分为两个独立的函数
+fn update_single_player_hud(
+    stats: &PlayerStats,
+    x_pos: f32,
+    player_hud_query: &mut Query<(
+        &mut Text2d,
+        &HudStatType,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
+    bar_query: &mut Query<(
+        &mut Sprite,
+        &mut Transform,
+        Option<&HealthBarForeground>,
+        Option<&BlueBarForeground>,
+        Option<&Player1Hud>,
+        Option<&Player2Hud>,
+    )>,
+    is_player1: bool,
+    language: Language,
+) {
+    update_single_player_hud_text(stats, player_hud_query, is_player1, language);
+    update_single_player_hud_bars(stats, x_pos, bar_query, is_player1);
 }
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
@@ -121,26 +160,26 @@ pub fn update_player_hud(
     language: Res<Language>,
 ) {
     // 更新玩家1 HUD
-    update_single_player_hud!(
+    update_single_player_hud(
         &player_info.player1,
         WINDOW_LEFT_X + HUD_PLAYER_OFFSET,
-        player_hud_query,
-        bar_query,
+        &mut player_hud_query,
+        &mut bar_query,
         true,
-        *language
+        *language,
     );
 
     // 更新玩家2 HUD（仅在双人模式下）
     if *game_mode == GameMode::TwoPlayers
         && let Some(stats2) = &player_info.player2
     {
-        update_single_player_hud!(
+        update_single_player_hud(
             stats2,
             WINDOW_RIGHT_X - HUD_PLAYER_OFFSET,
-            player_hud_query,
-            bar_query,
+            &mut player_hud_query,
+            &mut bar_query,
             false,
-            *language
+            *language,
         );
     }
 }
