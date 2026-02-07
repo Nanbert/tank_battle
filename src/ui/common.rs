@@ -355,41 +355,44 @@ pub struct BlinkAnimation {
     pub final_color: Color,
     /// 是否在完成后移除组件
     pub remove_on_complete: bool,
+    /// 是否在完成后销毁实体
+    pub despawn_on_complete: bool,
 }
 
 impl BlinkAnimation {
-    /// 创建新的闪烁动画
+    /// 创建新的闪烁动画（带销毁选项）
     /// 
     /// # 参数
     /// - `duration`: 总持续时间（秒）
     /// - `on_color`: 显示时的颜色
     /// - `off_color`: 隐藏时的颜色
     /// - `final_color`: 完成后的颜色
-    /// - `remove_on_complete`: 完成后是否移除组件
-    pub fn new(
+    /// - `despawn_on_complete`: 完成后是否销毁实体
+    pub fn new_with_despawn(
         duration: f32,
         on_color: Color,
         off_color: Color,
         final_color: Color,
-        remove_on_complete: bool,
+        despawn_on_complete: bool,
     ) -> Self {
         Self {
             timer: Timer::from_seconds(duration, TimerMode::Once),
             on_color,
             off_color,
             final_color,
-            remove_on_complete,
+            remove_on_complete: false,
+            despawn_on_complete,
         }
     }
-    
-    /// 创建默认的闪烁动画（金色闪烁）
-    pub fn gold_blink(duration: f32, remove_on_complete: bool) -> Self {
-        Self::new(
+
+    /// 创建默认的闪烁动画（金色闪烁，销毁实体）
+    pub fn gold_blink_despawn(duration: f32) -> Self {
+        Self::new_with_despawn(
             duration,
             crate::ui::COLOR_GOLD,
             crate::ui::COLOR_TRANSPARENT_BLACK,
             crate::ui::COLOR_WHITE,
-            remove_on_complete,
+            true,
         )
     }
     
@@ -434,6 +437,7 @@ impl BlinkAnimation {
 ///
 /// # 行为
 /// - 如果 `remove_on_complete` 为 true，动画完成后会移除 `BlinkAnimation` 组件
+/// - 如果 `despawn_on_complete` 为 true，动画完成后会销毁整个实体
 /// - 否则，`BlinkAnimation` 组件会保留，但不再更新颜色
 pub fn update_blink_animations(
     time: Res<Time>,
@@ -446,7 +450,9 @@ pub fn update_blink_animations(
         } else {
             // 动画完成
             text_color.0 = blink.final_color;
-            if blink.remove_on_complete {
+            if blink.despawn_on_complete {
+                commands.entity(entity).despawn();
+            } else if blink.remove_on_complete {
                 commands.entity(entity).remove::<BlinkAnimation>();
             }
         }

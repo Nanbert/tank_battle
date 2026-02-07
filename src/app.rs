@@ -318,7 +318,6 @@ fn register_playing_systems(app: &mut App) {
             effects::animate_effects,
             effects::update_air_cushion_effect,
             ui::common::update_blink_animations, // 通用闪烁动画系统
-            ui::overlay::auto_remove_insufficient_energy_warnings, // 自动移除能量不足提示
         )
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );

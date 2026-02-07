@@ -385,14 +385,9 @@ pub fn spawn_insufficient_energy_warning(
         common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
         TextColor(COLOR_GOLD),
         Transform::from_xyz(x_pos, y_pos, Z_UI),
-        // 使用新的通用闪烁动画系统，设置 remove_on_complete 为 true
-        // 动画完成后会移除 BlinkAnimation 组件，实体仍存在但不再闪烁
-        common::BlinkAnimation::gold_blink(INSUFFICIENT_ENERGY_DISPLAY_DURATION, true),
-        // 添加自动移除计时器：与闪烁动画同时完成，立即移除
-        crate::ui::UiTimer::new(
-            INSUFFICIENT_ENERGY_DISPLAY_DURATION,
-            bevy::time::TimerMode::Once,
-        ),
+        // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
+        // 动画完成后会自动销毁整个实体
+        common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
     )).id();
 }
 
@@ -404,20 +399,6 @@ pub fn despawn_insufficient_energy_warnings(
     query: Query<Entity, With<InsufficientEnergyText>>,
 ) {
     crate::utils::cleanup_entities(&mut commands, query.iter());
-}
-
-/// 自动移除能量不足提示（当计时器完成后）
-pub fn auto_remove_insufficient_energy_warnings(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut query: Query<(Entity, &mut crate::ui::UiTimer), (With<InsufficientEnergyText>, Without<common::BlinkAnimation>)>,
-) {
-    for (entity, mut timer) in query.iter_mut() {
-        timer.tick(time.delta());
-        if timer.is_finished() {
-            commands.entity(entity).despawn();
-        }
-    }
 }
 
 /// 清理开始界面的UI元素
