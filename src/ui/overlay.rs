@@ -7,13 +7,13 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
+use super::common;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
-use crate::ui::constants::*;
-#[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use super::common;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 // 从 localization 模块导入本地化常量
 use super::localization::*;
 
@@ -24,7 +24,15 @@ pub fn fade_out_screen(
     mut fading_out: ResMut<FadingOut>,
     mut next_state: ResMut<NextState<GameState>>,
     menu_selection: Res<CurrentMenuSelection>,
-    mut ui_query: Query<(Entity, Option<&mut Sprite>, Option<&mut TextColor>, Option<&MenuOption>), With<StartScreenUI>>,
+    mut ui_query: Query<
+        (
+            Entity,
+            Option<&mut Sprite>,
+            Option<&mut TextColor>,
+            Option<&MenuOption>,
+        ),
+        With<StartScreenUI>,
+    >,
 ) {
     // 减少透明度
     fading_out.alpha -= time.delta_secs() * (1.0 / FADE_OUT_SPEED); // 淡出速度，1.5秒完成
@@ -72,7 +80,8 @@ pub fn spawn_stage_intro(
     // 初始化计时器
     game_timers.stage_intro.fade_in = Timer::from_seconds(STAGE_FADE_IN_DURATION, TimerMode::Once);
     game_timers.stage_intro.stay = Timer::from_seconds(STAGE_FADE_HOLD_DURATION, TimerMode::Once);
-    game_timers.stage_intro.fade_out = Timer::from_seconds(STAGE_FADE_OUT_DURATION, TimerMode::Once);
+    game_timers.stage_intro.fade_out =
+        Timer::from_seconds(STAGE_FADE_OUT_DURATION, TimerMode::Once);
 
     // 创建全屏白色背景方块，遮挡所有游戏元素
     commands.spawn((
@@ -119,7 +128,7 @@ pub fn spawn_stage_intro(
         stage_text,
         &stage_font,
         FONT_SIZE_MENU,
-        Vec3::new(0.0, 100.0, Z_STAGE_INTRO_TEXT),
+        Vec3::new(0.0, STAGE_INTRO_TITLE_Y, Z_STAGE_INTRO_TEXT),
         COLOR_TRANSPARENT_BLACK, // 黑色，初始透明度为0
         StageIntroUI,
         Z_STAGE_INTRO_TEXT,
@@ -131,7 +140,7 @@ pub fn spawn_stage_intro(
         quote_text,
         &quote_font,
         FONT_SIZE_SCORE,
-        Vec3::new(0.0, -50.0, Z_STAGE_INTRO_TEXT),
+        Vec3::new(0.0, STAGE_INTRO_QUOTE_Y, Z_STAGE_INTRO_TEXT),
         COLOR_DARK_GRAY.with_alpha(0.0), // 暗灰色，初始透明度为0
         StageIntroUI,
         Justify::Center,
@@ -149,7 +158,11 @@ pub fn handle_stage_intro_timer(
     // 淡入阶段
     if !game_timers.stage_intro.fade_in.is_finished() {
         game_timers.stage_intro.fade_in.tick(time.delta());
-        common::update_text_alpha_from_timer(&game_timers.stage_intro.fade_in, true, &mut text_query);
+        common::update_text_alpha_from_timer(
+            &game_timers.stage_intro.fade_in,
+            true,
+            &mut text_query,
+        );
     }
     // 停留阶段
     else if !game_timers.stage_intro.stay.is_finished() {
@@ -158,7 +171,11 @@ pub fn handle_stage_intro_timer(
     // 淡出阶段
     else if !game_timers.stage_intro.fade_out.is_finished() {
         game_timers.stage_intro.fade_out.tick(time.delta());
-        common::update_text_alpha_from_timer(&game_timers.stage_intro.fade_out, false, &mut text_query);
+        common::update_text_alpha_from_timer(
+            &game_timers.stage_intro.fade_out,
+            false,
+            &mut text_query,
+        );
     }
     // 所有阶段完成，切换到 Playing 状态
     else {
@@ -196,7 +213,7 @@ pub fn spawn_pause_ui(
         Text2d(PAUSED_TITLE.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_GAME_OVER),
         TextColor(COLOR_YELLOW),
-        Transform::from_xyz(0.0, 0.0, Z_UI),
+        Transform::from_xyz(0.0, PAUSED_TITLE_Y, Z_UI),
     ));
 
     commands.spawn((
@@ -204,7 +221,7 @@ pub fn spawn_pause_ui(
         Text2d(PAUSED_INSTRUCTION.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_UI),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, -100.0, Z_UI),
+        Transform::from_xyz(0.0, PAUSED_INSTRUCTION_Y, Z_UI),
     ));
 }
 
@@ -271,7 +288,7 @@ pub fn spawn_game_over_ui(
             ..default()
         },
         TextColor(COLOR_RED),
-        Transform::from_xyz(0.0, 100.0, Z_UI),
+        Transform::from_xyz(0.0, GAME_OVER_TITLE_Y, Z_UI),
     ));
 
     // Restart 选项
@@ -280,7 +297,7 @@ pub fn spawn_game_over_ui(
         Text2d(GAME_OVER_RESTART.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, 0.0, Z_UI),
+        Transform::from_xyz(0.0, GAME_OVER_OPTION1_Y, Z_UI),
         MenuOption { index: 0 },
     ));
 
@@ -290,7 +307,7 @@ pub fn spawn_game_over_ui(
         Text2d(GAME_OVER_MENU.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, -60.0, Z_UI),
+        Transform::from_xyz(0.0, GAME_OVER_OPTION2_Y, Z_UI),
         MenuOption { index: 1 },
     ));
 
@@ -300,7 +317,7 @@ pub fn spawn_game_over_ui(
         Text2d(GAME_OVER_EXIT.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_OPTION),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, -120.0, Z_UI),
+        Transform::from_xyz(0.0, GAME_OVER_OPTION3_Y, Z_UI),
         MenuOption { index: 2 },
     ));
 
@@ -310,7 +327,7 @@ pub fn spawn_game_over_ui(
         Text2d(GAME_OVER_INSTRUCTION.get(*language).to_string()),
         common::create_text_font(&font, FONT_SIZE_UI),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(0.0, -180.0, Z_UI),
+        Transform::from_xyz(0.0, GAME_OVER_INSTRUCTION_Y, Z_UI),
     ));
 }
 
@@ -376,19 +393,19 @@ pub fn spawn_insufficient_energy_warning(
     let font = common::get_font(&font_resources, language);
 
     // 生成文本实体
-    let _entity = commands.spawn((
-        InsufficientEnergyText,
-        Text2d(text.to_string()),
-        common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
-        TextColor(COLOR_GOLD),
-        Transform::from_xyz(x_pos, y_pos, Z_UI),
-        // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
-        // 动画完成后会自动销毁整个实体
-        common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
-    )).id();
+    let _entity = commands
+        .spawn((
+            InsufficientEnergyText,
+            Text2d(text.to_string()),
+            common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
+            TextColor(COLOR_GOLD),
+            Transform::from_xyz(x_pos, y_pos, Z_UI),
+            // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
+            // 动画完成后会自动销毁整个实体
+            common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
+        ))
+        .id();
 }
-
-
 
 /// 销毁所有能量不足提示
 pub fn despawn_insufficient_energy_warnings(

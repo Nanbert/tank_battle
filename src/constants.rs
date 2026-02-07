@@ -682,7 +682,11 @@ impl LocalizedTextFormat {
     ///     ("total", max_count),
     /// ]);
     /// ```
-    pub fn format_named(&self, language: Language, values: &[(&str, impl std::fmt::Display)]) -> String {
+    pub fn format_named(
+        &self,
+        language: Language,
+        values: &[(&str, impl std::fmt::Display)],
+    ) -> String {
         let template = self.get(language);
         let mut result = template.to_string();
         for (name, value) in values.iter() {

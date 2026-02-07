@@ -61,8 +61,7 @@ fn register_start_screen_systems(app: &mut App) {
         Update,
         (
             // 清理游戏实体
-            |mut commands: Commands,
-             entities: Query<Entity, With<crate::ui::PlayingEntity>>| {
+            |mut commands: Commands, entities: Query<Entity, With<crate::ui::PlayingEntity>>| {
                 crate::utils::cleanup_entities(&mut commands, entities.iter());
             },
             // 生成开始菜单
@@ -194,27 +193,30 @@ fn register_paused_systems(app: &mut App) {
 
 /// 注册 GameOver 状态的系统
 fn register_game_over_systems(app: &mut App) {
-    app.add_systems(OnEnter(GameState::GameOver), ui::overlay::spawn_game_over_ui)
-        .add_systems(
-            OnExit(GameState::GameOver),
-            (
-                ui::overlay::despawn_game_over_ui,
-                enemy::despawn_enemy_tank,
-                |mut stage_level: ResMut<crate::resources::StageLevel>| {
-                    stage_level.0 = 1;
-                },
-                ui::hud::despawn_hud,
-            ),
+    app.add_systems(
+        OnEnter(GameState::GameOver),
+        ui::overlay::spawn_game_over_ui,
+    )
+    .add_systems(
+        OnExit(GameState::GameOver),
+        (
+            ui::overlay::despawn_game_over_ui,
+            enemy::despawn_enemy_tank,
+            |mut stage_level: ResMut<crate::resources::StageLevel>| {
+                stage_level.0 = 1;
+            },
+            ui::hud::despawn_hud,
+        ),
+    )
+    .add_systems(
+        Update,
+        (
+            ui::overlay::handle_game_over_input,
+            ui::menus::update_option_colors,
         )
-        .add_systems(
-            Update,
-            (
-                ui::overlay::handle_game_over_input,
-                ui::menus::update_option_colors,
-            )
-                .chain()
-                .run_if(in_state(GameState::GameOver)),
-        );
+            .chain()
+            .run_if(in_state(GameState::GameOver)),
+    );
 }
 
 /// 注册 FadingOut 状态的系统
@@ -259,10 +261,7 @@ fn register_playing_systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        (
-            enemy::enemy_spawn_system,
-            enemy::handle_spawn_enemy_event,
-        )
+        (enemy::enemy_spawn_system, enemy::handle_spawn_enemy_event)
             .in_set(GameSystemSet::EnemySystems),
     );
 
@@ -379,8 +378,7 @@ fn register_playing_systems(app: &mut App) {
     // 其他系统（不属于特定集的 Playing 状态系统）
     app.add_systems(
         Update,
-        ui::overlay::handle_game_input
-            .run_if(in_state(GameState::Playing)),
+        ui::overlay::handle_game_input.run_if(in_state(GameState::Playing)),
     );
 }
 
@@ -522,16 +520,17 @@ pub fn configure_game_resources(app: &mut App) {
             energy_blue_ball: Handle::default(),
             energy_red_ball: Handle::default(),
             speed_up_icon: Handle::default(),
-                protection_icon: Handle::default(),
-                fire_speed_icon: Handle::default(),
-                fire_shell_icon: Handle::default(),
-                track_chain_icon: Handle::default(),
-                track_chain_effect: Handle::default(),
-                penetrate_icon: Handle::default(),
-                repair_icon: Handle::default(),
-                hamburger_icon: Handle::default(),
-                air_cushion_icon: Handle::default(),
-                shell_icon: Handle::default(),        })
+            protection_icon: Handle::default(),
+            fire_speed_icon: Handle::default(),
+            fire_shell_icon: Handle::default(),
+            track_chain_icon: Handle::default(),
+            track_chain_effect: Handle::default(),
+            penetrate_icon: Handle::default(),
+            repair_icon: Handle::default(),
+            hamburger_icon: Handle::default(),
+            air_cushion_icon: Handle::default(),
+            shell_icon: Handle::default(),
+        })
         .insert_resource(Language::default())
         .insert_resource(GameMode::OnePlayer)
         .insert_resource(StageLevel(1))
@@ -633,16 +632,16 @@ pub fn init_game_resources(
         enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.load_texture(&asset_server),
         // 道具
         speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(&asset_server),
-            protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
-            fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.load_texture(&asset_server),
-            fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(&asset_server),
-            track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
-            track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
-            penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
-            repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
-            hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
-            air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.load_texture(&asset_server),
-            shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(&asset_server),        // 菜单
+        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
+        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.load_texture(&asset_server),
+        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(&asset_server),
+        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
+        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
+        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
+        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
+        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
+        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.load_texture(&asset_server),
+        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(&asset_server), // 菜单
         background: crate::atlas::BACKGROUND_ATLAS.load_texture(&asset_server),
         music_note: crate::atlas::MUSIC_NOTE_ATLAS.load_texture(&asset_server),
     };
@@ -663,9 +662,10 @@ pub fn init_game_resources(
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
         music_note_000: asset_server.load(SOUND_MUSIC_NOTE_000),
-                    music_note_001: asset_server.load(SOUND_MUSIC_NOTE_001),
-                    music_note_002: asset_server.load(SOUND_MUSIC_NOTE_002),
-                    music_note_003: asset_server.load(SOUND_MUSIC_NOTE_003),        tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
+        music_note_001: asset_server.load(SOUND_MUSIC_NOTE_001),
+        music_note_002: asset_server.load(SOUND_MUSIC_NOTE_002),
+        music_note_003: asset_server.load(SOUND_MUSIC_NOTE_003),
+        tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
     };
 
     // 图集布局资源
@@ -678,7 +678,8 @@ pub fn init_game_resources(
         background: background_atlas,
         // 子弹特效
         fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
         // 烟雾特效
         smoke_atlas: crate::atlas::SMOKE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 爆炸特效
@@ -689,25 +690,37 @@ pub fn init_game_resources(
         music_note: crate::atlas::MUSIC_NOTE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 敌方出生
-                    enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    // 能量球
-                    energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                    // 道具
-                    speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-                        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),    };
+        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        // 能量球
+        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        // 道具
+        speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+    };
 
     // 插入所有资源
     commands.insert_resource(textures);

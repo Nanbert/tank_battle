@@ -4,26 +4,31 @@
 
 use bevy::prelude::*;
 
+use super::stats::*;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
 use crate::ui::common;
-use crate::ui::localization::*;
 use crate::ui::constants::*;
-use super::stats::*;
+use crate::ui::localization::*;
 
 // ============================================================================
 // HUD 查询类型别名
 // ============================================================================
 
 /// 顶部 HUD 查询（关卡文本、司令官文本、血条、敌方数量）
-pub type TopHudQuery<'w, 's> = Query<'w, 's, Entity, Or<(
-    With<StageText>,
-    With<CommanderText>,
-    With<CommanderHealthBar>,
-    With<EnemyCountText>,
-)>>;
+pub type TopHudQuery<'w, 's> = Query<
+    'w,
+    's,
+    Entity,
+    Or<(
+        With<StageText>,
+        With<CommanderText>,
+        With<CommanderHealthBar>,
+        With<EnemyCountText>,
+    )>,
+>;
 
 /// 玩家 HUD 查询（玩家1和玩家2的HUD）
 pub type PlayerHudQuery<'w, 's> = Query<'w, 's, Entity, Or<(With<Player1Hud>, With<Player2Hud>)>>;
@@ -159,13 +164,40 @@ pub fn spawn_single_player_hud(
     for config in &PERCENT_STAT_CONFIGS {
         match config.stat_type {
             HudStatType::Speed => {
-                spawn_hud_text_element(commands, marker.clone(), SpeedText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    SpeedText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             HudStatType::FireSpeed => {
-                spawn_hud_text_element(commands, marker.clone(), FireSpeedText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    FireSpeedText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             HudStatType::Protection => {
-                spawn_hud_text_element(commands, marker.clone(), ProtectionText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    ProtectionText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             _ => {}
         }
@@ -176,7 +208,16 @@ pub fn spawn_single_player_hud(
         y_position: HudYPosition::Shells,
         stat_type: HudStatType::Shells,
     };
-    spawn_hud_text_element(commands, marker.clone(), ShellsText, font, &shells_config, &stats, x_pos, language);
+    spawn_hud_text_element(
+        commands,
+        marker.clone(),
+        ShellsText,
+        font,
+        &shells_config,
+        &stats,
+        x_pos,
+        language,
+    );
 
     // 效果标题
     commands.spawn((
@@ -185,23 +226,63 @@ pub fn spawn_single_player_hud(
         Text2d(HUD_EFFECTS_TITLE.get(language).to_string()),
         common::create_text_font(font, FONT_SIZE_HUD_NAME),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(x_pos, common::hud_y_position(HudYPosition::EffectsTitle), Z_UI),
+        Transform::from_xyz(
+            x_pos,
+            common::hud_y_position(HudYPosition::EffectsTitle),
+            Z_UI,
+        ),
     ));
 
     // 效果文本（布尔类型 - 数据驱动，使用循环）
     for config in &EFFECT_STAT_CONFIGS {
         match config.stat_type {
             HudStatType::FireShell => {
-                spawn_hud_text_element(commands, marker.clone(), FireShellText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    FireShellText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             HudStatType::Penetrate => {
-                spawn_hud_text_element(commands, marker.clone(), PenetrateText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    PenetrateText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             HudStatType::TrackChain => {
-                spawn_hud_text_element(commands, marker.clone(), TrackChainText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    TrackChainText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             HudStatType::AirCushion => {
-                spawn_hud_text_element(commands, marker.clone(), AirCushionText, font, config, &stats, x_pos, language);
+                spawn_hud_text_element(
+                    commands,
+                    marker.clone(),
+                    AirCushionText,
+                    font,
+                    config,
+                    &stats,
+                    x_pos,
+                    language,
+                );
             }
             _ => {}
         }
@@ -212,7 +293,16 @@ pub fn spawn_single_player_hud(
         y_position: HudYPosition::Score,
         stat_type: HudStatType::Score,
     };
-    spawn_hud_text_element(commands, marker.clone(), ScoreText, font, &score_config, &stats, x_pos, language);
+    spawn_hud_text_element(
+        commands,
+        marker.clone(),
+        ScoreText,
+        font,
+        &score_config,
+        &stats,
+        x_pos,
+        language,
+    );
 
     // 玩家头像
     crate::utils::spawn_animated_sprite(
@@ -223,7 +313,12 @@ pub fn spawn_single_player_hud(
         0.2,
         Transform::from_translation(common::hud_position(x_pos, HudYPosition::Avatar, Z_UI)),
         crate::atlas::PLAYER_AVATAR_ATLAS.display_size,
-        (marker.clone(), PlayerAvatar, PlayerUI { player_type }, AnimationMode::Looping),
+        (
+            marker.clone(),
+            PlayerAvatar,
+            PlayerUI { player_type },
+            AnimationMode::Looping,
+        ),
     );
 
     // 血条
@@ -249,7 +344,7 @@ pub fn spawn_single_player_hud(
         Transform::from_xyz(
             x_pos - HUD_BAR_SIZE.x / 2.0 + health_width / 2.0,
             common::hud_y_position(HudYPosition::BarHealth),
-            Z_UI + 0.1,
+            Z_UI + HUD_FOREGROUND_Z_OFFSET,
         ),
     ));
 
@@ -276,7 +371,7 @@ pub fn spawn_single_player_hud(
         Transform::from_xyz(
             x_pos - HUD_BAR_SIZE.x / 2.0 + blue_width / 2.0,
             common::hud_y_position(HudYPosition::BarBlue),
-            Z_UI + 0.1,
+            Z_UI + HUD_FOREGROUND_Z_OFFSET,
         ),
     ));
 }
@@ -340,7 +435,7 @@ pub fn spawn_top_hud(
         Text2d(stage_text),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_YELLOW),
-        Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
+        Transform::from_xyz(0.0, WINDOW_TOP_Y - TOP_HUD_Y_OFFSET, Z_UI_TEXT),
     ));
 
     // Commander 文本和血条
@@ -352,7 +447,11 @@ pub fn spawn_top_hud(
         Text2d(commander_text.to_string()),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(commander_text_x - HUD_COMMANDER_TEXT_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
+        Transform::from_xyz(
+            commander_text_x - HUD_COMMANDER_TEXT_OFFSET,
+            WINDOW_TOP_Y - TOP_HUD_Y_OFFSET,
+            Z_UI_TEXT,
+        ),
     ));
     // Commander 血条
     commands.spawn((
@@ -364,18 +463,32 @@ pub fn spawn_top_hud(
             custom_size: Some(COMMANDER_BAR_SIZE),
             ..default()
         },
-        Transform::from_xyz(commander_text_x + HUD_COMMANDER_BAR_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
+        Transform::from_xyz(
+            commander_text_x + HUD_COMMANDER_BAR_OFFSET,
+            WINDOW_TOP_Y - TOP_HUD_Y_OFFSET,
+            Z_UI_TEXT,
+        ),
     ));
 
     // 敌方剩余数量显示在右侧（初始值）
-    let enemy_count_text = ENEMY_COUNT_TEXT.format_named(language, &[("remaining", 20), ("total", 20)]);
+    let enemy_count_text = ENEMY_COUNT_TEXT.format_named(
+        language,
+        &[
+            ("remaining", ENEMY_COUNT_INITIAL),
+            ("total", ENEMY_COUNT_INITIAL),
+        ],
+    );
     commands.spawn((
         PlayingEntity,
         EnemyCountText,
         Text2d(enemy_count_text),
         common::create_text_font(&font, FONT_SIZE_SCORE),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(WINDOW_RIGHT_X - HUD_ENEMY_COUNT_OFFSET, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
+        Transform::from_xyz(
+            WINDOW_RIGHT_X - HUD_ENEMY_COUNT_OFFSET,
+            WINDOW_TOP_Y - TOP_HUD_Y_OFFSET,
+            Z_UI_TEXT,
+        ),
     ));
 }
 

@@ -9,31 +9,38 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-#[allow(clippy::wildcard_imports)]
-use crate::ui::constants::*;
 use crate::effects;
 use crate::resources::{
     GameAtlasLayoutResources, GameAudioResources, GameTextureResources, GameTrackers, PlayerInfo,
     PlayerStatChanged, StatType,
 };
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::utils;
 
 /// 特效事件枚举
 /// 用于解耦碰撞逻辑和特效生成
 #[derive(Event, Clone, Message)]
 pub enum EffectEvent {
-    Explosion { position: Vec3 },
+    Explosion {
+        position: Vec3,
+    },
     Spark {
         position: Vec3,
         audio_handle: Handle<AudioSource>,
         volume: f32,
     },
-    ForestFire { position: Vec3 },
+    ForestFire {
+        position: Vec3,
+    },
 }
 
 /// 子弹资源缓存
+
 /// 用于预加载子弹纹理和音效，避免重复加载
+
 /// 子弹实体标记组件（包含所有者信息）
+
 #[derive(Component, Copy, Clone)]
 pub enum Bullet {
     Player(TankType),
@@ -182,7 +189,7 @@ pub fn spawn_bullet(
                 Transform {
                     translation: Vec3::new(0.0, 0.0, 0.2), // 略高于火焰特效
                     rotation: Quat::from_rotation_z(-std::f32::consts::FRAC_PI_2), // 旋转 -90 度
-                    scale: Vec3::splat(0.15),            // 缩小到 0.15 倍 (原0.3的1/2)
+                    scale: Vec3::splat(0.15),              // 缩小到 0.15 倍 (原0.3的1/2)
                 },
                 animation_indices,
                 AnimationTimer(Timer::from_seconds(
@@ -216,7 +223,10 @@ pub fn enemy_shoot_system(
 ) {
     for (entity, transform, enemy_tank, fire_config) in &mut query {
         // 检查是否可以射击
-        if !game_trackers.bullets.can_fire(entity, fire_config.max_bullets) {
+        if !game_trackers
+            .bullets
+            .can_fire(entity, fire_config.max_bullets)
+        {
             continue;
         }
 
@@ -232,7 +242,8 @@ pub fn enemy_shoot_system(
 
             // 计算子弹初始位置（坦克前方）
             let bullet_pos = transform.translation
-                + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
+                + direction.extend(0.0)
+                    * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
 
             // 生成子弹
             let bullet_entity = spawn_bullet(
@@ -310,8 +321,9 @@ pub fn player_shoot_system(
         let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
         // 计算子弹初始位置（坦克前方）
-                    let bullet_pos = transform.translation
-                        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
+        let bullet_pos = transform.translation
+            + direction.extend(0.0)
+                * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
         // 玩家子弹速度 = PLAYER_BULLET_SPEED × (1 + fire_speed百分比/100)
         let fire_speed_bonus = player_stats.fire_speed as f32 / 100.0;
         let bullet_speed = PLAYER_BULLET_SPEED * (1.0 + fire_speed_bonus);
@@ -387,10 +399,13 @@ fn extract_bullet_collision<'a>(
     e2: Entity,
     bullets: &'a Query<(Entity, &Bullet, &Transform), With<Bullet>>,
 ) -> Option<(Entity, Entity, &'a Bullet, &'a Transform)> {
-    if let Some((bullet_entity, other_entity)) = crate::utils::extract_collision_pair(e1, e2, bullets) {
-        bullets.get(bullet_entity).ok().map(|(_, bullet, transform)| {
-            (bullet_entity, other_entity, bullet, transform)
-        })
+    if let Some((bullet_entity, other_entity)) =
+        crate::utils::extract_collision_pair(e1, e2, bullets)
+    {
+        bullets
+            .get(bullet_entity)
+            .ok()
+            .map(|(_, bullet, transform)| (bullet_entity, other_entity, bullet, transform))
     } else {
         None
     }

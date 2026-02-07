@@ -9,9 +9,9 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
+use crate::resources::{GameAtlasLayoutResources, GameTextureResources, StageLevel};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{GameAtlasLayoutResources, GameTextureResources, StageLevel};
 
 /// 地形类型枚举
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -120,8 +120,6 @@ pub struct EnemyCountText;
 // Animation Markers
 // ============================================================================
 
-
-
 /// 能量不足提示文本组件
 #[derive(Component)]
 pub struct InsufficientEnergyText;
@@ -311,3 +309,123 @@ pub const GAME_OVER_DELAY: f32 = 1.2;
 
 /// 收款码尺寸
 pub const PAYMENT_CODE_SIZE: f32 = 400.0;
+
+// ============================================================================
+// 菜单界面布局常量
+// ============================================================================
+
+/// 开始界面标题 Y 坐标
+pub const MENU_TITLE_Y: f32 = 550.0;
+
+/// 菜单选项起始 Y 坐标
+pub const MENU_START_Y: f32 = 250.0;
+
+/// 菜单选项间距
+pub const MENU_OPTION_SPACING: f32 = 100.0;
+
+/// 玩家1操作说明 Y 坐标
+pub const CONTROLS_P1_Y: f32 = -350.0;
+
+/// 玩家2操作说明 Y 坐标
+pub const CONTROLS_P2_Y: f32 = -380.0;
+
+/// 通用操作说明 Y 坐标
+pub const CONTROLS_GENERAL_Y: f32 = -410.0;
+
+// ============================================================================
+// 关于界面布局常量
+// ============================================================================
+
+/// 关于界面标题 Y 坐标
+pub const ABOUT_TITLE_Y: f32 = 600.0;
+
+/// 关于文本 Y 坐标
+pub const ABOUT_TEXT_Y: f32 = 340.0;
+
+/// 收款文案 Y 坐标
+pub const ABOUT_SUPPORT_Y: f32 = 40.0;
+
+/// 支付宝收款码 X 坐标
+pub const ABOUT_QR_ALIPAY_X: f32 = -250.0;
+
+/// 收款码 Y 坐标
+pub const ABOUT_QR_Y: f32 = -260.0;
+
+/// 支付方式标签 Y 坐标
+pub const ABOUT_PAYMENT_LABEL_Y: f32 = -480.0;
+
+/// 微信收款码 X 坐标
+pub const ABOUT_QR_WECHAT_X: f32 = 250.0;
+
+/// 关于界面返回提示 Y 坐标
+pub const ABOUT_RETURN_Y: f32 = -580.0;
+
+// ============================================================================
+// 致谢界面布局常量
+// ============================================================================
+
+/// 致谢界面标题 Y 坐标
+pub const CREDITS_TITLE_Y: f32 = 500.0;
+
+/// 致谢文本 X 坐标
+pub const CREDITS_TEXT_X: f32 = -400.0;
+
+/// 致谢文本 Y 坐标
+pub const CREDITS_TEXT_Y: f32 = 100.0;
+
+/// 致谢界面返回提示 Y 坐标
+pub const CREDITS_RETURN_Y: f32 = -500.0;
+
+// ============================================================================
+// 覆盖层界面布局常量
+// ============================================================================
+
+/// 关卡介绍标题 Y 坐标
+pub const STAGE_INTRO_TITLE_Y: f32 = 100.0;
+
+/// 关卡介绍俏皮话 Y 坐标
+pub const STAGE_INTRO_QUOTE_Y: f32 = -50.0;
+
+/// 暂停标题 Y 坐标
+pub const PAUSED_TITLE_Y: f32 = 0.0;
+
+/// 暂停说明 Y 坐标
+pub const PAUSED_INSTRUCTION_Y: f32 = -100.0;
+
+/// Game Over 标题 Y 坐标
+pub const GAME_OVER_TITLE_Y: f32 = 100.0;
+
+/// Game Over Restart 选项 Y 坐标
+pub const GAME_OVER_OPTION1_Y: f32 = 0.0;
+
+/// Game Over Menu 选项 Y 坐标
+pub const GAME_OVER_OPTION2_Y: f32 = -60.0;
+
+/// Game Over Exit 选项 Y 坐标
+pub const GAME_OVER_OPTION3_Y: f32 = -120.0;
+
+/// Game Over 操作说明 Y 坐标
+pub const GAME_OVER_INSTRUCTION_Y: f32 = -180.0;
+
+// ============================================================================
+// HUD 相关常量
+// ============================================================================
+
+/// 顶部 HUD 文本 Y 偏移量
+pub const TOP_HUD_Y_OFFSET: f32 = 50.0;
+
+/// HUD 前景 Z 轴偏移量（血条/蓝条前景）
+pub const HUD_FOREGROUND_Z_OFFSET: f32 = 0.1;
+
+/// 初始敌方坦克数量
+pub const ENEMY_COUNT_INITIAL: usize = 20;
+
+// ============================================================================
+// 通用动画常量
+// ============================================================================
+
+/// 闪烁动画总周期内的闪烁次数
+pub const BLINK_CYCLE_COUNT: f32 = 2.0;
+
+/// 单次闪烁周期内显示"开"颜色的比例（0.5 = 50%）
+pub const BLINK_ON_COLOR_RATIO: f32 = 0.5;

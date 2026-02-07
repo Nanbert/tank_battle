@@ -29,12 +29,11 @@ use bevy::prelude::*;
 
 use crate::bullet::Bullet;
 use crate::constants::*;
+use crate::resources::{
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, Language, PlayerInfo,
+};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{
-    GameAtlasLayoutResources, GameAudioResources, GameTextureResources,
-    Language, PlayerInfo,
-};
 use crate::utils;
 
 /// 激光命中结果
@@ -122,8 +121,6 @@ pub fn spawn_laser(
     // 获取动画帧范围
     let animation_indices = resources.laser_atlas_info.animation_indices_full();
 
-    
-
     crate::utils::spawn_animated_sprite(
         commands,
         resources.laser_texture.clone(),
@@ -203,7 +200,9 @@ pub fn player_laser_system(
         }
 
         // 更新能量不足冷却计时器（必须在检查之前更新）
-        game_trackers.insufficient_energy_tracker.tick_all(time.delta());
+        game_trackers
+            .insufficient_energy_tracker
+            .tick_all(time.delta());
 
         // 处理蓄力逻辑
         if has_charge {
@@ -308,7 +307,8 @@ fn start_charge(
     });
 
     // 播放蓄力音效并添加标记组件
-    let sound_entity = utils::play_one_shot_sound(commands, audio_resources.laser_charge.clone(), 1.0);
+    let sound_entity =
+        utils::play_one_shot_sound(commands, audio_resources.laser_charge.clone(), 1.0);
     commands.entity(sound_entity).insert(LaserChargeSound);
 
     let energy_ball_animation_indices = AnimationIndices {
@@ -328,7 +328,8 @@ fn start_charge(
     let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
 
     let energy_ball_pos = transform.translation
-        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0)
+        + direction.extend(0.0)
+            * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0)
         + perp_direction.extend(0.0) * 7.0;
 
     commands.spawn((
@@ -353,7 +354,11 @@ fn start_charge(
             ..default()
         },
         Transform {
-            translation: Vec3::new(energy_ball_pos.x, energy_ball_pos.y, crate::constants::Z_LASER + 0.1),
+            translation: Vec3::new(
+                energy_ball_pos.x,
+                energy_ball_pos.y,
+                crate::constants::Z_LASER + 0.1,
+            ),
             rotation: Quat::from_rotation_z(actual_angle - std::f32::consts::FRAC_PI_2),
             scale: Vec3::ONE,
         },
@@ -422,7 +427,8 @@ fn fire_laser(
 
     // 计算激光初始位置
     let laser_pos = transform.translation
-        + direction.extend(0.0) * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
+        + direction.extend(0.0)
+            * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
 
     // 找到关联的能量球实体
     let energy_ball_entity = energy_ball_query
@@ -611,7 +617,11 @@ pub fn handle_laser_end_events(
                 ANIMATION_FRAME_SMOKE,
                 Transform::from_translation(transform),
                 crate::atlas::SMOKE_ATLAS.display_size,
-                (crate::ui::PlayingEntity, crate::constants::Smoke, AnimationMode::OneShot),
+                (
+                    crate::ui::PlayingEntity,
+                    crate::constants::Smoke,
+                    AnimationMode::OneShot,
+                ),
             );
 
             let () = commands.entity(despawn_entity).try_despawn();
@@ -642,5 +652,3 @@ pub fn handle_recoil_force(
         }
     }
 }
-
-

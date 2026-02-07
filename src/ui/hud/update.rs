@@ -4,13 +4,13 @@
 
 use bevy::prelude::*;
 
+use super::spawn::{PlayerHudQuery, TopHudQuery};
+use super::stats::*;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 use crate::resources::*;
 use crate::ui::common;
 use crate::ui::constants::*;
-use super::stats::*;
-use super::spawn::{TopHudQuery, PlayerHudQuery};
 
 // ============================================================================
 // Despawn Functions
@@ -359,7 +359,8 @@ pub fn update_enemy_count_text(
     let remaining = enemy_spawn_state.max_count - enemy_spawn_state.has_spawned;
     let max_count = enemy_spawn_state.max_count;
 
-    let text = ENEMY_COUNT_TEXT.format_named(*language, &[("remaining", remaining), ("total", max_count)]);
+    let text =
+        ENEMY_COUNT_TEXT.format_named(*language, &[("remaining", remaining), ("total", max_count)]);
 
     for mut text_mut in &mut query {
         text_mut.0 = text.clone();

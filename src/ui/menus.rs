@@ -5,13 +5,13 @@
 use bevy::app::AppExit;
 use bevy::prelude::*;
 
+use super::common;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
-use crate::ui::constants::*;
-#[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use super::common;
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 // 从 localization 模块导入本地化常量
 use super::localization::*;
 
@@ -36,11 +36,7 @@ pub fn spawn_start_screen_background(
 }
 
 /// 生成开始界面的标题和菜单选项
-pub fn spawn_start_screen_title(
-    commands: &mut Commands,
-    font: Handle<Font>,
-    language: Language,
-) {
+pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>, language: Language) {
     let title = MENU_TITLE.get(language);
 
     common::spawn_simple_text_with_marker(
@@ -48,14 +44,14 @@ pub fn spawn_start_screen_title(
         title.to_string(),
         &font,
         FONT_SIZE_TITLE,
-        Vec3::new(0.0, 550.0, Z_UI_TEXT),
+        Vec3::new(0.0, MENU_TITLE_Y, Z_UI_TEXT),
         COLOR_RED,
         StartScreenUI,
         Z_UI_TEXT,
     );
 
     // 菜单选项，从上到下 0-5
-    let y_positions = common::generate_menu_y_positions(250.0, 100.0, 6);
+    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, 6);
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         commands.spawn((
             StartScreenUI,
@@ -84,7 +80,7 @@ pub fn spawn_start_screen_instructions(
         p1_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -350.0, Z_UI_TEXT),
+        Vec3::new(0.0, CONTROLS_P1_Y, Z_UI_TEXT),
         COLOR_BLUE,
         StartScreenUI,
         Z_UI_TEXT,
@@ -96,7 +92,7 @@ pub fn spawn_start_screen_instructions(
         p2_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -380.0, Z_UI_TEXT),
+        Vec3::new(0.0, CONTROLS_P2_Y, Z_UI_TEXT),
         COLOR_RED,
         StartScreenUI,
         Z_UI_TEXT,
@@ -108,7 +104,7 @@ pub fn spawn_start_screen_instructions(
         general_text.to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, -410.0, Z_UI_TEXT),
+        Vec3::new(0.0, CONTROLS_GENERAL_Y, Z_UI_TEXT),
         COLOR_DARK_GRAY,
         StartScreenUI,
         Z_UI_TEXT,
@@ -126,7 +122,11 @@ pub fn spawn_start_screen(
 ) {
     // 检查资源是否已加载完成
     // 注意：atlas_layouts.background 是动态创建的资源，不需要检查 is_loaded
-    if !common::ensure_assets_loaded(&asset_server, &[&font_resources.en, &font_resources.cn], &[&texture_resources.background]) {
+    if !common::ensure_assets_loaded(
+        &asset_server,
+        &[&font_resources.en, &font_resources.cn],
+        &[&texture_resources.background],
+    ) {
         return;
     }
 
@@ -154,13 +154,7 @@ pub fn spawn_about_screen(
     let font = common::get_font(&font_resources, *language);
 
     // 添加白色背景覆盖
-    common::spawn_overlay_background(
-        &mut commands,
-        COLOR_WHITE,
-        0.0,
-        WINDOW_SIZE,
-        AboutUI,
-    );
+    common::spawn_overlay_background(&mut commands, COLOR_WHITE, 0.0, WINDOW_SIZE, AboutUI);
 
     // 添加标题
     common::spawn_simple_text_with_marker(
@@ -168,7 +162,7 @@ pub fn spawn_about_screen(
         ABOUT_TITLE.get(*language).to_string(),
         &font,
         FONT_SIZE_CREDITS_TITLE,
-        Vec3::new(0.0, 600.0, Z_UI_TEXT),
+        Vec3::new(0.0, ABOUT_TITLE_Y, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         Z_UI_TEXT,
@@ -180,7 +174,7 @@ pub fn spawn_about_screen(
         ABOUT_TEXT.get(*language).to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(0.0, 340.0, Z_UI_TEXT),
+        Vec3::new(0.0, ABOUT_TEXT_Y, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         bevy::text::Justify::Center,
@@ -193,7 +187,7 @@ pub fn spawn_about_screen(
         ABOUT_SUPPORT.get(*language).to_string(),
         &font,
         FONT_SIZE_MEDIUM,
-        Vec3::new(0.0, 40.0, Z_UI_TEXT),
+        Vec3::new(0.0, ABOUT_SUPPORT_Y, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         bevy::text::Justify::Center,
@@ -215,7 +209,7 @@ pub fn spawn_about_screen(
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(-250.0, -260.0, Z_UI_TEXT),
+        Transform::from_xyz(ABOUT_QR_ALIPAY_X, ABOUT_QR_Y, Z_UI_TEXT),
     ));
 
     // 支付宝标签
@@ -224,7 +218,7 @@ pub fn spawn_about_screen(
         PAYMENT_METHOD_ALIPAY.get(*language).to_string(),
         &font,
         FONT_SIZE_SMALL,
-        Vec3::new(-250.0, -480.0, Z_UI_TEXT),
+        Vec3::new(ABOUT_QR_ALIPAY_X, ABOUT_PAYMENT_LABEL_Y, Z_UI_TEXT),
         COLOR_BLACK,
         AboutUI,
         Z_UI_TEXT,
@@ -238,30 +232,33 @@ pub fn spawn_about_screen(
             custom_size: Some(Vec2::new(qr_size, qr_size)),
             ..default()
         },
-        Transform::from_xyz(250.0, -260.0, Z_UI_TEXT),
+        Transform::from_xyz(ABOUT_QR_WECHAT_X, ABOUT_QR_Y, Z_UI_TEXT),
     ));
 
     // 微信标签
-        common::spawn_simple_text_with_marker(
-            &mut commands,
-            PAYMENT_METHOD_WECHAT.get(*language).to_string(),
-            &font,
-            FONT_SIZE_SMALL,
-            Vec3::new(250.0, -480.0, Z_UI_TEXT),
-            COLOR_BLACK,
-            AboutUI,
-            Z_UI_TEXT,
-        );        // 添加返回提示
-        common::spawn_simple_text_with_marker(
-            &mut commands,
-            ABOUT_RETURN.get(*language).to_string(),
-            &font,
-            FONT_SIZE_UI,
-            Vec3::new(0.0, -580.0, Z_UI_TEXT),
-            COLOR_BLACK,
-            AboutUI,
-            Z_UI_TEXT,
-        );}
+    common::spawn_simple_text_with_marker(
+        &mut commands,
+        PAYMENT_METHOD_WECHAT.get(*language).to_string(),
+        &font,
+        FONT_SIZE_SMALL,
+        Vec3::new(ABOUT_QR_WECHAT_X, ABOUT_PAYMENT_LABEL_Y, Z_UI_TEXT),
+        COLOR_BLACK,
+        AboutUI,
+        Z_UI_TEXT,
+    );
+
+    // 添加返回提示
+    common::spawn_simple_text_with_marker(
+        &mut commands,
+        ABOUT_RETURN.get(*language).to_string(),
+        &font,
+        FONT_SIZE_UI,
+        Vec3::new(0.0, ABOUT_RETURN_Y, Z_UI_TEXT),
+        COLOR_BLACK,
+        AboutUI,
+        Z_UI_TEXT,
+    );
+}
 
 /// 处理关于界面的输入
 pub fn handle_about_input(
@@ -284,13 +281,7 @@ pub fn spawn_credits_screen(
     let font = common::get_font(&font_resources, *language);
 
     // 添加白色背景覆盖
-    common::spawn_overlay_background(
-        &mut commands,
-        COLOR_WHITE,
-        0.0,
-        WINDOW_SIZE,
-        CreditsUI,
-    );
+    common::spawn_overlay_background(&mut commands, COLOR_WHITE, 0.0, WINDOW_SIZE, CreditsUI);
 
     // 添加标题
     common::spawn_simple_text_with_marker(
@@ -298,7 +289,7 @@ pub fn spawn_credits_screen(
         CREDITS_TITLE.get(*language).to_string(),
         &font,
         FONT_SIZE_MENU,
-        Vec3::new(0.0, 500.0, Z_UI_TEXT),
+        Vec3::new(0.0, CREDITS_TITLE_Y, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
         Z_UI_TEXT,
@@ -310,7 +301,7 @@ pub fn spawn_credits_screen(
         CREDITS_TEXT.get(*language).to_string(),
         &font,
         FONT_SIZE_INSTRUCTION,
-        Vec3::new(-400.0, 100.0, Z_UI_TEXT),
+        Vec3::new(CREDITS_TEXT_X, CREDITS_TEXT_Y, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
         bevy::text::Justify::Left,
@@ -323,7 +314,7 @@ pub fn spawn_credits_screen(
         CREDITS_RETURN.get(*language).to_string(),
         &font,
         FONT_SIZE_UI,
-        Vec3::new(0.0, -500.0, Z_UI_TEXT),
+        Vec3::new(0.0, CREDITS_RETURN_Y, Z_UI_TEXT),
         COLOR_BLACK,
         CreditsUI,
         Z_UI_TEXT,
@@ -410,5 +401,3 @@ pub fn update_option_colors(
         }
     }
 }
-
-

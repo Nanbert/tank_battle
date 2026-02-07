@@ -8,9 +8,9 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
+use crate::resources::{CommanderLife, GameAtlasLayoutResources, GameTextureResources};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{CommanderLife, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 生成司令官
@@ -73,11 +73,7 @@ pub fn spawn_commander(
         ANIMATION_FRAME_MUSIC_NOTE,
         Transform::from_translation(Vec3::new(commander_x, commander_y, Z_FOREST)),
         crate::atlas::MUSIC_NOTE_ATLAS.display_size,
-        (
-            MusicNoteAnimation,
-            PlayingEntity,
-            AnimationMode::Looping,
-        ),
+        (MusicNoteAnimation, PlayingEntity, AnimationMode::Looping),
     );
 }
 

@@ -7,9 +7,9 @@
 use bevy::prelude::*;
 
 use crate::constants::*;
+use crate::resources::*;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::*;
 pub fn handle_game_over_delay(
     time: Res<Time>,
     mut commands: Commands,

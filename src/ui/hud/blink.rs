@@ -4,13 +4,13 @@
 
 use bevy::prelude::*;
 
+use super::super::common;
+use super::stats::*;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
 use crate::ui::constants::*;
-use super::stats::*;
-use super::super::common;
 
 // ============================================================================
 // Blink Animation System

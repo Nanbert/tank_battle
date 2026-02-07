@@ -3,6 +3,7 @@
 //!
 
 mod app;
+mod atlas;
 mod bullet;
 mod commander;
 mod constants;
@@ -16,9 +17,8 @@ mod map;
 mod player;
 mod powerup;
 mod resources;
-mod atlas;
-mod utils;
 mod ui;
+mod utils;
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;

@@ -6,8 +6,8 @@ use bevy::prelude::*;
 
 #[allow(clippy::wildcard_imports)]
 use crate::resources::*;
-use crate::ui::localization::*;
 use crate::ui::constants::*;
+use crate::ui::localization::*;
 
 // ============================================================================
 // Player Stats

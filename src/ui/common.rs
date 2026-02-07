@@ -2,8 +2,8 @@
 //!
 //! 提供跨多个 UI 模块共享的通用功能
 
-use bevy::prelude::*;
 use crate::resources::*;
+use bevy::prelude::*;
 
 /// 获取指定语言的字体句柄
 pub fn get_font(resources: &GameTextureResources, language: Language) -> Handle<Font> {
@@ -92,7 +92,7 @@ pub fn spawn_text_with_justify_and_marker<M: Component>(
 // ==================== 淡入淡出辅助函数 ====================
 
 /// 通用透明度更新 trait
-/// 
+///
 /// 用于统一处理不同类型的透明度更新（Sprite、TextColor 等）
 pub trait AlphaMut {
     /// 设置透明度
@@ -157,7 +157,7 @@ pub fn handle_menu_navigation(
     wrap_behavior: NavigationWrap,
 ) -> bool {
     let mut changed = false;
-    
+
     if keyboard_input.just_pressed(KeyCode::KeyW) {
         if *selection > 0 {
             *selection -= 1;
@@ -167,7 +167,7 @@ pub fn handle_menu_navigation(
             changed = true;
         }
     }
-    
+
     if keyboard_input.just_pressed(KeyCode::KeyS) {
         if *selection < max_index {
             *selection += 1;
@@ -177,7 +177,7 @@ pub fn handle_menu_navigation(
             changed = true;
         }
     }
-    
+
     changed
 }
 
@@ -196,7 +196,7 @@ pub fn generate_menu_y_positions(start_y: f32, step: f32, count: usize) -> Vec<f
 // ==================== 覆盖层通用函数 ====================
 
 /// 生成覆盖层背景（全屏纯色背景）
-/// 
+///
 /// # 参数
 /// - `commands`: Bevy 命令队列
 /// - `color`: 背景颜色
@@ -210,24 +210,26 @@ pub fn spawn_overlay_background<M: Component>(
     size: Vec2,
     marker: M,
 ) -> Entity {
-    commands.spawn((
-        marker,
-        Sprite {
-            color,
-            custom_size: Some(size),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, z_index),
-    )).id()
+    commands
+        .spawn((
+            marker,
+            Sprite {
+                color,
+                custom_size: Some(size),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, z_index),
+        ))
+        .id()
 }
 
 /// 检查资源是否已加载完成
-/// 
+///
 /// # 参数
 /// - `asset_server`: 资源服务器
 /// - `fonts`: 需要检查的字体句柄列表
 /// - `textures`: 需要检查的纹理句柄列表
-/// 
+///
 /// # 返回
 /// - `true`: 所有资源都已加载
 /// - `false`: 至少有一个资源未加载
@@ -243,7 +245,7 @@ pub fn ensure_assets_loaded<'a>(
 // ==================== 进度条生成 ====================
 
 /// 生成进度条（可选使用纹理或纯色）
-/// 
+///
 /// # 参数
 /// - `commands`: Bevy 命令队列
 /// - `texture`: 可选的纹理句柄，None 则使用纯色
@@ -263,7 +265,7 @@ pub fn spawn_bar<T: Component + Clone>(
 ) -> Entity {
     let mut transform = Transform::from_translation(position);
     transform.translation.z = z_index;
-    
+
     let sprite = if let Some(tex) = texture {
         Sprite {
             image: tex,
@@ -277,7 +279,7 @@ pub fn spawn_bar<T: Component + Clone>(
             ..default()
         }
     };
-    
+
     commands.spawn((marker, sprite, transform)).id()
 }
 
@@ -295,8 +297,6 @@ pub fn update_bar(
     sprite.custom_size = Some(Vec2::new(width, bar_height));
     transform.translation.x = base_x - bar_width / 2.0 + width / 2.0;
 }
-
-
 
 // ==================== 通用闪烁动画系统 ====================
 
@@ -319,7 +319,7 @@ pub struct BlinkAnimation {
 
 impl BlinkAnimation {
     /// 创建新的闪烁动画（带销毁选项）
-    /// 
+    ///
     /// # 参数
     /// - `duration`: 总持续时间（秒）
     /// - `on_color`: 显示时的颜色
@@ -353,27 +353,30 @@ impl BlinkAnimation {
             true,
         )
     }
-    
+
     /// 更新闪烁动画
-    /// 
+    ///
     /// # 返回
     /// - `Some(颜色)`: 当前应该显示的颜色
     /// - `None`: 动画已完成
     pub fn update(&mut self, delta: std::time::Duration) -> Option<Color> {
         self.timer.tick(delta);
-        
+
         if self.timer.is_finished() {
             None
         } else {
             let elapsed = self.timer.elapsed_secs();
-            let blink_period = self.timer.duration().as_secs_f32() / 2.0;
+            let blink_period =
+                self.timer.duration().as_secs_f32() / crate::ui::constants::BLINK_CYCLE_COUNT;
             let cycle_progress = (elapsed % blink_period) / blink_period;
-            
-            Some(if cycle_progress < 0.5 {
-                self.on_color
-            } else {
-                self.off_color
-            })
+
+            Some(
+                if cycle_progress < crate::ui::constants::BLINK_ON_COLOR_RATIO {
+                    self.on_color
+                } else {
+                    self.off_color
+                },
+            )
         }
     }
 }

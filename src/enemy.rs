@@ -8,9 +8,9 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
+use crate::resources::{EnemySpawnState, GameAtlasLayoutResources, GameTextureResources};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{EnemySpawnState, GameTextureResources, GameAtlasLayoutResources};
 use crate::utils;
 
 /// 敌方坦克出生位置组件
@@ -104,7 +104,8 @@ pub fn handle_spawn_enemy_event(
         );
 
         // 添加额外的组件
-        commands.entity(enemy_entity)
+        commands
+            .entity(enemy_entity)
             .insert(TankFireConfig::default())
             .insert(DirectionChangeTimer(Timer::from_seconds(
                 ENEMY_DIRECTION_CHANGE_INTERVAL,
@@ -351,7 +352,11 @@ fn get_new_direction(collision_normal: Vec2) -> Vec2 {
         .map(|(_, dir)| dir)
         .collect::<Vec<_>>()
         .try_into()
-        .unwrap_or([crate::constants::DIRECTION_UP, crate::constants::DIRECTION_DOWN, crate::constants::DIRECTION_LEFT]);
+        .unwrap_or([
+            crate::constants::DIRECTION_UP,
+            crate::constants::DIRECTION_DOWN,
+            crate::constants::DIRECTION_LEFT,
+        ]);
 
     available[rng.random_range(0..3)]
 }

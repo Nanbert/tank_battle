@@ -9,12 +9,12 @@ use bevy_rapier2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
+use crate::resources::{
+    CommanderLife, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+    PlayerStatChanged, StatType,
+};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{
-    CommanderLife, GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo, PlayerStatChanged,
-    StatType,
-};
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -183,7 +183,7 @@ pub fn spawn_test_powerup_stage1(
 ) {
     let powerup_type = PowerUp::FireShell; // 第一关测试用：fire_shell 用于测试火焰特效
 
-// 定义禁止区域
+    // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
     // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_SIZE.y）
     let top_forbidden_y = MAP_TOP_Y - TANK_DISPLAY_SIZE.y;
@@ -256,8 +256,7 @@ pub fn spawn_power_ups_random(
 /// - atlas_layouts: 图集布局资源
 /// - powerup_type: 道具类型
 /// - positions: 生成位置数组
-/// 生成单个道具
-/// 使用统一的动画系统
+/// 生成单个道具（使用统一的动画系统）
 fn spawn_powerup(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
@@ -315,7 +314,8 @@ fn spawn_powerup(
             texture_resources.shell_icon.clone(),
             &crate::atlas::POWER_UP_SHELL_ATLAS,
             &atlas_layouts.shell_icon,
-        ),    };
+        ),
+    };
 
     crate::utils::spawn_animated_sprite(
         commands,
@@ -328,8 +328,6 @@ fn spawn_powerup(
         (powerup_type, PlayingEntity, AnimationMode::Looping),
     );
 }
-
-/// 更新履带特效
 
 /// 更新履带特效
 /// 根据玩家是否拥有 track_chain 能力，动态添加或移除履带子实体
@@ -354,16 +352,21 @@ pub fn update_track_chain_effect(
         if has_track_chain && !has_track_chain_sprite {
             // 创建履带特效
             let child_entity = crate::utils::spawn_animated_sprite(
-                        &mut commands,
-                        texture_resources.track_chain_effect.clone(),
-                        atlas_layouts.track_chain_effect.clone(),
-                        crate::atlas::TRACK_CHAIN_ATLAS.animation_indices_full(),
-                        crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
-                        Transform::from_translation(Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1)),
-                        crate::constants::TANK_DISPLAY_SIZE,
-                        (crate::constants::TrackChainEffect, AnimationMode::Conditional { tank_type: player_tank.tank_type }),
-                    );
-            
+                &mut commands,
+                texture_resources.track_chain_effect.clone(),
+                atlas_layouts.track_chain_effect.clone(),
+                crate::atlas::TRACK_CHAIN_ATLAS.animation_indices_full(),
+                crate::constants::TRACK_CHAIN_ANIMATION_FRAME,
+                Transform::from_translation(Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.1)),
+                crate::constants::TANK_DISPLAY_SIZE,
+                (
+                    crate::constants::TrackChainEffect,
+                    AnimationMode::Conditional {
+                        tank_type: player_tank.tank_type,
+                    },
+                ),
+            );
+
             // 将履带特效设为坦克的子实体
             commands.entity(entity).add_child(child_entity);
         } else if !has_track_chain && has_track_chain_sprite {

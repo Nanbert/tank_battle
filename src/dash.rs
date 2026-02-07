@@ -67,14 +67,12 @@ pub fn handle_dash_input(
                 commands.entity(entity).insert(IsDashing);
             } else {
                 // 能量不足，显示提示
-                game_trackers
-                    .insufficient_energy_tracker
-                    .try_show_warning(
-                        &mut commands,
-                        player_tank.tank_type,
-                        &font_resources,
-                        *language,
-                    );
+                game_trackers.insufficient_energy_tracker.try_show_warning(
+                    &mut commands,
+                    player_tank.tank_type,
+                    &font_resources,
+                    *language,
+                );
             }
         }
     }
@@ -123,7 +121,10 @@ pub fn update_dash_movement(
                 game_trackers.dash_timers.timers.remove(&entity);
 
                 // 清理扣血追踪
-                game_trackers.dash_damage_tracker.has_taken_damage.remove(&entity);
+                game_trackers
+                    .dash_damage_tracker
+                    .has_taken_damage
+                    .remove(&entity);
             }
         }
     }
@@ -218,9 +219,12 @@ pub fn handle_dash_collision(
 
                     let transform = Transform::from_translation(collision_info.tank_position);
                     // 直接杀死玩家（将生命值设为0并销毁）
-                    player_info.with_stats_mut(collision_info.player_tank.tank_type, |player_stats| {
-                        player_stats.life_points = 0;
-                    });
+                    player_info.with_stats_mut(
+                        collision_info.player_tank.tank_type,
+                        |player_stats| {
+                            player_stats.life_points = 0;
+                        },
+                    );
                     kill_player_tank(
                         &mut commands,
                         &atlas_layouts,
@@ -300,17 +304,19 @@ fn extract_dash_collision_info(
     bricks: &Query<(Entity, &Transform), With<Brick>>,
     steels: &Query<(Entity, &Transform), With<Steel>>,
 ) -> Option<DashCollisionInfo> {
-    if let Some((player_entity, other_entity)) = crate::utils::extract_collision_pair(e1, e2, player_tanks)
+    if let Some((player_entity, other_entity)) =
+        crate::utils::extract_collision_pair(e1, e2, player_tanks)
         && let Ok((_, player_tank, tank_transform, is_dashing)) = player_tanks.get(player_entity)
-            && let Some(target) = get_collision_target(other_entity, enemy_tanks, bricks, steels) {
-                return Some(DashCollisionInfo {
-                    player_entity,
-                    player_tank: *player_tank,
-                    tank_position: tank_transform.translation,
-                    is_dashing: is_dashing.is_some(),
-                    target,
-                });
-            }
+        && let Some(target) = get_collision_target(other_entity, enemy_tanks, bricks, steels)
+    {
+        return Some(DashCollisionInfo {
+            player_entity,
+            player_tank: *player_tank,
+            tank_position: tank_transform.translation,
+            is_dashing: is_dashing.is_some(),
+            target,
+        });
+    }
     None
 }
 
@@ -382,7 +388,10 @@ fn apply_dash_damage(
 
     // 标记本次 dash 已经扣过血
     if health_cost > 0 {
-        game_trackers.dash_damage_tracker.has_taken_damage.insert(player_entity);
+        game_trackers
+            .dash_damage_tracker
+            .has_taken_damage
+            .insert(player_entity);
     }
 
     (health_cost, is_dead)

@@ -8,20 +8,21 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-#[allow(clippy::wildcard_imports)]
-use crate::ui::constants::*;
 use crate::powerup;
 use crate::resources::{
-    GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo,
-    PlayerStatChanged, PlayerStats, RecallTimer, StatType,
+    GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo, PlayerStatChanged,
+    PlayerStats, RecallTimer, StatType,
 };
+#[allow(clippy::wildcard_imports)]
+use crate::ui::constants::*;
 use crate::utils;
 
 /// 玩家1初始X坐标（左侧）
-const PLAYER1_START_X: f32 = -PLAYER_COLLIDER_HALF_SIZE.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET;
-
+const PLAYER1_START_X: f32 =
+    -PLAYER_COLLIDER_HALF_SIZE.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET;
 /// 玩家2初始X坐标（右侧）
-const PLAYER2_START_X: f32 = PLAYER_COLLIDER_HALF_SIZE.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET;
+const PLAYER2_START_X: f32 =
+    PLAYER_COLLIDER_HALF_SIZE.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET;
 
 /// 玩家初始Y坐标（底部）
 const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF_SIZE.x;
@@ -39,8 +40,6 @@ pub fn spawn_player_tank(
         TankType::Player2 => (PLAYER2_START_X, PLAYER_COLLIDER_HALF_SIZE.x),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
-
-    
 
     crate::utils::spawn_animated_sprite(
         commands,
@@ -182,7 +181,11 @@ pub fn move_player_tank(
         }
 
         // 限制坦克在地图边界内
-        utils::clamp_entity_position(&mut transform, PLAYER_COLLIDER_HALF_SIZE.x, PLAYER_COLLIDER_HALF_SIZE.x);
+        utils::clamp_entity_position(
+            &mut transform,
+            PLAYER_COLLIDER_HALF_SIZE.x,
+            PLAYER_COLLIDER_HALF_SIZE.x,
+        );
     }
 }
 
@@ -212,7 +215,10 @@ pub fn handle_recall_input(
 
             // 开始回城
             let recall_timer = RecallTimer::new(initial_position, RECALL_TIME);
-            game_trackers.recall_timers.timers.insert(entity, recall_timer);
+            game_trackers
+                .recall_timers
+                .timers
+                .insert(entity, recall_timer);
 
             // 添加回城标记
             commands.entity(entity).insert(IsRecalling);
@@ -230,9 +236,7 @@ pub fn handle_recall_input(
                 },
                 Transform::from_xyz(
                     transform.translation.x,
-                    transform.translation.y
-                        + TANK_DISPLAY_SIZE.y / 2.0
-                        + PROGRESS_BAR_Y_OFFSET,
+                    transform.translation.y + TANK_DISPLAY_SIZE.y / 2.0 + PROGRESS_BAR_Y_OFFSET,
                     Z_PROGRESS_BAR,
                 ), // 在坦克上方
             ));
@@ -371,8 +375,9 @@ pub fn update_recall_progress_bars(
         if let Ok(player_transform) = player_tanks.get(progress_bar.player_entity) {
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_transform.translation.x;
-            progress_transform.translation.y =
-                player_transform.translation.y + PLAYER_COLLIDER_HALF_SIZE.x + PROGRESS_BAR_Y_OFFSET;
+            progress_transform.translation.y = player_transform.translation.y
+                + PLAYER_COLLIDER_HALF_SIZE.x
+                + PROGRESS_BAR_Y_OFFSET;
         }
     }
 }
@@ -587,15 +592,9 @@ pub fn update_barrel_system(
 
         // 根据 shells 数量选择炮管纹理和尺寸
         let (barrel_texture, barrel_display_size) = if shells == 1 {
-            (
-                texture_resources.single_barrel.clone(),
-                TANK_DISPLAY_SIZE,
-            )
+            (texture_resources.single_barrel.clone(), TANK_DISPLAY_SIZE)
         } else {
-            (
-                texture_resources.double_barrel.clone(),
-                TANK_DISPLAY_SIZE,
-            )
+            (texture_resources.double_barrel.clone(), TANK_DISPLAY_SIZE)
         };
 
         // 检查是否已经有炮管子实体

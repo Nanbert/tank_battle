@@ -8,11 +8,9 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
+use crate::resources::{GameAudioResources, GameTextureResources, PlayerInfo};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::resources::{
-    GameAudioResources, GameTextureResources, PlayerInfo,
-};
 use crate::utils;
 
 /// 通用动画特效生成函数
