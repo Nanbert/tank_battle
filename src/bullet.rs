@@ -439,8 +439,10 @@ pub fn bullet_terrain_collision_system(
     mut effect_events: MessageWriter<EffectEvent>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
+    seas: Query<(), With<Sea>>,
     bricks: Query<(), With<Brick>>,
     steels: Query<(), With<Steel>>,
+    fire_effects: Query<(Entity, &ChildOf), With<crate::constants::FireEffect>>,
     despawned_entities: Query<(), With<DespawnMarker>>,
     player_info: Res<PlayerInfo>,
     mut game_trackers: ResMut<GameTrackers>,
@@ -464,16 +466,34 @@ pub fn bullet_terrain_collision_system(
             continue;
         }
 
+        // 处理海洋碰撞 - 子弹穿过海洋时移除火焰特效
+        if seas.get(terrain_entity).is_ok() {
+            // 查找并移除该子弹的所有火焰特效子实体
+            for (fire_effect_entity, parent) in fire_effects.iter() {
+                if parent.0 == bullet_entity {
+                    let () = commands.entity(fire_effect_entity).try_despawn();
+                }
+            }
+            continue;
+        }
+
         // 处理森林碰撞
         if let Ok((forest_entity, forest_transform)) = forests.get(terrain_entity) {
             if bullet.is_player()
                 && let Some(player_stats) = player_info.get_stats(bullet.owner_type())
                 && player_stats.fire_shell
             {
-                effect_events.write(EffectEvent::ForestFire {
-                    position: forest_transform.translation,
-                });
-                let () = commands.entity(forest_entity).try_despawn();
+                // 检查子弹是否还有火焰特效子实体
+                let has_fire_effect = fire_effects
+                    .iter()
+                    .any(|(_, parent)| parent.0 == bullet_entity);
+
+                if has_fire_effect {
+                    effect_events.write(EffectEvent::ForestFire {
+                        position: forest_transform.translation,
+                    });
+                    let () = commands.entity(forest_entity).try_despawn();
+                }
             }
             continue;
         }

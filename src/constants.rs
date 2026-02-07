@@ -557,14 +557,6 @@ pub struct RecallProgressBar {
 #[derive(Component)]
 pub struct IsRecalling;
 
-/// 后坐力组件
-#[derive(Component)]
-pub struct RecoilForce {
-    pub original_pos: Vec3,  // 原始位置
-    pub target_offset: Vec2, // 目标偏移量
-    pub timer: Timer,        // 后坐力持续时间
-}
-
 /// 炮管后坐力组件
 #[derive(Component)]
 pub struct BarrelRecoilForce {
@@ -581,6 +573,13 @@ pub struct LaserCharge {
 /// 激光蓄力音效组件
 #[derive(Component)]
 pub struct LaserChargeSound;
+
+/// 相机震动组件
+#[derive(Component)]
+pub struct CameraShake {
+    pub timer: Timer,   // 震动持续时间
+    pub intensity: f32, // 震动强度（像素）
+}
 
 /// 坦克射击配置
 #[derive(Component)]
@@ -723,7 +722,6 @@ pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
 pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
 
 // ==================== 游戏机制时间常量 ====================
-pub const RECOIL_DURATION: f32 = 0.3; // 后坐力持续时间
 pub const ENEMY_SPAWN_COOLDOWN: f32 = 0.8; // 敌方坦克生成冷却时间
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
 pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
@@ -754,9 +752,12 @@ pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_
 // 激光
 pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）
 pub const LASER_POSITION_OFFSET: f32 = -40.0; // 激光位置偏移（炮口向前的距离）
-pub const RECOIL_DISTANCE_FACTOR: f32 = 0.3; // 后坐力距离系数（坦克整体）
 pub const BARREL_RECOIL_DISTANCE: f32 = 10.0; // 炮管后坐力距离（像素）
 pub const BARREL_RECOIL_DURATION: f32 = 0.15; // 炮管后坐力持续时间（秒）
+
+// ==================== 相机震动常量 ====================
+pub const CAMERA_SHAKE_DURATION: f32 = 0.6; // 相机震动持续时间（秒）
+pub const CAMERA_SHAKE_INTENSITY: f32 = 15.0; // 相机震动强度（像素）
 
 // 玩家坦克
 pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移

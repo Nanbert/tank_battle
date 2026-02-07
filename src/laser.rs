@@ -465,13 +465,10 @@ fn fire_laser(
     // 播放激光音效
     utils::play_one_shot_sound(commands, audio_resources.laser.clone(), 1.0);
 
-    // 应用后坐力
-    let recoil_distance = TANK_DISPLAY_SIZE.y * RECOIL_DISTANCE_FACTOR;
-    let recoil_offset = direction * -recoil_distance;
-    commands.entity(entity).insert(RecoilForce {
-        original_pos: transform.translation,
-        target_offset: recoil_offset,
-        timer: Timer::from_seconds(RECOIL_DURATION, TimerMode::Once),
+    // 添加相机震动效果
+    commands.entity(entity).insert(CameraShake {
+        timer: Timer::from_seconds(CAMERA_SHAKE_DURATION, TimerMode::Once),
+        intensity: CAMERA_SHAKE_INTENSITY,
     });
 
     // 清理蓄力相关组件
@@ -629,26 +626,31 @@ pub fn handle_laser_end_events(
     }
 }
 
-/// 处理后坐力效果
-pub fn handle_recoil_force(
+/// 处理相机震动效果
+pub fn handle_camera_shake(
     time: Res<Time>,
     mut commands: Commands,
-    mut query: Query<(Entity, &mut Transform, &mut RecoilForce)>,
+    mut query: Query<(Entity, &mut CameraShake)>,
+    mut camera_query: Query<&mut Transform, With<Camera2d>>,
 ) {
-    for (entity, mut transform, mut recoil) in &mut query {
-        recoil.timer.tick(time.delta());
+    for (entity, mut shake) in &mut query {
+        shake.timer.tick(time.delta());
 
-        // 使用平滑插值应用后坐力位移
-        let progress = recoil.timer.elapsed_secs() / recoil.timer.duration().as_secs_f32();
-        let current_offset = recoil.target_offset * (1.0 - progress);
+        if let Ok(mut camera_transform) = camera_query.single_mut() {
+            // 随机生成震动偏移
+            let x_offset = (rand::random::<f32>() - 0.5) * 2.0 * shake.intensity;
+            let y_offset = (rand::random::<f32>() - 0.5) * 2.0 * shake.intensity;
 
-        // 从原始位置插值到当前位置
-        transform.translation.x = recoil.original_pos.x + current_offset.x;
-        transform.translation.y = recoil.original_pos.y + current_offset.y;
+            // 应用震动偏移到相机
+            camera_transform.translation.x = x_offset;
+            camera_transform.translation.y = y_offset;
 
-        // 后坐力时间结束，移除组件
-        if recoil.timer.just_finished() {
-            commands.entity(entity).remove::<RecoilForce>();
+            // 震动时间结束，恢复原始位置并移除组件
+            if shake.timer.just_finished() {
+                camera_transform.translation.x = 0.0;
+                camera_transform.translation.y = 0.0;
+                commands.entity(entity).remove::<CameraShake>();
+            }
         }
     }
 }

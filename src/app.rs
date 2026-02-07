@@ -305,7 +305,7 @@ fn register_playing_systems(app: &mut App) {
         (
             laser::player_laser_system,
             laser::handle_laser_end_events,
-            laser::handle_recoil_force,
+            laser::handle_camera_shake,
         )
             .in_set(GameSystemSet::LaserSystems),
     );
