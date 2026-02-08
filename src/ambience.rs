@@ -13,7 +13,7 @@ use crate::constants::*;
 // ==================== 雨滴溅射常量 ====================
 
 /// 每帧生成溅射概率（下雨时）
-const RAIN_SPLASH_CHANCE: f32 = 0.25; // 约25%的概率
+const RAIN_SPLASH_CHANCE: f32 = 0.5; // 50%的概率
 
 /// 溅射粒子数量
 const SPLASH_PARTICLE_COUNT: usize = 6;
