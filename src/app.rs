@@ -447,7 +447,12 @@ pub fn configure_asset_plugin() -> AssetPlugin {
 }
 
 pub fn configure_game_resources(app: &mut App) {
-    app.insert_resource(ClearColor(crate::ui::COLOR_GRAY))
+    // 配置音频以避免 ALSA underrun 错误
+    app.insert_resource(bevy::audio::AudioSettings {
+        global_volume: bevy::audio::Volume::Linear(1.0),
+        backend: bevy::audio::AudioBackend::default(),
+    })
+    .insert_resource(ClearColor(crate::ui::COLOR_GRAY))
         .insert_resource(crate::resources::GameTextureResources {
             cn: Handle::default(),
             en: Handle::default(),
