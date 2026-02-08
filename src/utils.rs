@@ -58,9 +58,7 @@ pub fn play_looping_sound(
     commands
         .spawn((
             AudioPlayer::new(audio_source),
-            PlaybackSettings::LOOP
-                .with_volume(bevy::audio::Volume::Linear(volume))
-                .with_paused(false),
+            PlaybackSettings::LOOP.with_volume(bevy::audio::Volume::Linear(volume)),
         ))
         .id()
 }
