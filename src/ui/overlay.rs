@@ -17,6 +17,117 @@ use crate::ui::constants::*;
 // 从 localization 模块导入本地化常量
 use super::localization::*;
 
+// ============================================================================
+// 弹出文字特效
+// ============================================================================
+
+/// 弹出文字组件
+/// 用于道具拾取时的文字特效（如 "+20", "🔥"）
+#[derive(Component)]
+pub struct FloatingText {
+    /// 向上飘动的速度
+    pub velocity: Vec2,
+    /// 生命周期（秒）
+    pub lifetime: f32,
+}
+
+impl FloatingText {
+    /// 创建新的弹出文字
+    pub fn new() -> Self {
+        Self {
+            velocity: Vec2::new(0.0, 80.0), // 向上飘动速度
+            lifetime: 1.0, // 持续 1 秒
+        }
+    }
+}
+
+/// 更新弹出文字特效
+///
+/// 此系统每帧更新所有弹出文字的位置和透明度
+pub fn update_floating_texts(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut FloatingText, &mut Transform, &mut TextColor)>,
+) {
+    for (entity, mut floating_text, mut transform, mut color) in query.iter_mut() {
+        // 更新生命周期
+        floating_text.lifetime -= time.delta_secs();
+
+        // 如果生命周期结束，销毁实体
+        if floating_text.lifetime <= 0.0 {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
+        // 向上飘动
+        transform.translation.x += floating_text.velocity.x * time.delta_secs();
+        transform.translation.y += floating_text.velocity.y * time.delta_secs();
+
+        // 渐隐效果（最后 0.3 秒开始渐隐）
+        let fade_start = 0.3;
+        if floating_text.lifetime < fade_start {
+            let alpha = floating_text.lifetime / fade_start;
+            color.0 = color.0.with_alpha(alpha);
+        }
+    }
+}
+
+/// 生成道具拾取的弹出文字
+///
+/// # 参数
+/// - `commands`: Bevy 命令队列
+/// - `text`: 显示的文字
+/// - `position`: 世界坐标位置
+/// - `color`: 文字颜色
+/// - `font`: 字体资源
+pub fn spawn_floating_text(
+    commands: &mut Commands,
+    text: &str,
+    position: Vec3,
+    color: Color,
+    font: &Handle<Font>,
+) {
+    commands.spawn((
+        PlayingEntity,
+        FloatingText::new(),
+        Text2d(text.to_string()),
+        common::create_text_font(font, FONT_SIZE_FLOATING_TEXT),
+        TextColor(color),
+        Transform::from_translation(position),
+    ));
+}
+
+/// 生成道具拾取的弹出文字（支持自定义字体大小）
+///
+/// # 参数
+/// - `commands`: Bevy 命令队列
+/// - `text`: 显示的文字
+/// - `position`: 世界坐标位置
+/// - `color`: 文字颜色
+/// - `font`: 字体资源
+/// - `font_size`: 字体大小
+pub fn spawn_floating_text_with_font_size(
+    commands: &mut Commands,
+    text: &str,
+    position: Vec3,
+    color: Color,
+    font: &Handle<Font>,
+    font_size: f32,
+) {
+    commands.spawn((
+        PlayingEntity,
+        FloatingText::new(),
+        Text2d(text.to_string()),
+        TextFont {
+            font: font.clone(),
+            font_size,
+            ..default()
+        },
+        TextColor(color),
+        Transform::from_translation(position),
+    ));
+}
+
 /// 淡出屏幕效果
 pub fn fade_out_screen(
     mut commands: Commands,

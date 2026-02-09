@@ -650,3 +650,97 @@ pub struct GameAtlasLayoutResources {
     pub air_cushion_icon: Handle<TextureAtlasLayout>,
     pub shell_icon: Handle<TextureAtlasLayout>,
 }
+
+// ============================================================================
+// 连击系统
+// ============================================================================
+
+/// 连击超时时间（秒）
+pub const COMBO_TIMEOUT: f32 = 3.0;
+
+/// 连击窗口时间（秒）：1秒内击杀算连击
+pub const COMBO_WINDOW: f32 = 1.0;
+
+/// 连击状态
+#[derive(Clone, Default)]
+pub struct ComboState {
+    pub count: usize,           // 连击数
+    pub last_kill_time: f32,    // 上次击杀时间
+}
+
+/// 连击追踪器资源
+#[derive(Resource, Default)]
+pub struct ComboTracker {
+    pub player1: ComboState,
+    pub player2: Option<ComboState>,
+}
+
+impl ComboTracker {
+    /// 增加连击
+    pub fn add_combo(&mut self, player_type: TankType, current_time: f32) -> usize {
+        let state = match player_type {
+            TankType::Player1 => &mut self.player1,
+            TankType::Player2 => self.player2.get_or_insert_with(ComboState::default),
+            TankType::Enemy => return 0,
+        };
+
+        // 检查是否在连击窗口内
+        if current_time - state.last_kill_time <= COMBO_WINDOW {
+            state.count += 1;
+        } else {
+            state.count = 1;
+        }
+
+        state.last_kill_time = current_time;
+        state.count
+    }
+
+    /// 更新连击计时器（每帧调用）
+    pub fn update(&mut self, _delta_time: f32, current_time: f32) {
+        // 更新玩家1连击
+        if current_time - self.player1.last_kill_time > COMBO_TIMEOUT {
+            self.player1.count = 0;
+        }
+
+        // 更新玩家2连击
+        if let Some(ref mut state) = self.player2 {
+            if current_time - state.last_kill_time > COMBO_TIMEOUT {
+                state.count = 0;
+            }
+        }
+    }
+
+    /// 获取连击分数
+    pub fn get_combo_score(count: usize) -> usize {
+        match count {
+            0..=1 => 100,      // 0-1连击：100分
+            2 => 150,          // 2连击：150分
+            3 => 200,          // 3连击：200分
+            4 => 250,          // 4连击：250分
+            5 => 300,          // 5连击：300分
+            _ => 300 + (count - 5) * 50, // 6+连击：每增加1连击+50分
+        }
+    }
+
+    /// 获取连击颜色
+    pub fn get_combo_color(count: usize) -> Color {
+        match count {
+            2 => Color::srgb(1.0, 0.8, 0.0),    // 2连击：黄色
+            3 => Color::srgb(1.0, 0.5, 0.0),    // 3连击：橙色
+            4 => Color::srgb(1.0, 0.0, 0.0),    // 4连击：红色
+            5 => Color::srgb(1.0, 0.0, 0.5),    // 5连击：洋红
+            _ => Color::srgb(0.8, 0.0, 1.0),    // 6+连击：紫色
+        }
+    }
+
+    /// 获取连击字体大小
+    pub fn get_combo_font_size(count: usize) -> f32 {
+        match count {
+            2 => 32.0,   // 2连击：32
+            3 => 36.0,   // 3连击：36
+            4 => 40.0,   // 4连击：40
+            5 => 44.0,   // 5连击：44
+            _ => 48.0,   // 6+连击：48
+        }
+    }
+}

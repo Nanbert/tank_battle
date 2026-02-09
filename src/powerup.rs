@@ -11,13 +11,16 @@ use rand::Rng;
 use crate::constants::*;
 use crate::resources::{
     CommanderLife, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
-    PlayerStatChanged,
+    PlayerStatChanged, Language,
 };
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 
 // 导入策略模式
 pub use crate::powerup_strategy::{PowerUp, PowerUpEffect, PowerUpResult, get_strategy};
+
+// 导入本地化常量
+use crate::ui::localization::*;
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -40,6 +43,8 @@ pub fn handle_powerup_collision(
     mut player_info: ResMut<PlayerInfo>,
     mut commander_life: ResMut<CommanderLife>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+    font_resources: Res<GameTextureResources>,
+    language: Res<Language>,
 ) {
     // 定义拾取道具的结构体，确保 entity 和 type 同步
     struct PickedPowerUp {
@@ -72,6 +77,40 @@ pub fn handle_powerup_collision(
             // 获取策略并应用效果
             let strategy = get_strategy(picked.powerup_type);
             let tank_type = player_tank.tank_type;
+
+            // 生成弹出文字特效
+            let font = font_resources.get_font(*language);
+            let text = match picked.powerup_type {
+                PowerUp::SpeedUp => POWERUP_FLOATING_SPEED_UP.format(*language, POWERUP_ATTRIBUTE_INCREASE),
+                PowerUp::Protection => POWERUP_FLOATING_PROTECTION.format(*language, POWERUP_ATTRIBUTE_INCREASE),
+                PowerUp::FireSpeed => POWERUP_FLOATING_FIRE_SPEED.format(*language, POWERUP_ATTRIBUTE_INCREASE),
+                PowerUp::Repair => POWERUP_FLOATING_REPAIR.get(*language).to_string(),
+                PowerUp::Hamburger => POWERUP_FLOATING_HAMBURGER.get(*language).to_string(),
+                PowerUp::Shell => POWERUP_FLOATING_SHELL.get(*language).to_string(),
+                PowerUp::FireShell => POWERUP_FLOATING_FIRE_SHELL.get(*language).to_string(),
+                PowerUp::TrackChain => POWERUP_FLOATING_TRACK_CHAIN.get(*language).to_string(),
+                PowerUp::Penetrate => POWERUP_FLOATING_PENETRATE.get(*language).to_string(),
+                PowerUp::AirCushion => POWERUP_FLOATING_AIR_CUSHION.get(*language).to_string(),
+            };
+            // 根据玩家类型设置颜色：玩家1蓝色，玩家2红色
+            let color = match tank_type {
+                TankType::Player1 => COLOR_BLUE,
+                TankType::Player2 => COLOR_RED,
+                TankType::Enemy => COLOR_GREEN,
+            };
+            // 在坦克位置上方生成弹出文字
+            let floating_position = Vec3::new(
+                tank_transform.translation.x,
+                tank_transform.translation.y + 120.0,
+                Z_UI_TEXT + 2.0,
+            );
+            crate::ui::overlay::spawn_floating_text(
+                &mut commands,
+                &text,
+                floating_position,
+                color,
+                &font,
+            );
 
             // 处理指挥官生命变化（汉堡道具）
             if strategy.affects_commander() && commander_life.life_points < COMMANDER_LIFE_MAX {

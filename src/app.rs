@@ -289,15 +289,24 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
-            bullet::enemy_shoot_system,
-            bullet::player_shoot_system,
-            bullet::bullet_bounds_check_system,
-            bullet::bullet_terrain_collision_system,
-            bullet::bullet_tank_collision_system,
-            bullet::bullet_commander_collision_system,
-            bullet::handle_effect_events,
-        )
-            .in_set(GameSystemSet::BulletSystems),
+            bullet::enemy_shoot_system.in_set(GameSystemSet::BulletSystems),
+            bullet::player_shoot_system.in_set(GameSystemSet::BulletSystems),
+            bullet::bullet_bounds_check_system.in_set(GameSystemSet::BulletSystems),
+            bullet::bullet_terrain_collision_system.in_set(GameSystemSet::BulletSystems),
+            bullet::bullet_tank_collision_system.in_set(GameSystemSet::BulletSystems),
+            bullet::bullet_commander_collision_system.in_set(GameSystemSet::BulletSystems),
+            bullet::handle_effect_events.in_set(GameSystemSet::BulletSystems),
+        ),
+    )
+    .add_message::<bullet::ComboEvent>();
+
+    // 连击系统
+    app.add_systems(
+        Update,
+        (
+            bullet::handle_combo_events,
+            bullet::update_combo_system,
+        ),
     );
 
     // 激光系统集
@@ -341,6 +350,7 @@ fn register_playing_systems(app: &mut App) {
     app.add_systems(
         Update,
         (
+            ui::hud::update::update_bar_animations,
             ui::hud::update::handle_player_avatar_death,
             ui::hud::blink::handle_hud_stat_changed,
             ui::hud::blink::handle_hud_stat_max_value,
@@ -359,6 +369,7 @@ fn register_playing_systems(app: &mut App) {
         (
             powerup::handle_powerup_collision,
             powerup::update_track_chain_effect,
+            ui::overlay::update_floating_texts,
         )
             .in_set(GameSystemSet::PowerUpSystems),
     );
@@ -575,6 +586,7 @@ pub fn register_game_systems(app: &mut App) {
         .add_message::<crate::bullet::EffectEvent>()
         .add_message::<crate::enemy::SpawnEnemyEvent>()
         .init_resource::<BulletTracker>()
+        .init_resource::<ComboTracker>()
         .add_systems(
             Startup,
             (setup, crate::levels::load_level_assets, init_game_resources),

@@ -256,3 +256,83 @@ pub const ENEMY_COUNT_TEXT: LocalizedTextFormat = LocalizedTextFormat {
     cn: "敌方剩余: {remaining}/{total}",
     en: "Enemy Left: {remaining}/{total}",
 };
+
+// ==================== 道具弹出文本 ====================
+
+/// 道具弹出文本常量
+pub const POWERUP_FLOATING_SPEED_UP: LocalizedTextFormat = LocalizedTextFormat {
+    cn: "速度 +{var}",
+    en: "Speed +{var}",
+};
+
+pub const POWERUP_FLOATING_PROTECTION: LocalizedTextFormat = LocalizedTextFormat {
+    cn: "护甲 +{var}",
+    en: "Armor +{var}",
+};
+
+pub const POWERUP_FLOATING_FIRE_SPEED: LocalizedTextFormat = LocalizedTextFormat {
+    cn: "射速 +{var}",
+    en: "FireRate +{var}",
+};
+
+pub const POWERUP_FLOATING_REPAIR: LocalizedText = LocalizedText {
+    cn: "生命 +1",
+    en: "Life +1",
+};
+
+pub const POWERUP_FLOATING_HAMBURGER: LocalizedText = LocalizedText {
+    cn: "司令生命 +1",
+    en: "Commander +1",
+};
+
+pub const POWERUP_FLOATING_SHELL: LocalizedText = LocalizedText {
+    cn: "炮弹 +1",
+    en: "Shell +1",
+};
+
+pub const POWERUP_FLOATING_FIRE_SHELL: LocalizedText = LocalizedText {
+    cn: "火焰",
+    en: "Fire",
+};
+
+pub const POWERUP_FLOATING_TRACK_CHAIN: LocalizedText = LocalizedText {
+    cn: "履带",
+    en: "Chain",
+};
+
+pub const POWERUP_FLOATING_PENETRATE: LocalizedText = LocalizedText {
+    cn: "穿透",
+    en: "Penetrate",
+};
+
+pub const POWERUP_FLOATING_AIR_CUSHION: LocalizedText = LocalizedText {
+    cn: "气垫",
+    en: "Cushion",
+};
+
+// ==================== 连击弹出文本 ====================
+
+pub const COMBO_FLOATING_2: LocalizedText = LocalizedText {
+    cn: "连击 x2!",
+    en: "Combo x2!",
+};
+
+pub const COMBO_FLOATING_3: LocalizedText = LocalizedText {
+    cn: "连击 x3!",
+    en: "Combo x3!",
+};
+
+pub const COMBO_FLOATING_4: LocalizedText = LocalizedText {
+    cn: "连击 x4!",
+    en: "Combo x4!",
+};
+
+pub const COMBO_FLOATING_5: LocalizedText = LocalizedText {
+    cn: "连击 x5!",
+    en: "Combo x5!",
+};
+
+pub const COMBO_FLOATING_HIGH: LocalizedTextFormat = LocalizedTextFormat {
+    cn: "连击 x{var}!",
+    en: "Combo x{var}!",
+};

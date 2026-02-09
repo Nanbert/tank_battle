@@ -11,11 +11,12 @@ use rand::Rng;
 use crate::constants::*;
 use crate::effects;
 use crate::resources::{
-    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, GameTrackers, PlayerInfo,
-    PlayerStatChanged, StatType,
+    ComboTracker, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, GameTrackers,
+    Language, PlayerInfo, PlayerStatChanged, StatType,
 };
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
+use crate::ui::localization::*;
 use crate::utils;
 
 /// 特效事件枚举
@@ -33,6 +34,13 @@ pub enum EffectEvent {
     ForestFire {
         position: Vec3,
     },
+}
+
+/// 连击事件
+#[derive(Event, Clone, Copy, Message)]
+pub struct ComboEvent {
+    pub player_type: TankType,
+    pub position: Vec3,
 }
 
 /// 子弹资源缓存
@@ -541,6 +549,73 @@ pub fn bullet_terrain_collision_system(
     }
 }
 
+/// 连击系统 - 处理连击事件
+pub fn handle_combo_events(
+    mut commands: Commands,
+    mut events: MessageReader<ComboEvent>,
+    mut combo_tracker: ResMut<ComboTracker>,
+    time: Res<Time>,
+    mut player_info: ResMut<PlayerInfo>,
+    font_resources: Res<GameTextureResources>,
+    language: Res<Language>,
+    mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+) {
+    for event in events.read() {
+        // 更新连击
+        let current_time = time.elapsed_secs();
+        let combo_count = combo_tracker.add_combo(event.player_type, current_time);
+        let combo_score = ComboTracker::get_combo_score(combo_count);
+        
+        // 增加分数（考虑连击加成）
+        player_info.with_stats_mut(event.player_type, |player_stats| {
+            player_stats.score += combo_score;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type: event.player_type,
+                stat_type: StatType::Score,
+            });
+            
+            // 连击数 >= 2 时显示连击弹出文字
+            if combo_count >= 2 {
+                let font = font_resources.get_font(*language);
+                let text = match combo_count {
+                    2 => COMBO_FLOATING_2.get(*language).to_string(),
+                    3 => COMBO_FLOATING_3.get(*language).to_string(),
+                    4 => COMBO_FLOATING_4.get(*language).to_string(),
+                    5 => COMBO_FLOATING_5.get(*language).to_string(),
+                    _ => COMBO_FLOATING_HIGH.format(*language, combo_count),
+                };
+                let color = ComboTracker::get_combo_color(combo_count);
+                let font_size = ComboTracker::get_combo_font_size(combo_count);
+                
+                // 在敌方坦克位置上方生成连击弹出文字
+                let floating_position = Vec3::new(
+                    event.position.x,
+                    event.position.y + 120.0,
+                    Z_UI_TEXT + 3.0,
+                );
+                crate::ui::overlay::spawn_floating_text_with_font_size(
+                    &mut commands,
+                    &text,
+                    floating_position,
+                    color,
+                    &font,
+                    font_size,
+                );
+            }
+        });
+    }
+}
+
+/// 连击更新系统
+pub fn update_combo_system(
+    mut combo_tracker: ResMut<ComboTracker>,
+    time: Res<Time>,
+) {
+    let current_time = time.elapsed_secs();
+    let delta = time.delta_secs();
+    combo_tracker.update(delta, current_time);
+}
+
 /// 子弹与坦克碰撞检测系统
 pub fn bullet_tank_collision_system(
     mut commands: Commands,
@@ -556,6 +631,7 @@ pub fn bullet_tank_collision_system(
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
     mut controllers: Query<&mut KinematicCharacterController>,
     audio_resources: Res<GameAudioResources>,
+    mut combo_events: MessageWriter<ComboEvent>,
 ) {
     for event in collision_events.read() {
         // 卫语句：只处理 Started 事件
@@ -583,17 +659,15 @@ pub fn bullet_tank_collision_system(
                 effect_events.write(EffectEvent::Explosion {
                     position: tank_transform.translation,
                 });
+                
+                // 发送连击事件
+                combo_events.write(ComboEvent {
+                    player_type,
+                    position: tank_transform.translation,
+                });
             }
             utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
             let () = commands.entity(tank_entity).try_despawn();
-            // 增加分数
-            player_info.with_stats_mut(player_type, |player_stats| {
-                player_stats.score += 100;
-                stat_changed_events.write(PlayerStatChanged {
-                    player_type,
-                    stat_type: StatType::Score,
-                });
-            });
             despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
             continue;
         }

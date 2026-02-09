@@ -4,13 +4,41 @@
 
 use bevy::prelude::*;
 
-use super::spawn::{PlayerHudQuery, TopHudQuery};
+use super::spawn::{BarAnimation, PlayerHudQuery, TopHudQuery};
 use super::stats::*;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
 use crate::resources::*;
 use crate::ui::common;
 use crate::ui::constants::*;
+
+// ============================================================================
+// 血条动画系统
+// ============================================================================
+
+/// 更新血条和蓝条的动画效果
+///
+/// 此系统每帧运行，平滑过渡血条和蓝条的宽度变化
+pub fn update_bar_animations(
+    mut bars: Query<(&mut BarAnimation, &mut Sprite, &mut Transform), Or<(With<HealthBarForeground>, With<BlueBarForeground>)>>,
+) {
+    for (mut animation, mut sprite, mut transform) in bars.iter_mut() {
+        // 更新动画
+        let is_animating = animation.update();
+
+        // 如果动画进行中或需要更新显示
+        if is_animating {
+            // 更新 Sprite 宽度
+            if let Some(ref mut size) = sprite.custom_size {
+                size.x = animation.current_width;
+            }
+
+            // 更新 Transform 位置（保持血条左对齐）
+            // 位置 = 左边缘 + 宽度/2
+            transform.translation.x = animation.left_edge_x + animation.current_width / 2.0;
+        }
+    }
+}
 
 // ============================================================================
 // Despawn Functions
@@ -55,10 +83,8 @@ fn update_single_player_hud_text(
 /// 更新单个玩家的 HUD 血条和蓝条（内部函数）
 fn update_single_player_hud_bars(
     stats: &PlayerStats,
-    x_pos: f32,
     bar_query: &mut Query<(
-        &mut Sprite,
-        &mut Transform,
+        &mut BarAnimation,
         Option<&HealthBarForeground>,
         Option<&BlueBarForeground>,
         Option<&Player1Hud>,
@@ -66,30 +92,16 @@ fn update_single_player_hud_bars(
     )>,
     is_player1: bool,
 ) {
-    for (mut sprite, mut transform, is_health_foreground, is_blue_foreground, is_p1, is_p2) in
+    for (mut animation, is_health_foreground, is_blue_foreground, is_p1, is_p2) in
         bar_query.iter_mut()
     {
         if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
             if is_health_foreground.is_some() {
-                common::update_bar(
-                    &mut sprite,
-                    &mut transform,
-                    stats.life_points as f32,
-                    HUD_MAX_LIFE_POINTS,
-                    x_pos,
-                    HUD_BAR_SIZE.x,
-                    HUD_BAR_SIZE.y,
-                );
+                let target_width = HUD_BAR_SIZE.x * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
+                animation.set_target(target_width);
             } else if is_blue_foreground.is_some() {
-                common::update_bar(
-                    &mut sprite,
-                    &mut transform,
-                    stats.energy_points as f32,
-                    HUD_MAX_LIFE_POINTS,
-                    x_pos,
-                    HUD_BAR_SIZE.x,
-                    HUD_BAR_SIZE.y,
-                );
+                let target_width = HUD_BAR_SIZE.x * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
+                animation.set_target(target_width);
             }
         }
     }
@@ -100,7 +112,7 @@ fn update_single_player_hud_bars(
 /// 此函数消除了玩家1和玩家2 HUD 更新的重复逻辑，将逻辑拆分为两个独立的函数
 fn update_single_player_hud(
     stats: &PlayerStats,
-    x_pos: f32,
+    _x_pos: f32,
     player_hud_query: &mut Query<(
         &mut Text2d,
         &HudStatType,
@@ -108,8 +120,7 @@ fn update_single_player_hud(
         Option<&Player2Hud>,
     )>,
     bar_query: &mut Query<(
-        &mut Sprite,
-        &mut Transform,
+        &mut BarAnimation,
         Option<&HealthBarForeground>,
         Option<&BlueBarForeground>,
         Option<&Player1Hud>,
@@ -119,7 +130,7 @@ fn update_single_player_hud(
     language: Language,
 ) {
     update_single_player_hud_text(stats, player_hud_query, is_player1, language);
-    update_single_player_hud_bars(stats, x_pos, bar_query, is_player1);
+    update_single_player_hud_bars(stats, bar_query, is_player1);
 }
 
 /// 更新玩家 HUD（统一处理玩家1和玩家2）
@@ -150,8 +161,7 @@ pub fn update_player_hud(
         Option<&Player2Hud>,
     )>,
     mut bar_query: Query<(
-        &mut Sprite,
-        &mut Transform,
+        &mut BarAnimation,
         Option<&HealthBarForeground>,
         Option<&BlueBarForeground>,
         Option<&Player1Hud>,

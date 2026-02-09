@@ -244,6 +244,7 @@ pub const FONT_SIZE_CREDITS_TITLE: f32 = 70.0; // 致谢标题字体
 pub const FONT_SIZE_MENU: f32 = 80.0; // 菜单字体
 pub const FONT_SIZE_GAME_OVER: f32 = 100.0; // 大标题字体
 pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体大小（与HUD字体一致）
+pub const FONT_SIZE_FLOATING_TEXT: f32 = 28.0; // 弹出文字字体大小（与分数字体一致）
 
 // ============================================================================
 // Z 轴层级常量
@@ -253,7 +254,7 @@ pub const FONT_SIZE_INSUFFICIENT_ENERGY: f32 = 24.0; // 能量不足提示字体
 pub const Z_UI: f32 = 10.0;
 
 /// UI 文本层级
-pub const Z_UI_TEXT: f32 = Z_UI;
+pub const Z_UI_TEXT: f32 = Z_UI + 0.1;
 
 /// UI 背景层级（比文本稍低）
 pub const Z_UI_BACKGROUND: f32 = Z_UI - 0.1;

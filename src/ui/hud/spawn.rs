@@ -14,6 +14,54 @@ use crate::ui::constants::*;
 use crate::ui::localization::*;
 
 // ============================================================================
+// 血条动画组件
+// ============================================================================
+
+/// 血条动画组件
+/// 用于平滑过渡血条和蓝条的宽度变化
+#[derive(Component, Clone, Copy)]
+pub struct BarAnimation {
+    /// 当前宽度
+    pub current_width: f32,
+    /// 目标宽度
+    pub target_width: f32,
+    /// 动画速度（0.0-1.0，越大越快）
+    pub lerp_factor: f32,
+    /// 血条左边缘的 X 坐标（用于保持左对齐）
+    pub left_edge_x: f32,
+}
+
+impl BarAnimation {
+    /// 创建新的血条动画
+    pub fn new(initial_width: f32, left_edge_x: f32) -> Self {
+        Self {
+            current_width: initial_width,
+            target_width: initial_width,
+            lerp_factor: 0.15, // 默认动画速度
+            left_edge_x,
+        }
+    }
+
+    /// 设置新的目标宽度
+    pub fn set_target(&mut self, target: f32) {
+        self.target_width = target;
+    }
+
+    /// 更新动画，返回是否需要更新显示
+    pub fn update(&mut self) -> bool {
+        // 使用线性插值平滑过渡
+        let diff = self.target_width - self.current_width;
+        if diff.abs() < 0.5 {
+            self.current_width = self.target_width;
+            false // 动画完成
+        } else {
+            self.current_width += diff * self.lerp_factor;
+            true // 动画进行中
+        }
+    }
+}
+
+// ============================================================================
 // HUD 查询类型别名
 // ============================================================================
 
@@ -332,18 +380,21 @@ pub fn spawn_single_player_hud(
         Z_UI,
     );
     let health_width = HUD_BAR_SIZE.x * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
+    let health_y = common::hud_y_position(HudYPosition::BarHealth);
+    let health_left_x = x_pos - HUD_BAR_SIZE.x / 2.0;
     commands.spawn((
         marker.clone(),
         HealthBar,
         HealthBarForeground,
+        BarAnimation::new(health_width, health_left_x),
         Sprite {
             color: COLOR_RED,
             custom_size: Some(Vec2::new(health_width, HUD_BAR_SIZE.y)),
             ..default()
         },
         Transform::from_xyz(
-            x_pos - HUD_BAR_SIZE.x / 2.0 + health_width / 2.0,
-            common::hud_y_position(HudYPosition::BarHealth),
+            health_left_x + health_width / 2.0,
+            health_y,
             Z_UI + HUD_FOREGROUND_Z_OFFSET,
         ),
     ));
@@ -359,18 +410,21 @@ pub fn spawn_single_player_hud(
         Z_UI,
     );
     let blue_width = HUD_BAR_SIZE.x * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
+    let blue_y = common::hud_y_position(HudYPosition::BarBlue);
+    let blue_left_x = x_pos - HUD_BAR_SIZE.x / 2.0;
     commands.spawn((
         marker.clone(),
         BlueBar,
         BlueBarForeground,
+        BarAnimation::new(blue_width, blue_left_x),
         Sprite {
             color: COLOR_BLUE,
             custom_size: Some(Vec2::new(blue_width, HUD_BAR_SIZE.y)),
             ..default()
         },
         Transform::from_xyz(
-            x_pos - HUD_BAR_SIZE.x / 2.0 + blue_width / 2.0,
-            common::hud_y_position(HudYPosition::BarBlue),
+            blue_left_x + blue_width / 2.0,
+            blue_y,
             Z_UI + HUD_FOREGROUND_Z_OFFSET,
         ),
     ));
