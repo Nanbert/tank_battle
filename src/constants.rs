@@ -110,6 +110,9 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 // ==================== 履带道具常量 ====================
 pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
 
+/// 低血量烟雾动画帧间隔（每秒50帧）
+pub const LOW_HEALTH_SMOKE_ANIMATION_FRAME: f32 = 0.02;
+
 // ==================== 颜色常量 ====================
 // 颜色常量已迁移到 ui::constants
 
@@ -432,6 +435,10 @@ pub struct BubbleEffect;
 #[derive(Component)]
 pub struct TrackChainEffect;
 
+// 低血量烟雾特效标记
+#[derive(Component)]
+pub struct LowHealthSmokeEffect;
+
 // 火焰特效标记（叠加在子弹上的火焰特效）
 #[derive(Component)]
 pub struct FireEffect;
@@ -719,7 +726,7 @@ pub const ANIMATION_FRAME_FOREST_FIRE: f32 = 0.15; // 森林火灾动画帧间�
 pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共0.72秒
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
-pub const ANIMATION_FRAME_SMOKE: f32 = 0.1; // 烟雾动画帧间隔
+pub const ANIMATION_FRAME_SMOKE_LASER: f32 = 0.1; // 激光烟雾动画帧间隔
 pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.02; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_MUSIC_NOTE: f32 = 0.1; // 音符动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔

@@ -6,7 +6,6 @@
 
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
-use bevy::ecs::relationship::Relationship;
 
 use crate::constants::*;
 use crate::powerup;
@@ -27,43 +26,6 @@ const PLAYER2_START_X: f32 =
 
 /// 玩家初始Y坐标（底部）
 const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF_SIZE.x;
-
-// ============================================================================
-// 低血量警告边框
-// ============================================================================
-
-/// 低血量警告边框组件
-/// 当玩家生命值 ≤ 1 时显示红色虚线边框
-#[derive(Component)]
-pub struct LowHealthWarning;
-
-/// 警告边框闪烁计时器
-#[derive(Component, Default)]
-pub struct WarningBlinkTimer {
-    pub timer: f32,
-    pub is_visible: bool,
-}
-
-impl WarningBlinkTimer {
-    pub fn new() -> Self {
-        Self {
-            timer: 0.0,
-            is_visible: false,
-        }
-    }
-    
-    /// 更新闪烁状态，返回是否需要切换可见性
-    pub fn update(&mut self, delta: f32) -> bool {
-        self.timer += delta;
-        // 每0.5秒切换一次
-        if self.timer >= 0.5 {
-            self.timer = 0.0;
-            self.is_visible = !self.is_visible;
-            return true;
-        }
-        false
-    }
-}
 
 /// 生成玩家坦克
 pub fn spawn_player_tank(
@@ -120,7 +82,7 @@ pub fn spawn_player_tank(
         ),
     );
 
-    // 为玩家坦克添加子实体（炮塔和警告边框）
+    // 为玩家坦克添加子实体（炮塔）
     commands.entity(player_entity).with_children(|parent| {
         // 生成炮塔
         parent.spawn((
@@ -128,22 +90,6 @@ pub fn spawn_player_tank(
             Barrel,
             Sprite::from_color(Color::BLACK, Vec2::new(6.0, 6.0)),
             Transform::from_translation(Vec3::new(0.0, 10.0, 0.1)),
-        ));
-        
-        // 生成低血量警告边框（初始隐藏）
-        parent.spawn((
-            PlayingEntity,
-            LowHealthWarning,
-            WarningBlinkTimer::new(),
-            Sprite {
-                color: Color::srgba(1.0, 0.0, 0.0, 0.0), // 初始透明
-                custom_size: Some(Vec2::new(
-                    TANK_DISPLAY_SIZE.x,  // 与坦克尺寸相同
-                    TANK_DISPLAY_SIZE.y,
-                )),
-                ..default()
-            },
-            Transform::from_translation(Vec3::new(0.0, 0.0, -0.1)), // 在坦克下方
         ));
     });
 
@@ -738,56 +684,4 @@ pub fn handle_barrel_recoil_force(
     }
 }
 
-// ============================================================================
-// 低血量警告系统
-// ============================================================================
 
-/// 更新低血量警告边框
-///
-/// 当玩家生命值 ≤ 1 时，显示红色闪烁边框
-/// 生命值 > 1 或死亡时隐藏边框
-pub fn update_low_health_warnings(
-    time: Res<Time>,
-    player_info: Res<PlayerInfo>,
-    mut warnings: Query<
-        (
-            &ChildOf,
-            &mut WarningBlinkTimer,
-            &mut Sprite,
-        ),
-        (With<LowHealthWarning>, With<PlayingEntity>),
-    >,
-    player_markers: Query<
-        (
-            &PlayerTank,
-            Option<&Player1Hud>,
-            Option<&Player2Hud>,
-        ),
-        With<PlayingEntity>,
-    >,
-) {
-    for (child_of, mut blink_timer, mut sprite) in warnings.iter_mut() {
-        // 获取父实体（玩家坦克）
-        let player_entity = child_of.get();
-        let is_low_health = if let Ok((player_tank, _, _)) = player_markers.get(player_entity) {
-            // 检查是否是玩家且生命值 ≤ 1
-            player_info
-                .get_stats(player_tank.tank_type)
-                .map_or(false, |stats| stats.life_points <= 1 && stats.life_points > 0)
-        } else {
-            false
-        };
-
-        if is_low_health {
-            // 低血量状态：闪烁边框
-            let delta = time.delta_secs();
-            if blink_timer.update(delta) {
-                // 切换可见性
-                sprite.color = sprite.color.with_alpha(if blink_timer.is_visible { 0.6 } else { 0.3 });
-            }
-        } else {
-            // 正常状态或死亡：隐藏边框
-            sprite.color = sprite.color.with_alpha(0.0);
-        }
-    }
-}

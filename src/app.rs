@@ -281,7 +281,7 @@ app.add_systems(
             player::recover_energy.in_set(GameSystemSet::PlayerSystems),
             player::update_barrel_system.in_set(GameSystemSet::PlayerSystems),
             player::handle_barrel_recoil_force.in_set(GameSystemSet::PlayerSystems),
-            player::update_low_health_warnings.in_set(GameSystemSet::PlayerSystems),
+            powerup::update_low_health_smoke_effects.in_set(GameSystemSet::PlayerSystems),
         ),
     );
 
@@ -498,6 +498,7 @@ pub fn configure_game_resources(app: &mut App) {
             fire_shell_icon: Handle::default(),
             track_chain_icon: Handle::default(),
             track_chain_effect: Handle::default(),
+            tank_smoke_effect: Handle::default(),
             penetrate_icon: Handle::default(),
             repair_icon: Handle::default(),
             hamburger_icon: Handle::default(),
@@ -551,6 +552,7 @@ pub fn configure_game_resources(app: &mut App) {
             fire_shell_icon: Handle::default(),
             track_chain_icon: Handle::default(),
             track_chain_effect: Handle::default(),
+            tank_smoke_effect: Handle::default(),
             penetrate_icon: Handle::default(),
             repair_icon: Handle::default(),
             hamburger_icon: Handle::default(),
@@ -665,6 +667,7 @@ pub fn init_game_resources(
         fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(&asset_server),
         track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
         track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
+        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.load_texture(&asset_server),
         penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
         repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
         hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
@@ -746,6 +749,8 @@ pub fn init_game_resources(
         track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),
         track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),
         penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),

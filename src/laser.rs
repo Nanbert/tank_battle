@@ -611,7 +611,7 @@ pub fn handle_laser_end_events(
                 texture_resources.smoke.clone(),
                 atlas_layouts.smoke_atlas.clone(),
                 crate::atlas::SMOKE_ATLAS.animation_indices_full(),
-                ANIMATION_FRAME_SMOKE,
+                ANIMATION_FRAME_SMOKE_LASER,
                 Transform::from_translation(transform),
                 crate::atlas::SMOKE_ATLAS.display_size,
                 (

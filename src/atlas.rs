@@ -127,6 +127,14 @@ pub const TRACK_CHAIN_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 )
 .with_display_size(TANK_DISPLAY_SIZE);
 
+// 坦克烟雾特效精灵图常量（低血量警告）
+pub const TANK_SMOKE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "effect/tank_sprite.png",
+    Vec2::new(960.0, 960.0),
+    6,
+    5,
+);
+
 // 爆炸精灵图常量
 // 实际尺寸: 2048 x 2048, 8行8列, 每帧 256 x 256
 pub const EXPLOSION_ATLAS: TextureAtlasInfo = {

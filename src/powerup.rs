@@ -348,3 +348,48 @@ pub fn update_track_chain_effect(
         }
     }
 }
+
+/// 更新低血量烟雾特效
+/// 当玩家生命值 ≤ 1 时动态添加烟雾子实体，否则移除
+pub fn update_low_health_smoke_effects(
+    mut commands: Commands,
+    player_tanks: Query<(Entity, Option<&Children>, &PlayerTank), With<PlayerTank>>,
+    smoke_entities: Query<(), With<crate::constants::LowHealthSmokeEffect>>,
+    player_info: Res<PlayerInfo>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+) {
+    for (entity, children, player_tank) in player_tanks.iter() {
+        // 检查玩家是否处于低血量状态（生命值 ≤ 1 且 > 0）
+        let is_low_health = player_info
+            .get_stats(player_tank.tank_type)
+            .map_or(false, |stats| stats.life_points <= 1 && stats.life_points > 0);
+
+        // 检查是否已经有烟雾特效子实体
+        let has_smoke_sprite =
+            children.is_some_and(|c| c.iter().any(|child| smoke_entities.contains(child)));
+
+        if is_low_health && !has_smoke_sprite {
+            // 创建烟雾特效
+            let child_entity = crate::utils::spawn_animated_sprite(
+                &mut commands,
+                texture_resources.tank_smoke_effect.clone(),
+                atlas_layouts.tank_smoke_effect.clone(),
+                crate::atlas::TANK_SMOKE_ATLAS.animation_indices_full(),
+                crate::constants::LOW_HEALTH_SMOKE_ANIMATION_FRAME,
+                Transform::from_translation(Vec3::new(0.0, 0.0, crate::constants::Z_DEFAULT + 0.2)),
+                Vec2::new(80.0, 80.0), // 缩小到坦克的 2/3
+                (
+                    crate::constants::LowHealthSmokeEffect,
+                    AnimationMode::Looping,
+                ),
+            );
+
+            // 将烟雾特效设为坦克的子实体
+            commands.entity(entity).add_child(child_entity);
+        } else if !is_low_health && has_smoke_sprite {
+            // 移除所有烟雾特效子实体
+            crate::utils::cleanup_children_by_marker(&mut commands, children, &smoke_entities);
+        }
+    }
+}
