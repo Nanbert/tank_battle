@@ -592,7 +592,7 @@ pub fn handle_combo_events(
                 // 在敌方坦克位置上方生成连击弹出文字
                 let floating_position = Vec3::new(
                     event.position.x,
-                    event.position.y + 120.0,
+                    event.position.y + 50.0,
                     Z_UI_TEXT + 3.0,
                 );
                 crate::ui::overlay::spawn_floating_text_with_font_size(

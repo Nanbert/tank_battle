@@ -313,26 +313,26 @@ pub const POWERUP_FLOATING_AIR_CUSHION: LocalizedText = LocalizedText {
 // ==================== 连击弹出文本 ====================
 
 pub const COMBO_FLOATING_2: LocalizedText = LocalizedText {
-    cn: "连击 x2!",
+    cn: "连击 x2",
     en: "Combo x2!",
 };
 
 pub const COMBO_FLOATING_3: LocalizedText = LocalizedText {
-    cn: "连击 x3!",
+    cn: "连击 x3",
     en: "Combo x3!",
 };
 
 pub const COMBO_FLOATING_4: LocalizedText = LocalizedText {
-    cn: "连击 x4!",
+    cn: "连击 x4",
     en: "Combo x4!",
 };
 
 pub const COMBO_FLOATING_5: LocalizedText = LocalizedText {
-    cn: "连击 x5!",
+    cn: "连击 x5",
     en: "Combo x5!",
 };
 
 pub const COMBO_FLOATING_HIGH: LocalizedTextFormat = LocalizedTextFormat {
-    cn: "连击 x{var}!",
+    cn: "连击 x{var}",
     en: "Combo x{var}!",
 };
