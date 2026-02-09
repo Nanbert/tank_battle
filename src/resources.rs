@@ -655,11 +655,8 @@ pub struct GameAtlasLayoutResources {
 // 连击系统
 // ============================================================================
 
-/// 连击超时时间（秒）
-pub const COMBO_TIMEOUT: f32 = 3.0;
-
-/// 连击窗口时间（秒）：1秒内击杀算连击
-pub const COMBO_WINDOW: f32 = 1.0;
+/// 连击超时时间（秒）：4秒内击杀就会增加连击，否则清零
+pub const COMBO_TIMEOUT: f32 = 4.0;
 
 /// 连击状态
 #[derive(Clone, Default)]
@@ -684,8 +681,8 @@ impl ComboTracker {
             TankType::Enemy => return 0,
         };
 
-        // 检查是否在连击窗口内
-        if current_time - state.last_kill_time <= COMBO_WINDOW {
+        // 4秒内击杀增加连击，否则清零重新开始
+        if current_time - state.last_kill_time <= COMBO_TIMEOUT {
             state.count += 1;
         } else {
             state.count = 1;
@@ -697,12 +694,12 @@ impl ComboTracker {
 
     /// 更新连击计时器（每帧调用）
     pub fn update(&mut self, _delta_time: f32, current_time: f32) {
-        // 更新玩家1连击
+        // 更新玩家1连击：4秒无击杀则清零
         if current_time - self.player1.last_kill_time > COMBO_TIMEOUT {
             self.player1.count = 0;
         }
 
-        // 更新玩家2连击
+        // 更新玩家2连击：4秒无击杀则清零
         if let Some(ref mut state) = self.player2 {
             if current_time - state.last_kill_time > COMBO_TIMEOUT {
                 state.count = 0;

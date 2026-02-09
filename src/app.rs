@@ -267,22 +267,22 @@ fn register_playing_systems(app: &mut App) {
     );
 
     // 玩家坦克系统集
-    app.add_systems(
+app.add_systems(
         Update,
         (
-            player::move_player_tank,
-            player::handle_recall_input,
-            player::update_recall_timers,
-            dash::handle_dash_input,
-            dash::update_dash_movement,
-            dash::handle_dash_collision,
-            player::handle_barrier_collision,
-            player::update_recall_progress_bars,
-            player::recover_energy,
-            player::update_barrel_system,
-            player::handle_barrel_recoil_force,
-        )
-            .in_set(GameSystemSet::PlayerSystems),
+            player::move_player_tank.in_set(GameSystemSet::PlayerSystems),
+            player::handle_recall_input.in_set(GameSystemSet::PlayerSystems),
+            player::update_recall_timers.in_set(GameSystemSet::PlayerSystems),
+            dash::handle_dash_input.in_set(GameSystemSet::PlayerSystems),
+            dash::update_dash_movement.in_set(GameSystemSet::PlayerSystems),
+            dash::handle_dash_collision.in_set(GameSystemSet::PlayerSystems),
+            player::handle_barrier_collision.in_set(GameSystemSet::PlayerSystems),
+            player::update_recall_progress_bars.in_set(GameSystemSet::PlayerSystems),
+            player::recover_energy.in_set(GameSystemSet::PlayerSystems),
+            player::update_barrel_system.in_set(GameSystemSet::PlayerSystems),
+            player::handle_barrel_recoil_force.in_set(GameSystemSet::PlayerSystems),
+            player::update_low_health_warnings.in_set(GameSystemSet::PlayerSystems),
+        ),
     );
 
     // 子弹系统集
