@@ -584,6 +584,8 @@ pub fn handle_combo_events(
                     5 => COMBO_FLOATING_5.get(*language).to_string(),
                     _ => COMBO_FLOATING_HIGH.format(*language, combo_count),
                 };
+                // 在连击文本后面加上分数
+                let text_with_score = format!("{} +{}", text, combo_score);
                 let color = ComboTracker::get_combo_color(combo_count);
                 let font_size = ComboTracker::get_combo_font_size(combo_count);
                 
@@ -595,7 +597,7 @@ pub fn handle_combo_events(
                 );
                 crate::ui::overlay::spawn_floating_text_with_font_size(
                     &mut commands,
-                    &text,
+                    &text_with_score,
                     floating_position,
                     color,
                     &font,
