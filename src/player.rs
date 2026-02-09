@@ -138,8 +138,8 @@ pub fn spawn_player_tank(
             Sprite {
                 color: Color::srgba(1.0, 0.0, 0.0, 0.0), // 初始透明
                 custom_size: Some(Vec2::new(
-                    TANK_DISPLAY_SIZE.x + 20.0,  // 比坦克稍大
-                    TANK_DISPLAY_SIZE.y + 20.0,
+                    TANK_DISPLAY_SIZE.x,  // 与坦克尺寸相同
+                    TANK_DISPLAY_SIZE.y,
                 )),
                 ..default()
             },
