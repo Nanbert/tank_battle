@@ -11,10 +11,13 @@ use rand::Rng;
 use crate::constants::*;
 use crate::resources::{
     CommanderLife, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
-    PlayerStatChanged, StatType,
+    PlayerStatChanged,
 };
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
+
+// 导入策略模式
+pub use crate::powerup_strategy::{PowerUp, PowerUpEffect, PowerUpResult, get_strategy};
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -25,23 +28,9 @@ pub const POWERUP_BUBBLE_SIZE: f32 = 100.0;
 /// 道具属性增加量
 pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;
 
-/// 道具类型枚举
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
-pub enum PowerUp {
-    SpeedUp,
-    Protection,
-    FireSpeed,
-    FireShell,
-    TrackChain,
-    Penetrate,
-    Repair,
-    Hamburger,
-    AirCushion,
-    Shell,
-}
-
 /// 道具碰撞检测和拾取系统
-/// 优化：使用 PickedPowerUp 结构体合并 entity 和 type，提高类型安全性
+///
+/// 使用策略模式处理不同道具的效果，代码更简洁、可维护
 pub fn handle_powerup_collision(
     mut commands: Commands,
     audio_resources: Res<GameAudioResources>,
@@ -80,93 +69,34 @@ pub fn handle_powerup_collision(
             );
             let () = commands.entity(picked.entity).try_despawn();
 
-            // 根据道具类型应用效果并发送事件
+            // 获取策略并应用效果
+            let strategy = get_strategy(picked.powerup_type);
             let tank_type = player_tank.tank_type;
-            let mut stat_type = None;
-            let mut update_filter_groups = false;
 
-            player_info.with_stats_mut(tank_type, |player_stats| {
-                stat_type = match picked.powerup_type {
-                    PowerUp::SpeedUp => {
-                        if player_stats.speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.speed = (player_stats.speed + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::Speed)
-                    }
-                    PowerUp::Protection => {
-                        if player_stats.protection < MAX_ATTRIBUTE_VALUE {
-                            player_stats.protection = (player_stats.protection
-                                + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::Protection)
-                    }
-                    PowerUp::FireSpeed => {
-                        if player_stats.fire_speed < MAX_ATTRIBUTE_VALUE {
-                            player_stats.fire_speed = (player_stats.fire_speed
-                                + POWERUP_ATTRIBUTE_INCREASE)
-                                .min(MAX_ATTRIBUTE_VALUE);
-                        }
-                        Some(StatType::FireSpeed)
-                    }
-                    PowerUp::FireShell => {
-                        player_stats.fire_shell = true;
-                        Some(StatType::FireShell)
-                    }
-                    PowerUp::TrackChain => {
-                        player_stats.track_chain = true;
-                        Some(StatType::TrackChain)
-                    }
-                    PowerUp::Penetrate => {
-                        player_stats.penetrate = true;
-                        Some(StatType::Penetrate)
-                    }
-                    PowerUp::Repair => {
-                        if player_stats.life_points < COMMANDER_LIFE_MAX {
-                            player_stats.life_points += 1;
-                        }
-                        None // 修理道具不需要闪烁文字
-                    }
-                    PowerUp::Hamburger => {
-                        None // 汉堡道具不影响玩家属性，不发送事件
-                    }
-                    PowerUp::AirCushion => {
-                        player_stats.air_cushion = true;
-                        update_filter_groups = true;
-                        Some(StatType::AirCushion)
-                    }
-                    PowerUp::Shell => {
-                        // 增加 1 颗子弹，最多 2 颗
-                        if player_stats.shells < 2 {
-                            player_stats.shells += 1;
-                        }
-                        Some(StatType::Shell)
-                    }
-                };
-            });
-
-            // 处理汉堡道具效果（修改 Commander 生命）
-            if let PowerUp::Hamburger = picked.powerup_type
-                && commander_life.life_points < COMMANDER_LIFE_MAX
-            {
+            // 处理指挥官生命变化（汉堡道具）
+            if strategy.affects_commander() && commander_life.life_points < COMMANDER_LIFE_MAX {
                 commander_life.life_points += 1;
             }
 
-            // 更新 filter_groups，排除海（GROUP_2）
-            if update_filter_groups && let Ok(mut controller) = controllers.get_mut(tank_entity) {
+            // 应用道具效果到玩家属性
+            player_info.with_stats_mut(tank_type, |player_stats| {
+                let result = strategy.apply(player_stats);
+
+                // 发送属性变更事件
+                if let PowerUpResult::StatChanged(stat_type) = result {
+                    stat_changed_events.write(PlayerStatChanged {
+                        player_type: tank_type,
+                        stat_type,
+                    });
+                }
+            });
+
+            // 更新碰撞过滤组（气垫道具）
+            if strategy.update_filter_groups() && let Ok(mut controller) = controllers.get_mut(tank_entity) {
                 controller.filter_groups = Some(CollisionGroups::new(
                     Group::all(),
                     Group::all() & !SEA_GROUP,
                 ));
-            }
-
-            // 发送属性变更事件（如果有）
-            if let Some(st) = stat_type {
-                stat_changed_events.write(PlayerStatChanged {
-                    player_type: tank_type,
-                    stat_type: st,
-                });
             }
         }
     }

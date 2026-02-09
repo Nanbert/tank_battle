@@ -17,6 +17,7 @@ mod levels;
 mod map;
 mod player;
 mod powerup;
+mod powerup_strategy;
 mod resources;
 mod ui;
 mod utils;

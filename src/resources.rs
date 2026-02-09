@@ -386,7 +386,7 @@ pub struct PlayerStatChanged {
 }
 
 // 玩家属性类型
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StatType {
     Score,
     Speed,
@@ -539,22 +539,41 @@ impl GameTextureResources {
         }
     }
 
+    /// 通用纹理获取辅助函数
+    ///
+    /// 根据坦克类型返回对应的纹理 Handle
+    fn get_texture_by_tank_type(
+        &self,
+        tank_type: TankType,
+        p1: Handle<Image>,
+        p2: Handle<Image>,
+        enemy: Handle<Image>,
+    ) -> Handle<Image> {
+        match tank_type {
+            TankType::Player1 => p1,
+            TankType::Player2 => p2,
+            TankType::Enemy => enemy,
+        }
+    }
+
     /// 根据坦克类型获取玩家坦克纹理
     pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
-        match tank_type {
-            TankType::Player1 => self.player1.clone(),
-            TankType::Player2 => self.player2.clone(),
-            TankType::Enemy => self.enemy_tank.clone(),
-        }
+        self.get_texture_by_tank_type(
+            tank_type,
+            self.player1.clone(),
+            self.player2.clone(),
+            self.enemy_tank.clone(),
+        )
     }
 
     /// 根据坦克类型获取子弹纹理
     pub fn get_bullet_texture(&self, tank_type: TankType) -> Handle<Image> {
-        match tank_type {
-            TankType::Player1 => self.bullet_player1.clone(),
-            TankType::Player2 => self.bullet_player2.clone(),
-            TankType::Enemy => self.bullet_enemy.clone(),
-        }
+        self.get_texture_by_tank_type(
+            tank_type,
+            self.bullet_player1.clone(),
+            self.bullet_player2.clone(),
+            self.bullet_enemy.clone(),
+        )
     }
 }
 

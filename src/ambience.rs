@@ -38,7 +38,7 @@ const LEAVES_SIZE_MIN: f32 = 40.0;   // 8 * 5
 const LEAVES_SIZE_MAX: f32 = 60.0;   // 12 * 5
 
 /// 每帧生成落叶概率
-const LEAVES_SPAWN_CHANCE: f32 = 0.015; // 约1.5%的概率
+const LEAVES_SPAWN_CHANCE: f32 = 0.045; // 约4.5%的概率（放大3倍）
 
 // ==================== 组件定义 ====================
 
