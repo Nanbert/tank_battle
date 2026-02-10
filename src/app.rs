@@ -253,8 +253,10 @@ fn register_playing_systems(app: &mut App) {
         (
             enemy::collect_enemy_collisions,
             enemy::collect_contact_forces,
+            enemy::enemy_fire_spread_system,
             enemy::move_enemy_tanks,
             enemy::update_enemy_life_dots,
+            enemy::enemy_burning_effect_system,
         )
             .chain()
             .in_set(GameSystemSet::EnemySystems),
@@ -494,6 +496,7 @@ pub fn configure_game_resources(app: &mut App) {
             enemy_tank_fire: Handle::default(),
             enemy_tank_heavy: Handle::default(),
             enemy_tank_light: Handle::default(),
+            enemy_tank_burning: Handle::default(),
             speed_up_icon: Handle::default(),
             protection_icon: Handle::default(),
             fire_speed_icon: Handle::default(),
@@ -547,6 +550,7 @@ pub fn configure_game_resources(app: &mut App) {
             enemy_tank_fire: Handle::default(),
             enemy_tank_heavy: Handle::default(),
             enemy_tank_light: Handle::default(),
+            enemy_tank_burning: Handle::default(),
             laser_blue: Handle::default(),
             laser_red: Handle::default(),
             energy_blue_ball: Handle::default(),
@@ -668,6 +672,7 @@ pub fn init_game_resources(
         enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.load_texture(&asset_server),
         enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.load_texture(&asset_server),
         enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.load_texture(&asset_server),
+        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.load_texture(&asset_server),
         // 道具
         speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(&asset_server),
         protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
@@ -741,6 +746,7 @@ pub fn init_game_resources(
         enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 能量球

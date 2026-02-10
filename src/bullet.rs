@@ -672,7 +672,6 @@ pub fn bullet_tank_collision_system(
     mut effect_events: MessageWriter<EffectEvent>,
     mut game_trackers: ResMut<GameTrackers>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
-    _all_tanks: Query<(), Or<(With<EnemyTank>, With<PlayerTank>)>>,
     enemy_tanks: Query<(Entity, &Transform), With<EnemyTank>>,
     mut enemy_lives: Query<&mut EnemyLife, With<EnemyTank>>,
     player_tanks: Query<(&PlayerTank, &Transform), With<PlayerTank>>,
@@ -682,7 +681,10 @@ pub fn bullet_tank_collision_system(
     audio_resources: Res<GameAudioResources>,
     mut combo_events: MessageWriter<ComboEvent>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
+
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else {
             continue;
@@ -703,6 +705,7 @@ pub fn bullet_tank_collision_system(
             if let Ok((enemy_entity, tank_transform)) = enemy_tanks.get(tank_entity) {
                 let player_type = bullet.owner_type();
                 let has_penetrate = bullet.has_penetrate();
+                let has_fire_shell = player_info.has_fire_shell(player_type);
 
                 // 检查敌方坦克是否应该被摧毁
                 let should_destroy = enemy_lives
@@ -725,6 +728,38 @@ pub fn bullet_tank_collision_system(
                                 audio_handle: audio_resources.hit.clone(),
                                 volume: 1.0,
                             });
+                            
+                            // 如果有 fire_shell 能力，添加着火特效
+                            if has_fire_shell {
+                                commands.entity(enemy_entity).with_children(|parent| {
+                                    parent.spawn((
+                                        crate::constants::EnemyTankBurning,
+                                        crate::constants::AnimationMode::Looping,
+                                        Sprite::from_atlas_image(
+                                            texture_resources.enemy_tank_burning.clone(),
+                                            TextureAtlas {
+                                                layout: atlas_layouts.enemy_tank_burning.clone(),
+                                                index: 0,
+                                            },
+                                        ),
+                                        Transform {
+                                            translation: Vec3::new(0.0, 50.0, 0.1),
+                                            rotation: Quat::IDENTITY,
+                                            scale: Vec3::splat(2.0),
+                                        },
+                                        crate::constants::AnimationIndices {
+                                            first: 0,
+                                            last: 5,
+                                        },
+                                        crate::constants::AnimationTimer(Timer::from_seconds(
+                                            crate::constants::ANIMATION_FRAME_ENEMY_FIRE,
+                                            TimerMode::Repeating,
+                                        )),
+                                        crate::constants::CurrentAnimationFrame(0),
+                                        crate::constants::EnemyTankBurningTimer(Timer::from_seconds(3.0, TimerMode::Once)),
+                                    ));
+                                });
+                            }
                         }
                         is_dead
                     })

@@ -322,3 +322,12 @@ pub const POWER_UP_AIR_CUSHION_ATLAS: TextureAtlasInfo =
 
 pub const POWER_UP_SHELL_ATLAS: TextureAtlasInfo =
     TextureAtlasInfo::new("power_up/shell.png", Vec2::new(87.0, 69.0), 3, 1);
+
+// 敌方坦克着火精灵图常量
+// 实际尺寸: 270 x 90, 1行6列, 每帧 45 x 90
+pub const ENEMY_TANK_BURNING_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "enemy_tank/fire.png",
+    Vec2::new(45.0, 90.0),
+    6,
+    1,
+).with_display_size(TANK_DISPLAY_SIZE);

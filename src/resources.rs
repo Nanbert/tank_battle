@@ -518,6 +518,7 @@ pub struct GameTextureResources {
     pub enemy_tank_fire: Handle<Image>,
     pub enemy_tank_heavy: Handle<Image>,
     pub enemy_tank_light: Handle<Image>,
+    pub enemy_tank_burning: Handle<Image>,
     // 道具
     pub speed_up_icon: Handle<Image>,
     pub protection_icon: Handle<Image>,
@@ -688,6 +689,7 @@ pub struct GameAtlasLayoutResources {
     pub enemy_tank_fire: Handle<TextureAtlasLayout>,
     pub enemy_tank_heavy: Handle<TextureAtlasLayout>,
     pub enemy_tank_light: Handle<TextureAtlasLayout>,
+    pub enemy_tank_burning: Handle<TextureAtlasLayout>,
     // 激光
     pub laser_blue: Handle<TextureAtlasLayout>,
     pub laser_red: Handle<TextureAtlasLayout>,

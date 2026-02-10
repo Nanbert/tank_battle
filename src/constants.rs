@@ -459,6 +459,14 @@ pub struct FireEffect;
 #[derive(Component)]
 pub struct PenetrateEffect;
 
+// 敌方坦克着火特效标记
+#[derive(Component)]
+pub struct EnemyTankBurning;
+
+// 敌方坦克着火计时器
+#[derive(Component, Deref, DerefMut)]
+pub struct EnemyTankBurningTimer(pub Timer);
+
 // 炮管组件标记
 #[derive(Component)]
 pub struct Barrel;
@@ -768,12 +776,16 @@ pub const ANIMATION_FRAME_FOREST_FIRE: f32 = 0.15; // 森林火灾动画帧间�
 pub const ANIMATION_FRAME_LASER: f32 = 0.06; // 激光动画帧间隔，12帧共0.72秒
 pub const ANIMATION_FRAME_ENEMY_BORN: f32 = 0.1; // 敌方坦克出生动画帧间隔
 pub const ANIMATION_FRAME_ENEMY_MOVE: f32 = 0.1; // 敌方坦克移动动画帧间隔
+pub const ANIMATION_FRAME_ENEMY_FIRE: f32 = 0.1; // 敌方坦克着火动画帧间隔
 pub const ANIMATION_FRAME_SMOKE_LASER: f32 = 0.1; // 激光烟雾动画帧间隔
 pub const ANIMATION_FRAME_ENERGY_BALL: f32 = 0.02; // 能量球动画帧间隔
 pub const ANIMATION_FRAME_MUSIC_NOTE: f32 = 0.1; // 音符动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
 pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
+
+// ==================== 敌方坦克着火常量 ====================
+pub const ENEMY_TANK_BURNING_DURATION: f32 = 3.0; // 敌方坦克着火持续时间（秒）
 
 // ==================== 游戏机制时间常量 ====================
 pub const ENEMY_SPAWN_COOLDOWN: f32 = 0.8; // 敌方坦克生成冷却时间

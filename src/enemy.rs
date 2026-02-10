@@ -8,7 +8,8 @@ use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{EnemySpawnState, GameAtlasLayoutResources, GameTextureResources};
+use crate::resources::{EnemySpawnState, GameAtlasLayoutResources, GameTextureResources, GameAudioResources};
+use crate::bullet::EffectEvent;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -270,6 +271,100 @@ pub fn collect_contact_forces(
     }
 }
 
+/// 敌方坦克火焰传染系统
+/// 当敌方坦克互相碰撞时，如果有火焰效果则传染给没有火焰的坦克
+pub fn enemy_fire_spread_system(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionEvent>,
+    enemy_tanks: Query<&Children, With<EnemyTank>>,
+    burning_effects: Query<(), With<EnemyTankBurning>>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+) {
+    for event in collision_events.read() {
+        let CollisionEvent::Started(e1, e2, _) = event else {
+            continue;
+        };
+
+        // 检查两个实体是否都是敌方坦克
+        let e1_has_enemy = enemy_tanks.contains(*e1);
+        let e2_has_enemy = enemy_tanks.contains(*e2);
+
+        if !e1_has_enemy || !e2_has_enemy {
+            continue;
+        }
+
+        // 检查哪个敌方坦克有火焰效果
+        let e1_has_fire = has_burning_effect(*e1, &enemy_tanks, &burning_effects);
+        let e2_has_fire = has_burning_effect(*e2, &enemy_tanks, &burning_effects);
+
+        // 如果只有一方有火焰，传染给另一方
+        if e1_has_fire && !e2_has_fire {
+            spread_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts);
+        } else if !e1_has_fire && e2_has_fire {
+            spread_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts);
+        }
+    }
+}
+
+/// 检查敌方坦克是否有火焰效果
+fn has_burning_effect(
+    enemy_entity: Entity,
+    enemy_tanks: &Query<&Children, With<EnemyTank>>,
+    burning_effects: &Query<(), With<EnemyTankBurning>>,
+) -> bool {
+    if let Ok(children) = enemy_tanks.get(enemy_entity) {
+        for child in children.iter() {
+            if burning_effects.contains(child) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// 为敌方坦克添加火焰效果
+fn spread_burning_effect(
+    commands: &mut Commands,
+    enemy_entity: Entity,
+    texture_resources: &GameTextureResources,
+    atlas_layouts: &GameAtlasLayoutResources,
+) {
+    let animation_indices = AnimationIndices {
+        first: 0,
+        last: crate::atlas::ENEMY_TANK_BURNING_ATLAS.total_frames - 1,
+    };
+
+    commands.entity(enemy_entity).with_children(|parent| {
+        parent.spawn((
+            EnemyTankBurning,
+            AnimationMode::Looping,
+            Sprite::from_atlas_image(
+                texture_resources.enemy_tank_burning.clone(),
+                TextureAtlas {
+                    layout: atlas_layouts.enemy_tank_burning.clone(),
+                    index: animation_indices.first,
+                },
+            ),
+            Transform {
+                translation: Vec3::new(0.0, 50.0, 0.5), // 向上偏移50像素，略高于坦克
+                scale: Vec3::splat(2.0), // 放大2倍
+                ..default()
+            },
+            animation_indices,
+            AnimationTimer(Timer::from_seconds(
+                crate::constants::ANIMATION_FRAME_ENEMY_FIRE,
+                TimerMode::Repeating,
+            )),
+            CurrentAnimationFrame(0),
+            EnemyTankBurningTimer(Timer::from_seconds(
+                crate::constants::ENEMY_TANK_BURNING_DURATION,
+                TimerMode::Once,
+            )),
+        ));
+    });
+}
+
 /// 敌方坦克移动系统
 #[allow(clippy::type_complexity)]
 pub fn move_enemy_tanks(
@@ -493,4 +588,51 @@ pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
     // 重置敌方坦克计数
     enemy_spawn_state.has_spawned = 0;
     enemy_spawn_state.spawn_cooldown.reset();
+}
+
+/// 敌方坦克着火效果系统
+/// 3秒后移除火焰特效并对敌方坦克造成1点伤害
+pub fn enemy_burning_effect_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut burning_query: Query<
+        (Entity, &mut EnemyTankBurningTimer, &ChildOf),
+        With<EnemyTankBurning>,
+    >,
+    mut enemy_lives: Query<&mut EnemyLife, With<EnemyTank>>,
+    enemy_transforms: Query<&Transform, With<EnemyTank>>,
+    mut effect_events: MessageWriter<EffectEvent>,
+    audio_resources: Res<GameAudioResources>,
+) {
+    for (burning_entity, mut timer, parent) in burning_query.iter_mut() {
+        timer.tick(time.delta());
+        
+        if timer.just_finished() {
+            // 获取父级敌方坦克实体
+            let enemy_entity = parent.0;
+            
+            // 移除火焰特效
+            let () = commands.entity(burning_entity).try_despawn();
+            
+            // 对敌方坦克造成1点伤害
+            if let Ok(mut enemy_life) = enemy_lives.get_mut(enemy_entity) {
+                let is_dead = enemy_life.take_damage();
+                
+                if is_dead {
+                    // 播放爆炸特效
+                    if let Ok(enemy_transform) = enemy_transforms.get(enemy_entity) {
+                        effect_events.write(EffectEvent::Explosion {
+                            position: enemy_transform.translation,
+                        });
+                    }
+                    
+                    // 播放爆炸音效
+                    utils::play_one_shot_sound(&mut commands, audio_resources.explosion.clone(), 0.5);
+                    
+                    // 销毁敌方坦克
+                    let () = commands.entity(enemy_entity).try_despawn();
+                }
+            }
+        }
+    }
 }
