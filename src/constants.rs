@@ -490,12 +490,11 @@ pub struct EnemyTank {
 #[derive(Component, Copy, Clone)]
 pub struct EnemyLife {
     pub current: usize,
-    pub max: usize,
 }
 
 impl EnemyLife {
     pub fn new(max: usize) -> Self {
-        Self { current: max, max }
+        Self { current: max }
     }
 
     pub fn take_damage(&mut self) -> bool {
