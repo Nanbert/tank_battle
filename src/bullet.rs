@@ -681,9 +681,9 @@ pub fn bullet_tank_collision_system(
     audio_resources: Res<GameAudioResources>,
     mut combo_events: MessageWriter<ComboEvent>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
-    texture_resources: Res<GameTextureResources>,
-    atlas_layouts: Res<GameAtlasLayoutResources>,
+    resources: (Res<GameTextureResources>, Res<GameAtlasLayoutResources>, Option<Res<crate::weather::CurrentWeather>>),
 ) {
+    let (texture_resources, atlas_layouts, weather) = resources;
 
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else {
@@ -736,6 +736,7 @@ pub fn bullet_tank_collision_system(
                                     enemy_entity,
                                     &texture_resources,
                                     &atlas_layouts,
+                                    weather.as_deref(),
                                 );
                             }
                         }

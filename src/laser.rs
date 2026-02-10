@@ -269,7 +269,7 @@ fn start_charge(
     commands: &mut Commands,
     player_info: &ResMut<PlayerInfo>,
     entity: Entity,
-    transform: &Transform,
+    _transform: &Transform,
     tank_type: TankType,
     audio_resources: &GameAudioResources,
     game_trackers: &mut crate::resources::GameTrackers,
@@ -309,59 +309,52 @@ fn start_charge(
         last: ENERGY_BALL_END_FRAME,
     };
 
-    // 计算能量球位置：在炮管前方，贴紧炮管（和激光使用相同的方向计算）
-    let direction = crate::utils::calculate_direction_from_rotation(&transform.rotation);
+    // 计算能量球位置：在炮管前方，贴紧炮管（相对坦克的局部坐标）
+    // 能量球将作为坦克的子实体，会自动跟随坦克移动
+    // 在局部坐标系中，炮塔在 (0, 10) 的位置，能量球应该在炮塔前方
+    let energy_ball_offset = Vec3::new(
+        7.0,  // 侧向偏移（炮塔右侧）
+        TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0,  // 前方偏移
+        crate::constants::Z_LASER + 0.1,  // Z轴偏移
+    );
 
-    // 计算垂直向量（顺时针方向）：将方向向量旋转90度
-    // (x, y) 旋转90度顺时针得到 (y, -x)
-    let perp_direction = Vec2::new(direction.y, -direction.x);
-
-    // 计算实际角度用于旋转能量球
-    let euler_angle = transform.rotation.to_euler(EulerRot::XYZ).2;
-    let actual_angle = euler_angle + ANGLE_OFFSET_DEGREES.to_radians();
-
-    let energy_ball_pos = transform.translation
-        + direction.extend(0.0)
-            * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0)
-        + perp_direction.extend(0.0) * 7.0;
-
-    commands.spawn((
-        PlayingEntity,
-        EnergyBall {
-            player_entity: entity,
-        },
-        crate::constants::EnergyBallPhase::Charging,
-        AnimationMode::OneShotThenLoop {
-            first: 0,
-            last: ENERGY_BALL_END_FRAME,
-            loop_start: 20,
-            loop_end: ENERGY_BALL_END_FRAME,
-        },
-        Sprite {
-            image: resources.energy_ball_texture.clone(),
-            texture_atlas: Some(TextureAtlas {
-                layout: resources.energy_ball_texture_atlas.clone(),
-                index: energy_ball_animation_indices.first,
-            }),
-            custom_size: Some(resources.energy_ball_atlas_info.display_size),
-            ..default()
-        },
-        Transform {
-            translation: Vec3::new(
-                energy_ball_pos.x,
-                energy_ball_pos.y,
-                crate::constants::Z_LASER + 0.1,
-            ),
-            rotation: Quat::from_rotation_z(actual_angle - std::f32::consts::FRAC_PI_2),
-            scale: Vec3::ONE,
-        },
-        energy_ball_animation_indices,
-        AnimationTimer(Timer::from_seconds(
-            ANIMATION_FRAME_ENERGY_BALL,
-            TimerMode::Repeating,
-        )),
-        CurrentAnimationFrame(0),
-    ));
+    // 将能量球作为坦克的子实体生成，使用局部坐标
+    // 子实体不需要额外旋转，因为会继承父实体（坦克）的旋转
+    commands.entity(entity).with_children(|parent| {
+        parent.spawn((
+            PlayingEntity,
+            EnergyBall {
+                player_entity: entity,
+            },
+            crate::constants::EnergyBallPhase::Charging,
+            AnimationMode::OneShotThenLoop {
+                first: 0,
+                last: ENERGY_BALL_END_FRAME,
+                loop_start: 20,
+                loop_end: ENERGY_BALL_END_FRAME,
+            },
+            Sprite {
+                image: resources.energy_ball_texture.clone(),
+                texture_atlas: Some(TextureAtlas {
+                    layout: resources.energy_ball_texture_atlas.clone(),
+                    index: energy_ball_animation_indices.first,
+                }),
+                custom_size: Some(resources.energy_ball_atlas_info.display_size),
+                ..default()
+            },
+            Transform {
+                translation: energy_ball_offset,
+                rotation: Quat::IDENTITY,  // 子实体不额外旋转，继承父实体的旋转
+                scale: Vec3::ONE,
+            },
+            energy_ball_animation_indices,
+            AnimationTimer(Timer::from_seconds(
+                ANIMATION_FRAME_ENERGY_BALL,
+                TimerMode::Repeating,
+            )),
+            CurrentAnimationFrame(0),
+        ));
+    });
 }
 
 /// 更新蓄力

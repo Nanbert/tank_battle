@@ -292,7 +292,7 @@ fn spawn_powerup(
         atlas_layout.clone(),
         atlas_info.animation_indices_full(),
         crate::constants::POWER_UP_ANIMATION_FRAME,
-        Transform::from_translation(position),
+        Transform::from_translation(Vec3::new(position.x, position.y, Z_FOREST)),
         atlas_info.display_size,
         (powerup_type, PlayingEntity, AnimationMode::Looping),
     );

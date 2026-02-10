@@ -115,10 +115,14 @@ pub fn on_playing_enter(
     mut weather: ResMut<CurrentWeather>,
     stage_level: Res<crate::resources::StageLevel>,
 ) {
-    let mut rng = rand::rng();
-
-    let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
-    weather.weather_type = weather_options[rng.random_range(0..weather_options.len())];
+    // 第一关强制为雨天（测试雨天对着火效果的影响）
+    if stage_level.0 == 1 {
+        weather.weather_type = WeatherType::Rain;
+    } else {
+        let mut rng = rand::rng();
+        let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
+        weather.weather_type = weather_options[rng.random_range(0..weather_options.len())];
+    }
 
     info!("关卡 {} 天气: {:?}", stage_level.0, weather.weather_type);
 }

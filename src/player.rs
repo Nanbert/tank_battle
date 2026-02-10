@@ -13,6 +13,7 @@ use crate::resources::{
     GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo, PlayerStatChanged,
     PlayerStats, RecallTimer, StatType,
 };
+use crate::weather::CurrentWeather;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -58,6 +59,7 @@ pub fn spawn_player_tank(
                 angle: 0.0_f32.to_radians(),
             },
             AnimationMode::Conditional { tank_type },
+            PlayerVelocity::new(),
             Velocity {
                 linvel: Vec2::default(),
                 angvel: 0.0,
@@ -101,6 +103,7 @@ pub fn move_player_tank(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     player_info: Res<PlayerInfo>,
+    weather: Res<CurrentWeather>,
     mut query: Query<
         (
             Entity,
@@ -108,17 +111,22 @@ pub fn move_player_tank(
             &mut KinematicCharacterController,
             &mut RotationTimer,
             &mut TargetRotation,
+            &mut PlayerVelocity,
             &PlayerTank,
         ),
         (With<PlayerTank>, Without<IsDashing>),
     >,
 ) {
+    // 检查是否下雪
+    let is_snowy = weather.weather_type == crate::weather::WeatherType::Snow;
+
     for (
         _entity,
         mut transform,
         mut character_controller,
         mut rotation_timer,
         mut target_rotation,
+        mut player_velocity,
         player_tank,
     ) in &mut query
     {
@@ -126,9 +134,10 @@ pub fn move_player_tank(
         let key_bindings = player_tank.tank_type.get_key_bindings();
 
         let direction = key_bindings.get_direction(&keyboard_input);
+        let is_moving = direction.length() > 0.0;
 
         // 检查是否需要转向
-        let needs_rotation = if direction.length() > 0.0 {
+        let needs_rotation = if is_moving {
             let angle = direction.y.atan2(direction.x);
             let target_angle = angle - ANGLE_OFFSET_DEGREES.to_radians();
 
@@ -150,23 +159,69 @@ pub fn move_player_tank(
             false
         };
 
-        // 使用 KinematicCharacterController 的 translation 字段控制移动
-        // 获取玩家的 speed 百分比
-        let speed_percent = player_info.get_speed_percent(player_tank.tank_type);
-        // 实际速度 = 基础速度 × (1 + speed百分比/100)
-        // 转向时保持 50% 速度，减少卡顿感
-        let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_percent);
-        let speed = if needs_rotation {
-            base_speed * ROTATION_SPEED_FACTOR
-        } else {
-            base_speed
-        };
+        // 检查玩家是否有 track_chain 特效
+        let has_track_chain = player_info.get_stats(player_tank.tank_type)
+            .map_or(false, |stats| stats.track_chain);
 
-        let is_moving = direction.length() > 0.0;
-        if is_moving {
-            character_controller.translation = Some(direction * speed * time.delta_secs());
+        // 雪天且没有 track_chain 特效时，使用地滑效果
+        let use_sliding = is_snowy && !has_track_chain;
+
+        if use_sliding {
+            // 雪天模式：使用速度驱动移动（带地滑效果）
+            let speed_percent = player_info.get_speed_percent(player_tank.tank_type);
+            let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_percent);
+
+            if is_moving {
+                // 按键时加速到目标速度
+                let target_velocity = direction * base_speed;
+                let acceleration = PLAYER_ACCELERATION * time.delta_secs();
+
+                // 简单的插值加速
+                player_velocity.velocity = player_velocity.velocity.lerp(target_velocity, acceleration * time.delta_secs() / base_speed);
+            } else {
+                // 释放按键时应用摩擦力
+                player_velocity.apply_friction(SNOW_FRICTION, time.delta_secs());
+            }
+
+            // 根据当前速度移动
+            let current_speed = player_velocity.velocity.length();
+            if current_speed > 0.1 {
+                // 转向时保持 50% 速度，减少卡顿感
+                let actual_speed = if needs_rotation {
+                    current_speed * ROTATION_SPEED_FACTOR
+                } else {
+                    current_speed
+                };
+
+                // 归一化速度方向
+                let move_direction = if current_speed > 0.0 {
+                    player_velocity.velocity / current_speed
+                } else {
+                    Vec2::ZERO
+                };
+
+                character_controller.translation = Some(move_direction * actual_speed * time.delta_secs());
+            } else {
+                character_controller.translation = None;
+            }
         } else {
-            character_controller.translation = None;
+            // 正常模式：使用原来的直接控制方式
+            let speed_percent = player_info.get_speed_percent(player_tank.tank_type);
+            let base_speed = PLAYER_TANK_SPEED * (1.0 + speed_percent);
+            let speed = if needs_rotation {
+                base_speed * ROTATION_SPEED_FACTOR
+            } else {
+                base_speed
+            };
+
+            if is_moving {
+                character_controller.translation = Some(direction * speed * time.delta_secs());
+            } else {
+                character_controller.translation = None;
+            }
+
+            // 清空速度，确保切换到雪天模式时从零开始
+            player_velocity.velocity = Vec2::ZERO;
         }
 
         // 只在需要旋转时才更新旋转计时器和计算旋转
@@ -402,16 +457,22 @@ pub fn reset_player_positions(
             &mut Transform,
             &mut Velocity,
             &mut KinematicCharacterController,
+            Option<&mut PlayerVelocity>,
             &PlayerTank,
         ),
         With<PlayerTank>,
     >,
 ) {
-    for (mut transform, mut velocity, mut character_controller, player_tank) in &mut player_tanks {
+    for (mut transform, mut velocity, mut character_controller, player_velocity, player_tank) in &mut player_tanks {
         // 重置物理引擎速度和位移累积
         velocity.linvel = Vec2::ZERO;
         velocity.angvel = 0.0;
         character_controller.translation = None;
+
+        // 重置玩家速度
+        if let Some(mut pv) = player_velocity {
+            pv.velocity = Vec2::ZERO;
+        }
 
         match player_tank.tank_type {
             TankType::Player1 => {

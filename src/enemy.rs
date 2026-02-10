@@ -280,6 +280,7 @@ pub fn enemy_fire_spread_system(
     burning_effects: Query<(), With<EnemyTankBurning>>,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
+    weather: Res<crate::weather::CurrentWeather>,
 ) {
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else {
@@ -300,9 +301,9 @@ pub fn enemy_fire_spread_system(
 
         // 如果只有一方有火焰，传染给另一方
         if e1_has_fire && !e2_has_fire {
-            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts);
+            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts, Some(&weather));
         } else if !e1_has_fire && e2_has_fire {
-            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts);
+            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts, Some(&weather));
         }
     }
 }
@@ -329,10 +330,20 @@ pub fn spawn_enemy_burning_effect(
     enemy_entity: Entity,
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,
+    weather: Option<&crate::weather::CurrentWeather>,
 ) {
     let animation_indices = AnimationIndices {
         first: 0,
         last: crate::atlas::ENEMY_TANK_BURNING_ATLAS.total_frames - 1,
+    };
+
+    // 检查是否下雨，雨天时有50%概率让着火效果只持续1秒
+    let burning_duration = if weather.map_or(false, |w| w.weather_type == crate::weather::WeatherType::Rain)
+        && rand::random::<f32>() < 0.5
+    {
+        1.0  // 雨天50%概率：只持续1秒
+    } else {
+        crate::constants::ENEMY_TANK_BURNING_DURATION  // 正常情况：3秒
     };
 
     commands.entity(enemy_entity).with_children(|parent| {
@@ -349,20 +360,20 @@ pub fn spawn_enemy_burning_effect(
             Transform {
                 translation: Vec3::new(
                     0.0,
-                    ENEMY_TANK_BURNING_Y_OFFSET,
-                    Z_ENEMY_TANK_BURNING,
+                    crate::constants::ENEMY_TANK_BURNING_Y_OFFSET,
+                    crate::constants::Z_ENEMY_TANK_BURNING,
                 ),
-                scale: Vec3::splat(ENEMY_TANK_BURNING_SCALE),
+                scale: Vec3::splat(crate::constants::ENEMY_TANK_BURNING_SCALE),
                 ..default()
             },
             animation_indices,
             AnimationTimer(Timer::from_seconds(
-                ANIMATION_FRAME_ENEMY_FIRE,
+                crate::constants::ANIMATION_FRAME_ENEMY_FIRE,
                 TimerMode::Repeating,
             )),
             CurrentAnimationFrame(0),
             EnemyTankBurningTimer(Timer::from_seconds(
-                ENEMY_TANK_BURNING_DURATION,
+                burning_duration,
                 TimerMode::Once,
             )),
         ));
@@ -595,7 +606,8 @@ pub fn reset_enemy_spawn_state(mut enemy_spawn_state: ResMut<EnemySpawnState>) {
 }
 
 /// 敌方坦克着火效果系统
-/// 3秒后移除火焰特效并对敌方坦克造成1点伤害
+/// 正常情况下3秒后移除火焰特效并对敌方坦克造成1点伤害
+/// 雨天50%概率缩短为1秒，且不造成伤害
 pub fn enemy_burning_effect_system(
     mut commands: Commands,
     time: Res<Time>,
@@ -618,27 +630,33 @@ pub fn enemy_burning_effect_system(
             // 移除火焰特效
             let () = commands.entity(burning_entity).try_despawn();
             
-            // 对敌方坦克造成1点伤害
-            if let Ok(mut enemy_life) = enemy_lives.get_mut(enemy_entity) {
-                let is_dead = enemy_life.take_damage();
-                
-                if is_dead {
-                    // 播放爆炸特效
-                    if let Ok(enemy_transform) = enemy_transforms.get(enemy_entity) {
-                        effect_events.write(EffectEvent::Explosion {
-                            position: enemy_transform.translation,
-                        });
+            // 检查着火持续时间
+            // 如果持续时间小于2秒（雨天缩短的情况），则不造成伤害
+            let should_damage = timer.duration().as_secs_f32() >= 2.0;
+            
+            if should_damage {
+                // 对敌方坦克造成1点伤害
+                if let Ok(mut enemy_life) = enemy_lives.get_mut(enemy_entity) {
+                    let is_dead = enemy_life.take_damage();
+                    
+                    if is_dead {
+                        // 播放爆炸特效
+                        if let Ok(enemy_transform) = enemy_transforms.get(enemy_entity) {
+                            effect_events.write(EffectEvent::Explosion {
+                                position: enemy_transform.translation,
+                            });
+                        }
+                        
+                        // 播放爆炸音效
+                        utils::play_one_shot_sound(
+                            &mut commands,
+                            audio_resources.explosion.clone(),
+                            VOLUME_HALF,
+                        );
+                        
+                        // 销毁敌方坦克
+                        let () = commands.entity(enemy_entity).try_despawn();
                     }
-                    
-                    // 播放爆炸音效
-                    utils::play_one_shot_sound(
-                        &mut commands,
-                        audio_resources.explosion.clone(),
-                        VOLUME_HALF,
-                    );
-                    
-                    // 销毁敌方坦克
-                    let () = commands.entity(enemy_entity).try_despawn();
                 }
             }
         }

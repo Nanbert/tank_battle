@@ -157,7 +157,7 @@ pub const DASH_DURATION: f32 = 0.2; // 冲刺持续时间（秒）
 pub const DASH_DISTANCE: f32 = TANK_DISPLAY_SIZE.y * 2.0; // 冲刺距离（两个坦克长度）
 
 // 关卡俏皮话中文版
-pub const STAGE_QUOTES_CN: [&str; 17] = [
+pub const STAGE_QUOTES_CN: [&str; 18] = [
     "勇敢的司令官即使被击中也不会撤退。他会坚守原地，\n等待士兵们来营救他。",
     "当你转身射击时，炮弹可能不会直行！\n虽然控制炮弹轨迹确实很困难。",
     "小心，敌方坦克有时也会甩狙",
@@ -175,9 +175,10 @@ pub const STAGE_QUOTES_CN: [&str; 17] = [
     "冲刺时，你必须从正面或侧面攻击。从后面攻击时，\n你朝同一方向移动，所以冲击力可能不够。",
     "冲刺时，如果有障碍物或敌人，请确保保持一定距离，\n以更成功地触发冲刺破坏效果。",
     "被激光摧毁的敌人不计入你的分数。\n司令官的理由是激光会损坏花草树木。这真荒谬。",
+    "该死的雨天有时会影响我们的火焰弹效果，\n让敌人更难被消灭。雨，真是个麻烦。",
 ];
 
-pub const STAGE_QUOTES_EN: [&str; 17] = [
+pub const STAGE_QUOTES_EN: [&str; 18] = [
     "The brave commander will not retreat even when hit.\nHe will hold his ground and wait for soldiers to rescue him.",
     "When you turn to shoot, the shells may not go straight!\nAlthough controlling shell trajectory is indeed difficult.",
     "Be careful, enemy tanks sometimes snap-shoot too.",
@@ -195,6 +196,7 @@ pub const STAGE_QUOTES_EN: [&str; 17] = [
     "When dashing, you must attack from the front or side. When attacking from behind,\nyou move in the same direction, so the impact force may not be enough.",
     "When dashing, if there are obstacles or enemies, please ensure you maintain a certain distance,\nto more successfully trigger the dash destruction effect.",
     "Enemies destroyed by lasers don't count towards your score.\nThe commander's reason is that lasers damage flowers and trees. That's absurd.",
+    "Damn rainy weather sometimes affects our fire shells,\nmaking enemies harder to destroy. Rain is such a nuisance.",
 ];
 
 // ============================================================================
@@ -649,6 +651,31 @@ pub struct TankFireConfig {
     pub cooldown: Timer,    // 射击冷却时间
 }
 
+/// 玩家当前速度组件（用于地滑效果）
+#[derive(Component, Default)]
+pub struct PlayerVelocity {
+    pub velocity: Vec2,
+}
+
+impl PlayerVelocity {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// 应用摩擦力，使速度逐渐衰减
+    pub fn apply_friction(&mut self, friction: f32, delta: f32) {
+        if self.velocity.length() > 0.0 {
+            let friction_factor = 1.0 - friction * delta;
+            self.velocity *= friction_factor.clamp(0.0, 1.0);
+
+            // 当速度很小时直接归零，避免微小漂移
+            if self.velocity.length() < 1.0 {
+                self.velocity = Vec2::ZERO;
+            }
+        }
+    }
+}
+
 impl Default for TankFireConfig {
     fn default() -> Self {
         Self {
@@ -833,6 +860,10 @@ pub const ANGLE_DIFF_RESET_THRESHOLD: f32 = 0.1; // 角度差阈值（重置计�
 pub const ROTATION_SPEED_FACTOR: f32 = 0.5; // 转向时速度系数
 pub const ANGLE_OFFSET_DEGREES: f32 = 90.0; // 角度偏移（度）
 pub const ENEMY_ANGLE_OFFSET_DEGREES: f32 = 270.0; // 敌方坦克角度偏移（度）
+
+// ==================== 地滑效果常量 ====================
+pub const SNOW_FRICTION: f32 = 0.2; // 雪天摩擦系数（越小越滑）
+pub const PLAYER_ACCELERATION: f32 = 20000.0; // 玩家加速度（像素/秒²）
 
 // ==================== 游戏数值常量 ====================
 pub const MAX_ENEMY_ON_SCREEN: usize = 4; // 场上最大敌方坦克数
