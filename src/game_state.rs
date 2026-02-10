@@ -210,7 +210,11 @@ pub fn cleanup_all_game_state(
     forest_fires: Query<Entity, With<crate::constants::ForestFire>>,
     energy_balls: Query<Entity, With<crate::constants::EnergyBall>>,
     lasers: Query<Entity, With<crate::constants::Laser>>,
-    // 只清理环境音效播放器（循环音效），一次性音效会自动回收
+    // 清理激光蓄力音效（防止资源泄漏）
+    laser_charge_sounds: Query<Entity, With<crate::constants::LaserChargeSound>>,
+    // 清理所有音频播放器（包括一次性音效和循环音效）
+    audio_players: Query<Entity, With<bevy::audio::AudioPlayer>>,
+    // 清理环境音效播放器（循环音效），一次性音效会自动回收
     ambience_players: Query<
         Entity,
         Or<(
@@ -234,6 +238,10 @@ pub fn cleanup_all_game_state(
     crate::utils::cleanup_entities(&mut commands, forest_fires.iter());
     crate::utils::cleanup_entities(&mut commands, energy_balls.iter());
     crate::utils::cleanup_entities(&mut commands, lasers.iter());
+    // 清理激光蓄力音效（防止资源泄漏）
+    crate::utils::cleanup_entities(&mut commands, laser_charge_sounds.iter());
+    // 清理所有音频播放器（防止音效卡顿）
+    crate::utils::cleanup_entities(&mut commands, audio_players.iter());
     crate::utils::cleanup_entities(&mut commands, ambience_players.iter());
 
     // 2. 清理追踪器和计时器

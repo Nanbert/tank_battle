@@ -138,10 +138,6 @@ fn register_stage_intro_systems(app: &mut App) {
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             map::spawn_map,
             ui::overlay::despawn_powerups,
-            powerup::spawn_test_powerup_stage1
-                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
-            powerup::spawn_power_ups_random
-                .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
             ui::hud::spawn_hud
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             ui::hud::update_stage_text

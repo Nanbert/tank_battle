@@ -31,7 +31,14 @@ fn main() {
     app.add_plugins(
         DefaultPlugins
             .set(app::configure_asset_plugin())
-            .set(app::configure_window_plugin()),
+            .set(app::configure_window_plugin())
+            // 添加音频配置，设置全局音量
+            .set(bevy::audio::AudioPlugin {
+                global_volume: bevy::audio::GlobalVolume {
+                    volume: bevy::audio::Volume::Linear(0.8),
+                },
+                default_spatial_scale: bevy::audio::SpatialScale::default(),
+            }),
     )
     .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
 

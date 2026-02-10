@@ -757,6 +757,15 @@ pub fn bullet_tank_collision_system(
 
                     utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
                     let () = commands.entity(tank_entity).try_despawn();
+
+                    // 33%概率在地图随机位置生成道具
+                    if rand::random::<f32>() < 1.0 / 3.0 {
+                        crate::powerup::spawn_powerup_random_position(
+                            &mut commands,
+                            &texture_resources,
+                            &atlas_layouts,
+                        );
+                    }
                 }
 
                 despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);

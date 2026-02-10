@@ -141,43 +141,11 @@ pub fn handle_powerup_collision(
     }
 }
 
-/// 第一关测试道具生成
-///
-/// 第一关固定生成 fire_shell 道具用于测试火焰特效效果。
-/// 道具会生成在地图范围内，避开坦克出生点和司令官区域。
-pub fn spawn_test_powerup_stage1(
-    mut commands: Commands,
-    texture_resources: Res<GameTextureResources>,
-    atlas_layouts: Res<GameAtlasLayoutResources>,
-) {
-    let powerup_type = PowerUp::FireShell; // 第一关测试用：fire_shell 用于测试火焰特效
-
-    // 定义禁止区域
-    // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
-    // 下方：commander高度区域（MAP_BOTTOM_Y 到 MAP_BOTTOM_Y + COMMANDER_SIZE.y）
-    let top_forbidden_y = MAP_TOP_Y - TANK_DISPLAY_SIZE.y;
-    let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y;
-
-    // 在随机位置生成道具（在地图范围内），避开禁止区域
-    let mut rng = rand::rng();
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
-    let position = Vec3::new(x, y, 0.0);
-
-    spawn_powerup(
-        &mut commands,
-        &texture_resources,
-        &atlas_layouts,
-        powerup_type,
-        position,
-    );
-}
-
-/// 随机生成道具
-pub fn spawn_power_ups_random(
-    mut commands: Commands,
-    texture_resources: Res<GameTextureResources>,
-    atlas_layouts: Res<GameAtlasLayoutResources>,
+/// 在地图随机位置生成道具
+pub fn spawn_powerup_random_position(
+    commands: &mut Commands,
+    texture_resources: &GameTextureResources,
+    atlas_layouts: &GameAtlasLayoutResources,
 ) {
     let powerup_types = [
         PowerUp::SpeedUp,
@@ -204,27 +172,17 @@ pub fn spawn_power_ups_random(
     // 在随机位置生成道具（在地图范围内），避开禁止区域
     let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
     let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
-    let position = Vec3::new(x, y, 0.0);
+    let position = Vec3::new(x, y, crate::constants::Z_FOREST);
 
     spawn_powerup(
-        &mut commands,
-        &texture_resources,
-        &atlas_layouts,
+        commands,
+        texture_resources,
+        atlas_layouts,
         powerup_type,
         position,
     );
 }
 
-/// 批量生成道具
-///
-/// 在指定位置生成多个相同类型的道具。
-///
-/// 参数：
-/// - commands: 命令队列
-/// - texture_resources: 纹理资源
-/// - atlas_layouts: 图集布局资源
-/// - powerup_type: 道具类型
-/// - positions: 生成位置数组
 /// 生成单个道具（使用统一的动画系统）
 fn spawn_powerup(
     commands: &mut Commands,
