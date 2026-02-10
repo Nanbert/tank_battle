@@ -85,7 +85,7 @@
 - **说明**: 击中动画效果，免费使用，无需署名
 
 ## Enemy Tank (敌方坦克)
-- **文件**: assets/enemy_tank/enemy_tank1.png, assets/enemy_tank/enemy_tank1_1.png, assets/enemy_tank/enemy_tank1_sprite.png, assets/enemy_tank/enemy_tank2.png, assets/enemy_tank/enemy_tank_3.png, assets/enemy_tank/enemy_tank_4.png
+- **文件**: assets/enemy_tank/enemy_tank_normal.png, assets/enemy_tank/enemy_tank_fire.png, assets/enemy_tank/enemy_tank_heavy.png, assets/enemy_tank/enemy_tank_light.png
 - **来源**: https://opengameart.org/content/top-down-painted-tanks
 - **许可**: CC-BY 3.0 (Creative Commons Attribution 3.0 Unported)
 - **作者**: irmirx
@@ -161,6 +161,13 @@
 - **许可**: CC0 1.0 (Public Domain Dedication)
 - **作者**: sanctumpixel
 - **说明**: 敌方坦克着火特效，免费使用，无需署名
+
+## Dash Dust Effect (冲刺尘土特效)
+- **文件**: assets/effect/dash_dust.png
+- **来源**: https://pimen.itch.io/smoke-n-dust-03
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: pimen
+- **说明**: 冲刺尘土特效，免费使用，无需署名
 
 ## 许可说明
 CC-BY 3.0 许可证要求：
