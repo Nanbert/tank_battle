@@ -209,10 +209,11 @@ pub fn animate_effects(
                 // 在达到或超过指定帧时触发事件（避免因帧跳过导致事件未触发）
                 if prev_frame < *trigger_frame && current_frame.0 >= *trigger_frame {
                     match event_type {
-                        AnimationEventType::SpawnEnemy => {
+                        AnimationEventType::SpawnEnemy { tank_type } => {
                             if let Ok(born_position) = born_position_query.get(entity) {
                                 spawn_events.write(crate::enemy::SpawnEnemyEvent {
                                     position: born_position.0,
+                                    tank_type: *tank_type,
                                 });
                             }
                         }

@@ -161,15 +161,13 @@ fn register_stage_intro_systems(app: &mut App) {
             .chain(),
     )
     .add_systems(
-        Update,
-        (
-            game_state::cleanup_effects_and_bullets,
-            game_state::cleanup_trackers_and_timers,
-            ui::overlay::handle_stage_intro_timer,
-        )
-            .run_if(in_state(GameState::StageIntro)),
-    )
-    .add_systems(
+                Update,
+                (
+                    game_state::cleanup_all_game_state,
+                    ui::overlay::handle_stage_intro_timer,
+                )
+                    .run_if(in_state(GameState::StageIntro)),
+            )    .add_systems(
         OnExit(GameState::StageIntro),
         ui::overlay::despawn_stage_intro,
     );
@@ -256,6 +254,7 @@ fn register_playing_systems(app: &mut App) {
             enemy::collect_enemy_collisions,
             enemy::collect_contact_forces,
             enemy::move_enemy_tanks,
+            enemy::update_enemy_life_dots,
         )
             .chain()
             .in_set(GameSystemSet::EnemySystems),
@@ -491,7 +490,10 @@ pub fn configure_game_resources(app: &mut App) {
             sea: Handle::default(),
             barrier: Handle::default(),
             enemy_born: Handle::default(),
-            enemy_tank: Handle::default(),
+            enemy_tank_normal: Handle::default(),
+            enemy_tank_fire: Handle::default(),
+            enemy_tank_heavy: Handle::default(),
+            enemy_tank_light: Handle::default(),
             speed_up_icon: Handle::default(),
             protection_icon: Handle::default(),
             fire_speed_icon: Handle::default(),
@@ -541,7 +543,10 @@ pub fn configure_game_resources(app: &mut App) {
             music_note: Handle::default(),
             player_avatar: Handle::default(),
             enemy_born: Handle::default(),
-            enemy_tank: Handle::default(),
+            enemy_tank_normal: Handle::default(),
+            enemy_tank_fire: Handle::default(),
+            enemy_tank_heavy: Handle::default(),
+            enemy_tank_light: Handle::default(),
             laser_blue: Handle::default(),
             laser_red: Handle::default(),
             energy_blue_ball: Handle::default(),
@@ -659,7 +664,10 @@ pub fn init_game_resources(
         barrier: asset_server.load(TEXTURE_BARRIER),
         // 敌方坦克
         enemy_born: crate::atlas::ENEMY_BORN_ATLAS.load_texture(&asset_server),
-        enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.load_texture(&asset_server),
+        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.load_texture(&asset_server),
+        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.load_texture(&asset_server),
+        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.load_texture(&asset_server),
+        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.load_texture(&asset_server),
         // 道具
         speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(&asset_server),
         protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
@@ -729,7 +737,10 @@ pub fn init_game_resources(
         player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 敌方出生
         enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank: crate::atlas::ENEMY_TANK1_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
         // 能量球

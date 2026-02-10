@@ -199,9 +199,9 @@ pub fn check_stage_complete(
     }
 }
 
-/// 清理所有 effect 和 bullet 实体
-/// 在进入 StageIntro 状态时调用，确保场景中没有残留的特效和子弹
-pub fn cleanup_effects_and_bullets(
+/// 清理所有游戏状态实体和追踪器
+/// 在进入 StageIntro 状态时调用，确保场景中没有残留数据
+pub fn cleanup_all_game_state(
     mut commands: Commands,
     bullets: Query<Entity, With<crate::bullet::Bullet>>,
     explosions: Query<Entity, With<crate::constants::Explosion>>,
@@ -219,58 +219,32 @@ pub fn cleanup_effects_and_bullets(
             With<crate::constants::CommanderAmbiencePlayer>,
         )>,
     >,
-    mut bullet_tracker: ResMut<crate::resources::BulletTracker>,
+    mut game_trackers: ResMut<crate::resources::GameTrackers>,
+    mut collision_cache: ResMut<crate::constants::EnemyCollisionCache>,
+    mut enemy_spawn_state: ResMut<crate::resources::EnemySpawnState>,
 ) {
-    // 清理所有子弹（需要先从 tracker 中移除）
+    // 1. 清理实体（先从 tracker 中移除子弹引用）
     for bullet in bullets.iter() {
-        bullet_tracker.remove_bullet(bullet);
+        game_trackers.bullets.remove_bullet(bullet);
     }
     crate::utils::cleanup_entities(&mut commands, bullets.iter());
-
-    // 清理其他实体
     crate::utils::cleanup_entities(&mut commands, explosions.iter());
     crate::utils::cleanup_entities(&mut commands, sparks.iter());
     crate::utils::cleanup_entities(&mut commands, smokes.iter());
     crate::utils::cleanup_entities(&mut commands, forest_fires.iter());
     crate::utils::cleanup_entities(&mut commands, energy_balls.iter());
     crate::utils::cleanup_entities(&mut commands, lasers.iter());
-    // 只清理环境音效播放器（循环音效）
     crate::utils::cleanup_entities(&mut commands, ambience_players.iter());
 
-    // 强制重置 BulletTracker，防止状态不同步
-    bullet_tracker.clear();
-}
-
-/// 清理所有追踪器和计时器
-/// 在进入 StageIntro 状态时调用，确保没有残留的追踪数据
-pub fn cleanup_trackers_and_timers(
-    mut game_trackers: ResMut<crate::resources::GameTrackers>,
-    mut collision_cache: ResMut<crate::constants::EnemyCollisionCache>,
-    mut enemy_spawn_state: ResMut<crate::resources::EnemySpawnState>,
-) {
-    // 清理 BulletTracker
-    game_trackers.bullets.clear();
-
-    // 清理 RecallTimers
+    // 2. 清理追踪器和计时器
     game_trackers.recall_timers.timers.clear();
-
-    // 清理 DashTimers
     game_trackers.dash_timers.timers.clear();
-
-    // 清理 DashDamageTracker
     game_trackers.dash_damage_tracker.has_taken_damage.clear();
-
-    // 清理 BarrierDamageTracker
     game_trackers.barrier_damage_tracker.cooldowns.clear();
-
-    // 清理 InsufficientEnergyTracker
     game_trackers.insufficient_energy_tracker.p1_cooldown = None;
     game_trackers.insufficient_energy_tracker.p2_cooldown = None;
-
-    // 清理 EnemyCollisionCache（事件驱动缓存）
+    game_trackers.bullets.clear();
     collision_cache.clear();
-
-    // 重置关卡完成延迟计时器
     enemy_spawn_state.stage_complete_delay.reset();
 }
 

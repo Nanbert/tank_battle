@@ -5,7 +5,9 @@ use bevy::prelude::*;
 use std::time::Duration;
 
 use crate::constants::{
-    BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_SPAWN_COOLDOWN, TankType,
+    BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
+    ENEMY_HEAVY_LIFE, ENEMY_LIGHT_LIFE, ENEMY_LIGHT_SPEED_MULTIPLIER, ENEMY_NORMAL_LIFE,
+    ENEMY_SPAWN_COOLDOWN, ENEMY_TANK_SPEED, EnemyTankType, TankType, BULLET_SPEED,
 };
 
 #[derive(Resource, Default)]
@@ -512,7 +514,10 @@ pub struct GameTextureResources {
     pub barrier: Handle<Image>,
     // 敌方坦克
     pub enemy_born: Handle<Image>,
-    pub enemy_tank: Handle<Image>,
+    pub enemy_tank_normal: Handle<Image>,
+    pub enemy_tank_fire: Handle<Image>,
+    pub enemy_tank_heavy: Handle<Image>,
+    pub enemy_tank_light: Handle<Image>,
     // 道具
     pub speed_up_icon: Handle<Image>,
     pub protection_icon: Handle<Image>,
@@ -557,16 +562,64 @@ impl GameTextureResources {
         }
     }
 
-    /// 根据坦克类型获取玩家坦克纹理
-    pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
-        self.get_texture_by_tank_type(
-            tank_type,
-            self.player1.clone(),
-            self.player2.clone(),
-            self.enemy_tank.clone(),
-        )
+    /// 根据敌方坦克类型获取纹理
+pub fn get_enemy_tank_texture(&self, tank_type: EnemyTankType) -> Handle<Image> {
+    match tank_type {
+        EnemyTankType::Normal => self.enemy_tank_normal.clone(),
+        EnemyTankType::Fire => self.enemy_tank_fire.clone(),
+        EnemyTankType::Heavy => self.enemy_tank_heavy.clone(),
+        EnemyTankType::Light => self.enemy_tank_light.clone(),
     }
+}
 
+/// 根据敌方坦克类型获取纹理图集常量
+pub fn get_enemy_tank_atlas_info(tank_type: EnemyTankType) -> &'static crate::atlas::TextureAtlasInfo {
+    match tank_type {
+        EnemyTankType::Normal => &crate::atlas::ENEMY_TANK_NORMAL_ATLAS,
+        EnemyTankType::Fire => &crate::atlas::ENEMY_TANK_FIRE_ATLAS,
+        EnemyTankType::Heavy => &crate::atlas::ENEMY_TANK_HEAVY_ATLAS,
+        EnemyTankType::Light => &crate::atlas::ENEMY_TANK_LIGHT_ATLAS,
+    }
+}
+
+/// 根据敌方坦克类型获取生命值
+pub fn get_enemy_tank_life(tank_type: EnemyTankType) -> usize {
+    match tank_type {
+        EnemyTankType::Normal => ENEMY_NORMAL_LIFE,
+        EnemyTankType::Fire => ENEMY_NORMAL_LIFE,
+        EnemyTankType::Heavy => ENEMY_HEAVY_LIFE,
+        EnemyTankType::Light => ENEMY_LIGHT_LIFE,
+    }
+}
+
+/// 根据敌方坦克类型获取移动速度
+pub fn get_enemy_tank_speed(tank_type: EnemyTankType) -> f32 {
+    match tank_type {
+        EnemyTankType::Normal => ENEMY_TANK_SPEED,
+        EnemyTankType::Fire => ENEMY_TANK_SPEED,
+        EnemyTankType::Heavy => ENEMY_TANK_SPEED,
+        EnemyTankType::Light => ENEMY_TANK_SPEED * ENEMY_LIGHT_SPEED_MULTIPLIER,
+    }
+}
+
+/// 根据敌方坦克类型获取子弹速度
+pub fn get_enemy_bullet_speed(tank_type: EnemyTankType) -> f32 {
+    match tank_type {
+        EnemyTankType::Normal => BULLET_SPEED,
+        EnemyTankType::Fire => BULLET_SPEED * ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
+        EnemyTankType::Heavy => BULLET_SPEED,
+        EnemyTankType::Light => BULLET_SPEED,
+    }
+}
+
+/// 根据坦克类型获取玩家坦克纹理
+pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
+    match tank_type {
+        TankType::Player1 => self.player1.clone(),
+        TankType::Player2 => self.player2.clone(),
+        TankType::Enemy => panic!("Enemy tanks should use get_enemy_tank_texture()"),
+    }
+}
     /// 根据坦克类型获取子弹纹理
     pub fn get_bullet_texture(&self, tank_type: TankType) -> Handle<Image> {
         self.get_texture_by_tank_type(
@@ -631,7 +684,10 @@ pub struct GameAtlasLayoutResources {
     pub player_avatar: Handle<TextureAtlasLayout>,
     // 敌方出生
     pub enemy_born: Handle<TextureAtlasLayout>,
-    pub enemy_tank: Handle<TextureAtlasLayout>,
+    pub enemy_tank_normal: Handle<TextureAtlasLayout>,
+    pub enemy_tank_fire: Handle<TextureAtlasLayout>,
+    pub enemy_tank_heavy: Handle<TextureAtlasLayout>,
+    pub enemy_tank_light: Handle<TextureAtlasLayout>,
     // 激光
     pub laser_blue: Handle<TextureAtlasLayout>,
     pub laser_red: Handle<TextureAtlasLayout>,

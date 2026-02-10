@@ -75,9 +75,16 @@ pub const LEFT_PADDING: f32 = 230.0; // 左侧留白
 pub const RIGHT_PADDING: f32 = 230.0; // 右侧留白
 pub const TOP_PADDING: f32 = 100.0; // 上方留白
 pub const BOTTOM_PADDING: f32 = 0.0; // 下方不留白
-pub const ENEMY_TANK_SPEED: f32 = 200.0; // 敌方坦克速度
+pub const ENEMY_TANK_SPEED: f32 = 200.0; // 敌方坦克基础速度
 pub const PLAYER_TANK_SPEED: f32 = 150.0; // 玩家坦克速度
-pub const BULLET_SPEED: f32 = 900.0;
+pub const BULLET_SPEED: f32 = 900.0; // 子弹基础速度
+
+// 敌方坦克类型常量
+pub const ENEMY_LIGHT_SPEED_MULTIPLIER: f32 = 2.0; // 轻型坦克速度倍数
+pub const ENEMY_FIRE_BULLET_SPEED_MULTIPLIER: f32 = 2.0; // 火力型坦克子弹速度倍数
+pub const ENEMY_HEAVY_LIFE: usize = 4; // 重型坦克生命值
+pub const ENEMY_LIGHT_LIFE: usize = 1; // 轻型坦克生命值
+pub const ENEMY_NORMAL_LIFE: usize = 2; // 普通/火力型坦克生命值
 pub const PLAYER_BULLET_SPEED: f32 = 600.0;
 
 pub const RECALL_TIME: f32 = 2.0; // 回城时间（秒）
@@ -118,6 +125,9 @@ pub const LOW_HEALTH_SMOKE_ANIMATION_FRAME: f32 = 0.02;
 
 // ==================== 尺寸常量 ====================
 pub const COMMANDER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+pub const ENEMY_LIFE_DOT_SIZE: f32 = 8.0; // 敌方坦克生命值点大小
+pub const ENEMY_LIFE_DOT_SPACING: f32 = 12.0; // 敌方坦克生命值点间距
+pub const ENEMY_LIFE_DOT_Y_OFFSET: f32 = 55.0; // 敌方坦克生命值点Y轴偏移（坦克上方）
 pub const BARRIER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
 pub const TANK_DISPLAY_SIZE: Vec2 = Vec2::new(80.0, 90.0); // 玩家/敌方/炮管显示尺寸
 pub const BULLET_DISPLAY_SIZE: Vec2 = Vec2::new(60.0, 40.0);
@@ -361,7 +371,9 @@ pub struct DespawnMarker;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AnimationEventType {
     /// 生成敌方坦克
-    SpawnEnemy,
+    SpawnEnemy {
+        tank_type: EnemyTankType,
+    },
     /// 激光动画结束事件
     LaserAnimationEnd {
         direction: Vec2,
@@ -451,9 +463,39 @@ pub struct PenetrateEffect;
 #[derive(Component)]
 pub struct Barrel;
 
+/// 敌方坦克类型枚举
+#[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
+pub enum EnemyTankType {
+    Normal,  // 普通型：速度200，生命2，子弹速度900
+    Fire,    // 火力型：速度200，生命2，子弹速度1800（2倍）
+    Heavy,   // 重型：速度200，生命4，子弹速度900
+    Light,   // 轻型：速度400（2倍），生命1，子弹速度900
+}
+
 #[derive(Component, Copy, Clone)]
 pub struct EnemyTank {
     pub direction: Vec2,
+    pub tank_type: EnemyTankType,
+}
+
+/// 敌方坦克生命值组件
+#[derive(Component, Copy, Clone)]
+pub struct EnemyLife {
+    pub current: usize,
+    pub max: usize,
+}
+
+impl EnemyLife {
+    pub fn new(max: usize) -> Self {
+        Self { current: max, max }
+    }
+
+    pub fn take_damage(&mut self) -> bool {
+        if self.current > 0 {
+            self.current -= 1;
+        }
+        self.current == 0
+    }
 }
 
 #[derive(Component)]

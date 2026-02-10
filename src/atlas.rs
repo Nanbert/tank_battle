@@ -129,7 +129,7 @@ pub const TRACK_CHAIN_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 
 // 坦克烟雾特效精灵图常量（低血量警告）
 pub const TANK_SMOKE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
-    "effect/tank_sprite.png",
+    "effect/player_tank_smoke.png",
     Vec2::new(960.0, 960.0),
     6,
     5,
@@ -161,9 +161,36 @@ pub const ENEMY_BORN_ATLAS: TextureAtlasInfo = {
 };
 
 // 敌方坦克精灵图常量
-pub const ENEMY_TANK1_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
-    "enemy_tank/enemy_tank1_sprite.png",
+pub const ENEMY_TANK_NORMAL_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "enemy_tank/enemy_tank_normal.png",
     Vec2::new(137.0, 183.0),
+    2,
+    1,
+)
+.with_display_size(TANK_DISPLAY_SIZE);
+
+// 敌方火力型坦克精灵图常量
+pub const ENEMY_TANK_FIRE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "enemy_tank/enemy_tank_fire.png",
+    Vec2::new(133.0, 162.0),
+    2,
+    1,
+)
+.with_display_size(TANK_DISPLAY_SIZE);
+
+// 敌方重型坦克精灵图常量
+pub const ENEMY_TANK_HEAVY_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "enemy_tank/enemy_tank_heavy.png",
+    Vec2::new(139.0, 172.0),
+    2,
+    1,
+)
+.with_display_size(TANK_DISPLAY_SIZE);
+
+// 敌方轻型坦克精灵图常量
+pub const ENEMY_TANK_LIGHT_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "enemy_tank/enemy_tank_light.png",
+    Vec2::new(129.0, 189.0),
     2,
     1,
 )

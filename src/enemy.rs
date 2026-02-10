@@ -22,6 +22,8 @@ pub struct BornPosition(pub Vec3);
 pub struct SpawnEnemyEvent {
     /// 出生位置
     pub position: Vec3,
+    /// 坦克类型
+    pub tank_type: EnemyTankType,
 }
 
 /// 敌方坦克出生动画系统
@@ -50,6 +52,14 @@ pub fn enemy_spawn_system(
         let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
         let position = ENEMY_BORN_PLACES[random_index];
 
+        // 随机选择敌方坦克类型
+        let tank_type = match rng.random_range(0..4) {
+            0 => EnemyTankType::Normal,
+            1 => EnemyTankType::Fire,
+            2 => EnemyTankType::Heavy,
+            _ => EnemyTankType::Light,
+        };
+
         let _ = utils::spawn_animated_sprite(
             &mut commands,
             texture_resources.enemy_born.clone(),
@@ -64,7 +74,7 @@ pub fn enemy_spawn_system(
                 BornPosition(position),
                 AnimationMode::AtFrameWithEvent {
                     trigger_frame: 10,
-                    event_type: AnimationEventType::SpawnEnemy,
+                    event_type: AnimationEventType::SpawnEnemy { tank_type },
                 },
             ),
         );
@@ -85,23 +95,44 @@ pub fn handle_spawn_enemy_event(
     texture_resources: Res<GameTextureResources>,
 ) {
     for event in events.read() {
+        // 根据坦克类型获取纹理、生命值和速度
+        let texture = texture_resources.get_enemy_tank_texture(event.tank_type);
+        let atlas_layout = match event.tank_type {
+            EnemyTankType::Normal => atlas_layouts.enemy_tank_normal.clone(),
+            EnemyTankType::Fire => atlas_layouts.enemy_tank_fire.clone(),
+            EnemyTankType::Heavy => atlas_layouts.enemy_tank_heavy.clone(),
+            EnemyTankType::Light => atlas_layouts.enemy_tank_light.clone(),
+        };
+        let atlas_info = GameTextureResources::get_enemy_tank_atlas_info(event.tank_type);
+        let life = GameTextureResources::get_enemy_tank_life(event.tank_type);
+        let speed = GameTextureResources::get_enemy_tank_speed(event.tank_type);
+
         // 使用 spawn_animated_sprite 生成动画精灵部分
         let enemy_entity = utils::spawn_animated_sprite(
             &mut commands,
-            texture_resources.enemy_tank.clone(),
-            atlas_layouts.enemy_tank.clone(),
-            crate::atlas::ENEMY_TANK1_ATLAS.animation_indices_full(),
+            texture,
+            atlas_layout,
+            atlas_info.animation_indices_full(),
             ANIMATION_FRAME_ENEMY_MOVE,
             Transform::from_translation(event.position),
             crate::constants::TANK_DISPLAY_SIZE,
             (
                 EnemyTank {
                     direction: Vec2::new(0.0, -1.0),
+                    tank_type: event.tank_type,
                 },
                 PlayingEntity,
                 AnimationMode::Looping,
             ),
         );
+
+        // 添加生命值组件
+        commands
+            .entity(enemy_entity)
+            .insert(EnemyLife::new(life));
+
+        // 添加生命值点（红色圆点）
+        spawn_enemy_life_dots(&mut commands, enemy_entity, life);
 
         // 添加额外的组件
         commands
@@ -123,7 +154,7 @@ pub fn handle_spawn_enemy_event(
                 angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
             })
             .insert(Velocity {
-                linvel: Vec2::new(0.0, -ENEMY_TANK_SPEED),
+                linvel: Vec2::new(0.0, -speed),
                 angvel: 0.0,
             })
             .insert(RigidBody::Dynamic)
@@ -141,6 +172,51 @@ pub fn handle_spawn_enemy_event(
             .insert(GravityScale(0.0))
             .insert(Friction::new(0.0))
             .insert(Restitution::new(0.0));
+    }
+}
+
+/// 生成敌方坦克生命值点
+fn spawn_enemy_life_dots(commands: &mut Commands, enemy_entity: Entity, max_life: usize) {
+    let total_width = (max_life - 1) as f32 * ENEMY_LIFE_DOT_SPACING;
+    let start_x = -total_width / 2.0;
+
+    for i in 0..max_life {
+        let x = start_x + i as f32 * ENEMY_LIFE_DOT_SPACING;
+        commands.spawn((
+            Sprite {
+                color: Color::srgb(1.0, 0.0, 0.0),
+                custom_size: Some(Vec2::splat(ENEMY_LIFE_DOT_SIZE)),
+                ..default()
+            },
+            Transform::from_translation(Vec3::new(x, ENEMY_LIFE_DOT_Y_OFFSET, 1.0)),
+            EnemyLifeDot { index: i },
+            bevy::prelude::ChildOf(enemy_entity),
+        ));
+    }
+}
+
+/// 敌方坦克生命值点组件
+#[derive(Component, Copy, Clone)]
+pub struct EnemyLifeDot {
+    pub index: usize,
+}
+
+/// 更新敌方坦克生命值点显示
+pub fn update_enemy_life_dots(
+    enemy_tanks: Query<(Entity, &EnemyLife), (With<EnemyTank>, Changed<EnemyLife>)>,
+    mut life_dots: Query<(&mut Sprite, &EnemyLifeDot, &ChildOf)>,
+) {
+    for (enemy_entity, enemy_life) in enemy_tanks.iter() {
+        for (mut sprite, life_dot, child_of) in life_dots.iter_mut() {
+            if child_of.0 == enemy_entity {
+                // 如果生命值点索引 >= 当前生命值，隐藏该点
+                sprite.color = if life_dot.index < enemy_life.current {
+                    Color::srgb(1.0, 0.0, 0.0)
+                } else {
+                    Color::srgba(1.0, 0.0, 0.0, 0.0) // 透明
+                };
+            }
+        }
     }
 }
 /// 收集敌方坦克碰撞事件
@@ -391,6 +467,8 @@ fn update_enemy_tank_movement(
             % (std::f32::consts::PI * 2.0)
             - std::f32::consts::PI;
 
+        let speed = GameTextureResources::get_enemy_tank_speed(enemy_tank.tank_type);
+
         if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
             // 需要转向，设置速度为0实现原地转向
             velocity.linvel = Vec2::ZERO;
@@ -398,7 +476,7 @@ fn update_enemy_tank_movement(
             rotation_timer.reset();
         } else {
             // 不需要转向，正常移动
-            velocity.linvel = enemy_tank.direction * ENEMY_TANK_SPEED;
+            velocity.linvel = enemy_tank.direction * speed;
         }
     }
 }

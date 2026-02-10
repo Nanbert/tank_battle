@@ -112,12 +112,6 @@ pub fn spawn_laser(
     let laser_position = params.position
         + params.direction.extend(0.0) * (laser_half_height + LASER_POSITION_OFFSET);
 
-    let bullet_type = if matches!(params.owner_type, TankType::Enemy) {
-        Bullet::Enemy
-    } else {
-        Bullet::Player(params.owner_type)
-    };
-
     // 获取动画帧范围
     let animation_indices = resources.laser_atlas_info.animation_indices_full();
 
@@ -136,7 +130,6 @@ pub fn spawn_laser(
         (
             Laser,
             PlayingEntity,
-            bullet_type,
             AnimationMode::AtFrameWithEvent {
                 trigger_frame: animation_indices.last,
                 event_type: crate::constants::AnimationEventType::LaserAnimationEnd {
