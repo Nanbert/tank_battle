@@ -112,7 +112,6 @@ fn update_single_player_hud_bars(
 /// 此函数消除了玩家1和玩家2 HUD 更新的重复逻辑，将逻辑拆分为两个独立的函数
 fn update_single_player_hud(
     stats: &PlayerStats,
-    _x_pos: f32,
     player_hud_query: &mut Query<(
         &mut Text2d,
         &HudStatType,
@@ -172,7 +171,6 @@ pub fn update_player_hud(
     // 更新玩家1 HUD
     update_single_player_hud(
         &player_info.player1,
-        WINDOW_LEFT_X + HUD_PLAYER_OFFSET,
         &mut player_hud_query,
         &mut bar_query,
         true,
@@ -185,7 +183,6 @@ pub fn update_player_hud(
     {
         update_single_player_hud(
             stats2,
-            WINDOW_RIGHT_X - HUD_PLAYER_OFFSET,
             &mut player_hud_query,
             &mut bar_query,
             false,

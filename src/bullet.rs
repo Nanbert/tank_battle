@@ -707,6 +707,13 @@ pub fn bullet_tank_collision_system(
                 let has_penetrate = bullet.has_penetrate();
                 let has_fire_shell = player_info.has_fire_shell(player_type);
 
+                // 雨天时，拥有火焰弹的玩家有50%概率无法触发火焰效果
+                let can_fire_shell = if has_fire_shell {
+                    !weather.as_ref().is_some_and(|w| w.weather_type == crate::weather::WeatherType::Rain && rand::random::<f32>() < 0.5)
+                } else {
+                    false
+                };
+
                 // 检查敌方坦克是否应该被摧毁
                 let should_destroy = enemy_lives
                     .get_mut(enemy_entity)
@@ -729,14 +736,13 @@ pub fn bullet_tank_collision_system(
                                 volume: 1.0,
                             });
                             
-                            // 如果有 fire_shell 能力，添加着火特效
-                            if has_fire_shell {
+                            // 如果有 fire_shell 能力且雨天未受影响，添加着火特效
+                            if can_fire_shell {
                                 crate::enemy::spawn_enemy_burning_effect(
                                     &mut commands,
                                     enemy_entity,
                                     &texture_resources,
                                     &atlas_layouts,
-                                    weather.as_deref(),
                                 );
                             }
                         }
