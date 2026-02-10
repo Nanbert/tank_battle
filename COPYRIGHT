@@ -155,6 +155,13 @@
 - **作者**: 13rice
 - **说明**: 径向闪电特效，2行4列布局，每帧256x256像素，共8帧，免费使用，无需署名
 
+## Enemy Tank Fire Effect (敌方坦克火焰效果)
+- **文件**: assets/enemy_tank/fire.png
+- **来源**: https://sanctumpixel.itch.io/fire-column-pixel-art-effect
+- **许可**: CC0 1.0 (Public Domain Dedication)
+- **作者**: sanctumpixel
+- **说明**: 敌方坦克着火特效，免费使用，无需署名
+
 ## 许可说明
 CC-BY 3.0 许可证要求：
 1. **署名** - 必须提供原作者的署名
