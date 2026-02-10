@@ -28,6 +28,7 @@ pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
+pub const SOUND_DASH: &str = "music/dash.ogg";
 
 // 子弹纹理路径常量（静态）
 pub const TEXTURE_BULLET_PLAYER1: &str = "texture/bullets/bullet_player1.png";
@@ -116,9 +117,8 @@ pub const ENEMY_BORN_PLACES: [Vec3; 3] = [
 
 // ==================== 履带道具常量 ====================
 pub const TRACK_CHAIN_ANIMATION_FRAME: f32 = 0.1; // 履带动画帧间隔
-
-/// 低血量烟雾动画帧间隔（每秒50帧）
 pub const LOW_HEALTH_SMOKE_ANIMATION_FRAME: f32 = 0.02;
+pub const DASH_DUST_ANIMATION_FRAME: f32 = 0.05; // 冲刺尘土动画帧间隔
 
 // ==================== 颜色常量 ====================
 // 颜色常量已迁移到 ui::constants
@@ -460,6 +460,10 @@ pub struct FireEffect;
 // 穿透特效标记（叠加在子弹上的穿透特效）
 #[derive(Component)]
 pub struct PenetrateEffect;
+
+// 冲刺尘土特效标记
+#[derive(Component)]
+pub struct DashDustEffect;
 
 // 敌方坦克着火特效标记
 #[derive(Component)]

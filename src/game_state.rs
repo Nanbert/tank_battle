@@ -210,6 +210,7 @@ pub fn cleanup_all_game_state(
     forest_fires: Query<Entity, With<crate::constants::ForestFire>>,
     energy_balls: Query<Entity, With<crate::constants::EnergyBall>>,
     lasers: Query<Entity, With<crate::constants::Laser>>,
+    dash_dusts: Query<Entity, With<crate::constants::DashDustEffect>>,
     // 清理激光蓄力音效（防止资源泄漏）
     laser_charge_sounds: Query<Entity, With<crate::constants::LaserChargeSound>>,
     // 清理所有音频播放器（包括一次性音效和循环音效）
@@ -238,6 +239,7 @@ pub fn cleanup_all_game_state(
     crate::utils::cleanup_entities(&mut commands, forest_fires.iter());
     crate::utils::cleanup_entities(&mut commands, energy_balls.iter());
     crate::utils::cleanup_entities(&mut commands, lasers.iter());
+    crate::utils::cleanup_entities(&mut commands, dash_dusts.iter());
     // 清理激光蓄力音效（防止资源泄漏）
     crate::utils::cleanup_entities(&mut commands, laser_charge_sounds.iter());
     // 清理所有音频播放器（防止音效卡顿）

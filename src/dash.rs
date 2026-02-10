@@ -24,6 +24,9 @@ pub fn handle_dash_input(
     mut game_trackers: ResMut<GameTrackers>,
     mut player_info: ResMut<PlayerInfo>,
     font_resources: Res<crate::resources::GameTextureResources>,
+    audio_resources: Res<GameAudioResources>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
     language: Res<crate::resources::Language>,
     time: Res<Time>,
 ) {
@@ -59,6 +62,42 @@ pub fn handle_dash_input(
                 let direction =
                     crate::utils::calculate_direction_from_rotation(&transform.rotation);
 
+                // 播放冲刺音效
+                utils::play_one_shot_sound(
+                    &mut commands,
+                    audio_resources.dash.clone(),
+                    VOLUME_HALF * 2.0,
+                );
+
+                // 添加冲刺尘土特效（与坦克纹理有90度相位差，放大2倍）
+                let dust_atlas = atlas_layouts.dash_dust_effect.clone();
+                let animation_indices = crate::atlas::DASH_DUST_ATLAS.animation_indices_full();
+
+                commands.entity(entity).with_children(|parent| {
+                    parent.spawn((
+                        DashDustEffect,
+                        AnimationMode::Looping,
+                        Sprite::from_atlas_image(
+                            texture_resources.dash_dust_effect.clone(),
+                            TextureAtlas {
+                                layout: dust_atlas,
+                                index: animation_indices.first,
+                            },
+                        ),
+                        Transform {
+                            translation: Vec3::new(0.0, -50.0, -0.1), // 位于坦克后面50像素
+                            rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转90度
+                            scale: Vec3::splat(2.0), // 放大2倍
+                        },
+                        animation_indices,
+                        AnimationTimer(Timer::from_seconds(
+                            DASH_DUST_ANIMATION_FRAME,
+                            TimerMode::Repeating,
+                        )),
+                        CurrentAnimationFrame(0),
+                    ));
+                });
+
                 // 开始冲刺
                 let dash_timer = DashTimer::new(direction, DASH_DURATION);
                 game_trackers.dash_timers.timers.insert(entity, dash_timer);
@@ -88,12 +127,14 @@ pub fn update_dash_movement(
             &mut KinematicCharacterController,
             &mut Transform,
             Option<&IsDashing>,
+            Option<&Children>,
         ),
         With<PlayerTank>,
     >,
+    dash_dust_query: Query<(), With<DashDustEffect>>,
     mut game_trackers: ResMut<GameTrackers>,
 ) {
-    for (entity, mut character_controller, mut transform, is_dashing) in &mut player_query {
+    for (entity, mut character_controller, mut transform, is_dashing, children) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
             && let Some(dash_timer) = game_trackers.dash_timers.timers.get_mut(&entity)
         {
@@ -116,9 +157,18 @@ pub fn update_dash_movement(
 
             // 检查是否完成
             if dash_timer.timer.just_finished() {
-                // 移除冲刺标记和计时器
+                // 移除冲刺标记、计时器和尘土特效
                 commands.entity(entity).remove::<IsDashing>();
                 game_trackers.dash_timers.timers.remove(&entity);
+
+                // 移除尘土特效子实体
+                if let Some(children_ref) = children {
+                    for child in children_ref.iter() {
+                        if dash_dust_query.get(child).is_ok() {
+                            commands.entity(child).despawn();
+                        }
+                    }
+                }
 
                 // 清理扣血追踪
                 game_trackers

@@ -170,7 +170,7 @@ pub fn spawn_powerup_random_position(
 }
 
 /// 生成单个道具（使用统一的动画系统）
-fn spawn_powerup(
+pub fn spawn_powerup(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,

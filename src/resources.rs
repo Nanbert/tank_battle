@@ -527,6 +527,7 @@ pub struct GameTextureResources {
     pub track_chain_icon: Handle<Image>,
     pub track_chain_effect: Handle<Image>,
     pub tank_smoke_effect: Handle<Image>,
+    pub dash_dust_effect: Handle<Image>,
     pub penetrate_icon: Handle<Image>,
     pub repair_icon: Handle<Image>,
     pub hamburger_icon: Handle<Image>,
@@ -647,6 +648,7 @@ pub struct GameAudioResources {
     pub commander_get_shot: Handle<AudioSource>,
     pub commander_death: Handle<AudioSource>,
     pub player_shot: Handle<AudioSource>,
+    pub dash: Handle<AudioSource>,
     // 环境音效
     pub burn_tree: Handle<AudioSource>,
     pub sea_ambience: Handle<AudioSource>,
@@ -704,6 +706,7 @@ pub struct GameAtlasLayoutResources {
     pub track_chain_icon: Handle<TextureAtlasLayout>,
     pub track_chain_effect: Handle<TextureAtlasLayout>,
     pub tank_smoke_effect: Handle<TextureAtlasLayout>,
+    pub dash_dust_effect: Handle<TextureAtlasLayout>,
     pub penetrate_icon: Handle<TextureAtlasLayout>,
     pub repair_icon: Handle<TextureAtlasLayout>,
     pub hamburger_icon: Handle<TextureAtlasLayout>,

@@ -482,6 +482,7 @@ pub fn configure_game_resources(app: &mut App) {
             forest_fire: Handle::default(),
             laser_blue: Handle::default(),
             laser_red: Handle::default(),
+            dash_dust_effect: Handle::default(),
             brick: Handle::default(),
             steel: Handle::default(),
             tree: Handle::default(),
@@ -520,6 +521,7 @@ pub fn configure_game_resources(app: &mut App) {
             commander_get_shot: Handle::default(),
             commander_death: Handle::default(),
             player_shot: Handle::default(),
+            dash: Handle::default(),
             burn_tree: Handle::default(),
             sea_ambience: Handle::default(),
             music_note_000: Handle::default(),
@@ -558,6 +560,7 @@ pub fn configure_game_resources(app: &mut App) {
             track_chain_icon: Handle::default(),
             track_chain_effect: Handle::default(),
             tank_smoke_effect: Handle::default(),
+            dash_dust_effect: Handle::default(),
             penetrate_icon: Handle::default(),
             repair_icon: Handle::default(),
             hamburger_icon: Handle::default(),
@@ -677,6 +680,7 @@ pub fn init_game_resources(
         track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
         track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
         tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.load_texture(&asset_server),
+        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS.load_texture(&asset_server),
         penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
         repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
         hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
@@ -705,7 +709,9 @@ pub fn init_game_resources(
         powerup_sound: asset_server.load(SOUND_POWERUP),
         commander_get_shot: asset_server.load(SOUND_COMMANDER_GET_SHOT),
         commander_death: asset_server.load(SOUND_COMMANDER_DEATH),
-        player_shot: asset_server.load(SOUND_PLAYER_SHOT), // 环境音效
+        player_shot: asset_server.load(SOUND_PLAYER_SHOT),
+        dash: asset_server.load(SOUND_DASH),
+        // 环境音效
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
         music_note_000: asset_server.load(SOUND_MUSIC_NOTE_000),
@@ -764,6 +770,8 @@ pub fn init_game_resources(
         track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),
         tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS
+            .add_to_assets(&mut texture_atlas_layouts),
+        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),
         penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS
             .add_to_assets(&mut texture_atlas_layouts),

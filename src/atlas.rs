@@ -127,6 +127,14 @@ pub const TRACK_CHAIN_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
 )
 .with_display_size(TANK_DISPLAY_SIZE);
 
+// 冲刺尘土特效精灵图常量（7帧横向排列，448x128，每帧约64x128）
+pub const DASH_DUST_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
+    "effect/dash_dust.png",
+    Vec2::new(64.0, 128.0),
+    7, // columns: 7列
+    1, // rows: 1行
+);
+
 // 坦克烟雾特效精灵图常量（低血量警告）
 pub const TANK_SMOKE_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
     "effect/player_tank_smoke.png",
