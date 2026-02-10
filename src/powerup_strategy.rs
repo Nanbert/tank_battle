@@ -197,3 +197,82 @@ pub enum PowerUp {
     AirCushion,
     Shell,
 }
+
+impl PowerUp {
+    /// 获取道具的弹出文本
+    pub fn get_floating_text(&self, language: crate::resources::Language) -> String {
+        use crate::ui::localization::*;
+        match self {
+            PowerUp::SpeedUp => POWERUP_FLOATING_SPEED_UP.format(language, POWERUP_ATTRIBUTE_INCREASE),
+            PowerUp::Protection => POWERUP_FLOATING_PROTECTION.format(language, POWERUP_ATTRIBUTE_INCREASE),
+            PowerUp::FireSpeed => POWERUP_FLOATING_FIRE_SPEED.format(language, POWERUP_ATTRIBUTE_INCREASE),
+            PowerUp::Repair => POWERUP_FLOATING_REPAIR.get(language).to_string(),
+            PowerUp::Hamburger => POWERUP_FLOATING_HAMBURGER.get(language).to_string(),
+            PowerUp::Shell => POWERUP_FLOATING_SHELL.get(language).to_string(),
+            PowerUp::FireShell => POWERUP_FLOATING_FIRE_SHELL.get(language).to_string(),
+            PowerUp::TrackChain => POWERUP_FLOATING_TRACK_CHAIN.get(language).to_string(),
+            PowerUp::Penetrate => POWERUP_FLOATING_PENETRATE.get(language).to_string(),
+            PowerUp::AirCushion => POWERUP_FLOATING_AIR_CUSHION.get(language).to_string(),
+        }
+    }
+
+    /// 获取道具的纹理资源
+    pub fn get_texture_resources<'a>(
+        &self,
+        texture_resources: &'a crate::resources::GameTextureResources,
+        atlas_layouts: &'a crate::resources::GameAtlasLayoutResources,
+    ) -> (bevy::prelude::Handle<bevy::prelude::Image>, &'static crate::atlas::TextureAtlasInfo, bevy::prelude::Handle<bevy::prelude::TextureAtlasLayout>) {
+        match self {
+            PowerUp::SpeedUp => (
+                texture_resources.speed_up_icon.clone(),
+                &crate::atlas::POWER_UP_SPEED_UP_ATLAS,
+                atlas_layouts.speed_up_icon.clone(),
+            ),
+            PowerUp::Protection => (
+                texture_resources.protection_icon.clone(),
+                &crate::atlas::POWER_UP_PROTECTION_ATLAS,
+                atlas_layouts.protection_icon.clone(),
+            ),
+            PowerUp::FireSpeed => (
+                texture_resources.fire_speed_icon.clone(),
+                &crate::atlas::POWER_UP_FIRE_SPEED_ATLAS,
+                atlas_layouts.fire_speed_icon.clone(),
+            ),
+            PowerUp::FireShell => (
+                texture_resources.fire_shell_icon.clone(),
+                &crate::atlas::POWER_UP_FIRE_SHELL_ATLAS,
+                atlas_layouts.fire_shell_icon.clone(),
+            ),
+            PowerUp::TrackChain => (
+                texture_resources.track_chain_icon.clone(),
+                &crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS,
+                atlas_layouts.track_chain_icon.clone(),
+            ),
+            PowerUp::Penetrate => (
+                texture_resources.penetrate_icon.clone(),
+                &crate::atlas::POWER_UP_PENETRATE_ATLAS,
+                atlas_layouts.penetrate_icon.clone(),
+            ),
+            PowerUp::Repair => (
+                texture_resources.repair_icon.clone(),
+                &crate::atlas::POWER_UP_REPAIR_ATLAS,
+                atlas_layouts.repair_icon.clone(),
+            ),
+            PowerUp::Hamburger => (
+                texture_resources.hamburger_icon.clone(),
+                &crate::atlas::POWER_UP_HAMBURGER_ATLAS,
+                atlas_layouts.hamburger_icon.clone(),
+            ),
+            PowerUp::AirCushion => (
+                texture_resources.air_cushion_icon.clone(),
+                &crate::atlas::POWER_UP_AIR_CUSHION_ATLAS,
+                atlas_layouts.air_cushion_icon.clone(),
+            ),
+            PowerUp::Shell => (
+                texture_resources.shell_icon.clone(),
+                &crate::atlas::POWER_UP_SHELL_ATLAS,
+                atlas_layouts.shell_icon.clone(),
+            ),
+        }
+    }
+}

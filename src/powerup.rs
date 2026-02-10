@@ -19,9 +19,6 @@ use crate::ui::constants::*;
 // 导入策略模式
 pub use crate::powerup_strategy::{PowerUp, PowerUpEffect, PowerUpResult, get_strategy};
 
-// 导入本地化常量
-use crate::ui::localization::*;
-
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
 
@@ -80,18 +77,7 @@ pub fn handle_powerup_collision(
 
             // 生成弹出文字特效
             let font = font_resources.get_font(*language);
-            let text = match picked.powerup_type {
-                PowerUp::SpeedUp => POWERUP_FLOATING_SPEED_UP.format(*language, POWERUP_ATTRIBUTE_INCREASE),
-                PowerUp::Protection => POWERUP_FLOATING_PROTECTION.format(*language, POWERUP_ATTRIBUTE_INCREASE),
-                PowerUp::FireSpeed => POWERUP_FLOATING_FIRE_SPEED.format(*language, POWERUP_ATTRIBUTE_INCREASE),
-                PowerUp::Repair => POWERUP_FLOATING_REPAIR.get(*language).to_string(),
-                PowerUp::Hamburger => POWERUP_FLOATING_HAMBURGER.get(*language).to_string(),
-                PowerUp::Shell => POWERUP_FLOATING_SHELL.get(*language).to_string(),
-                PowerUp::FireShell => POWERUP_FLOATING_FIRE_SHELL.get(*language).to_string(),
-                PowerUp::TrackChain => POWERUP_FLOATING_TRACK_CHAIN.get(*language).to_string(),
-                PowerUp::Penetrate => POWERUP_FLOATING_PENETRATE.get(*language).to_string(),
-                PowerUp::AirCushion => POWERUP_FLOATING_AIR_CUSHION.get(*language).to_string(),
-            };
+            let text = picked.powerup_type.get_floating_text(*language);
             // 根据玩家类型设置颜色：玩家1蓝色，玩家2红色
             let color = match tank_type {
                 TankType::Player1 => COLOR_BLUE,
@@ -191,63 +177,12 @@ fn spawn_powerup(
     powerup_type: PowerUp,
     position: Vec3,
 ) {
-    let (texture, atlas_info, atlas_layout) = match powerup_type {
-        PowerUp::SpeedUp => (
-            texture_resources.speed_up_icon.clone(),
-            &crate::atlas::POWER_UP_SPEED_UP_ATLAS,
-            &atlas_layouts.speed_up_icon,
-        ),
-        PowerUp::Protection => (
-            texture_resources.protection_icon.clone(),
-            &crate::atlas::POWER_UP_PROTECTION_ATLAS,
-            &atlas_layouts.protection_icon,
-        ),
-        PowerUp::FireSpeed => (
-            texture_resources.fire_speed_icon.clone(),
-            &crate::atlas::POWER_UP_FIRE_SPEED_ATLAS,
-            &atlas_layouts.fire_speed_icon,
-        ),
-        PowerUp::FireShell => (
-            texture_resources.fire_shell_icon.clone(),
-            &crate::atlas::POWER_UP_FIRE_SHELL_ATLAS,
-            &atlas_layouts.fire_shell_icon,
-        ),
-        PowerUp::TrackChain => (
-            texture_resources.track_chain_icon.clone(),
-            &crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS,
-            &atlas_layouts.track_chain_icon,
-        ),
-        PowerUp::Penetrate => (
-            texture_resources.penetrate_icon.clone(),
-            &crate::atlas::POWER_UP_PENETRATE_ATLAS,
-            &atlas_layouts.penetrate_icon,
-        ),
-        PowerUp::Repair => (
-            texture_resources.repair_icon.clone(),
-            &crate::atlas::POWER_UP_REPAIR_ATLAS,
-            &atlas_layouts.repair_icon,
-        ),
-        PowerUp::Hamburger => (
-            texture_resources.hamburger_icon.clone(),
-            &crate::atlas::POWER_UP_HAMBURGER_ATLAS,
-            &atlas_layouts.hamburger_icon,
-        ),
-        PowerUp::AirCushion => (
-            texture_resources.air_cushion_icon.clone(),
-            &crate::atlas::POWER_UP_AIR_CUSHION_ATLAS,
-            &atlas_layouts.air_cushion_icon,
-        ),
-        PowerUp::Shell => (
-            texture_resources.shell_icon.clone(),
-            &crate::atlas::POWER_UP_SHELL_ATLAS,
-            &atlas_layouts.shell_icon,
-        ),
-    };
+    let (texture, atlas_info, atlas_layout) = powerup_type.get_texture_resources(texture_resources, atlas_layouts);
 
     crate::utils::spawn_animated_sprite(
         commands,
         texture,
-        atlas_layout.clone(),
+        atlas_layout,
         atlas_info.animation_indices_full(),
         crate::constants::POWER_UP_ANIMATION_FRAME,
         Transform::from_translation(Vec3::new(position.x, position.y, Z_FOREST)),
