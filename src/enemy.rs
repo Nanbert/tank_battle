@@ -300,9 +300,9 @@ pub fn enemy_fire_spread_system(
 
         // 如果只有一方有火焰，传染给另一方
         if e1_has_fire && !e2_has_fire {
-            spread_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts);
+            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts);
         } else if !e1_has_fire && e2_has_fire {
-            spread_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts);
+            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts);
         }
     }
 }
@@ -324,7 +324,7 @@ fn has_burning_effect(
 }
 
 /// 为敌方坦克添加火焰效果
-fn spread_burning_effect(
+pub fn spawn_enemy_burning_effect(
     commands: &mut Commands,
     enemy_entity: Entity,
     texture_resources: &GameTextureResources,
@@ -347,18 +347,22 @@ fn spread_burning_effect(
                 },
             ),
             Transform {
-                translation: Vec3::new(0.0, 50.0, 0.5), // 向上偏移50像素，略高于坦克
-                scale: Vec3::splat(2.0), // 放大2倍
+                translation: Vec3::new(
+                    0.0,
+                    ENEMY_TANK_BURNING_Y_OFFSET,
+                    Z_ENEMY_TANK_BURNING,
+                ),
+                scale: Vec3::splat(ENEMY_TANK_BURNING_SCALE),
                 ..default()
             },
             animation_indices,
             AnimationTimer(Timer::from_seconds(
-                crate::constants::ANIMATION_FRAME_ENEMY_FIRE,
+                ANIMATION_FRAME_ENEMY_FIRE,
                 TimerMode::Repeating,
             )),
             CurrentAnimationFrame(0),
             EnemyTankBurningTimer(Timer::from_seconds(
-                crate::constants::ENEMY_TANK_BURNING_DURATION,
+                ENEMY_TANK_BURNING_DURATION,
                 TimerMode::Once,
             )),
         ));
@@ -627,7 +631,11 @@ pub fn enemy_burning_effect_system(
                     }
                     
                     // 播放爆炸音效
-                    utils::play_one_shot_sound(&mut commands, audio_resources.explosion.clone(), 0.5);
+                    utils::play_one_shot_sound(
+                        &mut commands,
+                        audio_resources.explosion.clone(),
+                        VOLUME_HALF,
+                    );
                     
                     // 销毁敌方坦克
                     let () = commands.entity(enemy_entity).try_despawn();

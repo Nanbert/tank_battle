@@ -731,34 +731,12 @@ pub fn bullet_tank_collision_system(
                             
                             // 如果有 fire_shell 能力，添加着火特效
                             if has_fire_shell {
-                                commands.entity(enemy_entity).with_children(|parent| {
-                                    parent.spawn((
-                                        crate::constants::EnemyTankBurning,
-                                        crate::constants::AnimationMode::Looping,
-                                        Sprite::from_atlas_image(
-                                            texture_resources.enemy_tank_burning.clone(),
-                                            TextureAtlas {
-                                                layout: atlas_layouts.enemy_tank_burning.clone(),
-                                                index: 0,
-                                            },
-                                        ),
-                                        Transform {
-                                            translation: Vec3::new(0.0, 50.0, 0.1),
-                                            rotation: Quat::IDENTITY,
-                                            scale: Vec3::splat(2.0),
-                                        },
-                                        crate::constants::AnimationIndices {
-                                            first: 0,
-                                            last: 5,
-                                        },
-                                        crate::constants::AnimationTimer(Timer::from_seconds(
-                                            crate::constants::ANIMATION_FRAME_ENEMY_FIRE,
-                                            TimerMode::Repeating,
-                                        )),
-                                        crate::constants::CurrentAnimationFrame(0),
-                                        crate::constants::EnemyTankBurningTimer(Timer::from_seconds(3.0, TimerMode::Once)),
-                                    ));
-                                });
+                                crate::enemy::spawn_enemy_burning_effect(
+                                    &mut commands,
+                                    enemy_entity,
+                                    &texture_resources,
+                                    &atlas_layouts,
+                                );
                             }
                         }
                         is_dead

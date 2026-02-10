@@ -858,3 +858,8 @@ pub const Z_RAIN: f32 = 0.5; // 雨水层级
 pub const Z_LASER: f32 = 0.9; // 激光层级
 pub const Z_FOREST: f32 = 1.0; // 森林层级
 pub const Z_PROGRESS_BAR: f32 = 2.0; // 进度条层级
+pub const Z_ENEMY_TANK_BURNING: f32 = 0.5; // 敌方坦克着火特效层级
+
+// ==================== 敌方坦克着火特效常量 ====================
+pub const ENEMY_TANK_BURNING_Y_OFFSET: f32 = 50.0; // 敌方坦克着火特效Y轴偏移
+pub const ENEMY_TANK_BURNING_SCALE: f32 = 2.0; // 敌方坦克着火特效缩放倍数
