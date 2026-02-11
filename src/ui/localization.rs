@@ -45,13 +45,13 @@ pub const MENU_OPTION_EXIT: LocalizedText = LocalizedText {
 
 /// 操作说明文本
 pub const CONTROLS_P1: LocalizedText = LocalizedText {
-    cn: "玩家1 (李云龙): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光",
-    en: "Player 1 (Li Yun Long): WASD to move | J to shoot | I to recall | K to dash | L to laser",
+    cn: "玩家1 (南敬业): WASD 移动 | J 射击 | I 召回 | K 冲刺 | L 激光",
+    en: "Player 1 (Nan Jingye): WASD to move | J to shoot | I to recall | K to dash | L to laser",
 };
 
 pub const CONTROLS_P2: LocalizedText = LocalizedText {
-    cn: "玩家2 (楚云飞): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光",
-    en: "Player 2 (Chu Yun Fei): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser",
+    cn: "玩家2 (南金成): 方向键 移动 | 1 射击 | 4 召回 | 2 冲刺 | 3 激光",
+    en: "Player 2 (Nan Jincheng): Arrow Keys to move | 1 to shoot | 4 to recall | 2 to dash | 3 to laser",
 };
 
 pub const CONTROLS_GENERAL: LocalizedText = LocalizedText {
@@ -168,13 +168,13 @@ pub const INSUFFICIENT_ENERGY: LocalizedText = LocalizedText {
 
 /// HUD 通用文本标签
 pub const HUD_PLAYER1_NAME: LocalizedText = LocalizedText {
-    cn: "李云龙",
-    en: "Li Yun Long",
+    cn: "南敬业",
+    en: "Nan Jingye",
 };
 
 pub const HUD_PLAYER2_NAME: LocalizedText = LocalizedText {
-    cn: "楚云飞",
-    en: "Chu Yun Fei",
+    cn: "南金成",
+    en: "Nan Jincheng",
 };
 
 pub const HUD_EFFECTS_TITLE: LocalizedText = LocalizedText {

@@ -467,7 +467,9 @@ pub struct DashDustEffect;
 
 // 敌方坦克着火特效标记
 #[derive(Component)]
-pub struct EnemyTankBurning;
+pub struct EnemyTankBurning {
+    pub player_type: TankType,
+}
 
 // 敌方坦克着火计时器
 #[derive(Component, Deref, DerefMut)]

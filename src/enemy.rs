@@ -10,6 +10,7 @@ use rand::Rng;
 use crate::constants::*;
 use crate::resources::{EnemySpawnState, GameAtlasLayoutResources, GameTextureResources, GameAudioResources};
 use crate::bullet::EffectEvent;
+use crate::bullet::ComboEvent;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -277,7 +278,7 @@ pub fn enemy_fire_spread_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionEvent>,
     enemy_tanks: Query<&Children, With<EnemyTank>>,
-    burning_effects: Query<(), With<EnemyTankBurning>>,
+    burning_effects: Query<(&EnemyTankBurning, &ChildOf), With<EnemyTankBurning>>,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
@@ -300,9 +301,11 @@ pub fn enemy_fire_spread_system(
 
         // 如果只有一方有火焰，传染给另一方
         if e1_has_fire && !e2_has_fire {
-            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts);
+            let player_type = get_burning_player_type(*e1, &enemy_tanks, &burning_effects);
+            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts, player_type);
         } else if !e1_has_fire && e2_has_fire {
-            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts);
+            let player_type = get_burning_player_type(*e2, &enemy_tanks, &burning_effects);
+            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts, player_type);
         }
     }
 }
@@ -311,7 +314,7 @@ pub fn enemy_fire_spread_system(
 fn has_burning_effect(
     enemy_entity: Entity,
     enemy_tanks: &Query<&Children, With<EnemyTank>>,
-    burning_effects: &Query<(), With<EnemyTankBurning>>,
+    burning_effects: &Query<(&EnemyTankBurning, &ChildOf), With<EnemyTankBurning>>,
 ) -> bool {
     if let Ok(children) = enemy_tanks.get(enemy_entity) {
         for child in children.iter() {
@@ -323,12 +326,30 @@ fn has_burning_effect(
     false
 }
 
+/// 获取敌方坦克火焰效果的玩家类型
+fn get_burning_player_type(
+    enemy_entity: Entity,
+    enemy_tanks: &Query<&Children, With<EnemyTank>>,
+    burning_effects: &Query<(&EnemyTankBurning, &ChildOf), With<EnemyTankBurning>>,
+) -> TankType {
+    if let Ok(children) = enemy_tanks.get(enemy_entity) {
+        for child in children.iter() {
+            if let Ok((burning, _)) = burning_effects.get(child) {
+                return burning.player_type;
+            }
+        }
+    }
+    // 默认返回玩家1（不应该发生）
+    TankType::Player1
+}
+
 /// 为敌方坦克添加火焰效果
 pub fn spawn_enemy_burning_effect(
     commands: &mut Commands,
     enemy_entity: Entity,
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,
+    player_type: TankType,
 ) {
     let animation_indices = AnimationIndices {
         first: 0,
@@ -340,7 +361,7 @@ pub fn spawn_enemy_burning_effect(
 
     commands.entity(enemy_entity).with_children(|parent| {
         parent.spawn((
-            EnemyTankBurning,
+            EnemyTankBurning { player_type },
             AnimationMode::Looping,
             Sprite::from_atlas_image(
                 texture_resources.enemy_tank_burning.clone(),
@@ -603,15 +624,18 @@ pub fn enemy_burning_effect_system(
     mut commands: Commands,
     time: Res<Time>,
     mut burning_query: Query<
-        (Entity, &mut EnemyTankBurningTimer, &ChildOf),
+        (Entity, &EnemyTankBurning, &mut EnemyTankBurningTimer, &ChildOf),
         With<EnemyTankBurning>,
     >,
     mut enemy_lives: Query<&mut EnemyLife, With<EnemyTank>>,
     enemy_transforms: Query<&Transform, With<EnemyTank>>,
     mut effect_events: MessageWriter<EffectEvent>,
     audio_resources: Res<GameAudioResources>,
+    mut combo_events: MessageWriter<ComboEvent>,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
-    for (burning_entity, mut timer, parent) in burning_query.iter_mut() {
+    for (burning_entity, burning, mut timer, parent) in burning_query.iter_mut() {
         timer.tick(time.delta());
         
         if timer.just_finished() {
@@ -631,6 +655,12 @@ pub fn enemy_burning_effect_system(
                         effect_events.write(EffectEvent::Explosion {
                             position: enemy_transform.translation,
                         });
+                        
+                        // 发送连击事件（触发得分）
+                        combo_events.write(ComboEvent {
+                            player_type: burning.player_type,
+                            position: enemy_transform.translation,
+                        });
                     }
                     
                     // 播放爆炸音效
@@ -642,6 +672,15 @@ pub fn enemy_burning_effect_system(
                     
                     // 销毁敌方坦克
                     let () = commands.entity(enemy_entity).try_despawn();
+                    
+                    // 33%概率在地图随机位置生成道具
+                    if rand::random::<f32>() < 1.0 / 3.0 {
+                        crate::powerup::spawn_powerup_random_position(
+                            &mut commands,
+                            &texture_resources,
+                            &atlas_layouts,
+                        );
+                    }
                 }
             }
         }

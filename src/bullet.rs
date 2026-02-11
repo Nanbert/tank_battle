@@ -102,12 +102,20 @@ pub fn spawn_bullet(
     params: BulletSpawnParams,
     player_info: &Res<PlayerInfo>,
     atlas_layouts: &GameAtlasLayoutResources,
+    weather: Option<&crate::weather::CurrentWeather>,
 ) -> Entity {
     // 根据坦克类型选择子弹纹理
     let bullet_texture = texture_resources.get_bullet_texture(params.owner_type);
 
     // 检查玩家是否拥有 fire_shell 能力
     let has_fire_shell = player_info.has_fire_shell(params.owner_type);
+
+    // 雨天时，有50%概率无法发射带有火焰的子弹
+    let can_attach_fire = if has_fire_shell {
+        !weather.is_some_and(|w| w.weather_type == crate::weather::WeatherType::Rain && rand::random::<f32>() < 0.5)
+    } else {
+        false
+    };
 
     // 计算子弹旋转角度（纹理是横向的，需要根据射击方向旋转）
     // 假设纹理默认向右（0度），需要根据方向计算旋转角度
@@ -153,8 +161,8 @@ pub fn spawn_bullet(
         ))
         .id();
 
-    // 如果玩家有 fire_shell 效果，添加火焰特效子实体
-    if has_fire_shell {
+    // 如果可以附加火焰，添加火焰特效子实体
+    if can_attach_fire {
         let fire_effect_atlas = atlas_layouts.fire_effect.clone();
         let animation_indices = AnimationIndices {
             first: 0,
@@ -284,6 +292,7 @@ pub fn enemy_shoot_system(
                 },
                 &player_info,
                 &atlas_layouts,
+                None,  // 敌方坦克不受雨天火焰弹影响
             );
 
             // 记录子弹的所有者
@@ -298,6 +307,7 @@ pub fn player_shoot_system(
     texture_resources: Res<GameTextureResources>,
     time: Res<Time>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
+    weather: Option<Res<crate::weather::CurrentWeather>>,
     mut query: Query<
         (
             Entity,
@@ -348,6 +358,7 @@ pub fn player_shoot_system(
             spawn_params,
             &player_info,
             &atlas_layouts,
+            weather.as_deref(),
         );
 
         // 记录子弹所有者
@@ -681,9 +692,10 @@ pub fn bullet_tank_collision_system(
     audio_resources: Res<GameAudioResources>,
     mut combo_events: MessageWriter<ComboEvent>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
-    resources: (Res<GameTextureResources>, Res<GameAtlasLayoutResources>, Option<Res<crate::weather::CurrentWeather>>),
+    resources: (Res<GameTextureResources>, Res<GameAtlasLayoutResources>),
+    fire_effects: Query<(Entity, &ChildOf), With<FireEffect>>,
 ) {
-    let (texture_resources, atlas_layouts, weather) = resources;
+    let (texture_resources, atlas_layouts) = resources;
 
     for event in collision_events.read() {
         let CollisionEvent::Started(e1, e2, _) = event else {
@@ -705,14 +717,14 @@ pub fn bullet_tank_collision_system(
             if let Ok((enemy_entity, tank_transform)) = enemy_tanks.get(tank_entity) {
                 let player_type = bullet.owner_type();
                 let has_penetrate = bullet.has_penetrate();
-                let has_fire_shell = player_info.has_fire_shell(player_type);
 
-                // 雨天时，拥有火焰弹的玩家有50%概率无法触发火焰效果
-                let can_fire_shell = if has_fire_shell {
-                    !weather.as_ref().is_some_and(|w| w.weather_type == crate::weather::WeatherType::Rain && rand::random::<f32>() < 0.5)
-                } else {
-                    false
-                };
+                // 检查子弹是否还有火焰特效子实体（可能已被海洋移除）
+                let has_fire_effect_attached = fire_effects
+                    .iter()
+                    .any(|(_, parent)| parent.0 == bullet_entity);
+
+                // 只要子弹附着火焰，就触发燃烧效果
+                let can_fire_shell = has_fire_effect_attached;
 
                 // 检查敌方坦克是否应该被摧毁
                 let should_destroy = enemy_lives
@@ -736,13 +748,14 @@ pub fn bullet_tank_collision_system(
                                 volume: 1.0,
                             });
                             
-                            // 如果有 fire_shell 能力且雨天未受影响，添加着火特效
+                            // 如果可以附加火焰，添加着火特效
                             if can_fire_shell {
                                 crate::enemy::spawn_enemy_burning_effect(
                                     &mut commands,
                                     enemy_entity,
                                     &texture_resources,
                                     &atlas_layouts,
+                                    player_type,
                                 );
                             }
                         }
