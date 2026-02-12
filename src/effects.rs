@@ -8,7 +8,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{GameAudioResources, GameTextureResources, PlayerInfo};
+use crate::resources::{GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -358,6 +358,44 @@ pub fn play_tree_ambience(
     );
 }
 
+/// 播放海面泡泡的环境音效（玩家在海面中时）
+pub fn play_bubble_ambience(
+    mut commands: Commands,
+    audio_resources: Res<GameAudioResources>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    seas: Query<&Transform, With<Sea>>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<BubbleAmbiencePlayer>>,
+) {
+    // 检查是否有玩家在海面中（与 spawn_sea_bubbles 相同的检测逻辑）
+    let mut player_in_sea = false;
+
+    for player_transform in player_tanks.iter() {
+        for sea_transform in seas.iter() {
+            let player_pos = player_transform.translation.truncate();
+            let sea_pos = sea_transform.translation.truncate();
+            // 检查玩家是否在海面格子的范围内（每个海面格子100x100）
+            if player_pos.x >= sea_pos.x - 50.0
+                && player_pos.x <= sea_pos.x + 50.0
+                && player_pos.y >= sea_pos.y - 50.0
+                && player_pos.y <= sea_pos.y + 50.0
+            {
+                player_in_sea = true;
+                break;
+            }
+        }
+        if player_in_sea {
+            break;
+        }
+    }
+
+    if player_in_sea && ambience_players.is_empty() {
+        let entity = utils::play_looping_sound(&mut commands, audio_resources.bubble_ambience.clone(), VOLUME_AMBIENCE);
+        commands.entity(entity).insert(BubbleAmbiencePlayer::default());
+    } else if !player_in_sea {
+        utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
+    }
+}
+
 /// 从音符音乐列表中随机选择一首
 fn select_random_music_note(audio_resources: &GameAudioResources) -> Handle<AudioSource> {
     let music_files = [
@@ -394,5 +432,104 @@ pub fn play_commander_ambience(
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
+    }
+}
+
+/// 海面泡泡生成系统
+/// 在玩家处于海面地形时在整个地图范围内随机生成泡泡动画
+pub fn spawn_sea_bubbles(
+    mut commands: Commands,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    player_tanks: Query<&Transform, With<PlayerTank>>,
+    seas: Query<&Transform, With<Sea>>,
+) {
+    let mut rng = rand::rng();
+    // 检查是否有玩家在海面中
+    let player_in_sea = player_tanks.iter().any(|player_transform| {
+        seas.iter().any(|sea_transform| {
+            let player_pos = player_transform.translation.truncate();
+            let sea_pos = sea_transform.translation.truncate();
+            // 检查玩家是否在海面格子的范围内（每个海面格子100x100）
+            player_pos.x >= sea_pos.x - 50.0
+                && player_pos.x <= sea_pos.x + 50.0
+                && player_pos.y >= sea_pos.y - 50.0
+                && player_pos.y <= sea_pos.y + 50.0
+        })
+    });
+
+    if !player_in_sea {
+        return;
+    }
+
+    // 随机生成泡泡（每帧有一定概率）
+    if rng.random::<f32>() < 0.1 {
+        // 在整个地图范围内随机位置生成泡泡，从底部开始
+        let bubble_pos = Vec3::new(
+            rng.random_range(MAP_LEFT_X..MAP_RIGHT_X),
+            MAP_BOTTOM_Y,  // 从地图底部开始
+            Z_FOREST,
+        );
+
+        // 随机泡泡大小
+        let bubble_size = rng.random_range(BUBBLE_SIZE_MIN..BUBBLE_SIZE_MAX);
+
+        let bubble_animation_indices = crate::atlas::SEA_BUBBLE_ATLAS.animation_indices_full();
+
+        let _ = utils::spawn_animated_sprite(
+            &mut commands,
+            texture_resources.sea_bubble_texture.clone(),
+            atlas_layouts.sea_bubble.clone(),
+            bubble_animation_indices,
+            ANIMATION_FRAME_BUBBLE,
+            Transform::from_translation(bubble_pos),
+            Vec2::new(bubble_size, bubble_size),  // 随机大小
+            (
+                crate::constants::SeaBubbleAnimation,
+                crate::ui::PlayingEntity,
+                crate::constants::AnimationMode::Looping,  // 循环播放
+            ),
+        );
+    }
+}
+
+/// 海面泡泡动画系统
+/// 循环播放动画并向上运动，到达顶部时消失
+pub fn animate_sea_bubbles(
+    time: Res<Time>,
+    mut commands: Commands,
+    mut query: Query<
+        (
+            Entity,
+            &mut AnimationTimer,
+            &mut Sprite,
+            &AnimationIndices,
+            &mut CurrentAnimationFrame,
+            &AnimationMode,
+            &mut Transform,
+        ),
+        With<crate::constants::SeaBubbleAnimation>,
+    >,
+) {
+    for (entity, mut timer, mut sprite, indices, mut current_frame, animation_mode, mut transform) in &mut query {
+        // 向上运动
+        transform.translation.y += BUBBLE_SPEED * time.delta_secs();
+        
+        // 循环播放动画
+        if *animation_mode == crate::constants::AnimationMode::Looping {
+            crate::utils::advance_next_frame(
+                &mut timer,
+                &mut sprite,
+                &mut current_frame,
+                time.delta(),
+                indices.first,
+                indices.last,
+            );
+        }
+
+        // 到达顶部时销毁
+        if transform.translation.y > MAP_TOP_Y {
+            let () = commands.entity(entity).try_despawn();
+        }
     }
 }

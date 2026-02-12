@@ -389,6 +389,9 @@ app.add_systems(
             effects::play_sea_ambience,
             effects::play_commander_ambience,
             effects::play_tree_ambience,
+            effects::play_bubble_ambience,
+            effects::spawn_sea_bubbles,
+            effects::animate_sea_bubbles,
             crate::ambience::rain_splash_spawn_system,
             crate::ambience::rain_splash_update_system,
             crate::ambience::leaves_spawn_system,
@@ -508,6 +511,7 @@ pub fn configure_game_resources(app: &mut App) {
             shell_icon: Handle::default(),
             background: Handle::default(),
             music_note: Handle::default(),
+            sea_bubble_texture: Handle::default(),
             leaves: Default::default(),
         })
         .insert_resource(crate::resources::GameAudioResources {
@@ -524,6 +528,7 @@ pub fn configure_game_resources(app: &mut App) {
             dash: Handle::default(),
             burn_tree: Handle::default(),
             sea_ambience: Handle::default(),
+            bubble_ambience: Handle::default(),
             music_note_000: Handle::default(),
             music_note_001: Handle::default(),
             music_note_002: Handle::default(),
@@ -542,6 +547,7 @@ pub fn configure_game_resources(app: &mut App) {
             spark: Handle::default(),
             commander: Handle::default(),
             music_note: Handle::default(),
+            sea_bubble: Handle::default(),
             player_avatar: Handle::default(),
             enemy_born: Handle::default(),
             enemy_tank_normal: Handle::default(),
@@ -617,88 +623,83 @@ pub fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-/// 初始化游戏资源
-/// 预加载常用的字体、纹理和音效，避免运行时重复加载
-pub fn init_game_resources(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    // 纹理图集布局
-    let background_atlas = crate::atlas::BACKGROUND_ATLAS.add_to_assets(&mut texture_atlas_layouts);
-
-    // 纹理资源
-    let textures = crate::resources::GameTextureResources {
+/// 初始化纹理资源
+fn init_textures(asset_server: &AssetServer) -> crate::resources::GameTextureResources {
+    crate::resources::GameTextureResources {
         // 字体
         cn: asset_server.load(FONT_CN),
         en: asset_server.load(FONT_EN),
         // 玩家坦克
-        player1: crate::atlas::PLAYER_TANK1_ATLAS.load_texture(&asset_server),
-        player2: crate::atlas::PLAYER_TANK2_ATLAS.load_texture(&asset_server),
+        player1: crate::atlas::PLAYER_TANK1_ATLAS.load_texture(asset_server),
+        player2: crate::atlas::PLAYER_TANK2_ATLAS.load_texture(asset_server),
         single_barrel: asset_server.load(TEXTURE_SINGLE_BARREL),
         double_barrel: asset_server.load(TEXTURE_DOUBLE_BARREL),
         // 司令官
-        commander: crate::atlas::COMMANDER_ATLAS.load_texture(&asset_server),
+        commander: crate::atlas::COMMANDER_ATLAS.load_texture(asset_server),
         commander_dead: asset_server.load(TEXTURE_COMMANDER_DEAD),
-        avatar: crate::atlas::PLAYER_AVATAR_ATLAS.load_texture(&asset_server),
+        avatar: crate::atlas::PLAYER_AVATAR_ATLAS.load_texture(asset_server),
         avatar_death: asset_server.load(TEXTURE_AVATAR_DEATH),
         avatar_commander_dead: asset_server.load(TEXTURE_AVATAR_COMMANDER_DEAD),
         // 子弹
         bullet_player1: asset_server.load(TEXTURE_BULLET_PLAYER1),
         bullet_player2: asset_server.load(TEXTURE_BULLET_PLAYER2),
         bullet_enemy: asset_server.load(TEXTURE_BULLET_ENEMY),
-        bullet_fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.load_texture(&asset_server),
-        bullet_penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.load_texture(&asset_server),
+        bullet_fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.load_texture(asset_server),
+        bullet_penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.load_texture(asset_server),
         // 特效
-        explosion: crate::atlas::EXPLOSION_ATLAS.load_texture(&asset_server),
-        spark: crate::atlas::SPARK_ATLAS.load_texture(&asset_server),
-        smoke: crate::atlas::SMOKE_ATLAS.load_texture(&asset_server),
+        explosion: crate::atlas::EXPLOSION_ATLAS.load_texture(asset_server),
+        spark: crate::atlas::SPARK_ATLAS.load_texture(asset_server),
+        smoke: crate::atlas::SMOKE_ATLAS.load_texture(asset_server),
         bubble: asset_server.load(TEXTURE_BUBBLE),
-        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.load_texture(&asset_server),
-        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.load_texture(&asset_server),
-        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.load_texture(&asset_server),
-        laser_blue: crate::atlas::LASER_BLUE_ATLAS.load_texture(&asset_server),
-        laser_red: crate::atlas::LASER_RED_ATLAS.load_texture(&asset_server),
+        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.load_texture(asset_server),
+        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.load_texture(asset_server),
+        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.load_texture(asset_server),
+        laser_blue: crate::atlas::LASER_BLUE_ATLAS.load_texture(asset_server),
+        laser_red: crate::atlas::LASER_RED_ATLAS.load_texture(asset_server),
         // 地图
         brick: asset_server.load(TEXTURE_BRICK),
         steel: asset_server.load(TEXTURE_STEEL),
-        tree: crate::atlas::FOREST_ATLAS.load_texture(&asset_server),
-        sea: crate::atlas::SEA_ATLAS.load_texture(&asset_server),
+        tree: crate::atlas::FOREST_ATLAS.load_texture(asset_server),
+        sea: crate::atlas::SEA_ATLAS.load_texture(asset_server),
         barrier: asset_server.load(TEXTURE_BARRIER),
         // 敌方坦克
-        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.load_texture(&asset_server),
-        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.load_texture(&asset_server),
-        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.load_texture(&asset_server),
-        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.load_texture(&asset_server),
-        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.load_texture(&asset_server),
-        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.load_texture(&asset_server),
+        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.load_texture(asset_server),
+        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.load_texture(asset_server),
+        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.load_texture(asset_server),
+        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.load_texture(asset_server),
+        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.load_texture(asset_server),
+        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.load_texture(asset_server),
         // 道具
-        speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(&asset_server),
-        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(&asset_server),
-        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.load_texture(&asset_server),
-        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(&asset_server),
-        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(&asset_server),
-        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(&asset_server),
-        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.load_texture(&asset_server),
-        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS.load_texture(&asset_server),
-        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(&asset_server),
-        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(&asset_server),
-        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(&asset_server),
-        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.load_texture(&asset_server),
-        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(&asset_server), // 菜单
-        background: crate::atlas::BACKGROUND_ATLAS.load_texture(&asset_server),
-        music_note: crate::atlas::MUSIC_NOTE_ATLAS.load_texture(&asset_server),
+        speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.load_texture(asset_server),
+        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.load_texture(asset_server),
+        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.load_texture(asset_server),
+        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.load_texture(asset_server),
+        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.load_texture(asset_server),
+        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.load_texture(asset_server),
+        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.load_texture(asset_server),
+        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS.load_texture(asset_server),
+        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.load_texture(asset_server),
+        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.load_texture(asset_server),
+        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.load_texture(asset_server),
+        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.load_texture(asset_server),
+        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.load_texture(asset_server),
+        // 菜单
+        background: crate::atlas::BACKGROUND_ATLAS.load_texture(asset_server),
+        music_note: crate::atlas::MUSIC_NOTE_ATLAS.load_texture(asset_server),
+        sea_bubble_texture: asset_server.load(TEXTURE_SEA_BUBBLE),
         leaves: [
-                asset_server.load(TEXTURE_LEAVES_1),
-                asset_server.load(TEXTURE_LEAVES_2),
-                asset_server.load(TEXTURE_LEAVES_3),
-                asset_server.load(TEXTURE_LEAVES_4),
-                asset_server.load(TEXTURE_LEAVES_5),
-            ],
-    };
+            asset_server.load(TEXTURE_LEAVES_1),
+            asset_server.load(TEXTURE_LEAVES_2),
+            asset_server.load(TEXTURE_LEAVES_3),
+            asset_server.load(TEXTURE_LEAVES_4),
+            asset_server.load(TEXTURE_LEAVES_5),
+        ],
+    }
+}
 
-    // 音频资源
-    let audio = crate::resources::GameAudioResources {
+/// 初始化音频资源
+fn init_audio(asset_server: &AssetServer) -> crate::resources::GameAudioResources {
+    crate::resources::GameAudioResources {
         // 音效
         explosion: asset_server.load(SOUND_EXPLOSION),
         brick_hit: asset_server.load(SOUND_BRICK_HIT),
@@ -714,76 +715,81 @@ pub fn init_game_resources(
         // 环境音效
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
+        bubble_ambience: asset_server.load(SOUND_BUBBLE_AMBIENCE),
         music_note_000: asset_server.load(SOUND_MUSIC_NOTE_000),
         music_note_001: asset_server.load(SOUND_MUSIC_NOTE_001),
         music_note_002: asset_server.load(SOUND_MUSIC_NOTE_002),
         music_note_003: asset_server.load(SOUND_MUSIC_NOTE_003),
         tree_ambience: asset_server.load(SOUND_TREE_AMBIENCE),
-    };
+    }
+}
 
-    // 图集布局资源
-    let atlases = crate::resources::GameAtlasLayoutResources {
+/// 初始化图集布局资源
+fn init_atlas_layouts(
+    texture_atlas_layouts: &mut Assets<TextureAtlasLayout>,
+) -> crate::resources::GameAtlasLayoutResources {
+    let background_atlas = crate::atlas::BACKGROUND_ATLAS.add_to_assets(texture_atlas_layouts);
+
+    crate::resources::GameAtlasLayoutResources {
         // 地形
-        sea: crate::atlas::SEA_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        forest: crate::atlas::FOREST_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        sea: crate::atlas::SEA_ATLAS.add_to_assets(texture_atlas_layouts),
+        forest: crate::atlas::FOREST_ATLAS.add_to_assets(texture_atlas_layouts),
+        forest_fire: crate::atlas::FOREST_FIRE_ATLAS.add_to_assets(texture_atlas_layouts),
         // 背景
         background: background_atlas,
         // 子弹特效
-        fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
+        fire_effect: crate::atlas::FIRE_EFFECT_ATLAS.add_to_assets(texture_atlas_layouts),
+        penetrate_effect: crate::atlas::PENETRATE_EFFECT_ATLAS.add_to_assets(texture_atlas_layouts),
         // 烟雾特效
-        smoke_atlas: crate::atlas::SMOKE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        smoke_atlas: crate::atlas::SMOKE_ATLAS.add_to_assets(texture_atlas_layouts),
         // 爆炸特效
-        explosion: crate::atlas::EXPLOSION_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        spark: crate::atlas::SPARK_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        explosion: crate::atlas::EXPLOSION_ATLAS.add_to_assets(texture_atlas_layouts),
+        spark: crate::atlas::SPARK_ATLAS.add_to_assets(texture_atlas_layouts),
         // 指挥官
-        commander: crate::atlas::COMMANDER_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        music_note: crate::atlas::MUSIC_NOTE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        commander: crate::atlas::COMMANDER_ATLAS.add_to_assets(texture_atlas_layouts),
+        music_note: crate::atlas::MUSIC_NOTE_ATLAS.add_to_assets(texture_atlas_layouts),
+        sea_bubble: crate::atlas::SEA_BUBBLE_ATLAS.add_to_assets(texture_atlas_layouts),
+        player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(texture_atlas_layouts),
         // 敌方出生
-        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(&mut texture_atlas_layouts),
+        enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.add_to_assets(texture_atlas_layouts),
+        laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(texture_atlas_layouts),
+        laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(texture_atlas_layouts),
         // 能量球
-        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
+        energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.add_to_assets(texture_atlas_layouts),
+        energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.add_to_assets(texture_atlas_layouts),
         // 道具
-        speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS
-            .add_to_assets(&mut texture_atlas_layouts),
-        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(&mut texture_atlas_layouts),
-    };
+        speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(texture_atlas_layouts),
+        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(texture_atlas_layouts),
+        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.add_to_assets(texture_atlas_layouts),
+        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.add_to_assets(texture_atlas_layouts),
+        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.add_to_assets(texture_atlas_layouts),
+        track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.add_to_assets(texture_atlas_layouts),
+        tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.add_to_assets(texture_atlas_layouts),
+        dash_dust_effect: crate::atlas::DASH_DUST_ATLAS.add_to_assets(texture_atlas_layouts),
+        penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.add_to_assets(texture_atlas_layouts),
+        repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(texture_atlas_layouts),
+        hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.add_to_assets(texture_atlas_layouts),
+        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.add_to_assets(texture_atlas_layouts),
+        shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(texture_atlas_layouts),
+    }
+}
 
-    // 插入所有资源
+/// 初始化游戏资源
+/// 预加载常用的字体、纹理和音效，避免运行时重复加载
+pub fn init_game_resources(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    let textures = init_textures(&asset_server);
+    let audio = init_audio(&asset_server);
+    let atlases = init_atlas_layouts(&mut texture_atlas_layouts);
+
     commands.insert_resource(textures);
     commands.insert_resource(audio);
     commands.insert_resource(atlases);

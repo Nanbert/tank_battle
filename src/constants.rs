@@ -27,6 +27,7 @@ pub const SOUND_METAL_CRASH: &str = "music/metal_crash.ogg";
 pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
+pub const SOUND_BUBBLE_AMBIENCE: &str = "music/bubbles.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
 pub const SOUND_DASH: &str = "music/dash.ogg";
 
@@ -51,7 +52,8 @@ pub const IMAGE_ALIPAY: &str = "alipay.png";
 pub const IMAGE_WECHAT: &str = "wechat.png";
 
 // 特效纹理路径常量（静态）
-pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";
+pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";  // 气垫船泡泡
+pub const TEXTURE_SEA_BUBBLE: &str = "ambience/bubble_sheet.png";  // 海面环境泡泡（动画）
 pub const TEXTURE_LEAVES_1: &str = "ambience/leaves1.png";
 pub const TEXTURE_LEAVES_2: &str = "ambience/leaves2.png";
 pub const TEXTURE_LEAVES_3: &str = "ambience/leaves3.png";
@@ -445,6 +447,10 @@ pub struct IsDashing;
 #[derive(Component)]
 pub struct BubbleEffect;
 
+/// 海面泡泡动画组件
+#[derive(Component)]
+pub struct SeaBubbleAnimation;
+
 // 玩家履带特效标记
 #[derive(Component)]
 pub struct TrackChainEffect;
@@ -605,6 +611,9 @@ pub struct TreeAmbiencePlayer;
 
 #[derive(Component, Default)]
 pub struct SeaAmbiencePlayer;
+
+#[derive(Component, Default)]
+pub struct BubbleAmbiencePlayer;
 
 #[derive(Component, Default)]
 pub struct CommanderAmbiencePlayer;
@@ -815,6 +824,10 @@ pub const ANIMATION_FRAME_MUSIC_NOTE: f32 = 0.1; // 音符动画帧间隔
 pub const ANIMATION_FRAME_COMMANDER: f32 = 0.15; // 指挥官动画帧间隔
 pub const ANIMATION_FRAME_FOREST: f32 = 0.2; // 森林动画帧间隔
 pub const ANIMATION_FRAME_SEA: f32 = 0.2; // 海水动画帧间隔
+pub const BUBBLE_SPEED: f32 = 250.0; // 泡泡向上运动速度（像素/秒）
+pub const ANIMATION_FRAME_BUBBLE: f32 = 0.1; // 海面泡泡动画帧间隔
+pub const BUBBLE_SIZE_MIN: f32 = 20.0; // 泡泡最小显示大小
+pub const BUBBLE_SIZE_MAX: f32 = 50.0; // 泡泡最大显示大小
 
 // ==================== 敌方坦克着火常量 ====================
 pub const ENEMY_TANK_BURNING_DURATION: f32 = 3.0; // 敌方坦克着火持续时间（秒）

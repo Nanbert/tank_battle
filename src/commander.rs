@@ -19,20 +19,11 @@ pub fn spawn_commander(
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
     commanders: Query<Entity, With<Commander>>,
-    children: Query<&Children>,
+    music_animations: Query<Entity, With<MusicNoteAnimation>>,
     mut commander_life: ResMut<CommanderLife>,
 ) {
-    // 防御性编程：先销毁可能存在的旧司令官及其子节点
-    for entity in commanders.iter() {
-        // 先销毁所有子节点
-        if let Ok(children) = children.get(entity) {
-            for child in children.iter() {
-                let () = commands.entity(child).try_despawn();
-            }
-        }
-        // 再销毁父节点
-        let () = commands.entity(entity).try_despawn();
-    }
+    // 先清理可能存在的旧指挥官
+    despawn_commander(commands.reborrow(), commanders, music_animations);
 
     // 重置 Commander 生命值
     commander_life.life_points = 3;

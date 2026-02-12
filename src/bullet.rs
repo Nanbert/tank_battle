@@ -21,7 +21,7 @@ use crate::utils;
 
 /// 特效事件枚举
 /// 用于解耦碰撞逻辑和特效生成
-#[derive(Event, Clone, Message)]
+#[derive(Clone, Message)]
 pub enum EffectEvent {
     Explosion {
         position: Vec3,
@@ -37,7 +37,7 @@ pub enum EffectEvent {
 }
 
 /// 连击事件
-#[derive(Event, Clone, Copy, Message)]
+#[derive(Clone, Copy, Message)]
 pub struct ComboEvent {
     pub player_type: TankType,
     pub position: Vec3,
@@ -672,8 +672,191 @@ pub fn update_combo_system(
     time: Res<Time>,
 ) {
     let current_time = time.elapsed_secs();
-    let delta = time.delta_secs();
-    combo_tracker.update(delta, current_time);
+    combo_tracker.update(current_time);
+}
+
+/// 处理玩家子弹击中敌方坦克的碰撞
+fn handle_player_bullet_enemy_collision(
+    commands: &mut Commands,
+    bullet_entity: Entity,
+    enemy_entity: Entity,
+    bullet: &Bullet,
+    enemy_tanks: &Query<(Entity, &Transform), With<EnemyTank>>,
+    enemy_lives: &mut Query<&mut EnemyLife, With<EnemyTank>>,
+    fire_effects: &Query<(Entity, &ChildOf), With<FireEffect>>,
+    texture_resources: &GameTextureResources,
+    atlas_layouts: &GameAtlasLayoutResources,
+    audio_resources: &GameAudioResources,
+    effect_events: &mut MessageWriter<EffectEvent>,
+    game_trackers: &mut GameTrackers,
+    combo_events: &mut MessageWriter<ComboEvent>,
+) {
+    let Ok((_, tank_transform)) = enemy_tanks.get(enemy_entity) else {
+        return;
+    };
+
+    let player_type = bullet.owner_type();
+    let has_penetrate = bullet.has_penetrate();
+
+    // 检查子弹是否还有火焰特效子实体（可能已被海洋移除）
+    let has_fire_effect_attached = fire_effects
+        .iter()
+        .any(|(_, parent)| parent.0 == bullet_entity);
+
+    // 只要子弹附着火焰，就触发燃烧效果
+    let can_fire_shell = has_fire_effect_attached;
+
+    // 检查敌方坦克是否应该被摧毁
+    let should_destroy = enemy_lives
+        .get_mut(enemy_entity)
+        .map(|mut enemy_life| {
+            // 如果有穿透效果，造成双倍伤害（扣2滴血）
+            let damage = if has_penetrate { 2 } else { 1 };
+            let mut is_dead = false;
+            for _ in 0..damage {
+                if enemy_life.take_damage() {
+                    is_dead = true;
+                    break;
+                }
+            }
+
+            if !is_dead {
+                // 未死亡，播放击中特效
+                effect_events.write(EffectEvent::Spark {
+                    position: tank_transform.translation,
+                    audio_handle: audio_resources.hit.clone(),
+                    volume: 1.0,
+                });
+
+                // 如果可以附加火焰，添加着火特效
+                if can_fire_shell {
+                    crate::enemy::spawn_enemy_burning_effect(
+                        commands,
+                        enemy_entity,
+                        texture_resources,
+                        atlas_layouts,
+                        player_type,
+                    );
+                }
+            }
+            is_dead
+        })
+        .unwrap_or(true); // 如果没有生命值组件，直接摧毁
+
+    if should_destroy {
+        effect_events.write(EffectEvent::Explosion {
+            position: tank_transform.translation,
+        });
+
+        // 发送连击事件
+        combo_events.write(ComboEvent {
+            player_type,
+            position: tank_transform.translation,
+        });
+
+        utils::play_one_shot_sound(commands, audio_resources.hit.clone(), 1.0);
+        let () = commands.entity(enemy_entity).try_despawn();
+
+        // 33%概率在地图随机位置生成道具
+        if rand::random::<f32>() < 1.0 / 3.0 {
+            crate::powerup::spawn_powerup_random_position(
+                commands,
+                texture_resources,
+                atlas_layouts,
+            );
+        }
+    }
+
+    despawn_bullet(commands, game_trackers, bullet_entity);
+}
+
+/// 处理敌方子弹击中玩家坦克的碰撞
+fn handle_enemy_bullet_player_collision(
+    commands: &mut Commands,
+    bullet_entity: Entity,
+    player_tank_entity: Entity,
+    player_tank: &PlayerTank,
+    tank_transform: &Transform,
+    player_info: &mut PlayerInfo,
+    controllers: &mut Query<&mut KinematicCharacterController>,
+    audio_resources: &GameAudioResources,
+    effect_events: &mut MessageWriter<EffectEvent>,
+    game_trackers: &mut GameTrackers,
+    stat_changed_events: &mut MessageWriter<PlayerStatChanged>,
+) {
+    let player_type = player_tank.tank_type;
+
+    effect_events.write(EffectEvent::Spark {
+        position: tank_transform.translation,
+        audio_handle: audio_resources.hit.clone(),
+        volume: 1.0,
+    });
+
+    let mut need_update_filter_groups = false;
+    let mut need_despawn = false;
+    let mut explosion_position = None;
+
+    player_info.with_stats_mut(player_type, |player_stats| {
+        // 按优先级移除道具：fire_shell > track_chain > penetrate > air_cushion > shells
+        if player_stats.fire_shell {
+            player_stats.fire_shell = false;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type,
+                stat_type: StatType::FireShell,
+            });
+        } else if player_stats.track_chain {
+            player_stats.track_chain = false;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type,
+                stat_type: StatType::TrackChain,
+            });
+        } else if player_stats.penetrate {
+            player_stats.penetrate = false;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type,
+                stat_type: StatType::Penetrate,
+            });
+        } else if player_stats.air_cushion {
+            player_stats.air_cushion = false;
+            need_update_filter_groups = true;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type,
+                stat_type: StatType::AirCushion,
+            });
+        } else if player_stats.shells > 1 {
+            player_stats.shells -= 1;
+            stat_changed_events.write(PlayerStatChanged {
+                player_type,
+                stat_type: StatType::Shell,
+            });
+        } else {
+            // 造成伤害
+            if player_stats.life_points > 0 {
+                player_stats.life_points -= 1;
+            }
+            if player_stats.life_points == 0 {
+                explosion_position = Some(tank_transform.translation);
+                need_despawn = true;
+            }
+        }
+    });
+
+    // 更新 filter_groups
+    if need_update_filter_groups
+        && let Ok(mut controller) = controllers.get_mut(player_tank_entity)
+    {
+        controller.filter_groups = None;
+    }
+
+    // 销毁坦克
+    if need_despawn {
+        if let Some(pos) = explosion_position {
+            effect_events.write(EffectEvent::Explosion { position: pos });
+        }
+        let () = commands.entity(player_tank_entity).try_despawn();
+    }
+
+    despawn_bullet(commands, game_trackers, bullet_entity);
 }
 
 /// 子弹与坦克碰撞检测系统
@@ -714,81 +897,21 @@ pub fn bullet_tank_collision_system(
 
         // 玩家子弹击中敌方坦克
         if bullet.is_player() && enemy_tanks.get(tank_entity).is_ok() {
-            if let Ok((enemy_entity, tank_transform)) = enemy_tanks.get(tank_entity) {
-                let player_type = bullet.owner_type();
-                let has_penetrate = bullet.has_penetrate();
-
-                // 检查子弹是否还有火焰特效子实体（可能已被海洋移除）
-                let has_fire_effect_attached = fire_effects
-                    .iter()
-                    .any(|(_, parent)| parent.0 == bullet_entity);
-
-                // 只要子弹附着火焰，就触发燃烧效果
-                let can_fire_shell = has_fire_effect_attached;
-
-                // 检查敌方坦克是否应该被摧毁
-                let should_destroy = enemy_lives
-                    .get_mut(enemy_entity)
-                    .map(|mut enemy_life| {
-                        // 如果有穿透效果，造成双倍伤害（扣2滴血）
-                        let damage = if has_penetrate { 2 } else { 1 };
-                        let mut is_dead = false;
-                        for _ in 0..damage {
-                            if enemy_life.take_damage() {
-                                is_dead = true;
-                                break;
-                            }
-                        }
-
-                        if !is_dead {
-                            // 未死亡，播放击中特效
-                            effect_events.write(EffectEvent::Spark {
-                                position: tank_transform.translation,
-                                audio_handle: audio_resources.hit.clone(),
-                                volume: 1.0,
-                            });
-                            
-                            // 如果可以附加火焰，添加着火特效
-                            if can_fire_shell {
-                                crate::enemy::spawn_enemy_burning_effect(
-                                    &mut commands,
-                                    enemy_entity,
-                                    &texture_resources,
-                                    &atlas_layouts,
-                                    player_type,
-                                );
-                            }
-                        }
-                        is_dead
-                    })
-                    .unwrap_or(true); // 如果没有生命值组件，直接摧毁
-
-                if should_destroy {
-                    effect_events.write(EffectEvent::Explosion {
-                        position: tank_transform.translation,
-                    });
-
-                    // 发送连击事件
-                    combo_events.write(ComboEvent {
-                        player_type,
-                        position: tank_transform.translation,
-                    });
-
-                    utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), 1.0);
-                    let () = commands.entity(tank_entity).try_despawn();
-
-                    // 33%概率在地图随机位置生成道具
-                    if rand::random::<f32>() < 1.0 / 3.0 {
-                        crate::powerup::spawn_powerup_random_position(
-                            &mut commands,
-                            &texture_resources,
-                            &atlas_layouts,
-                        );
-                    }
-                }
-
-                despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
-            }
+            handle_player_bullet_enemy_collision(
+                &mut commands,
+                bullet_entity,
+                tank_entity,
+                bullet,
+                &enemy_tanks,
+                &mut enemy_lives,
+                &fire_effects,
+                &texture_resources,
+                &atlas_layouts,
+                &audio_resources,
+                &mut effect_events,
+                &mut game_trackers,
+                &mut combo_events,
+            );
             continue;
         }
 
@@ -796,79 +919,19 @@ pub fn bullet_tank_collision_system(
         if bullet.is_enemy()
             && let Ok((player_tank, tank_transform)) = player_tanks.get(tank_entity)
         {
-            let player_type = player_tank.tank_type;
-
-            effect_events.write(EffectEvent::Spark {
-                position: tank_transform.translation,
-                audio_handle: audio_resources.hit.clone(),
-                volume: 1.0,
-            });
-
-            let mut need_update_filter_groups = false;
-            let mut need_despawn = false;
-            let mut explosion_position = None;
-
-            player_info.with_stats_mut(player_type, |player_stats| {
-                // 按优先级移除道具：fire_shell > track_chain > penetrate > air_cushion > shells
-                if player_stats.fire_shell {
-                    player_stats.fire_shell = false;
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type,
-                        stat_type: StatType::FireShell,
-                    });
-                } else if player_stats.track_chain {
-                    player_stats.track_chain = false;
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type,
-                        stat_type: StatType::TrackChain,
-                    });
-                } else if player_stats.penetrate {
-                    player_stats.penetrate = false;
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type,
-                        stat_type: StatType::Penetrate,
-                    });
-                } else if player_stats.air_cushion {
-                    player_stats.air_cushion = false;
-                    need_update_filter_groups = true;
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type,
-                        stat_type: StatType::AirCushion,
-                    });
-                } else if player_stats.shells > 1 {
-                    player_stats.shells -= 1;
-                    stat_changed_events.write(PlayerStatChanged {
-                        player_type,
-                        stat_type: StatType::Shell,
-                    });
-                } else {
-                    // 造成伤害
-                    if player_stats.life_points > 0 {
-                        player_stats.life_points -= 1;
-                    }
-                    if player_stats.life_points == 0 {
-                        explosion_position = Some(tank_transform.translation);
-                        need_despawn = true;
-                    }
-                }
-            });
-
-            // 更新 filter_groups
-            if need_update_filter_groups
-                && let Ok(mut controller) = controllers.get_mut(tank_entity)
-            {
-                controller.filter_groups = None;
-            }
-
-            // 销毁坦克
-            if need_despawn {
-                if let Some(pos) = explosion_position {
-                    effect_events.write(EffectEvent::Explosion { position: pos });
-                }
-                let () = commands.entity(tank_entity).try_despawn();
-            }
-
-            despawn_bullet(&mut commands, &mut game_trackers, bullet_entity);
+            handle_enemy_bullet_player_collision(
+                &mut commands,
+                bullet_entity,
+                tank_entity,
+                player_tank,
+                tank_transform,
+                &mut player_info,
+                &mut controllers,
+                &audio_resources,
+                &mut effect_events,
+                &mut game_trackers,
+                &mut stat_changed_events,
+            );
         }
     }
 }

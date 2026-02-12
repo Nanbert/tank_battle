@@ -20,7 +20,7 @@ use crate::utils;
 pub struct BornPosition(pub Vec3);
 
 /// 敌方坦克生成事件
-#[derive(Event, Message)]
+#[derive(Message)]
 pub struct SpawnEnemyEvent {
     /// 出生位置
     pub position: Vec3,

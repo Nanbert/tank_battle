@@ -619,8 +619,12 @@ pub fn spawn_players(
 pub fn despawn_players(
     mut commands: Commands,
     player_tanks: Query<Entity, With<PlayerTank>>,
+    progress_bars: Query<Entity, With<crate::constants::RecallProgressBar>>,
     mut player_info: ResMut<PlayerInfo>,
 ) {
+    // 清理所有回城进度条
+    crate::utils::cleanup_entities(&mut commands, progress_bars.iter());
+
     // 销毁所有玩家坦克
     crate::utils::cleanup_entities(&mut commands, player_tanks.iter());
 

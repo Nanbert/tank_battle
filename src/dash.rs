@@ -165,7 +165,7 @@ pub fn update_dash_movement(
                 if let Some(children_ref) = children {
                     for child in children_ref.iter() {
                         if dash_dust_query.get(child).is_ok() {
-                            commands.entity(child).despawn();
+                            let () = commands.entity(child).try_despawn();
                         }
                     }
                 }

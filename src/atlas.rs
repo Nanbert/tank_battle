@@ -299,6 +299,18 @@ pub const MUSIC_NOTE_ATLAS: TextureAtlasInfo = {
     atlas
 };
 
+// ==================== 海面泡泡精灵图常量 ====================
+pub const SEA_BUBBLE_ATLAS: TextureAtlasInfo = {
+    let mut atlas = TextureAtlasInfo::new(
+        "ambience/bubble_sheet.png",
+        Vec2::new(24.0, 28.0),
+        20,
+        1,
+    );
+    atlas.display_size = Vec2::new(30.0, 30.0);
+    atlas
+};
+
 // ==================== 道具精灵图常量 ====================
 // 所有道具使用相同的尺寸和布局（3列1行）
 pub const POWER_UP_SPEED_UP_ATLAS: TextureAtlasInfo =

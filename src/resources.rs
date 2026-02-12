@@ -536,6 +536,7 @@ pub struct GameTextureResources {
     // 菜单
     pub background: Handle<Image>,
     pub music_note: Handle<Image>,
+    pub sea_bubble_texture: Handle<Image>,  // 海面环境泡泡
 }
 
 impl GameTextureResources {
@@ -652,6 +653,7 @@ pub struct GameAudioResources {
     // 环境音效
     pub burn_tree: Handle<AudioSource>,
     pub sea_ambience: Handle<AudioSource>,
+    pub bubble_ambience: Handle<AudioSource>,
     pub music_note_000: Handle<AudioSource>,
     pub music_note_001: Handle<AudioSource>,
     pub music_note_002: Handle<AudioSource>,
@@ -684,6 +686,7 @@ pub struct GameAtlasLayoutResources {
     // 指挥官
     pub commander: Handle<TextureAtlasLayout>,
     pub music_note: Handle<TextureAtlasLayout>,
+    pub sea_bubble: Handle<TextureAtlasLayout>,
     pub player_avatar: Handle<TextureAtlasLayout>,
     // 敌方出生
     pub enemy_born: Handle<TextureAtlasLayout>,
@@ -756,7 +759,7 @@ impl ComboTracker {
     }
 
     /// 更新连击计时器（每帧调用）
-    pub fn update(&mut self, _delta_time: f32, current_time: f32) {
+    pub fn update(&mut self, current_time: f32) {
         // 更新玩家1连击：4秒无击杀则清零
         if current_time - self.player1.last_kill_time > COMBO_TIMEOUT {
             self.player1.count = 0;

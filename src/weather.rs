@@ -122,12 +122,12 @@ pub fn on_playing_enter(
     if stage_level.0 == 1 {
         weather.weather_type = WeatherType::Rain;
         
-        // 第一关在地图中央生成火焰弹道具
+        // 第一关在地图中央生成气垫船道具（用于测试泡泡效果）
         crate::powerup::spawn_powerup(
             &mut commands,
             &texture_resources,
             &atlas_layouts,
-            crate::powerup_strategy::PowerUp::FireShell,
+            crate::powerup_strategy::PowerUp::AirCushion,
             bevy::prelude::Vec3::new(0.0, 0.0, crate::constants::Z_FOREST),
         );
     } else {
