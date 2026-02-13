@@ -944,6 +944,7 @@ pub fn handle_effect_events(
     atlas_layouts: Res<GameAtlasLayoutResources>,
     texture_resources: Res<GameTextureResources>,
     audio_resources: Res<GameAudioResources>,
+    tree_color: Res<crate::resources::TreeColor>,
 ) {
     for event in events.read() {
         match event {
@@ -977,6 +978,7 @@ pub fn handle_effect_events(
                     &atlas_layouts,
                     &audio_resources,
                     *position,
+                    *tree_color,
                 );
             }
         }

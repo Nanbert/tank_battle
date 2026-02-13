@@ -2,7 +2,31 @@
 
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
+use rand::Rng;
 use std::time::Duration;
+
+// ==================== 树木颜色系统 ====================
+
+/// 树木颜色类型
+#[derive(Resource, Clone, Copy, PartialEq, Eq)]
+pub enum TreeColor {
+    /// 绿色（春夏季节）
+    Green,
+    /// 黄色（秋冬季节）
+    Yellow,
+}
+
+impl TreeColor {
+    /// 随机选择树木颜色
+    pub fn random() -> Self {
+        let mut rng = rand::rng();
+        if rng.random::<bool>() {
+            Self::Green
+        } else {
+            Self::Yellow
+        }
+    }
+}
 
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
@@ -503,13 +527,16 @@ pub struct GameTextureResources {
     pub energy_blue_ball: Handle<Image>,
     pub energy_red_ball: Handle<Image>,
     pub forest_fire: Handle<Image>,
+    pub forest_fire_yellow: Handle<Image>,
     pub laser_blue: Handle<Image>,
     pub laser_red: Handle<Image>,
     pub leaves: [Handle<Image>; 5],
+    pub leaves_yellow: [Handle<Image>; 5],
     // 地图
     pub brick: Handle<Image>,
     pub steel: Handle<Image>,
     pub tree: Handle<Image>,
+    pub tree_yellow: Handle<Image>,
     pub sea: Handle<Image>,
     pub barrier: Handle<Image>,
     // 敌方坦克
@@ -654,6 +681,7 @@ pub struct GameAudioResources {
     pub burn_tree: Handle<AudioSource>,
     pub sea_ambience: Handle<AudioSource>,
     pub bubble_ambience: Handle<AudioSource>,
+    pub rain: Handle<AudioSource>,
     pub music_note_000: Handle<AudioSource>,
     pub music_note_001: Handle<AudioSource>,
     pub music_note_002: Handle<AudioSource>,
@@ -673,6 +701,8 @@ pub struct GameAtlasLayoutResources {
     pub sea: Handle<TextureAtlasLayout>,
     pub forest: Handle<TextureAtlasLayout>,
     pub forest_fire: Handle<TextureAtlasLayout>,
+    pub forest_yellow: Handle<TextureAtlasLayout>,
+    pub forest_fire_yellow: Handle<TextureAtlasLayout>,
     // 背景
     pub background: Handle<TextureAtlasLayout>,
     // 子弹特效

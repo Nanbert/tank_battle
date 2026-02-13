@@ -46,11 +46,22 @@ pub fn spawn_forest_fire(
     atlas_layouts: &crate::resources::GameAtlasLayoutResources,
     sound_resources: &GameAudioResources,
     position: Vec3,
+    tree_color: crate::resources::TreeColor,
 ) {
+    // 根据当前树木颜色选择燃烧纹理
+    let (fire_texture, fire_layout) = match tree_color {
+        crate::resources::TreeColor::Green => {
+            (effect_resources.forest_fire.clone(), atlas_layouts.forest_fire.clone())
+        }
+        crate::resources::TreeColor::Yellow => {
+            (effect_resources.forest_fire_yellow.clone(), atlas_layouts.forest_fire_yellow.clone())
+        }
+    };
+
     let _ = utils::spawn_animated_sprite(
         commands,
-        effect_resources.forest_fire.clone(),
-        atlas_layouts.forest_fire.clone(),
+        fire_texture,
+        fire_layout,
         crate::atlas::FOREST_FIRE_ATLAS.animation_indices_full(),
         ANIMATION_FRAME_FOREST_FIRE,
         Transform::from_translation(position),

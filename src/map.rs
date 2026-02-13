@@ -176,6 +176,7 @@ pub fn spawn_terrain_tile(
     atlas_layouts: &Res<GameAtlasLayoutResources>,
     position: Vec2,
     tile_type: TerrainTileType,
+    tree_color: crate::resources::TreeColor,
 ) -> Entity {
     match tile_type {
         TerrainTileType::Brick => {
@@ -217,10 +218,20 @@ pub fn spawn_terrain_tile(
                 .id()
         }
         TerrainTileType::Forest => {
+            // 根据当前树木颜色选择对应的纹理和图集布局
+            let (tree_texture, forest_layout) = match tree_color {
+                crate::resources::TreeColor::Green => {
+                    (texture_resources.tree.clone(), atlas_layouts.forest.clone())
+                }
+                crate::resources::TreeColor::Yellow => {
+                    (texture_resources.tree_yellow.clone(), atlas_layouts.forest_yellow.clone())
+                }
+            };
+
             let entity = crate::utils::spawn_animated_sprite(
                 commands,
-                texture_resources.tree.clone(),
-                atlas_layouts.forest.clone(),
+                tree_texture,
+                forest_layout,
                 crate::atlas::FOREST_ATLAS.animation_indices_full(),
                 ANIMATION_FRAME_FOREST,
                 Transform::from_translation(Vec3::new(position.x, position.y, Z_FOREST)),
@@ -310,6 +321,7 @@ pub fn spawn_tile_group(
     center_position: Vec2,
     tile_type: TerrainTileType,
     layout: TileLayout,
+    tree_color: crate::resources::TreeColor,
 ) -> Vec<Entity> {
     let positions = match layout {
         TileLayout::Full => vec![
@@ -333,6 +345,7 @@ pub fn spawn_tile_group(
                 atlas_layouts,
                 center_position + pos,
                 tile_type,
+                tree_color,
             )
         })
         .collect()
@@ -364,6 +377,7 @@ fn spawn_map_terrain(
     atlas_layouts: &Res<GameAtlasLayoutResources>,
     level_assets: &mut crate::levels::LevelAssets,
     stage_level: usize,
+    tree_color: crate::resources::TreeColor,
 ) {
     let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
 
@@ -385,6 +399,7 @@ fn spawn_map_terrain(
                             pos,
                             tile_type,
                             layout_type,
+                            tree_color,
                         );
                     }
                     None => {
@@ -394,6 +409,7 @@ fn spawn_map_terrain(
                             atlas_layouts,
                             pos,
                             tile_type,
+                            tree_color,
                         );
                     }
                 }
@@ -410,6 +426,8 @@ pub fn spawn_map(
     mut level_assets: ResMut<crate::levels::LevelAssets>,
     mut clear_color: ResMut<ClearColor>,
     stage_level: Res<StageLevel>,
+    mut tree_color: ResMut<crate::resources::TreeColor>,
+    weather: Res<crate::weather::CurrentWeather>,
     bricks: Query<Entity, With<Brick>>,
     steels: Query<Entity, With<Steel>>,
     forests: Query<Entity, With<Forest>>,
@@ -421,6 +439,13 @@ pub fn spawn_map(
     for entity in query_all_map_entities(bricks, steels, forests, seas, barriers, walls) {
         let () = commands.entity(entity).try_despawn();
     }
+
+    // 根据天气选择树木颜色：下雪时强制使用黄色（秋冬季节）
+    *tree_color = if weather.weather_type == crate::weather::WeatherType::Snow {
+        crate::resources::TreeColor::Yellow
+    } else {
+        crate::resources::TreeColor::random()
+    };
 
     // 设置背景色为黑色
     clear_color.0 = COLOR_BACKGROUND;
@@ -435,10 +460,11 @@ pub fn spawn_map(
         &atlas_layouts,
         &mut level_assets,
         stage_level.0,
+        *tree_color,
     );
 
     // 生成司令官堡垒墙
-    spawn_commander_fortress(&mut commands, &texture_resources, &atlas_layouts);
+    spawn_commander_fortress(&mut commands, &texture_resources, &atlas_layouts, *tree_color);
 }
 
 /// 生成一列砖块墙
@@ -451,6 +477,7 @@ fn spawn_wall_column(
     brick_size: f32,
     count: usize,
     is_vertical: bool,
+    tree_color: crate::resources::TreeColor,
 ) {
     for i in 0..count {
         let pos = (i as f32).mul_add(brick_size, start_pos + brick_size / 2.0);
@@ -465,6 +492,7 @@ fn spawn_wall_column(
             atlas_layouts,
             position,
             TerrainTileType::Brick,
+            tree_color,
         );
     }
 }
@@ -474,6 +502,7 @@ pub fn spawn_commander_fortress(
     commands: &mut Commands,
     texture_resources: &Res<GameTextureResources>,
     atlas_layouts: &Res<GameAtlasLayoutResources>,
+    tree_color: crate::resources::TreeColor,
 ) {
     let commander_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y / 2.0;
 
@@ -495,6 +524,7 @@ pub fn spawn_commander_fortress(
         brick_size,
         3,
         true,
+        tree_color,
     );
 
     // 右墙：3块砖
@@ -507,6 +537,7 @@ pub fn spawn_commander_fortress(
         brick_size,
         3,
         true,
+        tree_color,
     );
 
     // 上墙：2块砖
@@ -519,5 +550,6 @@ pub fn spawn_commander_fortress(
         brick_size,
         2,
         false,
+        tree_color,
     );
 }

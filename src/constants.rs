@@ -28,6 +28,7 @@ pub const SOUND_POWERUP: &str = "music/powerup_sound.ogg";
 pub const SOUND_SEA_AMBIENCE: &str = "music/sea_ambience.ogg";
 pub const SOUND_TREE_AMBIENCE: &str = "music/tree_ambience.ogg";
 pub const SOUND_BUBBLE_AMBIENCE: &str = "music/bubbles.ogg";
+pub const SOUND_RAIN: &str = "music/rain.ogg";
 pub const SOUND_PLAYER_SHOT: &str = "music/player_shot.ogg";
 pub const SOUND_DASH: &str = "music/dash.ogg";
 
@@ -59,6 +60,11 @@ pub const TEXTURE_LEAVES_2: &str = "ambience/leaves2.png";
 pub const TEXTURE_LEAVES_3: &str = "ambience/leaves3.png";
 pub const TEXTURE_LEAVES_4: &str = "ambience/leaves4.png";
 pub const TEXTURE_LEAVES_5: &str = "ambience/leaves5.png";
+pub const TEXTURE_LEAVES_1_YELLOW: &str = "ambience/leaves1_yellow.png";
+pub const TEXTURE_LEAVES_2_YELLOW: &str = "ambience/leaves2_yellow.png";
+pub const TEXTURE_LEAVES_3_YELLOW: &str = "ambience/leaves3_yellow.png";
+pub const TEXTURE_LEAVES_4_YELLOW: &str = "ambience/leaves4_yellow.png";
+pub const TEXTURE_LEAVES_5_YELLOW: &str = "ambience/leaves5_yellow.png";
 
 // 角色纹理路径常量（静态）
 pub const TEXTURE_COMMANDER_DEAD: &str = "texture/commander_dead.png";

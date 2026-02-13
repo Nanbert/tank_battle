@@ -155,6 +155,7 @@ pub fn leaves_spawn_system(
     player_tanks: Query<&Transform, With<PlayerTank>>,
     forests: Query<&Transform, With<Forest>>,
     texture_resources: Res<crate::resources::GameTextureResources>,
+    tree_color: Res<crate::resources::TreeColor>,
 ) {
     // 检查是否有玩家在森林附近
     let player_near_forest = player_tanks.iter().any(|player_transform| {
@@ -190,8 +191,14 @@ pub fn leaves_spawn_system(
     // 随机初始旋转
     let initial_rotation = rng.random_range(0.0..std::f32::consts::PI * 2.0);
 
-    // 随机选择一种落叶纹理
-    let leaves_index = rng.random_range(0..5);
+    // 根据当前树木颜色选择落叶纹理
+    let leaves_texture = {
+        let leaves_index = rng.random_range(0..5);
+        match *tree_color {
+            crate::resources::TreeColor::Green => texture_resources.leaves[leaves_index].clone(),
+            crate::resources::TreeColor::Yellow => texture_resources.leaves_yellow[leaves_index].clone(),
+        }
+    };
 
     commands.spawn((
                 LeafParticle {
@@ -200,7 +207,7 @@ pub fn leaves_spawn_system(
                     rotation_speed,
                     lifetime: Timer::from_seconds(8.0, TimerMode::Once),
                 },        Sprite {
-            image: texture_resources.leaves[leaves_index].clone(),
+            image: leaves_texture,
             custom_size: Some(Vec2::new(size, size)),
             ..default()
         },

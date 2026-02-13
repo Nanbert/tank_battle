@@ -108,6 +108,10 @@ pub struct PrecipitationParticle {
     pub sway_offset: f32,
 }
 
+/// 雨天音效播放器标记
+#[derive(Component, Default)]
+pub struct RainAmbiencePlayer;
+
 // ==================== 天气系统 ====================
 
 /// 进入 Playing 状态时设置随机天气
@@ -143,6 +147,7 @@ pub fn on_playing_enter(
 pub fn on_playing_exit(
     mut weather: ResMut<CurrentWeather>,
     particle_query: Query<Entity, With<PrecipitationParticle>>,
+    rain_ambience_players: Query<(Entity, &mut AudioPlayer), With<RainAmbiencePlayer>>,
     mut commands: Commands,
 ) {
     weather.weather_type = WeatherType::None;
@@ -150,6 +155,8 @@ pub fn on_playing_exit(
     for entity in particle_query.iter() {
         commands.entity(entity).despawn();
     }
+
+    crate::utils::cleanup_entities(&mut commands, rain_ambience_players.iter().map(|(e, _)| e));
 }
 
 /// 降水生成系统
@@ -218,5 +225,24 @@ fn spawn_precipitation(commands: &mut Commands, weather_type: WeatherType) {
             },
             Transform::from_translation(Vec3::new(x, y, Z_RAIN)),
         ));
+    }
+}
+
+/// 播放雨天音效系统
+pub fn play_rain_ambience(
+    mut commands: Commands,
+    weather: Res<CurrentWeather>,
+    audio_resources: Res<crate::resources::GameAudioResources>,
+    ambience_players: Query<(Entity, &mut AudioPlayer), With<RainAmbiencePlayer>>,
+) {
+    if weather.weather_type == WeatherType::Rain && ambience_players.is_empty() {
+        let entity = crate::utils::play_looping_sound(
+            &mut commands,
+            audio_resources.rain.clone(),
+            crate::constants::VOLUME_AMBIENCE,
+        );
+        commands.entity(entity).insert(RainAmbiencePlayer::default());
+    } else if weather.weather_type != WeatherType::Rain {
+        crate::utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }
 }

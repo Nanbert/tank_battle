@@ -134,6 +134,8 @@ fn register_stage_intro_systems(app: &mut App) {
     app.add_systems(
         OnEnter(GameState::StageIntro),
         (
+            // 先设置天气（在生成地图之前）
+            weather::on_playing_enter,
             player::spawn_players
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 == 1),
             map::spawn_map,
@@ -330,9 +332,8 @@ app.add_systems(
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
     );
 
-    // 天气系统：进入/离开 Playing 状态时处理
-    app.add_systems(OnEnter(GameState::Playing), weather::on_playing_enter)
-        .add_systems(OnExit(GameState::Playing), (
+    // 天气系统：离开 Playing 状态时清理
+    app.add_systems(OnExit(GameState::Playing), (
             weather::on_playing_exit,
             crate::ambience::cleanup_leaves,
         ).chain());
@@ -396,6 +397,7 @@ app.add_systems(
             crate::ambience::rain_splash_update_system,
             crate::ambience::leaves_spawn_system,
             crate::ambience::leaves_update_system,
+            crate::weather::play_rain_ambience,
         )
             .in_set(GameSystemSet::AmbienceSystems),
     );
@@ -483,12 +485,14 @@ pub fn configure_game_resources(app: &mut App) {
             energy_blue_ball: Handle::default(),
             energy_red_ball: Handle::default(),
             forest_fire: Handle::default(),
+            forest_fire_yellow: Handle::default(),
             laser_blue: Handle::default(),
             laser_red: Handle::default(),
             dash_dust_effect: Handle::default(),
             brick: Handle::default(),
             steel: Handle::default(),
             tree: Handle::default(),
+            tree_yellow: Handle::default(),
             sea: Handle::default(),
             barrier: Handle::default(),
             enemy_born: Handle::default(),
@@ -513,6 +517,7 @@ pub fn configure_game_resources(app: &mut App) {
             music_note: Handle::default(),
             sea_bubble_texture: Handle::default(),
             leaves: Default::default(),
+            leaves_yellow: Default::default(),
         })
         .insert_resource(crate::resources::GameAudioResources {
             explosion: Handle::default(),
@@ -529,6 +534,7 @@ pub fn configure_game_resources(app: &mut App) {
             burn_tree: Handle::default(),
             sea_ambience: Handle::default(),
             bubble_ambience: Handle::default(),
+            rain: Handle::default(),
             music_note_000: Handle::default(),
             music_note_001: Handle::default(),
             music_note_002: Handle::default(),
@@ -539,6 +545,8 @@ pub fn configure_game_resources(app: &mut App) {
             sea: Handle::default(),
             forest: Handle::default(),
             forest_fire: Handle::default(),
+            forest_yellow: Handle::default(),
+            forest_fire_yellow: Handle::default(),
             background: Handle::default(),
             fire_effect: Handle::default(),
             penetrate_effect: Handle::default(),
@@ -589,7 +597,8 @@ pub fn configure_game_resources(app: &mut App) {
         .init_resource::<GameTrackers>()
         .init_resource::<GameTimers>()
         .init_resource::<crate::levels::LevelAssets>()
-        .init_resource::<weather::CurrentWeather>();
+        .init_resource::<weather::CurrentWeather>()
+        .insert_resource(crate::resources::TreeColor::Green);
 }
 
 /// 注册所有游戏系统
@@ -654,12 +663,14 @@ fn init_textures(asset_server: &AssetServer) -> crate::resources::GameTextureRes
         energy_blue_ball: crate::atlas::ENERGY_BALL_BLUE_ATLAS.load_texture(asset_server),
         energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.load_texture(asset_server),
         forest_fire: crate::atlas::FOREST_FIRE_ATLAS.load_texture(asset_server),
+        forest_fire_yellow: crate::atlas::FOREST_FIRE_YELLOW_ATLAS.load_texture(asset_server),
         laser_blue: crate::atlas::LASER_BLUE_ATLAS.load_texture(asset_server),
         laser_red: crate::atlas::LASER_RED_ATLAS.load_texture(asset_server),
         // 地图
         brick: asset_server.load(TEXTURE_BRICK),
         steel: asset_server.load(TEXTURE_STEEL),
         tree: crate::atlas::FOREST_ATLAS.load_texture(asset_server),
+        tree_yellow: crate::atlas::FOREST_YELLOW_ATLAS.load_texture(asset_server),
         sea: crate::atlas::SEA_ATLAS.load_texture(asset_server),
         barrier: asset_server.load(TEXTURE_BARRIER),
         // 敌方坦克
@@ -694,6 +705,13 @@ fn init_textures(asset_server: &AssetServer) -> crate::resources::GameTextureRes
             asset_server.load(TEXTURE_LEAVES_4),
             asset_server.load(TEXTURE_LEAVES_5),
         ],
+        leaves_yellow: [
+            asset_server.load(TEXTURE_LEAVES_1_YELLOW),
+            asset_server.load(TEXTURE_LEAVES_2_YELLOW),
+            asset_server.load(TEXTURE_LEAVES_3_YELLOW),
+            asset_server.load(TEXTURE_LEAVES_4_YELLOW),
+            asset_server.load(TEXTURE_LEAVES_5_YELLOW),
+        ],
     }
 }
 
@@ -716,6 +734,7 @@ fn init_audio(asset_server: &AssetServer) -> crate::resources::GameAudioResource
         burn_tree: asset_server.load(SOUND_BURN_TREE),
         sea_ambience: asset_server.load(SOUND_SEA_AMBIENCE),
         bubble_ambience: asset_server.load(SOUND_BUBBLE_AMBIENCE),
+        rain: asset_server.load(SOUND_RAIN),
         music_note_000: asset_server.load(SOUND_MUSIC_NOTE_000),
         music_note_001: asset_server.load(SOUND_MUSIC_NOTE_001),
         music_note_002: asset_server.load(SOUND_MUSIC_NOTE_002),
@@ -735,6 +754,8 @@ fn init_atlas_layouts(
         sea: crate::atlas::SEA_ATLAS.add_to_assets(texture_atlas_layouts),
         forest: crate::atlas::FOREST_ATLAS.add_to_assets(texture_atlas_layouts),
         forest_fire: crate::atlas::FOREST_FIRE_ATLAS.add_to_assets(texture_atlas_layouts),
+        forest_yellow: crate::atlas::FOREST_YELLOW_ATLAS.add_to_assets(texture_atlas_layouts),
+        forest_fire_yellow: crate::atlas::FOREST_FIRE_YELLOW_ATLAS.add_to_assets(texture_atlas_layouts),
         // 背景
         background: background_atlas,
         // 子弹特效

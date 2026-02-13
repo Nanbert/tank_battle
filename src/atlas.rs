@@ -264,6 +264,16 @@ pub const FOREST_ATLAS: TextureAtlasInfo =
 pub const FOREST_FIRE_ATLAS: TextureAtlasInfo =
     TextureAtlasInfo::new("maps/tree_fire_sheet.png", Vec2::new(131.0, 131.0), 10, 1);
 
+// 黄色森林精灵图常量（秋冬季节）
+// 实际尺寸: 1310 x 131, 1行10列, 每帧 131 x 131
+pub const FOREST_YELLOW_ATLAS: TextureAtlasInfo =
+    TextureAtlasInfo::new("maps/tree_yellow.png", Vec2::new(131.0, 131.0), 10, 1);
+
+// 黄色森林燃烧精灵图常量（秋冬季节）
+// 实际尺寸: 1310 x 131, 1行10列, 每帧 131 x 131
+pub const FOREST_FIRE_YELLOW_ATLAS: TextureAtlasInfo =
+    TextureAtlasInfo::new("maps/tree_fire_yellow.png", Vec2::new(131.0, 131.0), 10, 1);
+
 // 能量球精灵图常量（蓝色）
 // 实际尺寸: 11475 x 2440, 5行17列, 每帧 675 x 488
 pub const ENERGY_BALL_BLUE_ATLAS: TextureAtlasInfo = {
