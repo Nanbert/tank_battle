@@ -17,7 +17,7 @@ use crate::resources::{
 use crate::ui::constants::*;
 
 // 导入策略模式
-pub use crate::powerup_strategy::{PowerUp, PowerUpEffect, PowerUpResult, get_strategy};
+pub use crate::powerup_strategy::{PowerUp, PowerUpResult};
 
 /// 道具碰撞检测距离
 pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
@@ -68,8 +68,8 @@ pub fn handle_powerup_collision(
             );
             let () = commands.entity(picked.entity).try_despawn();
 
-            // 获取策略并应用效果
-            let strategy = get_strategy(picked.powerup_type);
+            // 获取策略并应用效果（零成本抽象）
+            let strategy = picked.powerup_type.into_strategy();
             let tank_type = player_tank.tank_type;
 
             // 生成弹出文字特效
