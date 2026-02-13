@@ -324,11 +324,19 @@ app.add_systems(
         (
             effects::animate_effects,
             effects::update_air_cushion_effect,
-            weather::precipitation_spawn_system,
-            weather::precipitation_update_system,
             ui::common::update_blink_animations, // 通用闪烁动画系统
         )
             .in_set(GameSystemSet::EffectsAndAnimationSystems),
+    );
+
+    // 天气系统（始终运行，不受暂停影响）
+    app.add_systems(
+        Update,
+        (
+            weather::precipitation_spawn_system,
+            weather::precipitation_update_system,
+        )
+            .in_set(GameSystemSet::AmbienceSystems),
     );
 
     // 天气系统：离开 Playing 状态时清理
@@ -382,7 +390,7 @@ app.add_systems(
             .in_set(GameSystemSet::GameStateSystems),
     );
 
-    // 环境音效系统集
+    // 环境音效系统集（始终运行，不受暂停影响）
     app.add_systems(
         Update,
         (
@@ -421,6 +429,52 @@ use crate::player;
 use crate::powerup;
 use crate::ui;
 
+/// 配置桌面端插件
+#[cfg(not(target_arch = "wasm32"))]
+pub fn configure_plugins_desktop() -> impl PluginGroup {
+    DefaultPlugins
+        .set(configure_asset_plugin())
+        .set(configure_window_plugin())
+        .set(bevy::audio::AudioPlugin {
+            global_volume: bevy::audio::GlobalVolume {
+                volume: bevy::audio::Volume::Linear(0.8),
+            },
+            default_spatial_scale: bevy::audio::SpatialScale::default(),
+        })
+}
+
+/// 配置 Web 端插件
+#[cfg(target_arch = "wasm32")]
+pub fn configure_plugins_web() -> impl PluginGroup {
+    DefaultPlugins
+        .set(AssetPlugin {
+            // Web 端资源从相对路径加载
+            file_path: "assets".to_string(),
+            ..default()
+        })
+        .set(WindowPlugin {
+            primary_window: Some(Window {
+                title: "Steel Command".to_string(),
+                resolution: WindowResolution::new(WINDOW_WIDTH, WINDOW_HEIGHT),
+                present_mode: PresentMode::AutoVsync,
+                resize_constraints: bevy::window::WindowResizeConstraints {
+                    min_width: WINDOW_WIDTH as f32,
+                    min_height: WINDOW_HEIGHT as f32,
+                    ..default()
+                },
+                ..default()
+            }),
+            ..default()
+        })
+        .set(bevy::audio::AudioPlugin {
+            global_volume: bevy::audio::GlobalVolume {
+                volume: bevy::audio::Volume::Linear(0.8),
+            },
+            default_spatial_scale: bevy::audio::SpatialScale::default(),
+        })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 pub fn configure_window_plugin() -> WindowPlugin {
     WindowPlugin {
         primary_window: Some(Window {
@@ -437,6 +491,7 @@ pub fn configure_window_plugin() -> WindowPlugin {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub fn configure_asset_plugin() -> AssetPlugin {
     // 检查是否从系统安装位置运行
     let asset_path = if std::env::current_exe()
@@ -611,9 +666,10 @@ pub fn register_game_systems(app: &mut App) {
         .add_message::<crate::enemy::SpawnEnemyEvent>()
         .init_resource::<BulletTracker>()
         .init_resource::<ComboTracker>()
+        .init_resource::<crate::levels::LevelAssets>()
         .add_systems(
             Startup,
-            (setup, crate::levels::load_level_assets, init_game_resources),
+            (setup, crate::levels::init_level_assets, init_game_resources),
         );
 
     // 注册各游戏状态系统

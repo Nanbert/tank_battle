@@ -212,8 +212,8 @@ pub fn spawn_stage_intro(
     // 根据语言选择字体和文本
     let (stage_text, quote_text, quote_font, stage_font) = match *language {
         Language::Chinese => {
-            let mut rng = rand::rng();
-            let quote_index = rng.random_range(0..STAGE_QUOTES_CN.len());
+            let mut rng = rand::thread_rng();
+            let quote_index = rng.gen_range(0..STAGE_QUOTES_CN.len());
             (
                 format!("第 {} 关", stage_level.0),
                 STAGE_QUOTES_CN[quote_index].to_string(),
@@ -222,8 +222,8 @@ pub fn spawn_stage_intro(
             )
         }
         Language::English => {
-            let mut rng = rand::rng();
-            let quote_index = rng.random_range(0..STAGE_QUOTES_EN.len());
+            let mut rng = rand::thread_rng();
+            let quote_index = rng.gen_range(0..STAGE_QUOTES_EN.len());
             (
                 format!("Stage {}", stage_level.0),
                 STAGE_QUOTES_EN[quote_index].to_string(),

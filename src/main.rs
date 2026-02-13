@@ -28,28 +28,40 @@ mod weather;
 use bevy::prelude::*;
 use avian2d::prelude::*;
 
-fn main() {
+pub fn init_game() {
+    #[cfg(target_arch = "wasm32")]
+    {
+        // 设置 panic hook 以在 Web 端显示错误信息
+        console_error_panic_hook::set_once();
+    }
+
     let mut app = App::new();
-    app.add_plugins(
-        DefaultPlugins
-            .set(app::configure_asset_plugin())
-            .set(app::configure_window_plugin())
-            // 添加音频配置，设置全局音量
-            .set(bevy::audio::AudioPlugin {
-                global_volume: bevy::audio::GlobalVolume {
-                    volume: bevy::audio::Volume::Linear(0.8),
-                },
-                default_spatial_scale: bevy::audio::SpatialScale::default(),
-            }),
-    )
-    .add_plugins(PhysicsPlugins::default().with_length_unit(100.0))
-    // 全局零重力配置
-    .insert_resource(Gravity::ZERO)
-    // 添加全局随机数生成器（使用系统时间作为种子）
-    .add_plugins(global_rng::GlobalRngPlugin { seed: None });
+
+    #[cfg(target_arch = "wasm32")]
+    {
+        app.add_plugins(app::configure_plugins_web());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        app.add_plugins(app::configure_plugins_desktop());
+    }
+
+    app.add_plugins(PhysicsPlugins::default().with_length_unit(100.0))
+        .insert_resource(Gravity::ZERO)
+        .add_plugins(global_rng::GlobalRngPlugin { seed: None });
 
     app::configure_game_resources(&mut app);
     app::register_game_systems(&mut app);
-
     app.run();
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn main() {
+    init_game();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {
+    init_game();
 }

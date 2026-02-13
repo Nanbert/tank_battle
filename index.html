@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steel Command - 钢铁指令</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            min-width: 100vw;
+            overflow: auto;
+            font-family: Arial, sans-serif;
+        }
+
+        #game-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #loading {
+            position: absolute;
+            color: #fff;
+            font-size: 24px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="loading">
+            <div class="spinner"></div>
+            <div>正在加载 Steel Command...</div>
+        </div>
+    </div>
+    <script type="module">
+        import init from './tank_battle.js';
+
+        // 添加点击事件来处理音频自动播放限制
+        let gameInitialized = false;
+        const loadingDiv = document.getElementById('loading');
+
+        document.addEventListener('click', async () => {
+            if (!gameInitialized) {
+                gameInitialized = true;
+                try {
+                    await init();
+                    loadingDiv.style.display = 'none';
+                } catch (error) {
+                    console.error('Failed to load game:', error);
+                    loadingDiv.innerHTML = `
+                        <div style="color: #ff4444;">
+                            加载失败<br>
+                            <small>${error.message}</small><br>
+                            <small>请查看浏览器控制台获取详细信息</small>
+                        </div>
+                    `;
+                }
+            }
+        });
+
+        // 显示点击提示
+        loadingDiv.innerHTML = `
+            <div class="spinner"></div>
+            <div>点击屏幕开始游戏</div>
+            <div style="font-size: 14px; margin-top: 10px; opacity: 0.7;">
+                （需要用户交互以启用音频）
+            </div>
+        `;
+    </script>
+</body>
+</html>

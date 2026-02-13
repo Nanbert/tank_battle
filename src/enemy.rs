@@ -50,12 +50,12 @@ pub fn enemy_spawn_system(
         && enemy_spawn_state.spawn_cooldown.is_finished()
     {
         // 生成敌方坦克出生动画
-        let mut rng = rand::rng();
-        let random_index = rng.random_range(0..ENEMY_BORN_PLACES.len());
+        let mut rng = rand::thread_rng();
+        let random_index = rng.gen_range(0..ENEMY_BORN_PLACES.len());
         let position = ENEMY_BORN_PLACES[random_index];
 
         // 随机选择敌方坦克类型
-        let tank_type = match rng.random_range(0..4) {
+        let tank_type = match rng.gen_range(0..4) {
             0 => EnemyTankType::Normal,
             1 => EnemyTankType::Fire,
             2 => EnemyTankType::Heavy,
@@ -458,7 +458,7 @@ pub fn move_enemy_tanks(
 /// 根据碰撞法线获取新的移动方向
 /// 分析碰撞法线，选择一个可用的移动方向（避免碰撞方向）
 fn get_new_direction(collision_normal: Vec2) -> Vec2 {
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
 
     // 比较绝对值，确定主要碰撞方向
     let x_abs = collision_normal.x.abs();
@@ -487,7 +487,7 @@ fn get_new_direction(collision_normal: Vec2) -> Vec2 {
             crate::constants::DIRECTION_LEFT,
         ]);
 
-    available[rng.random_range(0..3)]
+    available[rng.gen_range(0..3)]
 }
 
 /// 处理随机方向改变
@@ -495,10 +495,10 @@ fn handle_random_direction_change(
     enemy_tank: &mut EnemyTank,
     direction_timer: &mut DirectionChangeTimer,
 ) {
-    let mut rng = rand::rng();
-    if rng.random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
+    let mut rng = rand::thread_rng();
+    if rand::random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
         // 向下概率是向上的2倍：上:20%, 下:40%, 左:20%, 右:20%
-        let rand_val = rng.random::<f32>() * 10.0;
+        let rand_val = rand::random::<f32>() * 10.0;
         enemy_tank.direction = if rand_val < 2.0 {
             crate::constants::DIRECTION_UP   // 20%
         } else if rand_val < 6.0 {

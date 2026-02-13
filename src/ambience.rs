@@ -77,16 +77,16 @@ pub fn rain_splash_spawn_system(
         return;
     }
 
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
 
     // 按概率决定是否生成
-    if rng.random::<f32>() > RAIN_SPLASH_CHANCE {
+    if rand::random::<f32>() > RAIN_SPLASH_CHANCE {
         return;
     }
 
     // 在地图内随机位置生成溅射点
-    let splash_x = rng.random_range(MAP_LEFT_X..MAP_RIGHT_X);
-    let splash_y = rng.random_range(MAP_BOTTOM_Y..MAP_TOP_Y);
+    let splash_x = rng.gen_range(MAP_LEFT_X..MAP_RIGHT_X);
+    let splash_y = rng.gen_range(MAP_BOTTOM_Y..MAP_TOP_Y);
     let splash_position = Vec3::new(splash_x, splash_y, Z_DEFAULT);
 
     // 创建多个溅射粒子，向四周扩散
@@ -171,29 +171,29 @@ pub fn leaves_spawn_system(
         return;
     }
 
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
 
     // 按概率决定是否生成
-    if rng.random::<f32>() > LEAVES_SPAWN_CHANCE {
+    if rand::random::<f32>() > LEAVES_SPAWN_CHANCE {
         return;
     }
 
     // 在地面随机位置生成（在森林附近范围内）
-    let spawn_x = rng.random_range(MAP_LEFT_X..MAP_RIGHT_X);
-    let spawn_y = rng.random_range(MAP_BOTTOM_Y..MAP_TOP_Y);
+    let spawn_x = rng.gen_range(MAP_LEFT_X..MAP_RIGHT_X);
+    let spawn_y = rng.gen_range(MAP_BOTTOM_Y..MAP_TOP_Y);
 
     // 随机落叶属性
-    let size = rng.random_range(LEAVES_SIZE_MIN..LEAVES_SIZE_MAX);
-    let drift_angle = rng.random_range(0.0..std::f32::consts::PI * 2.0);
-    let drift_speed = rng.random_range(20.0..40.0); // 飘动速度
-    let rotation_speed = rng.random_range(LEAVES_ROTATION_SPEED_MIN..LEAVES_ROTATION_SPEED_MAX);
+    let size = rng.gen_range(LEAVES_SIZE_MIN..LEAVES_SIZE_MAX);
+    let drift_angle = rng.gen_range(0.0..std::f32::consts::PI * 2.0);
+    let drift_speed = rng.gen_range(20.0..40.0); // 飘动速度
+    let rotation_speed = rng.gen_range(LEAVES_ROTATION_SPEED_MIN..LEAVES_ROTATION_SPEED_MAX);
 
     // 随机初始旋转
-    let initial_rotation = rng.random_range(0.0..std::f32::consts::PI * 2.0);
+    let initial_rotation = rng.gen_range(0.0..std::f32::consts::PI * 2.0);
 
     // 根据当前树木颜色选择落叶纹理
     let leaves_texture = {
-        let leaves_index = rng.random_range(0..5);
+        let leaves_index = rng.gen_range(0..5);
         match *tree_color {
             crate::resources::TreeColor::Green => texture_resources.leaves[leaves_index].clone(),
             crate::resources::TreeColor::Yellow => texture_resources.leaves_yellow[leaves_index].clone(),

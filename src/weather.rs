@@ -135,9 +135,9 @@ pub fn on_playing_enter(
             bevy::prelude::Vec3::new(0.0, 0.0, crate::constants::Z_FOREST),
         );
     } else {
-        let mut rng = rand::rng();
+        let mut rng = rand::thread_rng();
         let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
-        weather.weather_type = weather_options[rng.random_range(0..weather_options.len())];
+        weather.weather_type = weather_options[rng.gen_range(0..weather_options.len())];
     }
 
     info!("关卡 {} 天气: {:?}", stage_level.0, weather.weather_type);
@@ -150,8 +150,7 @@ pub fn on_playing_exit(
     rain_ambience_players: Query<(Entity, &mut AudioPlayer), With<RainAmbiencePlayer>>,
     mut commands: Commands,
 ) {
-    weather.weather_type = WeatherType::None;
-
+    // 清除天气显示（但不清除 weather_type，只清除粒子）
     for entity in particle_query.iter() {
         commands.entity(entity).despawn();
     }
@@ -202,16 +201,16 @@ fn spawn_precipitation(commands: &mut Commands, weather_type: WeatherType) {
         return;
     }
 
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
     let size = weather_type.particle_size();
     let color = weather_type.particle_color();
     let speed_range = weather_type.speed_range();
 
     for _ in 0..count {
-        let x = rng.random_range(MAP_LEFT_X..MAP_RIGHT_X);
+        let x = rng.gen_range(MAP_LEFT_X..MAP_RIGHT_X);
         let y = MAP_TOP_Y + PARTICLE_SPAWN_Y_OFFSET;
-        let velocity = Vec2::new(0.0, rng.random_range(speed_range.0..speed_range.1));
-        let sway_offset = rng.random_range(0.0..std::f32::consts::PI * 2.0);
+        let velocity = Vec2::new(0.0, rng.gen_range(speed_range.0..speed_range.1));
+        let sway_offset = rng.gen_range(0.0..std::f32::consts::PI * 2.0);
 
         commands.spawn((
             PrecipitationParticle {

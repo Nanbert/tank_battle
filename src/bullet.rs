@@ -255,8 +255,8 @@ pub fn enemy_shoot_system(
         }
 
         // 随机射击，每帧有 1.0% 的概率射击
-        let mut rng = rand::rng();
-        if rng.random::<f32>() < ENEMY_SHOOT_PROBABILITY {
+        let mut rng = rand::thread_rng();
+        if rand::random::<f32>() < ENEMY_SHOOT_PROBABILITY {
             // 计算子弹发射方向（基于坦克的预期朝向 direction）
             let direction = if enemy_tank.direction.length() > 0.0 {
                 enemy_tank.direction.normalize()

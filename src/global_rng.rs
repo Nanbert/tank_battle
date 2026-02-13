@@ -18,30 +18,39 @@ impl GlobalRng {
 
     /// 使用系统时间作为种子创建随机数生成器
     pub fn with_system_time() -> Self {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let seed = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-        Self::with_seed(seed)
+        #[cfg(target_arch = "wasm32")]
+        {
+            // WebAssembly 不支持 SystemTime，使用固定种子
+            Self::with_seed(42)
+        }
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use std::time::{SystemTime, UNIX_EPOCH};
+            let seed = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
+            Self::with_seed(seed)
+        }
     }
 
     /// 生成范围内的随机整数
     pub fn gen_range(&mut self, range: std::ops::Range<usize>) -> usize {
         use rand::Rng;
-        self.0.random_range(range)
+        self.0.gen_range(range)
     }
 
     /// 生成范围内的随机浮点数
     pub fn gen_range_f32(&mut self, range: std::ops::Range<f32>) -> f32 {
         use rand::Rng;
-        self.0.random_range(range)
+        self.0.gen_range(range)
     }
 
     /// 生成随机布尔值
     pub fn gen_bool(&mut self) -> bool {
         use rand::Rng;
-        self.0.random()
+        rand::random::<bool>()
     }
 }
 

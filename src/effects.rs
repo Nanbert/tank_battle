@@ -415,8 +415,8 @@ fn select_random_music_note(audio_resources: &GameAudioResources) -> Handle<Audi
         &audio_resources.music_note_002,
         &audio_resources.music_note_003,
     ];
-    let mut rng = rand::rng();
-    music_files[rng.random_range(0..music_files.len())].clone()
+    let mut rng = rand::thread_rng();
+    music_files[rng.gen_range(0..music_files.len())].clone()
 }
 
 /// 播放司令官的环境音效
@@ -455,7 +455,7 @@ pub fn spawn_sea_bubbles(
     player_tanks: Query<&Transform, With<PlayerTank>>,
     seas: Query<&Transform, With<Sea>>,
 ) {
-    let mut rng = rand::rng();
+    let mut rng = rand::thread_rng();
     // 检查是否有玩家在海面中
     let player_in_sea = player_tanks.iter().any(|player_transform| {
         seas.iter().any(|sea_transform| {
@@ -474,16 +474,16 @@ pub fn spawn_sea_bubbles(
     }
 
     // 随机生成泡泡（每帧有一定概率）
-    if rng.random::<f32>() < 0.1 {
+    if rand::random::<f32>() < 0.1 {
         // 在整个地图范围内随机位置生成泡泡，从底部开始
         let bubble_pos = Vec3::new(
-            rng.random_range(MAP_LEFT_X..MAP_RIGHT_X),
+            rng.gen_range(MAP_LEFT_X..MAP_RIGHT_X),
             MAP_BOTTOM_Y,  // 从地图底部开始
             Z_FOREST,
         );
 
         // 随机泡泡大小
-        let bubble_size = rng.random_range(BUBBLE_SIZE_MIN..BUBBLE_SIZE_MAX);
+        let bubble_size = rng.gen_range(BUBBLE_SIZE_MIN..BUBBLE_SIZE_MAX);
 
         let bubble_animation_indices = crate::atlas::SEA_BUBBLE_ATLAS.animation_indices_full();
 
