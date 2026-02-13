@@ -39,6 +39,19 @@ impl LevelAssets {
         }
         self.levels[level_idx] = Some(map_data);
     }
+
+    /// 从另一个 LevelAssets 克隆数据
+    pub fn clone_from(other: &LevelAssets) -> Self {
+        let mut new_assets = LevelAssets::default();
+        for level_opt in other.levels.iter() {
+            if let Some(level) = level_opt {
+                new_assets.levels.push(Some(*level));
+            } else {
+                new_assets.levels.push(None);
+            }
+        }
+        new_assets
+    }
 }
 
 /// 从文件内容解析关卡地图

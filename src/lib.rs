@@ -26,6 +26,9 @@ pub mod ui;
 pub mod utils;
 pub mod weather;
 
+// Import LevelAssets for use in get_preloaded_level_assets
+use levels::LevelAssets;
+
 // Re-export necessary items
 pub use app::configure_game_resources;
 pub use app::register_game_systems;
@@ -36,12 +39,6 @@ pub use app::configure_plugins_desktop;
 
 #[cfg(target_arch = "wasm32")]
 pub use app::configure_plugins_web;
-
-#[cfg(target_arch = "wasm32")]
-pub use levels::LevelAssets;
-
-#[cfg(target_arch = "wasm32")]
-pub use get_preloaded_level_assets;
 
 // Shared initialization function
 pub fn init_game() {
@@ -84,36 +81,29 @@ mod wasm {
     // 全局关卡资源存储
     use bevy::prelude::*;
     use crate::levels::LevelAssets;
+    use std::sync::OnceLock;
 
-    static mut LEVEL_ASSETS: Option<LevelAssets> = None;
-    static mut LEVELS_READY: bool = false;
+    pub(crate) static LEVEL_ASSETS: OnceLock<LevelAssets> = OnceLock::new();
+    static LEVELS_READY: OnceLock<bool> = OnceLock::new();
 
     /// 获取预加载的关卡数据
     #[wasm_bindgen]
     pub fn get_loaded_level_assets() -> *const LevelAssets {
-        unsafe {
-            LEVEL_ASSETS.as_ref().map(|la| la as *const LevelAssets).unwrap_or(std::ptr::null())
-        }
+        LEVEL_ASSETS.get().map(|la| la as *const LevelAssets).unwrap_or(std::ptr::null())
     }
 
     /// 检查关卡是否已加载
     #[wasm_bindgen]
     pub fn is_levels_ready() -> bool {
-        unsafe { LEVELS_READY }
+        *LEVELS_READY.get().unwrap_or(&false)
     }
 
     /// 获取预加载的关卡数据（返回克隆）
     #[wasm_bindgen]
     pub fn get_level_assets_clone() -> JsValue {
-        unsafe {
-            if let Some(ref assets) = LEVEL_ASSETS {
-                // 这里无法直接序列化 LevelAssets，需要使用其他方式
-                // 暂时返回 null
-                JsValue::NULL
-            } else {
-                JsValue::NULL
-            }
-        }
+        // 这里无法直接序列化 LevelAssets，需要使用其他方式
+        // 暂时返回 null
+        JsValue::NULL
     }
 
     #[wasm_bindgen(start)]
@@ -123,10 +113,8 @@ mod wasm {
         let level_assets = load_all_levels_async().await;
 
         // 将关卡数据存储到静态变量中
-        unsafe {
-            LEVEL_ASSETS = Some(level_assets);
-            LEVELS_READY = true;
-        }
+        LEVEL_ASSETS.set(level_assets).unwrap();
+        LEVELS_READY.set(true).unwrap();
 
         info!("关卡加载完成，启动游戏");
         init_game();
@@ -135,21 +123,8 @@ mod wasm {
 
 /// Web 端：从预加载的关卡资源中获取数据
 #[cfg(target_arch = "wasm32")]
-pub fn get_preloaded_level_assets() -> Option<LevelAssets> {
-    unsafe {
-        wasm::LEVEL_ASSETS.as_ref().map(|la| {
-            // 简单的克隆实现
-            // 注意：这需要 LevelAssets 实现 Clone
-            // 如果 LevelAssets 包含大量数据，应该使用更高效的方式
-            let mut new_assets = LevelAssets::default();
-            for (idx, level_opt) in la.levels.iter().enumerate() {
-                if let Some(ref level) = level_opt {
-                    new_assets.levels.push(Some(*level));
-                } else {
-                    new_assets.levels.push(None);
-                }
-            }
-            new_assets
-        })
-    }
+pub(crate) fn get_preloaded_level_assets() -> Option<LevelAssets> {
+    wasm::LEVEL_ASSETS.get().map(|la| {
+        LevelAssets::clone_from(la)
+    })
 }
