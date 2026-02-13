@@ -37,7 +37,7 @@ pub fn spawn_explosion(
     );
 
     // 使用预加载的爆炸音效
-    utils::play_one_shot_sound(commands, sound_resources.explosion.clone(), VOLUME_HALF);
+    utils::play_one_shot_sound(commands, sound_resources.explosion.clone(), crate::constants::VOLUME_HALF);
 }
 
 pub fn spawn_forest_fire(
@@ -70,7 +70,7 @@ pub fn spawn_forest_fire(
     );
 
     // 播放树林燃烧音效
-    utils::play_one_shot_sound(commands, sound_resources.burn_tree.clone(), VOLUME_HALF);
+    utils::play_one_shot_sound(commands, sound_resources.burn_tree.clone(), crate::constants::VOLUME_HALF);
 }
 
 pub fn spawn_spark(
@@ -347,7 +347,7 @@ pub fn play_sea_ambience(
         player_tanks,
         seas,
         ambience_players,
-        VOLUME_AMBIENCE,
+        crate::constants::VOLUME_FULL,
     );
 }
 
@@ -400,7 +400,7 @@ pub fn play_bubble_ambience(
     }
 
     if player_in_sea && ambience_players.is_empty() {
-        let entity = utils::play_looping_sound(&mut commands, audio_resources.bubble_ambience.clone(), VOLUME_AMBIENCE);
+        let entity = utils::play_looping_sound(&mut commands, audio_resources.bubble_ambience.clone(), crate::constants::VOLUME_FULL);
         commands.entity(entity).insert(BubbleAmbiencePlayer::default());
     } else if !player_in_sea {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
@@ -439,7 +439,7 @@ pub fn play_commander_ambience(
 
     if is_near_commander && ambience_players.is_empty() {
         let random_music = select_random_music_note(&audio_resources);
-        let entity = utils::play_looping_sound(&mut commands, random_music, VOLUME_MUSIC_NOTE);
+        let entity = utils::play_looping_sound(&mut commands, random_music, crate::constants::VOLUME_HALF);
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));

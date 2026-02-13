@@ -12,9 +12,11 @@ mod dash;
 mod effects;
 mod enemy;
 mod game_state;
+mod global_rng;
 mod laser;
 mod levels;
 mod map;
+mod physics_config;
 mod player;
 mod powerup;
 mod powerup_strategy;
@@ -40,7 +42,11 @@ fn main() {
                 default_spatial_scale: bevy::audio::SpatialScale::default(),
             }),
     )
-    .add_plugins(PhysicsPlugins::default().with_length_unit(100.0));
+    .add_plugins(PhysicsPlugins::default().with_length_unit(100.0))
+    // 全局零重力配置
+    .insert_resource(Gravity::ZERO)
+    // 添加全局随机数生成器（使用系统时间作为种子）
+    .add_plugins(global_rng::GlobalRngPlugin { seed: None });
 
     app::configure_game_resources(&mut app);
     app::register_game_systems(&mut app);

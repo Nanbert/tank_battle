@@ -6,7 +6,6 @@
 
 use bevy::prelude::*;
 use avian2d::prelude::*;
-use rand::Rng;
 
 use crate::constants::*;
 use crate::resources::{
@@ -130,6 +129,7 @@ pub fn spawn_powerup_random_position(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,
+    global_rng: &mut crate::global_rng::GlobalRng,
 ) {
     let powerup_types = [
         PowerUp::SpeedUp,
@@ -144,8 +144,7 @@ pub fn spawn_powerup_random_position(
         PowerUp::Shell,
     ];
 
-    let mut rng = rand::rng();
-    let powerup_type = powerup_types[rng.random_range(0..powerup_types.len())];
+    let powerup_type = powerup_types[global_rng.gen_range(0..powerup_types.len())];
 
     // 定义禁止区域
     // 上方：坦克高度区域（MAP_TOP_Y - TANK_DISPLAY_SIZE.y 到 MAP_TOP_Y）
@@ -154,8 +153,8 @@ pub fn spawn_powerup_random_position(
     let bottom_forbidden_y = MAP_BOTTOM_Y + COMMANDER_SIZE.y;
 
     // 在随机位置生成道具（在地图范围内），避开禁止区域
-    let x = rng.random_range(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
-    let y = rng.random_range(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
+    let x = global_rng.gen_range_f32(MAP_LEFT_X + 100.0..MAP_RIGHT_X - 100.0);
+    let y = global_rng.gen_range_f32(bottom_forbidden_y + 100.0..top_forbidden_y - 100.0);
     let position = Vec3::new(x, y, crate::constants::Z_FOREST);
 
     spawn_powerup(
@@ -186,6 +185,29 @@ pub fn spawn_powerup(
         Transform::from_translation(Vec3::new(position.x, position.y, Z_FOREST)),
         atlas_info.display_size,
         (powerup_type, PlayingEntity, AnimationMode::Looping),
+    );
+}
+
+/// 在第一关强制生成一个 air_cushion 道具用于测试
+pub fn spawn_air_cushion_for_stage1(
+    mut commands: Commands,
+    texture_resources: Res<GameTextureResources>,
+    atlas_layouts: Res<GameAtlasLayoutResources>,
+    stage_level: Res<crate::resources::StageLevel>,
+) {
+    // 只在第一关生成
+    if stage_level.0 != 1 {
+        return;
+    }
+
+    // 在地图中心附近生成
+    let position = Vec3::new(0.0, 0.0, Z_FOREST);
+    spawn_powerup(
+        &mut commands,
+        &texture_resources,
+        &atlas_layouts,
+        PowerUp::AirCushion,
+        position,
     );
 }
 

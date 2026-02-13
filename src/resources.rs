@@ -2,7 +2,6 @@
 
 use bevy::ecs::entity::{EntityHashMap, EntityHashSet};
 use bevy::prelude::*;
-use rand::Rng;
 use std::time::Duration;
 
 // ==================== 树木颜色系统 ====================
@@ -17,9 +16,9 @@ pub enum TreeColor {
 }
 
 impl TreeColor {
-    /// 随机选择树木颜色
-    pub fn random() -> Self {
-        let mut rng = rand::rng();
+    /// 使用给定的随机数生成器随机选择树木颜色
+    #[allow(dead_code)]
+    pub fn random_with_rng<R: rand::Rng>(rng: &mut R) -> Self {
         if rng.random::<bool>() {
             Self::Green
         } else {

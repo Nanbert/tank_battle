@@ -239,7 +239,7 @@ pub fn play_rain_ambience(
         let entity = crate::utils::play_looping_sound(
             &mut commands,
             audio_resources.rain.clone(),
-            crate::constants::VOLUME_AMBIENCE,
+            crate::constants::VOLUME_FULL,
         );
         commands.entity(entity).insert(RainAmbiencePlayer::default());
     } else if weather.weather_type != WeatherType::Rain {

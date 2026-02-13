@@ -116,6 +116,7 @@ pub fn despawn_map(
 
 /// 生成单条边界线
 fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
+    let collider_size = scale.truncate(); // Vec3 -> Vec2
     commands.spawn((
         Wall,
         PlayingEntity,
@@ -125,30 +126,42 @@ fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
             scale,
             ..default()
         },
+        // 添加物理碰撞体
+        RigidBody::Static,
+        Collider::rectangle(collider_size.x, collider_size.y),
+        CollisionEventsEnabled,
     ));
 }
 
 /// 生成边界线（3条白线：顶部、左侧、右侧）
 pub fn spawn_walls(commands: &mut Commands) {
-    // 左边界线
+    // 左边界线 - 高度 MAP_HEIGHT + 10.0（加长5像素）
     spawn_wall_line(
         commands,
-        Vec3::new(MAP_LEFT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-        Vec3::new(5.0, MAP_HEIGHT, 1.0),
+        Vec3::new(MAP_LEFT_X - 5.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(5.0, MAP_HEIGHT + 10.0, 1.0),
     );
 
-    // 右边界线
+    // 右边界线 - 高度 MAP_HEIGHT + 10.0（加长5像素）
     spawn_wall_line(
         commands,
-        Vec3::new(MAP_RIGHT_X, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-        Vec3::new(5.0, MAP_HEIGHT, 1.0),
+        Vec3::new(MAP_RIGHT_X + 5.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(5.0, MAP_HEIGHT + 10.0, 1.0),
     );
 
-    // 上边界线
+    // 上边界线 - 宽度为 MAP_WIDTH + 2*左墙位置(800) + 左墙宽(5) + 2*线宽(10) = 1615
+    // 从左墙左边缘(-807.5)到右墙右边缘(807.5)，完全闭合
     spawn_wall_line(
         commands,
-        Vec3::new(0.0, MAP_TOP_Y, 0.0),
-        Vec3::new(MAP_WIDTH + 4.0, 5.0, 1.0),
+        Vec3::new(0.0, MAP_TOP_Y + 5.0, 0.0),
+        Vec3::new(1615.0, 5.0, 1.0),
+    );
+
+    // 下边界线（补充缺失的下边界）
+    spawn_wall_line(
+        commands,
+        Vec3::new(0.0, MAP_BOTTOM_Y - 5.0, 0.0),
+        Vec3::new(1605.0, 5.0, 1.0),
     );
 }
 
@@ -181,7 +194,8 @@ pub fn spawn_terrain_tile(
     match tile_type {
         TerrainTileType::Brick => {
             let brick_texture = texture_resources.brick.clone();
-            commands
+            
+            let entity = commands
                 .spawn((
                     Brick,
                     PlayingEntity,
@@ -191,15 +205,18 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Static,
-                    Collider::rectangle(WALL_COLLIDER_SIZE.x, WALL_COLLIDER_SIZE.y),
-                    CollisionEventsEnabled,
                 ))
-                .id()
+                .id();
+
+            // 应用物理配置
+            crate::physics_config::WALL_PHYSICS.apply_to_entity(&mut commands.entity(entity));
+
+            entity
         }
         TerrainTileType::Steel => {
             let steel_texture = texture_resources.steel.clone();
-            commands
+            
+            let entity = commands
                 .spawn((
                     Steel,
                     PlayingEntity,
@@ -209,14 +226,15 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Static,
-                    Collider::rectangle(WALL_COLLIDER_SIZE.x, WALL_COLLIDER_SIZE.y),
-                    CollisionEventsEnabled,
                 ))
-                .id()
+                .id();
+
+            // 应用物理配置
+            crate::physics_config::WALL_PHYSICS.apply_to_entity(&mut commands.entity(entity));
+
+            entity
         }
         TerrainTileType::Forest => {
-            // 根据当前树木颜色选择对应的纹理和图集布局
             let (tree_texture, forest_layout) = match tree_color {
                 crate::resources::TreeColor::Green => {
                     (texture_resources.tree.clone(), atlas_layouts.forest.clone())
@@ -236,12 +254,7 @@ pub fn spawn_terrain_tile(
                 crate::atlas::FOREST_ATLAS.display_size,
                 (Forest, PlayingEntity, AnimationMode::Looping),
             );
-            commands.entity(entity).insert((
-                Collider::rectangle(FOREST_COLLIDER_HALF, FOREST_COLLIDER_HALF),
-                RigidBody::Static,
-                Sensor,
-                CollisionEventsEnabled,
-            ));
+            crate::physics_config::FOREST_PHYSICS.apply_to_entity(&mut commands.entity(entity));
             entity
         }
         TerrainTileType::Sea => {
@@ -255,17 +268,13 @@ pub fn spawn_terrain_tile(
                 crate::atlas::SEA_ATLAS.display_size,
                 (Sea, PlayingEntity, AnimationMode::Looping),
             );
-            commands.entity(entity).insert((
-                RigidBody::Static,
-                Collider::rectangle(DETECTION_RADIUS, DETECTION_RADIUS),
-                // 海洋层：memberships=layer1, filters=all
-                CollisionLayers::new(LayerMask::from(0b10u32), LayerMask::ALL),
-            ));
+            crate::physics_config::sea_physics().apply_to_entity(&mut commands.entity(entity));
             entity
         }
         TerrainTileType::Barrier => {
             let barrier_texture = texture_resources.barrier.clone();
-            commands
+            
+            let entity = commands
                 .spawn((
                     Barrier,
                     PlayingEntity,
@@ -275,12 +284,13 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Static,
-                    Collider::rectangle(BARRIER_SIZE.x, BARRIER_SIZE.y),
-                    Sensor,
-                    CollisionEventsEnabled,
                 ))
-                .id()
+                .id();
+
+            // 应用物理配置
+            crate::physics_config::BARRIER_PHYSICS.apply_to_entity(&mut commands.entity(entity));
+
+            entity
         }
     }
 }
@@ -425,6 +435,7 @@ pub fn spawn_map(
     stage_level: Res<StageLevel>,
     mut tree_color: ResMut<crate::resources::TreeColor>,
     weather: Res<crate::weather::CurrentWeather>,
+    mut global_rng: ResMut<crate::global_rng::GlobalRng>,
     bricks: Query<Entity, With<Brick>>,
     steels: Query<Entity, With<Steel>>,
     forests: Query<Entity, With<Forest>>,
@@ -441,7 +452,11 @@ pub fn spawn_map(
     *tree_color = if weather.weather_type == crate::weather::WeatherType::Snow {
         crate::resources::TreeColor::Yellow
     } else {
-        crate::resources::TreeColor::random()
+        if global_rng.gen_bool() {
+            crate::resources::TreeColor::Green
+        } else {
+            crate::resources::TreeColor::Yellow
+        }
     };
 
     // 设置背景色为黑色

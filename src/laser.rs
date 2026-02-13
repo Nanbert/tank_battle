@@ -312,7 +312,7 @@ fn start_charge(
     // 在局部坐标系中，炮塔在 (0, 10) 的位置，能量球应该在炮塔前方
     let energy_ball_offset = Vec3::new(
         7.0,  // 侧向偏移（炮塔右侧）
-        TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE + 5.0,  // 前方偏移
+        TANK_DISPLAY_SIZE.y / 2.0 + crate::physics_config::collider_sizes::BULLET.y + 5.0,  // 前方偏移
         crate::constants::Z_LASER + 0.1,  // Z轴偏移
     );
 
@@ -412,7 +412,7 @@ fn fire_laser(
     // 计算激光初始位置
     let laser_pos = transform.translation
         + direction.extend(0.0)
-            * (TANK_DISPLAY_SIZE.y / 2.0 + crate::constants::BULLET_COLLIDER_SIZE);
+            * (TANK_DISPLAY_SIZE.y / 2.0 + crate::physics_config::collider_sizes::BULLET.y);
 
     // 找到关联的能量球实体
     let energy_ball_entity = energy_ball_query

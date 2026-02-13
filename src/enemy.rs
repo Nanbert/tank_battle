@@ -109,6 +109,9 @@ pub fn handle_spawn_enemy_event(
         let life = GameTextureResources::get_enemy_tank_life(event.tank_type);
         let speed = GameTextureResources::get_enemy_tank_speed(event.tank_type);
 
+        // 使用物理配置创建敌方坦克
+        // 注意：物理配置会在生成实体后应用
+
         // 使用 spawn_animated_sprite 生成动画精灵部分
         let enemy_entity = utils::spawn_animated_sprite(
             &mut commands,
@@ -136,7 +139,7 @@ pub fn handle_spawn_enemy_event(
         // 添加生命值点（红色圆点）
         spawn_enemy_life_dots(&mut commands, enemy_entity, life);
 
-        // 添加额外的组件
+        // 添加游戏逻辑组件
         commands
             .entity(enemy_entity)
             .insert(TankFireConfig::default())
@@ -145,7 +148,7 @@ pub fn handle_spawn_enemy_event(
                 TimerMode::Once,
             )))
             .insert(CollisionCooldownTimer(Timer::from_seconds(
-                ENEMY_SPAWN_COOLDOWN,
+                ENEMY_COLLISION_COOLDOWN,
                 TimerMode::Once,
             )))
             .insert(RotationTimer(Timer::from_seconds(
@@ -156,17 +159,10 @@ pub fn handle_spawn_enemy_event(
                 angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
             })
             .insert(LinearVelocity(Vec2::new(0.0, -speed)))
-            .insert(AngularVelocity::default())
-            .insert(RigidBody::Dynamic)
-            .insert(Collider::rectangle(
-                ENEMY_COLLIDER_HALF_SIZE.x * 2.0,
-                ENEMY_COLLIDER_HALF_SIZE.y * 2.0,
-            ))
-            .insert(CollisionEventsEnabled)
-            .insert(LockedAxes::ROTATION_LOCKED)
-            .insert(GravityScale(0.0))
-            .insert(Friction::new(0.0))
-            .insert(Restitution::new(0.0));
+            .insert(AngularVelocity::default());
+
+        // 应用物理配置
+        crate::physics_config::enemy_tank_physics().apply_to_entity(&mut commands.entity(enemy_entity));
     }
 }
 
@@ -214,42 +210,20 @@ pub fn update_enemy_life_dots(
         }
     }
 }
-/// 收集敌方坦克碰撞事件
+/// 收集敌方坦克碰撞事件并计算碰撞法线
 /// 使用事件驱动模式，只在碰撞发生时处理，避免每帧主动查询
+/// 合并了原来的 collect_enemy_collisions 和 collect_contact_forces，减少事件读取开销
 pub fn collect_enemy_collisions(
     mut events: MessageReader<CollisionStart>,
     mut collision_cache: ResMut<EnemyCollisionCache>,
-    all_tanks: Query<Entity, Or<(With<EnemyTank>, With<PlayerTank>)>>,
-) {
-    for event in events.read() {
-        let (e1, e2) = (event.collider1, event.collider2);
-
-        // 判断是否是敌方坦克参与的碰撞
-        let enemy_entity = if all_tanks.contains(e1) {
-            e1
-        } else if all_tanks.contains(e2) {
-            e2
-        } else {
-            continue;
-        };
-
-        // 缓存碰撞标记，具体法线从 ContactForceEvent 获取
-        collision_cache.insert(enemy_entity, Vec2::ZERO);
-    }
-}
-
-/// 收集接触力事件，获取碰撞法线
-/// Avian 使用 CollisionStart 事件，法线信息需要从碰撞数据获取
-pub fn collect_contact_forces(
-    mut events: MessageReader<CollisionStart>,
-    mut collision_cache: ResMut<EnemyCollisionCache>,
     enemy_tanks: Query<&Transform, With<EnemyTank>>,
-    other_tanks: Query<&Transform, Or<(With<PlayerTank>, With<EnemyTank>, With<Wall>)>>,
+    all_entities: Query<&Transform>, // 查询所有有 Transform 的实体
+    sensors: Query<(), Or<(With<Forest>, With<Barrier>)>>, // 查询传感器类型
 ) {
     for event in events.read() {
         let (e1, e2) = (event.collider1, event.collider2);
 
-        // 确定敌方坦克实体
+        // 确定敌方坦克实体和另一个碰撞实体
         let (enemy_entity, other_entity) = if enemy_tanks.contains(e1) {
             (e1, e2)
         } else if enemy_tanks.contains(e2) {
@@ -258,9 +232,14 @@ pub fn collect_contact_forces(
             continue;
         };
 
+        // 排除传感器类型的碰撞（Forest、Barrier），它们不会阻挡坦克移动
+        if sensors.contains(other_entity) {
+            continue;
+        }
+
         // 从位置差计算碰撞法线
         if let (Ok(enemy_transform), Ok(other_transform)) =
-            (enemy_tanks.get(enemy_entity), other_tanks.get(other_entity))
+            (enemy_tanks.get(enemy_entity), all_entities.get(other_entity))
         {
             let direction = enemy_transform.translation.truncate()
                 - other_transform.translation.truncate();
@@ -421,30 +400,19 @@ pub fn move_enemy_tanks(
         // 更新碰撞冷却计时器
         collision_cooldown.tick(time.delta());
 
-        // 只在冷却时间结束后才检测碰撞
+        // 优先使用事件缓存（事件驱动模式）
+        // 只在冷却时间结束后才响应碰撞
         if collision_cooldown.is_finished() {
-            // 优先使用事件缓存（事件驱动模式）
             if let Some(collision_normal) = collision_cache.take(entity)
                 && collision_normal.length() > 0.0
             {
                 enemy_tank.direction = get_new_direction(collision_normal);
-                direction_timer.reset();
-                collision_cooldown.reset();
-            }
-
-            // 边界碰撞仍然需要手动检测（边界不是物理实体，无碰撞事件）
-            if let Some(boundary_normal) = check_boundary_collision(
-                &transform,
-                ENEMY_COLLIDER_HALF_SIZE.x,
-                ENEMY_COLLIDER_HALF_SIZE.y,
-                enemy_tank.direction,
-            ) {
-                enemy_tank.direction = get_new_direction(boundary_normal);
-                direction_timer.reset();
+                // 不重置 direction_timer，允许快速响应连续碰撞
                 collision_cooldown.reset();
             }
         }
 
+        // 边界碰撞由物理引擎的边界墙处理，无需手动检测
         // 更新方向计时器
         direction_timer.tick(time.delta());
 
@@ -481,46 +449,10 @@ pub fn move_enemy_tanks(
         // 限制敌方坦克在地图边界内
         utils::clamp_entity_position(
             &mut transform,
-            TANK_DISPLAY_SIZE.x / 2.0,
-            TANK_DISPLAY_SIZE.y / 2.0,
+            crate::physics_config::collider_sizes::ENEMY.x,
+            crate::physics_config::collider_sizes::ENEMY.y,
         );
     }
-}
-
-/// 检测边界碰撞
-/// 返回碰撞法线方向（指向边界外部）
-fn check_boundary_collision(
-    transform: &Transform,
-    collider_half_width: f32,
-    collider_half_height: f32,
-    current_direction: Vec2,
-) -> Option<Vec2> {
-    const BOUNDARY_BUFFER: f32 = 20.0;
-
-    let x = transform.translation.x;
-    let y = transform.translation.y;
-
-    // 左边界：朝左且距离过近
-    if x - collider_half_width < MAP_LEFT_X + BOUNDARY_BUFFER && current_direction.x < -0.5 {
-        return Some(crate::constants::DIRECTION_RIGHT); // 返回右方向
-    }
-
-    // 右边界：朝右且距离过近
-    if x + collider_half_width > MAP_RIGHT_X - BOUNDARY_BUFFER && current_direction.x > 0.5 {
-        return Some(crate::constants::DIRECTION_LEFT); // 返回左方向
-    }
-
-    // 上边界：朝上且距离过近
-    if y + collider_half_height > MAP_TOP_Y - BOUNDARY_BUFFER && current_direction.y > 0.5 {
-        return Some(crate::constants::DIRECTION_DOWN); // 返回下方向
-    }
-
-    // 下边界：朝下且距离过近
-    if y - collider_half_height < MAP_BOTTOM_Y + BOUNDARY_BUFFER && current_direction.y < -0.5 {
-        return Some(crate::constants::DIRECTION_UP); // 返回上方向
-    }
-
-    None
 }
 
 /// 根据碰撞法线获取新的移动方向
@@ -565,8 +497,17 @@ fn handle_random_direction_change(
 ) {
     let mut rng = rand::rng();
     if rng.random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
-        let random_index = rng.random_range(0..crate::constants::DIRECTIONS.len());
-        enemy_tank.direction = crate::constants::DIRECTIONS[random_index];
+        // 向下概率是向上的2倍：上:20%, 下:40%, 左:20%, 右:20%
+        let rand_val = rng.random::<f32>() * 10.0;
+        enemy_tank.direction = if rand_val < 2.0 {
+            crate::constants::DIRECTION_UP   // 20%
+        } else if rand_val < 6.0 {
+            crate::constants::DIRECTION_DOWN // 40%
+        } else if rand_val < 8.0 {
+            crate::constants::DIRECTION_LEFT  // 20%
+        } else {
+            crate::constants::DIRECTION_RIGHT // 20%
+        };
     }
     direction_timer.reset();
 }
@@ -632,6 +573,7 @@ pub fn enemy_burning_effect_system(
     mut combo_events: MessageWriter<ComboEvent>,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
+    mut global_rng: ResMut<crate::global_rng::GlobalRng>,
 ) {
     for (burning_entity, burning, mut timer, parent) in burning_query.iter_mut() {
         timer.tick(time.delta());
@@ -672,11 +614,12 @@ pub fn enemy_burning_effect_system(
                     let () = commands.entity(enemy_entity).try_despawn();
                     
                     // 33%概率在地图随机位置生成道具
-                    if rand::random::<f32>() < 1.0 / 3.0 {
+                    if global_rng.gen_bool() && global_rng.gen_bool() {
                         crate::powerup::spawn_powerup_random_position(
                             &mut commands,
                             &texture_resources,
                             &atlas_layouts,
+                            &mut global_rng,
                         );
                     }
                 }

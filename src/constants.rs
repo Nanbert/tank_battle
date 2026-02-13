@@ -2,7 +2,6 @@
 
 use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
-use avian2d::prelude::*;
 
 use crate::resources::Language;
 
@@ -141,14 +140,9 @@ pub const ENEMY_LIFE_DOT_Y_OFFSET: f32 = 55.0; // 敌方坦克生命值点Y轴�
 pub const BARRIER_SIZE: Vec2 = Vec2::new(100.0, 100.0);
 pub const TANK_DISPLAY_SIZE: Vec2 = Vec2::new(80.0, 90.0); // 玩家/敌方/炮管显示尺寸
 pub const BULLET_DISPLAY_SIZE: Vec2 = Vec2::new(60.0, 40.0);
-pub const BULLET_COLLIDER_SIZE: f32 = 10.0; // 子弹碰撞体大小
 
-// 碰撞体尺寸（半尺寸）
-pub const ENEMY_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(38.0, 43.0);
-pub const PLAYER_COLLIDER_HALF_SIZE: Vec2 = Vec2::new(35.0, 35.0);
-pub const WALL_COLLIDER_SIZE: Vec2 = Vec2::new(46.0, 46.0); // 砖块/钢铁
-pub const WALL_TEXTURE_SIZE: Vec2 = Vec2::new(50.0, 50.0); // 砖块/钢铁
-pub const FOREST_COLLIDER_HALF: f32 = 131.0; // 森林碰撞体半宽/高
+// 纹理尺寸常量
+pub const WALL_TEXTURE_SIZE: Vec2 = Vec2::new(50.0, 50.0); // 砖块/钢铁纹理尺寸
 
 pub const DIRECTION_UP: Vec2 = Vec2::new(0.0, 1.0);
 pub const DIRECTION_DOWN: Vec2 = Vec2::new(0.0, -1.0);
@@ -714,8 +708,6 @@ impl Default for TankFireConfig {
 pub struct PlayerMovementController {
     /// 当前帧的移动位移
     pub translation: Option<Vec2>,
-    /// 碰撞过滤组（用于气垫等特效）
-    pub collision_layers: Option<CollisionLayers>,
 }
 
 // ============================================================================
@@ -852,8 +844,9 @@ pub const ENEMY_TANK_BURNING_DURATION: f32 = 3.0; // 敌方坦克着火持续时
 
 // ==================== 游戏机制时间常量 ====================
 pub const ENEMY_SPAWN_COOLDOWN: f32 = 0.8; // 敌方坦克生成冷却时间
+pub const ENEMY_COLLISION_COOLDOWN: f32 = 0.1; // 敌方坦克碰撞冷却时间（秒）
 pub const FADE_OUT_SPEED: f32 = 1.5; // 淡出速度倒数
-pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 2.0; // 敌方坦克方向改变间隔
+pub const ENEMY_DIRECTION_CHANGE_INTERVAL: f32 = 4.0; // 敌方坦克方向改变间隔（4秒）
 pub const ENEMY_ROTATION_TIME: f32 = 0.8; // 敌方坦克旋转时间
 pub const LASER_CHARGE_TIME: f32 = 3.0; // 激光蓄力时间
 pub const BLUE_BAR_REGEN_INTERVAL: f32 = 5.0; // 蓝条恢复间隔
@@ -906,15 +899,19 @@ pub const ENERGY_BALL_END_FRAME: usize = 64; // 能量球动画结束帧（65帧
 pub const ENERGY_BALL_LASER_LOOP_START: usize = 81; // 激光阶段循环起始帧
 pub const ENERGY_BALL_LASER_LOOP_END: usize = 84; // 激光阶段循环结束帧
 pub const ENEMIES_PER_LEVEL: usize = 5; // 每关敌方坦克总数
-pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.01; // 敌方坦克射击概率
-pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.4; // 随机转向概率
+pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.03; // 敌方坦克射击概率（3%）
+pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.1; // 随机转向概率（10%）
 pub const INITIAL_ATTRIBUTE_VALUE: usize = 40; // 初始属性值
 pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
 
 // ==================== 比例和音量常量 ====================
-pub const VOLUME_HALF: f32 = 0.5; // 音效音量
-pub const VOLUME_MUSIC_NOTE: f32 = 0.4; // 音符动画音量
-pub const VOLUME_AMBIENCE: f32 = 0.7; // 环境音效音量
+// 音量层级常量
+pub const VOLUME_QUARTER: f32 = 0.25; // 25% 音量 - 低频音效（命中、金属碰撞）
+pub const VOLUME_HALF: f32 = 0.5; // 50% 音量 - 中频音效（爆炸、燃烧）
+pub const VOLUME_FULL: f32 = 1.0; // 100% 音量 - 最大音量
+
+// 音效音量
+pub const VOLUME_AMBIENCE: f32 = 1.0; // 环境音效音量
 
 // ==================== Z轴层级常量 ====================
 pub const Z_SEA: f32 = -0.5; // 海水层级

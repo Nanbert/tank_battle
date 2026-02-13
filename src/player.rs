@@ -17,15 +17,15 @@ use crate::weather::CurrentWeather;
 use crate::ui::constants::*;
 use crate::utils;
 
-/// 玩家1初始X坐标（左侧）
+/// 玩家1初始X坐标（左侧，向左偏移5像素防止卡墙）
 const PLAYER1_START_X: f32 =
-    -PLAYER_COLLIDER_HALF_SIZE.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET;
-/// 玩家2初始X坐标（右侧）
+    -crate::physics_config::collider_sizes::PLAYER.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET - 5.0;
+/// 玩家2初始X坐标（右侧，向右偏移5像素防止卡墙）
 const PLAYER2_START_X: f32 =
-    PLAYER_COLLIDER_HALF_SIZE.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET;
+    crate::physics_config::collider_sizes::PLAYER.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET + 5.0;
 
 /// 玩家初始Y坐标（底部）
-const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + PLAYER_COLLIDER_HALF_SIZE.x;
+const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + crate::physics_config::collider_sizes::PLAYER.x;
 
 /// 生成玩家坦克
 pub fn spawn_player_tank(
@@ -35,9 +35,9 @@ pub fn spawn_player_tank(
     animation_indices: AnimationIndices,
     tank_type: TankType,
 ) -> Entity {
-    let (x_pos, collider_half) = match tank_type {
-        TankType::Player1 => (PLAYER1_START_X, PLAYER_COLLIDER_HALF_SIZE.x),
-        TankType::Player2 => (PLAYER2_START_X, PLAYER_COLLIDER_HALF_SIZE.x),
+    let (x_pos, _collider_half) = match tank_type {
+        TankType::Player1 => (PLAYER1_START_X, crate::physics_config::collider_sizes::PLAYER.x),
+        TankType::Player2 => (PLAYER2_START_X, crate::physics_config::collider_sizes::PLAYER.x),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
 
@@ -61,21 +61,13 @@ pub fn spawn_player_tank(
             PlayerVelocity::new(),
             LinearVelocity::default(),
             AngularVelocity::default(),
-            RigidBody::Dynamic,
-            Collider::rectangle(collider_half * 2.0, collider_half * 2.0),
-            CollisionEventsEnabled,
-            LockedAxes::ROTATION_LOCKED,
             // 玩家移动控制器（自定义）
             PlayerMovementController::default(),
         ),
     );
-    
-    // 添加物理属性组件（分开添加避免超过 Bundle 限制）
-    commands.entity(player_entity).insert((
-        GravityScale(0.0),
-        Friction::new(0.0),
-        Restitution::new(0.0),
-    ));
+
+// 应用物理属性组件（使用统一配置）
+    crate::physics_config::player_tank_physics().apply_to_entity(&mut commands.entity(player_entity));
 
     // 为玩家坦克添加子实体（炮塔）
     commands.entity(player_entity).with_children(|parent| {
@@ -247,13 +239,6 @@ pub fn move_player_tank(
                 transform.rotation = Quat::from_rotation_z(target_angle);
             }
         }
-
-        // 限制坦克在地图边界内
-        utils::clamp_entity_position(
-            &mut transform,
-            PLAYER_COLLIDER_HALF_SIZE.x,
-            PLAYER_COLLIDER_HALF_SIZE.x,
-        );
     }
 }
 
@@ -444,7 +429,7 @@ pub fn update_recall_progress_bars(
             // 更新倒计时文本位置（跟随坦克）
             progress_transform.translation.x = player_transform.translation.x;
             progress_transform.translation.y = player_transform.translation.y
-                + PLAYER_COLLIDER_HALF_SIZE.x
+                + crate::physics_config::collider_sizes::PLAYER.x
                 + PROGRESS_BAR_Y_OFFSET;
         }
     }

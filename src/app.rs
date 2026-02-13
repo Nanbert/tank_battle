@@ -146,6 +146,7 @@ fn register_stage_intro_systems(app: &mut App) {
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
             player::reset_player_positions,
             enemy::reset_enemy_spawn_state,
+            powerup::spawn_air_cushion_for_stage1, // 第一关强制生成 air_cushion 道具用于测试
         )
             .chain(),
     )
@@ -250,7 +251,6 @@ fn register_playing_systems(app: &mut App) {
         Update,
         (
             enemy::collect_enemy_collisions,
-            enemy::collect_contact_forces,
             enemy::enemy_fire_spread_system,
             enemy::move_enemy_tanks,
             enemy::update_enemy_life_dots,
@@ -290,7 +290,6 @@ app.add_systems(
         (
             bullet::enemy_shoot_system.in_set(GameSystemSet::BulletSystems),
             bullet::player_shoot_system.in_set(GameSystemSet::BulletSystems),
-            bullet::bullet_bounds_check_system.in_set(GameSystemSet::BulletSystems),
             bullet::bullet_terrain_collision_system.in_set(GameSystemSet::BulletSystems),
             bullet::bullet_tank_collision_system.in_set(GameSystemSet::BulletSystems),
             bullet::bullet_commander_collision_system.in_set(GameSystemSet::BulletSystems),
