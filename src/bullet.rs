@@ -43,9 +43,7 @@ pub struct ComboEvent {
 }
 
 /// 子弹资源缓存
-
 /// 用于预加载子弹纹理和音效，避免重复加载
-
 /// 子弹实体标记组件（包含所有者信息）
 
 #[derive(Component, Copy, Clone)]

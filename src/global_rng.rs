@@ -60,15 +60,10 @@ impl Default for GlobalRng {
 }
 
 /// 插件：注册全局随机数生成器
+#[derive(Default)]
 pub struct GlobalRngPlugin {
     /// 种子，None 表示使用默认固定种子
     pub seed: Option<u64>,
-}
-
-impl Default for GlobalRngPlugin {
-    fn default() -> Self {
-        Self { seed: None }
-    }
 }
 
 impl Plugin for GlobalRngPlugin {

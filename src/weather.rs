@@ -21,20 +21,15 @@ const PARTICLE_DESPAWN_Y_OFFSET: f32 = 50.0;
 // ==================== 天气类型 ====================
 
 /// 天气类型
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum WeatherType {
+    #[default]
     /// 无天气
     None,
     /// 下雨
     Rain,
     /// 下雪
     Snow,
-}
-
-impl Default for WeatherType {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl WeatherType {
@@ -118,9 +113,6 @@ pub struct RainAmbiencePlayer;
 pub fn on_playing_enter(
     mut weather: ResMut<CurrentWeather>,
     stage_level: Res<crate::resources::StageLevel>,
-    mut commands: Commands,
-    texture_resources: Res<crate::resources::GameTextureResources>,
-    atlas_layouts: Res<crate::resources::GameAtlasLayoutResources>,
 ) {
     let mut rng = rand::thread_rng();
     let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
@@ -243,7 +235,7 @@ pub fn play_rain_ambience(
             audio_resources.rain.clone(),
             crate::constants::VOLUME_FULL,
         );
-        commands.entity(entity).insert(RainAmbiencePlayer::default());
+        commands.entity(entity).insert(RainAmbiencePlayer);
     } else if weather.weather_type != WeatherType::Rain {
         crate::utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }

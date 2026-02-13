@@ -15,18 +15,6 @@ pub enum TreeColor {
     Yellow,
 }
 
-impl TreeColor {
-    /// 使用给定的随机数生成器随机选择树木颜色
-    #[allow(dead_code)]
-    pub fn random_with_rng<R: rand::Rng>(_rng: &mut R) -> Self {
-        if rand::random::<bool>() {
-            Self::Green
-        } else {
-            Self::Yellow
-        }
-    }
-}
-
 use crate::constants::{
     BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
     ENEMY_HEAVY_LIFE, ENEMY_LIGHT_LIFE, ENEMY_LIGHT_SPEED_MULTIPLIER, ENEMY_NORMAL_LIFE,
@@ -148,11 +136,27 @@ impl Default for StageLevel {
 #[derive(Resource)]
 pub struct MenuBlinkTimer(pub Timer);
 
+impl Default for MenuBlinkTimer {
+    fn default() -> Self {
+        Self(Timer::default())
+    }
+}
+
 #[derive(Resource)]
 pub struct StageIntroTimer {
     pub fade_in: Timer,
     pub stay: Timer,
     pub fade_out: Timer,
+}
+
+impl Default for StageIntroTimer {
+    fn default() -> Self {
+        Self {
+            fade_in: Timer::from_seconds(1.0, TimerMode::Once),
+            stay: Timer::from_seconds(1.0, TimerMode::Once),
+            fade_out: Timer::from_seconds(1.0, TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Resource, Default)]
@@ -373,22 +377,6 @@ pub struct GameTimers {
 
     // 动画计时器
     pub stage_intro: StageIntroTimer,
-}
-
-impl Default for MenuBlinkTimer {
-    fn default() -> Self {
-        Self(Timer::default())
-    }
-}
-
-impl Default for StageIntroTimer {
-    fn default() -> Self {
-        Self {
-            fade_in: Timer::from_seconds(1.0, TimerMode::Once),
-            stay: Timer::from_seconds(1.0, TimerMode::Once),
-            fade_out: Timer::from_seconds(1.0, TimerMode::Once),
-        }
-    }
 }
 
 // Commander 生命值资源
