@@ -6,7 +6,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{GameAtlasLayoutResources, GameTextureResources, StageLevel};
@@ -191,10 +191,9 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Fixed,
-                    Collider::cuboid(WALL_COLLIDER_SIZE.x / 2.0, WALL_COLLIDER_SIZE.y / 2.0),
-                    ActiveEvents::COLLISION_EVENTS,
-                    ActiveCollisionTypes::all(),
+                    RigidBody::Static,
+                    Collider::rectangle(WALL_COLLIDER_SIZE.x, WALL_COLLIDER_SIZE.y),
+                    CollisionEventsEnabled,
                 ))
                 .id()
         }
@@ -210,10 +209,9 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Fixed,
-                    Collider::cuboid(WALL_COLLIDER_SIZE.x / 2.0, WALL_COLLIDER_SIZE.y / 2.0),
-                    ActiveEvents::COLLISION_EVENTS,
-                    ActiveCollisionTypes::all(),
+                    RigidBody::Static,
+                    Collider::rectangle(WALL_COLLIDER_SIZE.x, WALL_COLLIDER_SIZE.y),
+                    CollisionEventsEnabled,
                 ))
                 .id()
         }
@@ -239,11 +237,10 @@ pub fn spawn_terrain_tile(
                 (Forest, PlayingEntity, AnimationMode::Looping),
             );
             commands.entity(entity).insert((
-                Collider::cuboid(FOREST_COLLIDER_HALF / 2.0, FOREST_COLLIDER_HALF / 2.0),
-                RigidBody::Fixed,
+                Collider::rectangle(FOREST_COLLIDER_HALF, FOREST_COLLIDER_HALF),
+                RigidBody::Static,
                 Sensor,
-                ActiveEvents::COLLISION_EVENTS,
-                ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+                CollisionEventsEnabled,
             ));
             entity
         }
@@ -259,9 +256,10 @@ pub fn spawn_terrain_tile(
                 (Sea, PlayingEntity, AnimationMode::Looping),
             );
             commands.entity(entity).insert((
-                RigidBody::Fixed,
-                Collider::cuboid(DETECTION_RADIUS / 2.0, DETECTION_RADIUS / 2.0),
-                CollisionGroups::new(SEA_GROUP, Group::all()),
+                RigidBody::Static,
+                Collider::rectangle(DETECTION_RADIUS, DETECTION_RADIUS),
+                // 海洋层：memberships=layer1, filters=all
+                CollisionLayers::new(LayerMask::from(0b10u32), LayerMask::ALL),
             ));
             entity
         }
@@ -277,11 +275,10 @@ pub fn spawn_terrain_tile(
                         ..default()
                     },
                     Transform::from_xyz(position.x, position.y, 0.0),
-                    RigidBody::Fixed,
-                    Collider::cuboid(BARRIER_SIZE.x / 2.0, BARRIER_SIZE.y / 2.0),
+                    RigidBody::Static,
+                    Collider::rectangle(BARRIER_SIZE.x, BARRIER_SIZE.y),
                     Sensor,
-                    ActiveEvents::COLLISION_EVENTS,
-                    ActiveCollisionTypes::default() | ActiveCollisionTypes::KINEMATIC_STATIC,
+                    CollisionEventsEnabled,
                 ))
                 .id()
         }

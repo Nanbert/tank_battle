@@ -5,7 +5,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 use crate::effects;
 use crate::utils;
@@ -124,7 +124,7 @@ pub fn update_dash_movement(
     mut player_query: Query<
         (
             Entity,
-            &mut KinematicCharacterController,
+            &mut LinearVelocity,
             &mut Transform,
             Option<&IsDashing>,
             Option<&Children>,
@@ -134,7 +134,7 @@ pub fn update_dash_movement(
     dash_dust_query: Query<(), With<DashDustEffect>>,
     mut game_trackers: ResMut<GameTrackers>,
 ) {
-    for (entity, mut character_controller, mut transform, is_dashing, children) in &mut player_query {
+    for (entity, mut linear_velocity, mut transform, is_dashing, children) in &mut player_query {
         if matches!(is_dashing, Some(IsDashing))
             && let Some(dash_timer) = game_trackers.dash_timers.timers.get_mut(&entity)
         {
@@ -144,9 +144,8 @@ pub fn update_dash_movement(
             // 计算冲刺速度：距离 / 时间
             let dash_speed = DASH_DISTANCE / DASH_DURATION;
 
-            // 设置移动
-            let movement = dash_timer.direction * dash_speed * time.delta_secs();
-            character_controller.translation = Some(movement);
+            // 设置移动速度
+            linear_velocity.0 = dash_timer.direction * dash_speed;
 
             // 限制坦克在地图边界内
             utils::clamp_entity_position(
@@ -183,7 +182,7 @@ pub fn update_dash_movement(
 /// 处理冲刺碰撞
 pub fn handle_dash_collision(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionStart>,
     mut effect_events: MessageWriter<crate::bullet::EffectEvent>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
     player_tanks: Query<(Entity, &PlayerTank, &Transform, Option<&IsDashing>)>,
@@ -197,14 +196,11 @@ pub fn handle_dash_collision(
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
-        // 卫语句：只处理 Started 事件
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         // 提取碰撞信息（一次性查询所有需要的实体和位置）
         let Some(collision_info) =
-            extract_dash_collision_info(*e1, *e2, &player_tanks, &enemy_tanks, &bricks, &steels)
+            extract_dash_collision_info(e1, e2, &player_tanks, &enemy_tanks, &bricks, &steels)
         else {
             continue;
         };

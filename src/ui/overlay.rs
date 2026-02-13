@@ -4,7 +4,7 @@
 
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 use rand::Rng;
 
 use super::common;
@@ -311,8 +311,8 @@ pub fn spawn_pause_ui(
     mut commands: Commands,
     font_resources: Res<GameTextureResources>,
     language: Res<Language>,
-    mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
-    mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
+    mut player_velocity_query: Query<&mut LinearVelocity, With<PlayerTank>>,
+    mut enemy_velocity_query: Query<&mut LinearVelocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
     let font = common::get_font(&font_resources, *language);
 
@@ -382,8 +382,8 @@ pub fn spawn_game_over_ui(
     mut commands: Commands,
     font_resources: Res<GameTextureResources>,
     language: Res<Language>,
-    mut player_velocity_query: Query<&mut Velocity, With<PlayerTank>>,
-    mut enemy_velocity_query: Query<&mut Velocity, (With<EnemyTank>, Without<PlayerTank>)>,
+    mut player_velocity_query: Query<&mut LinearVelocity, With<PlayerTank>>,
+    mut enemy_velocity_query: Query<&mut LinearVelocity, (With<EnemyTank>, Without<PlayerTank>)>,
 ) {
     let font = common::get_font(&font_resources, *language);
 

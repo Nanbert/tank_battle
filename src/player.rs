@@ -5,7 +5,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{
@@ -59,29 +59,23 @@ pub fn spawn_player_tank(
             },
             AnimationMode::Conditional { tank_type },
             PlayerVelocity::new(),
-            Velocity {
-                linvel: Vec2::default(),
-                angvel: 0.0,
-            },
-            RigidBody::KinematicPositionBased,
-            Collider::cuboid(collider_half, collider_half),
-            ActiveEvents::COLLISION_EVENTS,
-            ActiveCollisionTypes::default()
-                | ActiveCollisionTypes::KINEMATIC_STATIC
-                | ActiveCollisionTypes::KINEMATIC_KINEMATIC,
+            LinearVelocity::default(),
+            AngularVelocity::default(),
+            RigidBody::Dynamic,
+            Collider::rectangle(collider_half * 2.0, collider_half * 2.0),
+            CollisionEventsEnabled,
             LockedAxes::ROTATION_LOCKED,
-            KinematicCharacterController {
-                offset: CharacterLength::Absolute(CHARACTER_CONTROLLER_OFFSET),
-                filter_groups: None,
-                autostep: Some(bevy_rapier2d::prelude::CharacterAutostep {
-                    max_height: CharacterLength::Absolute(CHARACTER_CONTROLLER_MAX_HEIGHT),
-                    min_width: CharacterLength::Absolute(CHARACTER_CONTROLLER_MIN_WIDTH),
-                    include_dynamic_bodies: false,
-                }),
-                ..default()
-            },
+            // 玩家移动控制器（自定义）
+            PlayerMovementController::default(),
         ),
     );
+    
+    // 添加物理属性组件（分开添加避免超过 Bundle 限制）
+    commands.entity(player_entity).insert((
+        GravityScale(0.0),
+        Friction::new(0.0),
+        Restitution::new(0.0),
+    ));
 
     // 为玩家坦克添加子实体（炮塔）
     commands.entity(player_entity).with_children(|parent| {
@@ -107,7 +101,8 @@ pub fn move_player_tank(
         (
             Entity,
             &mut Transform,
-            &mut KinematicCharacterController,
+            &mut LinearVelocity,
+            &mut PlayerMovementController,
             &mut RotationTimer,
             &mut TargetRotation,
             &mut PlayerVelocity,
@@ -122,7 +117,8 @@ pub fn move_player_tank(
     for (
         _entity,
         mut transform,
-        mut character_controller,
+        mut linear_velocity,
+        mut movement_controller,
         mut rotation_timer,
         mut target_rotation,
         mut player_velocity,
@@ -154,7 +150,8 @@ pub fn move_player_tank(
                 false
             }
         } else {
-            character_controller.translation = None;
+            linear_velocity.0 = Vec2::ZERO;
+            movement_controller.translation = None;
             false
         };
 
@@ -199,9 +196,11 @@ pub fn move_player_tank(
                     Vec2::ZERO
                 };
 
-                character_controller.translation = Some(move_direction * actual_speed * time.delta_secs());
+                linear_velocity.0 = move_direction * actual_speed;
+                movement_controller.translation = Some(move_direction * actual_speed * time.delta_secs());
             } else {
-                character_controller.translation = None;
+                linear_velocity.0 = Vec2::ZERO;
+                movement_controller.translation = None;
             }
         } else {
             // 正常模式：使用原来的直接控制方式
@@ -214,9 +213,11 @@ pub fn move_player_tank(
             };
 
             if is_moving {
-                character_controller.translation = Some(direction * speed * time.delta_secs());
+                linear_velocity.0 = direction * speed;
+                movement_controller.translation = Some(direction * speed * time.delta_secs());
             } else {
-                character_controller.translation = None;
+                linear_velocity.0 = Vec2::ZERO;
+                movement_controller.translation = None;
             }
 
             // 清空速度，确保切换到雪天模式时从零开始
@@ -454,19 +455,20 @@ pub fn reset_player_positions(
     mut player_tanks: Query<
         (
             &mut Transform,
-            &mut Velocity,
-            &mut KinematicCharacterController,
+            &mut LinearVelocity,
+            &mut AngularVelocity,
+            &mut PlayerMovementController,
             Option<&mut PlayerVelocity>,
             &PlayerTank,
         ),
         With<PlayerTank>,
     >,
 ) {
-    for (mut transform, mut velocity, mut character_controller, player_velocity, player_tank) in &mut player_tanks {
+    for (mut transform, mut linear_velocity, mut angular_velocity, mut movement_controller, player_velocity, player_tank) in &mut player_tanks {
         // 重置物理引擎速度和位移累积
-        velocity.linvel = Vec2::ZERO;
-        velocity.angvel = 0.0;
-        character_controller.translation = None;
+        linear_velocity.0 = Vec2::ZERO;
+        angular_velocity.0 = 0.0;
+        movement_controller.translation = None;
 
         // 重置玩家速度
         if let Some(mut pv) = player_velocity {

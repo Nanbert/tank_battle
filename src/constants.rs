@@ -2,7 +2,7 @@
 
 use bevy::ecs::entity::EntityHashMap;
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 use crate::resources::Language;
 
@@ -74,8 +74,9 @@ pub const TEXTURE_DOUBLE_BARREL: &str = "texture/double_barrel.png";
 pub const TEXTURE_AVATAR_DEATH: &str = "texture/avatar_death.png";
 pub const TEXTURE_AVATAR_COMMANDER_DEAD: &str = "texture/avatar_commander_dead.png";
 
-// 碰撞分组常量
-pub const SEA_GROUP: Group = Group::GROUP_2;
+// 碰撞层定义 (Avian 使用 LayerMask)
+// Layer 0: 默认层
+// Layer 1: 海洋层（用于玩家穿海检测）
 
 // These constants are defined in `Transform` units.
 // Using the default 2D camera they correspond 1:1 with screen pixels.
@@ -707,6 +708,16 @@ impl Default for TankFireConfig {
     }
 }
 
+/// 玩家移动控制器组件（Avian 物理引擎）
+/// 用于替代 Rapier 的 KinematicCharacterController
+#[derive(Component, Default)]
+pub struct PlayerMovementController {
+    /// 当前帧的移动位移
+    pub translation: Option<Vec2>,
+    /// 碰撞过滤组（用于气垫等特效）
+    pub collision_layers: Option<CollisionLayers>,
+}
+
 // ============================================================================
 // Resource Components
 // ============================================================================
@@ -863,9 +874,7 @@ pub const BRICK_GROUP_TOP_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, BRICK_GROU
 pub const BRICK_GROUP_BOTTOM_LEFT: Vec2 = Vec2::new(-BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
 pub const BRICK_GROUP_BOTTOM_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
 
-pub const CHARACTER_CONTROLLER_OFFSET: f32 = 0.01; // CharacterController offset
-pub const CHARACTER_CONTROLLER_MAX_HEIGHT: f32 = 5.0; // CharacterController max_height
-pub const CHARACTER_CONTROLLER_MIN_WIDTH: f32 = 0.5; // CharacterController min_width
+
 
 // 激光
 pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）

@@ -5,7 +5,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
@@ -146,18 +146,13 @@ pub fn spawn_bullet(
                 rotation,
                 ..default()
             },
-            Velocity {
-                linvel: params.direction * params.speed,
-                angvel: 0.0,
-            },
-            RigidBody::KinematicVelocityBased,
-            Collider::cuboid(BULLET_DISPLAY_SIZE.x / 2.0, BULLET_DISPLAY_SIZE.y / 2.0), // 使用矩形碰撞体匹配子弹尺寸
+            LinearVelocity(params.direction * params.speed),
+            AngularVelocity::default(),
+            RigidBody::Kinematic,
+            Collider::rectangle(BULLET_DISPLAY_SIZE.x / 2.0, BULLET_DISPLAY_SIZE.y / 2.0), // 使用矩形碰撞体匹配子弹尺寸
             LockedAxes::ROTATION_LOCKED,
             Sensor,
-            ActiveEvents::COLLISION_EVENTS,
-            ActiveCollisionTypes::default()
-                | ActiveCollisionTypes::KINEMATIC_KINEMATIC
-                | ActiveCollisionTypes::KINEMATIC_STATIC,
+            CollisionEventsEnabled,
         ))
         .id();
 
@@ -501,10 +496,10 @@ fn extract_bullet_collision<'a>(
 }
 
 /// 子弹与地形碰撞检测系统
-/// 使用 Rapier 碰撞事件进行碰撞检测
+/// 使用 Avian 碰撞事件进行碰撞检测
 pub fn bullet_terrain_collision_system(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionStart>,
     mut effect_events: MessageWriter<EffectEvent>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     forests: Query<(Entity, &Transform), With<Forest>>,
@@ -518,12 +513,10 @@ pub fn bullet_terrain_collision_system(
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         let Some((bullet_entity, terrain_entity, bullet, bullet_transform)) =
-            extract_bullet_collision(*e1, *e2, &bullets)
+            extract_bullet_collision(e1, e2, &bullets)
         else {
             continue;
         };
@@ -778,7 +771,7 @@ fn handle_enemy_bullet_player_collision(
     player_tank: &PlayerTank,
     tank_transform: &Transform,
     player_info: &mut PlayerInfo,
-    controllers: &mut Query<&mut KinematicCharacterController>,
+    controllers: &mut Query<&mut PlayerMovementController>,
     audio_resources: &GameAudioResources,
     effect_events: &mut MessageWriter<EffectEvent>,
     game_trackers: &mut GameTrackers,
@@ -845,7 +838,7 @@ fn handle_enemy_bullet_player_collision(
     if need_update_filter_groups
         && let Ok(mut controller) = controllers.get_mut(player_tank_entity)
     {
-        controller.filter_groups = None;
+        controller.collision_layers = None;
     }
 
     // 销毁坦克
@@ -862,7 +855,7 @@ fn handle_enemy_bullet_player_collision(
 /// 子弹与坦克碰撞检测系统
 pub fn bullet_tank_collision_system(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionStart>,
     mut effect_events: MessageWriter<EffectEvent>,
     mut game_trackers: ResMut<GameTrackers>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
@@ -871,7 +864,7 @@ pub fn bullet_tank_collision_system(
     player_tanks: Query<(&PlayerTank, &Transform), With<PlayerTank>>,
     despawned_entities: Query<(), With<DespawnMarker>>,
     mut player_info: ResMut<PlayerInfo>,
-    mut controllers: Query<&mut KinematicCharacterController>,
+    mut controllers: Query<&mut PlayerMovementController>,
     audio_resources: Res<GameAudioResources>,
     mut combo_events: MessageWriter<ComboEvent>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
@@ -881,12 +874,10 @@ pub fn bullet_tank_collision_system(
     let (texture_resources, atlas_layouts) = resources;
 
     for event in collision_events.read() {
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         let Some((bullet_entity, tank_entity, bullet, _bullet_transform)) =
-            extract_bullet_collision(*e1, *e2, &bullets)
+            extract_bullet_collision(e1, e2, &bullets)
         else {
             continue;
         };
@@ -988,7 +979,7 @@ pub fn handle_effect_events(
 /// 司令官与敌方子弹碰撞检测系统
 pub fn bullet_commander_collision_system(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionStart>,
     mut effect_events: MessageWriter<EffectEvent>,
     bullets: Query<(Entity, &Bullet, &Transform), With<Bullet>>,
     commanders: Query<(Entity, &Transform), With<crate::constants::Commander>>,
@@ -997,13 +988,11 @@ pub fn bullet_commander_collision_system(
     audio_resources: Res<GameAudioResources>,
 ) {
     for event in collision_events.read() {
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         // 提取子弹信息
         let Some((bullet_entity, other_entity, bullet, bullet_transform)) =
-            extract_bullet_collision(*e1, *e2, &bullets)
+            extract_bullet_collision(e1, e2, &bullets)
         else {
             continue;
         };

@@ -5,7 +5,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{CommanderLife, GameAtlasLayoutResources, GameTextureResources};
@@ -47,9 +47,9 @@ pub fn spawn_commander(
 
     // 添加物理组件
     commands.entity(commander_entity).insert((
-        RigidBody::Fixed,
-        Collider::cuboid(COMMANDER_SIZE.x / 2.0, COMMANDER_SIZE.y / 2.0),
-        ActiveEvents::COLLISION_EVENTS,
+        RigidBody::Static,
+        Collider::rectangle(COMMANDER_SIZE.x, COMMANDER_SIZE.y),
+        CollisionEventsEnabled,
     ));
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）

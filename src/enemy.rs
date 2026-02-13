@@ -3,7 +3,7 @@
 //! 处理敌方坦克的生成、移动、碰撞检测和动画
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 use rand::Rng;
 
 #[allow(clippy::wildcard_imports)]
@@ -155,21 +155,14 @@ pub fn handle_spawn_enemy_event(
             .insert(TargetRotation {
                 angle: ENEMY_ANGLE_OFFSET_DEGREES.to_radians(),
             })
-            .insert(Velocity {
-                linvel: Vec2::new(0.0, -speed),
-                angvel: 0.0,
-            })
+            .insert(LinearVelocity(Vec2::new(0.0, -speed)))
+            .insert(AngularVelocity::default())
             .insert(RigidBody::Dynamic)
-            .insert(Collider::cuboid(
-                ENEMY_COLLIDER_HALF_SIZE.x,
-                ENEMY_COLLIDER_HALF_SIZE.y,
+            .insert(Collider::rectangle(
+                ENEMY_COLLIDER_HALF_SIZE.x * 2.0,
+                ENEMY_COLLIDER_HALF_SIZE.y * 2.0,
             ))
-            .insert(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
-            .insert(
-                ActiveCollisionTypes::default()
-                    | ActiveCollisionTypes::DYNAMIC_DYNAMIC
-                    | ActiveCollisionTypes::DYNAMIC_STATIC,
-            )
+            .insert(CollisionEventsEnabled)
             .insert(LockedAxes::ROTATION_LOCKED)
             .insert(GravityScale(0.0))
             .insert(Friction::new(0.0))
@@ -224,21 +217,18 @@ pub fn update_enemy_life_dots(
 /// 收集敌方坦克碰撞事件
 /// 使用事件驱动模式，只在碰撞发生时处理，避免每帧主动查询
 pub fn collect_enemy_collisions(
-    mut events: MessageReader<CollisionEvent>,
+    mut events: MessageReader<CollisionStart>,
     mut collision_cache: ResMut<EnemyCollisionCache>,
     all_tanks: Query<Entity, Or<(With<EnemyTank>, With<PlayerTank>)>>,
 ) {
     for event in events.read() {
-        // 只处理碰撞开始事件
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         // 判断是否是敌方坦克参与的碰撞
-        let enemy_entity = if all_tanks.contains(*e1) {
-            *e1
-        } else if all_tanks.contains(*e2) {
-            *e2
+        let enemy_entity = if all_tanks.contains(e1) {
+            e1
+        } else if all_tanks.contains(e2) {
+            e2
         } else {
             continue;
         };
@@ -249,25 +239,35 @@ pub fn collect_enemy_collisions(
 }
 
 /// 收集接触力事件，获取碰撞法线
-/// ContactForceEvent 提供了详细的接触力信息，包括最大力的方向
+/// Avian 使用 CollisionStart 事件，法线信息需要从碰撞数据获取
 pub fn collect_contact_forces(
-    mut events: MessageReader<ContactForceEvent>,
+    mut events: MessageReader<CollisionStart>,
     mut collision_cache: ResMut<EnemyCollisionCache>,
-    enemy_tanks: Query<(), With<EnemyTank>>,
+    enemy_tanks: Query<&Transform, With<EnemyTank>>,
+    other_tanks: Query<&Transform, Or<(With<PlayerTank>, With<EnemyTank>, With<Wall>)>>,
 ) {
     for event in events.read() {
-        let entity = event.collider1;
+        let (e1, e2) = (event.collider1, event.collider2);
 
-        // 只处理敌方坦克的接触力
-        if !enemy_tanks.contains(entity) {
+        // 确定敌方坦克实体
+        let (enemy_entity, other_entity) = if enemy_tanks.contains(e1) {
+            (e1, e2)
+        } else if enemy_tanks.contains(e2) {
+            (e2, e1)
+        } else {
             continue;
-        }
+        };
 
-        // 从接触力事件中获取最大力的方向作为碰撞法线
-        let direction = event.max_force_direction;
-        if direction.length() > 0.0 {
-            let normal = direction.normalize();
-            collision_cache.insert(entity, normal);
+        // 从位置差计算碰撞法线
+        if let (Ok(enemy_transform), Ok(other_transform)) =
+            (enemy_tanks.get(enemy_entity), other_tanks.get(other_entity))
+        {
+            let direction = enemy_transform.translation.truncate()
+                - other_transform.translation.truncate();
+            if direction.length() > 0.0 {
+                let normal = direction.normalize();
+                collision_cache.insert(enemy_entity, normal);
+            }
         }
     }
 }
@@ -276,36 +276,34 @@ pub fn collect_contact_forces(
 /// 当敌方坦克互相碰撞时，如果有火焰效果则传染给没有火焰的坦克
 pub fn enemy_fire_spread_system(
     mut commands: Commands,
-    mut collision_events: MessageReader<CollisionEvent>,
+    mut collision_events: MessageReader<CollisionStart>,
     enemy_tanks: Query<&Children, With<EnemyTank>>,
     burning_effects: Query<(&EnemyTankBurning, &ChildOf), With<EnemyTankBurning>>,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
 ) {
     for event in collision_events.read() {
-        let CollisionEvent::Started(e1, e2, _) = event else {
-            continue;
-        };
+        let (e1, e2) = (event.collider1, event.collider2);
 
         // 检查两个实体是否都是敌方坦克
-        let e1_has_enemy = enemy_tanks.contains(*e1);
-        let e2_has_enemy = enemy_tanks.contains(*e2);
+        let e1_has_enemy = enemy_tanks.contains(e1);
+        let e2_has_enemy = enemy_tanks.contains(e2);
 
         if !e1_has_enemy || !e2_has_enemy {
             continue;
         }
 
         // 检查哪个敌方坦克有火焰效果
-        let e1_has_fire = has_burning_effect(*e1, &enemy_tanks, &burning_effects);
-        let e2_has_fire = has_burning_effect(*e2, &enemy_tanks, &burning_effects);
+        let e1_has_fire = has_burning_effect(e1, &enemy_tanks, &burning_effects);
+        let e2_has_fire = has_burning_effect(e2, &enemy_tanks, &burning_effects);
 
         // 如果只有一方有火焰，传染给另一方
         if e1_has_fire && !e2_has_fire {
-            let player_type = get_burning_player_type(*e1, &enemy_tanks, &burning_effects);
-            spawn_enemy_burning_effect(&mut commands, *e2, &texture_resources, &atlas_layouts, player_type);
+            let player_type = get_burning_player_type(e1, &enemy_tanks, &burning_effects);
+            spawn_enemy_burning_effect(&mut commands, e2, &texture_resources, &atlas_layouts, player_type);
         } else if !e1_has_fire && e2_has_fire {
-            let player_type = get_burning_player_type(*e2, &enemy_tanks, &burning_effects);
-            spawn_enemy_burning_effect(&mut commands, *e1, &texture_resources, &atlas_layouts, player_type);
+            let player_type = get_burning_player_type(e2, &enemy_tanks, &burning_effects);
+            spawn_enemy_burning_effect(&mut commands, e1, &texture_resources, &atlas_layouts, player_type);
         }
     }
 }
@@ -399,7 +397,7 @@ pub fn move_enemy_tanks(
     time: Res<Time>,
     mut query: Query<(
         Entity,
-        &mut Velocity,
+        &mut LinearVelocity,
         &mut EnemyTank,
         &mut DirectionChangeTimer,
         &mut CollisionCooldownTimer,
@@ -576,7 +574,7 @@ fn handle_random_direction_change(
 /// 更新敌方坦克移动
 fn update_enemy_tank_movement(
     enemy_tank: EnemyTank,
-    velocity: &mut Velocity,
+    velocity: &mut LinearVelocity,
     target_rotation: &mut TargetRotation,
     rotation_timer: &mut RotationTimer,
 ) {
@@ -594,12 +592,12 @@ fn update_enemy_tank_movement(
 
         if angle_diff.abs() > ANGLE_DIFF_THRESHOLD {
             // 需要转向，设置速度为0实现原地转向
-            velocity.linvel = Vec2::ZERO;
+            velocity.0 = Vec2::ZERO;
             target_rotation.angle = target_angle;
             rotation_timer.reset();
         } else {
             // 不需要转向，正常移动
-            velocity.linvel = enemy_tank.direction * speed;
+            velocity.0 = enemy_tank.direction * speed;
         }
     }
 }

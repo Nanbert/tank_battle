@@ -4,7 +4,7 @@
 
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 use std::time::Duration;
 
 use crate::constants::*;
@@ -149,9 +149,9 @@ pub fn spawn_animated_sprite(
 /// - `player_velocity_query`: 玩家坦克速度查询
 /// - `enemy_velocity_query`: 敌方坦克速度查询
 pub fn stop_all_tanks_velocity(
-    player_velocity_query: &mut Query<&mut Velocity, With<crate::constants::PlayerTank>>,
+    player_velocity_query: &mut Query<&mut LinearVelocity, With<crate::constants::PlayerTank>>,
     enemy_velocity_query: &mut Query<
-        &mut Velocity,
+        &mut LinearVelocity,
         (
             With<crate::constants::EnemyTank>,
             Without<crate::constants::PlayerTank>,
@@ -160,12 +160,12 @@ pub fn stop_all_tanks_velocity(
 ) {
     // 停止玩家坦克的移动
     for mut velocity in player_velocity_query.iter_mut() {
-        velocity.linvel = Vec2::ZERO;
+        velocity.0 = Vec2::ZERO;
     }
 
     // 停止敌方坦克的移动
     for mut velocity in enemy_velocity_query.iter_mut() {
-        velocity.linvel = Vec2::ZERO;
+        velocity.0 = Vec2::ZERO;
     }
 }
 

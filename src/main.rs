@@ -24,7 +24,7 @@ mod utils;
 mod weather;
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 
 fn main() {
     let mut app = App::new();
@@ -40,7 +40,7 @@ fn main() {
                 default_spatial_scale: bevy::audio::SpatialScale::default(),
             }),
     )
-    .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0));
+    .add_plugins(PhysicsPlugins::default().with_length_unit(100.0));
 
     app::configure_game_resources(&mut app);
     app::register_game_systems(&mut app);

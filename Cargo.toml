@@ -4,10 +4,10 @@ version = "0.3.0"
 edition = "2024"
 
 [dependencies]
-bevy = "0.17.3"
+bevy = "0.18"
 log = { version = "*", features = ["max_level_debug", "release_max_level_warn"] }
-rand = {version = "*"}
-bevy_rapier2d = "0.32"
+rand = { version = "*" }
+avian2d = "0.5"
 
 [features]
 default = []

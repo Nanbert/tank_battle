@@ -5,7 +5,7 @@
 #![allow(clippy::wildcard_imports)]
 
 use bevy::prelude::*;
-use bevy_rapier2d::prelude::*;
+use avian2d::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
@@ -33,7 +33,6 @@ pub fn handle_powerup_collision(
     audio_resources: Res<GameAudioResources>,
     powerups: Query<(Entity, &Transform, &PowerUp)>,
     player_tanks: Query<(&Transform, &PlayerTank, Entity), With<PlayerTank>>,
-    mut controllers: Query<&mut KinematicCharacterController>,
     mut player_info: ResMut<PlayerInfo>,
     mut commander_life: ResMut<CommanderLife>,
     mut stat_changed_events: MessageWriter<PlayerStatChanged>,
@@ -114,10 +113,12 @@ pub fn handle_powerup_collision(
             });
 
             // 更新碰撞过滤组（气垫道具）
-            if strategy.update_filter_groups() && let Ok(mut controller) = controllers.get_mut(tank_entity) {
-                controller.filter_groups = Some(CollisionGroups::new(
-                    Group::all(),
-                    Group::all() & !SEA_GROUP,
+            if strategy.update_filter_groups() {
+                // 气垫效果：允许与海洋碰撞但不被阻挡
+                // memberships=layer0|layer1, filters=layer0（只与默认层碰撞）
+                commands.entity(tank_entity).insert(CollisionLayers::new(
+                    LayerMask::from(0b11u32), // 属于 layer0 和 layer1
+                    LayerMask::from(0b01u32), // 只与 layer0 碰撞
                 ));
             }
         }
