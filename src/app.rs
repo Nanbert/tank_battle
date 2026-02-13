@@ -146,7 +146,7 @@ fn register_stage_intro_systems(app: &mut App) {
                 .run_if(|stage_level: Res<crate::resources::StageLevel>| stage_level.0 > 1),
             player::reset_player_positions,
             enemy::reset_enemy_spawn_state,
-            powerup::spawn_air_cushion_for_stage1, // 第一关强制生成 air_cushion 道具用于测试
+            powerup::spawn_test_powerup, // 测试用：第一关强制生成 air_cushion 道具
         )
             .chain(),
     )

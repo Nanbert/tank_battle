@@ -122,25 +122,28 @@ pub fn on_playing_enter(
     texture_resources: Res<crate::resources::GameTextureResources>,
     atlas_layouts: Res<crate::resources::GameAtlasLayoutResources>,
 ) {
-    // 第一关强制为雨天（测试雨天对着火效果的影响）
-    if stage_level.0 == 1 {
-        weather.weather_type = WeatherType::Rain;
-        
-        // 第一关在地图中央生成气垫船道具（用于测试泡泡效果）
-        crate::powerup::spawn_powerup(
-            &mut commands,
-            &texture_resources,
-            &atlas_layouts,
-            crate::powerup_strategy::PowerUp::AirCushion,
-            bevy::prelude::Vec3::new(0.0, 0.0, crate::constants::Z_FOREST),
-        );
-    } else {
-        let mut rng = rand::thread_rng();
-        let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
-        weather.weather_type = weather_options[rng.gen_range(0..weather_options.len())];
-    }
+    let mut rng = rand::thread_rng();
+    let weather_options = [WeatherType::None, WeatherType::Rain, WeatherType::Snow];
+    weather.weather_type = weather_options[rng.gen_range(0..weather_options.len())];
 
     info!("关卡 {} 天气: {:?}", stage_level.0, weather.weather_type);
+}
+
+/// 测试用：在指定关卡强制生成指定天气
+#[allow(dead_code)]
+pub fn set_test_weather(
+    mut weather: ResMut<CurrentWeather>,
+    stage_level: Res<crate::resources::StageLevel>,
+) {
+    // 配置：指定关卡和天气类型
+    const TEST_STAGE: usize = 1;
+    const TEST_WEATHER: WeatherType = WeatherType::Rain;
+
+    // 只在指定关卡设置测试天气
+    if stage_level.0 == TEST_STAGE {
+        weather.weather_type = TEST_WEATHER;
+        info!("测试模式：关卡 {} 强制天气 {:?}", stage_level.0, TEST_WEATHER);
+    }
 }
 
 /// 离开 Playing 状态时清除天气

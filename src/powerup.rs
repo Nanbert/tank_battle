@@ -188,15 +188,20 @@ pub fn spawn_powerup(
     );
 }
 
-/// 在第一关强制生成一个 air_cushion 道具用于测试
-pub fn spawn_air_cushion_for_stage1(
+/// 测试用：在指定关卡强制生成指定道具
+#[allow(dead_code)]
+pub fn spawn_test_powerup(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
     stage_level: Res<crate::resources::StageLevel>,
 ) {
-    // 只在第一关生成
-    if stage_level.0 != 1 {
+    // 配置：指定关卡和道具类型
+    const TEST_STAGE: usize = 1;
+    const TEST_POWERUP: PowerUp = PowerUp::AirCushion;
+
+    // 只在指定关卡生成
+    if stage_level.0 != TEST_STAGE {
         return;
     }
 
@@ -206,7 +211,7 @@ pub fn spawn_air_cushion_for_stage1(
         &mut commands,
         &texture_resources,
         &atlas_layouts,
-        PowerUp::AirCushion,
+        TEST_POWERUP,
         position,
     );
 }
