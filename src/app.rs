@@ -669,7 +669,13 @@ pub fn register_game_systems(app: &mut App) {
         .init_resource::<crate::levels::LevelAssets>()
         .add_systems(
             Startup,
-            (setup, crate::levels::init_level_assets, init_game_resources),
+            (
+                setup,
+                crate::levels::init_level_assets,
+                init_game_resources,
+                #[cfg(target_arch = "wasm32")]
+                setup_web_level_assets,
+            ),
         );
 
     // 注册各游戏状态系统
@@ -685,6 +691,20 @@ pub fn register_game_systems(app: &mut App) {
 pub fn setup(mut commands: Commands) {
     // 创建全局相机
     commands.spawn(Camera2d);
+}
+
+/// Web 端：从预加载的关卡资源中恢复关卡数据
+#[cfg(target_arch = "wasm32")]
+fn setup_web_level_assets(
+    mut level_assets: ResMut<crate::levels::LevelAssets>,
+) {
+    // 从 lib.rs 中预加载的关卡资源中获取数据
+    if let Some(preloaded) = crate::get_preloaded_level_assets() {
+        *level_assets = preloaded;
+        info!("Web 端关卡资源已从 lib.rs 预加载");
+    } else {
+        warn!("Web 端关卡预加载失败，将使用默认空关卡");
+    }
 }
 
 /// 初始化纹理资源

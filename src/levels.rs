@@ -7,9 +7,17 @@ use bevy::prelude::*;
 pub type LevelMap = [[TerrainType; crate::map::MAP_COLS]; crate::map::MAP_ROWS];
 
 /// 关卡资源，用于存储已加载的关卡数据
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug, Default, Clone)]
 pub struct LevelAssets {
     levels: Vec<Option<LevelMap>>,
+}
+
+/// 关卡加载状态（Web 端异步加载用）
+#[derive(Resource, Debug, Clone)]
+pub struct LevelLoadingState {
+    pub current_level: usize,
+    pub total_levels: usize,
+    pub is_loading: bool,
 }
 
 impl LevelAssets {
@@ -117,16 +125,12 @@ pub fn load_level_assets() {
     info!("桌面端关卡资源初始化");
 }
 
-/// Web 端：初始化关卡资源到 LevelAssets
+/// Web 端：初始化关卡资源到 LevelAssets（异步）
 #[cfg(target_arch = "wasm32")]
-pub fn init_level_assets(mut level_assets: ResMut<LevelAssets>) {
-    info!("初始化 Web 端关卡数据");
-    for level in 1..=4 {
-        if let Some(map_data) = load_level_file(level) {
-            level_assets.set(level, map_data);
-            info!("关卡 {} 已加载", level);
-        }
-    }
+pub fn init_level_assets(world: &mut World) {
+    info!("初始化 Web 端关卡数据（异步加载）");
+    // 注意：实际加载将在 wasm 启动时完成，这里只设置状态
+    // 关卡数据会在 load_levels_async 中异步加载并注入到 World 中
 }
 
 /// 桌面端：初始化关卡资源到 LevelAssets
@@ -141,98 +145,62 @@ pub fn init_level_assets(mut level_assets: ResMut<LevelAssets>) {
     }
 }
 
-/// Web 端：使用内嵌的关卡数据
+/// Web 端：使用 HTTP 请求动态读取关卡文件
 #[cfg(target_arch = "wasm32")]
-pub fn load_level_file(level: usize) -> Option<LevelMap> {
-    // Web 端使用预定义的关卡数据
-    // 这里可以内嵌关卡数据，或者返回 None 让系统使用默认地图
-    match level {
-        1 => Some(get_level_1()),
-        2 => Some(get_level_2()),
-        3 => Some(get_level_3()),
-        4 => Some(get_level_4()),
-        _ => None,
+pub async fn load_level_file(level: usize) -> Option<LevelMap> {
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+
+    let path = format!("levels/{}.txt", level);
+    let window = web_sys::window().unwrap();
+
+    // 使用 fetch API 请求关卡文件
+    let response = match JsFuture::from(window.fetch_with_str(&path)).await {
+        Ok(res) => res,
+        Err(e) => {
+            warn!("无法获取关卡文件 {}: {:?}", path, e);
+            return None;
+        }
+    };
+
+    let response = response.dyn_into::<web_sys::Response>().unwrap();
+
+    // 检查响应状态
+    if !response.ok() {
+        warn!("关卡文件 {} 返回错误状态: {}", path, response.status());
+        return None;
     }
+
+    // 读取响应文本
+    let text = match JsFuture::from(response.text().unwrap()).await {
+        Ok(text) => text,
+        Err(e) => {
+            warn!("无法读取关卡文件 {} 内容: {:?}", path, e);
+            return None;
+        }
+    };
+
+    let content = text.as_string()?;
+    let map_data = parse_level_content(&content);
+    info!("Web 端关卡 {} 加载成功", level);
+    Some(map_data)
 }
 
-/// 预定义关卡 1 数据
+/// Web 端：异步加载所有关卡（在 wasm 启动时调用）
 #[cfg(target_arch = "wasm32")]
-fn get_level_1() -> LevelMap {
-    parse_level_content(
-        ". . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-b . . b . b . . b . . . b . . .
-b b . b . b . b b b . b b b . .
-b . b b . b b . . . b . . . b .
-b . . b b b b . . . b . . . b .
-i . i b . . . . . . s . . b i .
-t b . b . b b b b . s . b t b t
-t b . b . b . . b . s . b t b t
-t b . b i b . . b . . i b t b t
-t b . b . . . . . . . . . b . b
-t t t t . . . . . . . . . t t .
-",
-    )
+pub async fn load_all_levels_async() -> LevelAssets {
+    use wasm_bindgen_futures::JsFuture;
+
+    let mut level_assets = LevelAssets::default();
+
+    for level in 1..=4 {
+        if let Some(map_data) = load_level_file(level).await {
+            level_assets.set(level, map_data);
+            info!("Web 端关卡 {} 加载完成", level);
+        } else {
+            warn!("Web 端关卡 {} 加载失败", level);
+        }
+    }
+
+    level_assets
 }
-
-/// 预定义关卡 2 数据
-#[cfg(target_arch = "wasm32")]
-fn get_level_2() -> LevelMap {
-    parse_level_content(
-        ". . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-b b b b . . . . . . b b b b .
-b . . b . . . . . . . b . . b .
-b . . b . . . . . . . b . . b .
-b . . b . . . . . . . b . . b .
-. . . . . s . . s . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-",
-    )
-}
-
-/// 预定义关卡 3 数据
-#[cfg(target_arch = "wasm32")]
-fn get_level_3() -> LevelMap {
-    parse_level_content(
-        ". . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . i i i . i i i . . . .
-. . . i . i . i . i . . . .
-. . . i . i . i . i . . . .
-. . . . . . . . . . . . . .
-. . . . . s . s . . . . . .
-. . . . . . . . . . . . . .
-. . . . . . . . . . . . . .
-. . . . . . . . . . . . . .
-. . . . . . . . . . . . . .
-. . . . . . . . . . . . . .
-",
-    )
-}
-
-/// 预定义关卡 4 数据
-#[cfg(target_arch = "wasm32")]
-fn get_level_4() -> LevelMap {
-    parse_level_content(
-        ". . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . .
-",
-    )
-}
-
-
