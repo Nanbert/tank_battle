@@ -12,14 +12,6 @@ pub struct LevelAssets {
     levels: Vec<Option<LevelMap>>,
 }
 
-/// 关卡加载状态（Web 端异步加载用）
-#[derive(Resource, Debug, Clone)]
-pub struct LevelLoadingState {
-    pub current_level: usize,
-    pub total_levels: usize,
-    pub is_loading: bool,
-}
-
 impl LevelAssets {
     /// 获取关卡数据（如果未加载则返回空地图）
     pub fn get(&self, level: usize) -> Option<LevelMap> {
@@ -38,19 +30,6 @@ impl LevelAssets {
             self.levels.resize(level, None);
         }
         self.levels[level_idx] = Some(map_data);
-    }
-
-    /// 从另一个 LevelAssets 克隆数据
-    pub fn clone_from(other: &LevelAssets) -> Self {
-        let mut new_assets = LevelAssets::default();
-        for level_opt in other.levels.iter() {
-            if let Some(level) = level_opt {
-                new_assets.levels.push(Some(*level));
-            } else {
-                new_assets.levels.push(None);
-            }
-        }
-        new_assets
     }
 }
 
@@ -86,13 +65,6 @@ pub fn parse_level_content(
     result
 }
 
-/// 从 `LevelAssets` 资源获取关卡数据
-#[deprecated(note = "Use LevelAssets::get() instead")]
-pub fn get_level_from_assets(level_assets: &mut LevelAssets, level: usize) -> LevelMap {
-    level_assets.get(level).unwrap_or_else(|| {
-        [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]
-    })
-}
 /// 获取关卡文件目录路径
 /// 根据运行环境确定关卡文件路径：
 /// - Web 端：levels/
@@ -126,21 +98,9 @@ pub fn load_level_file(level: usize) -> Option<LevelMap> {
     }
 }
 
-/// Web 端：初始化关卡资源（使用预定义数据）
-#[cfg(target_arch = "wasm32")]
-pub fn load_level_assets() {
-    info!("Web 端使用预定义关卡数据 - 注意：关卡需要在游戏启动时初始化到 LevelAssets 资源中");
-}
-
-/// 桌面端：初始化关卡资源
-#[cfg(not(target_arch = "wasm32"))]
-pub fn load_level_assets() {
-    info!("桌面端关卡资源初始化");
-}
-
 /// Web 端：初始化关卡资源到 LevelAssets（异步）
 #[cfg(target_arch = "wasm32")]
-pub fn init_level_assets(world: &mut World) {
+pub fn init_level_assets(_world: &mut World) {
     info!("初始化 Web 端关卡数据（异步加载）");
     // 注意：实际加载将在 wasm 启动时完成，这里只设置状态
     // 关卡数据会在 load_levels_async 中异步加载并注入到 World 中
@@ -202,8 +162,6 @@ pub async fn load_level_file(level: usize) -> Option<LevelMap> {
 /// Web 端：异步加载所有关卡（在 wasm 启动时调用）
 #[cfg(target_arch = "wasm32")]
 pub async fn load_all_levels_async() -> LevelAssets {
-    use wasm_bindgen_futures::JsFuture;
-
     let mut level_assets = LevelAssets::default();
 
     for level in 1..=4 {

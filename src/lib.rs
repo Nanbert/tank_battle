@@ -26,10 +26,8 @@ pub mod ui;
 pub mod utils;
 pub mod weather;
 
-// Import LevelAssets for use in get_preloaded_level_assets
-use levels::LevelAssets;
-
 // Re-export necessary items
+pub use levels::LevelAssets;
 pub use app::configure_game_resources;
 pub use app::register_game_systems;
 pub use global_rng::GlobalRngPlugin;
@@ -75,7 +73,6 @@ pub fn init_game() {
 #[cfg(target_arch = "wasm32")]
 mod wasm {
     use wasm_bindgen::prelude::*;
-    use wasm_bindgen_futures::JsFuture;
     use crate::{init_game, levels::load_all_levels_async};
 
     // 全局关卡资源存储
@@ -124,7 +121,5 @@ mod wasm {
 /// Web 端：从预加载的关卡资源中获取数据
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn get_preloaded_level_assets() -> Option<LevelAssets> {
-    wasm::LEVEL_ASSETS.get().map(|la| {
-        LevelAssets::clone_from(la)
-    })
+    wasm::LEVEL_ASSETS.get().map(|la| la.clone())
 }

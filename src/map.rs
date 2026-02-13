@@ -297,7 +297,7 @@ pub fn spawn_terrain_tile(
 
 /// 地形瓦片布局类型
 #[derive(Clone, Copy)]
-pub(crate) enum TileLayout {
+pub enum TileLayout {
     /// 2x2 网格（4个瓦片）
     Full,
     /// 左半（2x1 网格，2个瓦片）
@@ -386,7 +386,9 @@ fn spawn_map_terrain(
     stage_level: usize,
     tree_color: crate::resources::TreeColor,
 ) {
-    let level_map = crate::levels::get_level_from_assets(level_assets, stage_level);
+    let level_map = level_assets.get(stage_level).unwrap_or_else(|| {
+        [[TerrainType::Empty; MAP_COLS]; MAP_ROWS]
+    });
 
     for (row, row_data) in level_map.iter().enumerate().take(MAP_ROWS) {
         for (col, terrain) in row_data.iter().enumerate().take(MAP_COLS) {

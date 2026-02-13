@@ -49,7 +49,6 @@ impl GlobalRng {
 
     /// 生成随机布尔值
     pub fn gen_bool(&mut self) -> bool {
-        use rand::Rng;
         rand::random::<bool>()
     }
 }

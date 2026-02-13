@@ -495,7 +495,6 @@ fn handle_random_direction_change(
     enemy_tank: &mut EnemyTank,
     direction_timer: &mut DirectionChangeTimer,
 ) {
-    let mut rng = rand::thread_rng();
     if rand::random::<f32>() < ENEMY_RANDOM_TURN_PROBABILITY {
         // 向下概率是向上的2倍：上:20%, 下:40%, 左:20%, 右:20%
         let rand_val = rand::random::<f32>() * 10.0;

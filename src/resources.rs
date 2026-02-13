@@ -6,8 +6,6 @@ use std::time::Duration;
 
 // ==================== 树木颜色系统 ====================
 
-use rand::Rng;
-
 /// 树木颜色类型
 #[derive(Resource, Clone, Copy, PartialEq, Eq)]
 pub enum TreeColor {
@@ -20,7 +18,7 @@ pub enum TreeColor {
 impl TreeColor {
     /// 使用给定的随机数生成器随机选择树木颜色
     #[allow(dead_code)]
-    pub fn random_with_rng<R: rand::Rng>(rng: &mut R) -> Self {
+    pub fn random_with_rng<R: rand::Rng>(_rng: &mut R) -> Self {
         if rand::random::<bool>() {
             Self::Green
         } else {

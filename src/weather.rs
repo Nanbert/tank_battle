@@ -145,7 +145,7 @@ pub fn on_playing_enter(
 
 /// 离开 Playing 状态时清除天气
 pub fn on_playing_exit(
-    mut weather: ResMut<CurrentWeather>,
+    _weather: ResMut<CurrentWeather>,
     particle_query: Query<Entity, With<PrecipitationParticle>>,
     rain_ambience_players: Query<(Entity, &mut AudioPlayer), With<RainAmbiencePlayer>>,
     mut commands: Commands,

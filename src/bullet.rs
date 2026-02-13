@@ -6,7 +6,6 @@
 
 use bevy::prelude::*;
 use avian2d::prelude::*;
-use rand::Rng;
 
 use crate::constants::*;
 use crate::effects;
@@ -255,7 +254,6 @@ pub fn enemy_shoot_system(
         }
 
         // 随机射击，每帧有 1.0% 的概率射击
-        let mut rng = rand::thread_rng();
         if rand::random::<f32>() < ENEMY_SHOOT_PROBABILITY {
             // 计算子弹发射方向（基于坦克的预期朝向 direction）
             let direction = if enemy_tank.direction.length() > 0.0 {
