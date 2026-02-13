@@ -2,6 +2,7 @@
 //!
 //! 处理暂停界面、游戏结束界面、关卡介绍界面等覆盖在游戏上的界面
 
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::app::AppExit;
 use bevy::prelude::*;
 use avian2d::prelude::*;
@@ -345,14 +346,17 @@ pub fn despawn_pause_ui(mut commands: Commands, query: Query<Entity, With<PauseU
 pub fn handle_game_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut app_exit: MessageWriter<AppExit>,
+    #[cfg(not(target_arch = "wasm32"))] mut app_exit: MessageWriter<AppExit>,
 ) {
     // Space 键暂停
     if keyboard_input.just_pressed(KeyCode::Space) {
         next_state.set(GameState::Paused);
     }
-    // Esc 键退出
+    // Esc 键退出（Web 端返回菜单，桌面端退出）
     if keyboard_input.just_pressed(KeyCode::Escape) {
+        #[cfg(target_arch = "wasm32")]
+        next_state.set(GameState::StartScreen);
+        #[cfg(not(target_arch = "wasm32"))]
         let _ = app_exit.write(AppExit::Success);
     }
 }
@@ -361,7 +365,7 @@ pub fn handle_game_input(
 pub fn handle_pause_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
-    mut app_exit: MessageWriter<AppExit>,
+    #[cfg(not(target_arch = "wasm32"))] mut app_exit: MessageWriter<AppExit>,
 ) {
     // Space 键恢复游戏
     if keyboard_input.just_pressed(KeyCode::Space) {
@@ -371,8 +375,11 @@ pub fn handle_pause_input(
     if keyboard_input.just_pressed(KeyCode::KeyB) {
         next_state.set(GameState::StartScreen);
     }
-    // Esc 键退出
+    // Esc 键退出（Web 端返回菜单，桌面端退出）
     if keyboard_input.just_pressed(KeyCode::Escape) {
+        #[cfg(target_arch = "wasm32")]
+        next_state.set(GameState::StartScreen);
+        #[cfg(not(target_arch = "wasm32"))]
         let _ = app_exit.write(AppExit::Success);
     }
 }
@@ -447,7 +454,7 @@ pub fn handle_game_over_input(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<GameState>>,
     mut menu_selection: ResMut<CurrentMenuSelection>,
-    mut app_exit: MessageWriter<AppExit>,
+    #[cfg(not(target_arch = "wasm32"))] mut app_exit: MessageWriter<AppExit>,
 ) {
     // 使用通用菜单导航函数
     common::handle_menu_navigation(
@@ -469,7 +476,10 @@ pub fn handle_game_over_input(
                 next_state.set(GameState::StartScreen);
             }
             2 => {
-                // Exit: 退出游戏
+                // Exit: 退出游戏（Web 端返回菜单，桌面端退出）
+                #[cfg(target_arch = "wasm32")]
+                next_state.set(GameState::StartScreen);
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = app_exit.write(AppExit::Success);
             }
             _ => {}

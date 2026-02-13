@@ -2,6 +2,7 @@
 //!
 //! 处理开始界面、关于界面、致谢界面等菜单相关功能
 
+#[cfg(not(target_arch = "wasm32"))]
 use bevy::app::AppExit;
 use bevy::prelude::*;
 
@@ -339,9 +340,10 @@ pub fn handle_start_screen_input(
     mut menu_selection: ResMut<CurrentMenuSelection>,
     mut game_mode: ResMut<GameMode>,
     mut language: ResMut<Language>,
-    mut app_exit: MessageWriter<AppExit>,
+    #[cfg(not(target_arch = "wasm32"))] mut app_exit: MessageWriter<AppExit>,
 ) {
-    // Esc 键退出游戏
+    // Esc 键退出游戏（Web 端无效果，桌面端退出）
+    #[cfg(not(target_arch = "wasm32"))]
     if keyboard_input.just_pressed(KeyCode::Escape) {
         let _ = app_exit.write(AppExit::Success);
     }
@@ -380,8 +382,12 @@ pub fn handle_start_screen_input(
                 next_state.set(GameState::Credits); // Credits / 制作人员
             }
             5 => {
+                // EXIT / 退出（Web 端返回菜单，桌面端退出）
+                #[cfg(target_arch = "wasm32")]
+                next_state.set(GameState::StartScreen);
+                #[cfg(not(target_arch = "wasm32"))]
                 let _ = app_exit.write(AppExit::Success);
-            } // EXIT / 退出
+            }
             _ => {}
         }
     }
