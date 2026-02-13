@@ -42,6 +42,7 @@ pub const FIRE_EFFECT_ANIMATION_FRAME: f32 = 0.03;
 pub const PENETRATE_EFFECT_ANIMATION_FRAME: f32 = 0.05;
 pub const BACKGROUND_ANIMATION_FRAME: f32 = 0.03;
 pub const POWER_UP_ANIMATION_FRAME: f32 = 0.1; // 道具动画帧间隔
+pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20; // 道具属性增加量（速度、护甲、射速）
 
 // 地图纹理路径常量（静态）
 pub const TEXTURE_BARRIER: &str = "maps/barrier.png";

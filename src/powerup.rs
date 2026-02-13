@@ -25,9 +25,6 @@ pub const POWERUP_COLLISION_DISTANCE: f32 = 100.0;
 /// 气泡特效尺寸
 pub const POWERUP_BUBBLE_SIZE: f32 = 100.0;
 
-/// 道具属性增加量
-pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;
-
 /// 道具碰撞检测和拾取系统
 ///
 /// 使用策略模式处理不同道具的效果，代码更简洁、可维护

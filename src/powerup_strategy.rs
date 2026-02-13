@@ -7,9 +7,6 @@ use bevy::prelude::Component;
 use crate::constants::*;
 use crate::resources::{PlayerStats, StatType};
 
-/// 道具属性增加量
-pub const POWERUP_ATTRIBUTE_INCREASE: usize = 20;
-
 /// 道具效果应用结果
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PowerUpResult {

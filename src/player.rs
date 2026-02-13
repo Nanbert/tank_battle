@@ -8,7 +8,6 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::constants::*;
-use crate::powerup;
 use crate::resources::{
     GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo, PlayerStatChanged,
     PlayerStats, RecallTimer, StatType,
@@ -547,10 +546,10 @@ pub fn handle_barrier_collision(
                     player_info.with_stats_mut(tank_type, |player_stats| {
                         player_stats.speed = player_stats
                             .speed
-                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
                         player_stats.protection = player_stats
                             .protection
-                            .saturating_sub(powerup::POWERUP_ATTRIBUTE_INCREASE);
+                            .saturating_sub(POWERUP_ATTRIBUTE_INCREASE);
                     });
 
                     // 发送 speed 和 protection 变更事件
