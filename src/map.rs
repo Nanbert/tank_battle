@@ -66,6 +66,46 @@ impl TerrainType {
             _ => Self::Empty,
         }
     }
+
+    /// 转换为符号字符串（用于导出关卡）
+    pub fn to_symbol(self) -> &'static str {
+        match self {
+            Self::Empty => ".",
+            Self::Forest => "t",
+            Self::Sea => "s",
+            Self::Brick => "b",
+            Self::BrickLeft => "bl",
+            Self::BrickRight => "br",
+            Self::BrickTop => "bt",
+            Self::BrickBottom => "bb",
+            Self::Steel => "i",
+            Self::SteelLeft => "il",
+            Self::SteelRight => "ir",
+            Self::SteelTop => "it",
+            Self::SteelBottom => "ib",
+            Self::Barrier => "a",
+        }
+    }
+
+    /// 获取地形的中文名称
+    pub fn to_name(self) -> &'static str {
+        match self {
+            Self::Empty => "空地",
+            Self::Sea => "海洋",
+            Self::Forest => "树林",
+            Self::Barrier => "屏障",
+            Self::Steel => "钢铁",
+            Self::SteelTop => "钢铁-上",
+            Self::SteelBottom => "钢铁-下",
+            Self::SteelLeft => "钢铁-左",
+            Self::SteelRight => "钢铁-右",
+            Self::Brick => "砖块",
+            Self::BrickTop => "砖块-上",
+            Self::BrickBottom => "砖块-下",
+            Self::BrickLeft => "砖块-左",
+            Self::BrickRight => "砖块-右",
+        }
+    }
 }
 
 /// 地图配置常量

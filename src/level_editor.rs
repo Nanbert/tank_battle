@@ -181,49 +181,67 @@ const RIGHT_PANEL_TERRAINS: [TerrainType; 7] = [
 ];
 
 // ============================================================================
-// 地形名称映射
+// 辅助函数
 // ============================================================================
 
-/// 获取地形的显示名称
-fn get_terrain_name(terrain: TerrainType) -> &'static str {
-    match terrain {
-        TerrainType::Empty => "空地",
-        TerrainType::Sea => "海洋",
-        TerrainType::Forest => "树林",
-        TerrainType::Barrier => "屏障",
-        TerrainType::Steel => "钢铁",
-        TerrainType::SteelTop => "钢铁-上",
-        TerrainType::SteelBottom => "钢铁-下",
-        TerrainType::SteelLeft => "钢铁-左",
-        TerrainType::SteelRight => "钢铁-右",
-        TerrainType::Brick => "砖块",
-        TerrainType::BrickTop => "砖块-上",
-        TerrainType::BrickBottom => "砖块-下",
-        TerrainType::BrickLeft => "砖块-左",
-        TerrainType::BrickRight => "砖块-右",
-    }
+/// 地形分类
+#[derive(Clone, Copy)]
+enum TerrainCategory {
+    Empty,
+    Forest,
+    Sea,
+    BrickFull,
+    BrickHalf(TerrainHalfPosition),
+    SteelFull,
+    SteelHalf(TerrainHalfPosition),
+    Barrier,
+}
+
+/// 半块地形位置
+#[derive(Clone, Copy)]
+enum TerrainHalfPosition {
+    Top,
+    Bottom,
+    Left,
+    Right,
 }
 
 /// 地形显示尺寸类型
 enum TerrainDisplaySize {
     Full,
-    HalfTop,
-    HalfBottom,
-    HalfLeft,
-    HalfRight,
+    Half(TerrainHalfPosition),
 }
 
-/// 根据地形类型获取显示尺寸
-fn get_terrain_display_size(terrain: TerrainType) -> TerrainDisplaySize {
+/// 根据地形类型获取分类
+fn get_terrain_category(terrain: TerrainType) -> TerrainCategory {
     match terrain {
-        TerrainType::Empty | TerrainType::Sea | TerrainType::Forest |
-        TerrainType::Barrier | TerrainType::Brick | TerrainType::Steel => {
+        TerrainType::Empty => TerrainCategory::Empty,
+        TerrainType::Forest => TerrainCategory::Forest,
+        TerrainType::Sea => TerrainCategory::Sea,
+        TerrainType::Barrier => TerrainCategory::Barrier,
+        TerrainType::Brick => TerrainCategory::BrickFull,
+        TerrainType::BrickTop => TerrainCategory::BrickHalf(TerrainHalfPosition::Top),
+        TerrainType::BrickBottom => TerrainCategory::BrickHalf(TerrainHalfPosition::Bottom),
+        TerrainType::BrickLeft => TerrainCategory::BrickHalf(TerrainHalfPosition::Left),
+        TerrainType::BrickRight => TerrainCategory::BrickHalf(TerrainHalfPosition::Right),
+        TerrainType::Steel => TerrainCategory::SteelFull,
+        TerrainType::SteelTop => TerrainCategory::SteelHalf(TerrainHalfPosition::Top),
+        TerrainType::SteelBottom => TerrainCategory::SteelHalf(TerrainHalfPosition::Bottom),
+        TerrainType::SteelLeft => TerrainCategory::SteelHalf(TerrainHalfPosition::Left),
+        TerrainType::SteelRight => TerrainCategory::SteelHalf(TerrainHalfPosition::Right),
+    }
+}
+
+/// 根据地形分类获取显示尺寸
+fn get_terrain_display_size(category: TerrainCategory) -> TerrainDisplaySize {
+    match category {
+        TerrainCategory::Empty | TerrainCategory::Forest | TerrainCategory::Sea |
+        TerrainCategory::Barrier | TerrainCategory::BrickFull | TerrainCategory::SteelFull => {
             TerrainDisplaySize::Full
         }
-        TerrainType::SteelTop | TerrainType::BrickTop => TerrainDisplaySize::HalfTop,
-        TerrainType::SteelBottom | TerrainType::BrickBottom => TerrainDisplaySize::HalfBottom,
-        TerrainType::SteelLeft | TerrainType::BrickLeft => TerrainDisplaySize::HalfLeft,
-        TerrainType::SteelRight | TerrainType::BrickRight => TerrainDisplaySize::HalfRight,
+        TerrainCategory::BrickHalf(pos) | TerrainCategory::SteelHalf(pos) => {
+            TerrainDisplaySize::Half(pos)
+        }
     }
 }
 
@@ -234,51 +252,61 @@ fn calculate_size_and_offset(
 ) -> (Vec2, Vec2) {
     match size_type {
         TerrainDisplaySize::Full => (base_size, Vec2::ZERO),
-        TerrainDisplaySize::HalfTop => {
-            let half_size = Vec2::new(base_size.x, base_size.y / 2.0);
-            let offset = Vec2::new(0.0, half_size.y / 2.0);
-            (half_size, offset)
-        }
-        TerrainDisplaySize::HalfBottom => {
-            let half_size = Vec2::new(base_size.x, base_size.y / 2.0);
-            let offset = Vec2::new(0.0, -half_size.y / 2.0);
-            (half_size, offset)
-        }
-        TerrainDisplaySize::HalfLeft => {
-            let half_size = Vec2::new(base_size.x / 2.0, base_size.y);
-            let offset = Vec2::new(-half_size.x / 2.0, 0.0);
-            (half_size, offset)
-        }
-        TerrainDisplaySize::HalfRight => {
-            let half_size = Vec2::new(base_size.x / 2.0, base_size.y);
-            let offset = Vec2::new(half_size.x / 2.0, 0.0);
+        TerrainDisplaySize::Half(pos) => {
+            let (half_size, offset) = match pos {
+                TerrainHalfPosition::Top => {
+                    let hs = Vec2::new(base_size.x, base_size.y / 2.0);
+                    let off = Vec2::new(0.0, hs.y / 2.0);
+                    (hs, off)
+                }
+                TerrainHalfPosition::Bottom => {
+                    let hs = Vec2::new(base_size.x, base_size.y / 2.0);
+                    let off = Vec2::new(0.0, -hs.y / 2.0);
+                    (hs, off)
+                }
+                TerrainHalfPosition::Left => {
+                    let hs = Vec2::new(base_size.x / 2.0, base_size.y);
+                    let off = Vec2::new(-hs.x / 2.0, 0.0);
+                    (hs, off)
+                }
+                TerrainHalfPosition::Right => {
+                    let hs = Vec2::new(base_size.x / 2.0, base_size.y);
+                    let off = Vec2::new(hs.x / 2.0, 0.0);
+                    (hs, off)
+                }
+            };
             (half_size, offset)
         }
     }
 }
 
-/// 获取纹理句柄
+/// 获取纹理句柄（基于地形分类）
 fn get_texture_handle(
-    terrain: TerrainType,
+    category: TerrainCategory,
     texture_resources: &GameTextureResources,
 ) -> Handle<Image> {
-    match terrain {
-        TerrainType::Sea => texture_resources.sea.clone(),
-        TerrainType::Forest => texture_resources.tree.clone(),
-        TerrainType::Barrier => texture_resources.barrier.clone(),
-        TerrainType::Steel | TerrainType::SteelTop | TerrainType::SteelBottom |
-        TerrainType::SteelLeft | TerrainType::SteelRight => texture_resources.steel.clone(),
-        TerrainType::Brick | TerrainType::BrickTop | TerrainType::BrickBottom |
-        TerrainType::BrickLeft | TerrainType::BrickRight => texture_resources.brick.clone(),
-        TerrainType::Empty => Handle::default(),
+    match category {
+        TerrainCategory::Empty => Handle::default(),
+        TerrainCategory::Sea => texture_resources.sea.clone(),
+        TerrainCategory::Forest => texture_resources.tree.clone(),
+        TerrainCategory::Barrier => texture_resources.barrier.clone(),
+        TerrainCategory::BrickFull | TerrainCategory::BrickHalf(_) => {
+            texture_resources.brick.clone()
+        }
+        TerrainCategory::SteelFull | TerrainCategory::SteelHalf(_) => {
+            texture_resources.steel.clone()
+        }
     }
 }
 
-/// 获取精灵图布局和索引
-fn get_atlas_info(terrain: TerrainType, atlas_layouts: &GameAtlasLayoutResources) -> Option<(Handle<TextureAtlasLayout>, usize)> {
-    match terrain {
-        TerrainType::Sea => Some((atlas_layouts.sea.clone(), 0)),
-        TerrainType::Forest => Some((atlas_layouts.forest.clone(), 0)),
+/// 获取精灵图布局和索引（基于地形分类）
+fn get_atlas_info(
+    category: TerrainCategory,
+    atlas_layouts: &GameAtlasLayoutResources,
+) -> Option<(Handle<TextureAtlasLayout>, usize)> {
+    match category {
+        TerrainCategory::Sea => Some((atlas_layouts.sea.clone(), 0)),
+        TerrainCategory::Forest => Some((atlas_layouts.forest.clone(), 0)),
         _ => None,
     }
 }
@@ -405,7 +433,7 @@ fn spawn_terrain_panel(
         spawn_terrain_preview(commands, texture_resources, atlas_layouts, panel_x, y, *terrain_type);
 
         // 生成地形名称文本
-        let name = get_terrain_name(*terrain_type);
+        let name = terrain_type.to_name();
         commands.spawn((
             LevelEditorUI,
             Text2d(name.to_string()),
@@ -449,11 +477,12 @@ fn spawn_terrain_preview(
     }
 
     let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
-    let size_type = get_terrain_display_size(terrain_type);
+    let category = get_terrain_category(terrain_type);
+    let size_type = get_terrain_display_size(category);
     let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
 
-    let texture = get_texture_handle(terrain_type, texture_resources);
-    let atlas_info = get_atlas_info(terrain_type, atlas_layouts);
+    let texture = get_texture_handle(category, texture_resources);
+    let atlas_info = get_atlas_info(category, atlas_layouts);
 
     let mut sprite = Sprite {
         image: texture,
@@ -699,12 +728,13 @@ pub fn handle_terrain_button_click(
                 
                 // 直接生成地形显示
                 if button.terrain_type != TerrainType::Empty {
+                    let category = get_terrain_category(button.terrain_type);
                     let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
-                    let size_type = get_terrain_display_size(button.terrain_type);
+                    let size_type = get_terrain_display_size(category);
                     let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
                     
-                    let texture = get_texture_handle(button.terrain_type, &texture_resources);
-                    let atlas_info = get_atlas_info(button.terrain_type, &atlas_layouts);
+                    let texture = get_texture_handle(category, &texture_resources);
+                    let atlas_info = get_atlas_info(category, &atlas_layouts);
                     
                     let mut sprite = Sprite {
                         image: texture,
@@ -836,11 +866,12 @@ fn update_grid_cell(
         // 直接生成地形显示，避免可变借用冲突
         if terrain_type != TerrainType::Empty {
             let actual_base_size = custom_base_size;
-            let size_type = get_terrain_display_size(terrain_type);
+            let category = get_terrain_category(terrain_type);
+            let size_type = get_terrain_display_size(category);
             let (display_size, offset) = calculate_size_and_offset(size_type, actual_base_size);
             
-            let texture = get_texture_handle(terrain_type, texture_resources);
-            let atlas_info = get_atlas_info(terrain_type, atlas_layouts);
+            let texture = get_texture_handle(category, texture_resources);
+            let atlas_info = get_atlas_info(category, atlas_layouts);
             
             let mut sprite = Sprite {
                 image: texture,
@@ -929,7 +960,7 @@ fn export_level(editor_map: &EditorMapData, filename: &str) {
         let row_data: Vec<String> = (0..MAP_COLS)
             .map(|col| {
                 let terrain = editor_map.get(row, col);
-                terrain_to_symbol(terrain).to_string()
+                terrain.to_symbol().to_string()
             })
             .collect();
         info!("第{}行: {}", row + 1, row_data.join(" "));
@@ -938,7 +969,7 @@ fn export_level(editor_map: &EditorMapData, filename: &str) {
     for row in 0..MAP_ROWS {
         for col in 0..MAP_COLS {
             let terrain = editor_map.get(row, col);
-            let symbol = terrain_to_symbol(terrain);
+            let symbol = terrain.to_symbol();
             if col > 0 {
                 content.push(' ');
             }
@@ -971,25 +1002,5 @@ fn export_level(editor_map: &EditorMapData, filename: &str) {
     #[cfg(target_arch = "wasm32")]
     {
         info!("关卡数据（Web端无法直接导出文件）:\n{}", content);
-    }
-}
-
-/// 将地形类型转换为符号
-fn terrain_to_symbol(terrain: TerrainType) -> &'static str {
-    match terrain {
-        TerrainType::Empty => ".",
-        TerrainType::Forest => "t",
-        TerrainType::Sea => "s",
-        TerrainType::Brick => "b",
-        TerrainType::BrickLeft => "bl",
-        TerrainType::BrickRight => "br",
-        TerrainType::BrickTop => "bt",
-        TerrainType::BrickBottom => "bb",
-        TerrainType::Steel => "i",
-        TerrainType::SteelLeft => "il",
-        TerrainType::SteelRight => "ir",
-        TerrainType::SteelTop => "it",
-        TerrainType::SteelBottom => "ib",
-        TerrainType::Barrier => "a",
     }
 }
