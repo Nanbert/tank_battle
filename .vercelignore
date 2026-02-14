@@ -1,19 +1,21 @@
+# 构建产物
 target
+dist
+
+# Git 相关
 .git
 .github
-dist
+
+# 本地配置文件
 .DS_Store
-*.rs
-Cargo.toml
-Cargo.lock
-assets
-levels
-docs
+*.desktop
 PKGBUILD
 rust-toolchain.toml
 .cargo
-*.desktop
-COPYRIGHT
-LICENSE
+
+# 文档（可选，如果需要可以保留）
+docs
 README.md
 IFLOW.md
+COPYRIGHT
+LICENSE
