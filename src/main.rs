@@ -14,6 +14,7 @@ mod enemy;
 mod game_state;
 mod global_rng;
 mod laser;
+#[cfg(not(target_arch = "wasm32"))]
 mod level_editor;
 mod levels;
 mod map;

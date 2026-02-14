@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowResolution};
 
 use crate::constants::*;
+use crate::global_rng::GlobalRng;
 use crate::resources::*;
 use crate::weather;
 
@@ -417,25 +418,28 @@ app.add_systems(
 
 /// 注册 LevelEditor 状态的系统
 fn register_level_editor_systems(app: &mut App) {
-    app.init_resource::<crate::level_editor::SelectedTerrain>()
-        .init_resource::<crate::level_editor::EditorMapData>()
-        .add_systems(
-            OnEnter(GameState::LevelEditor),
-            crate::level_editor::on_enter_level_editor,
-        )
-        .add_systems(
-            OnExit(GameState::LevelEditor),
-            crate::level_editor::on_exit_level_editor,
-        )
-        .add_systems(
-            Update,
-            (
-                crate::level_editor::handle_terrain_button_click,
-                crate::level_editor::handle_grid_click,
-                crate::level_editor::handle_editor_input,
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        app.init_resource::<crate::level_editor::SelectedTerrain>()
+            .init_resource::<crate::level_editor::EditorMapData>()
+            .add_systems(
+                OnEnter(GameState::LevelEditor),
+                crate::level_editor::on_enter_level_editor,
             )
-                .run_if(in_state(GameState::LevelEditor)),
-        );
+            .add_systems(
+                OnExit(GameState::LevelEditor),
+                crate::level_editor::on_exit_level_editor,
+            )
+            .add_systems(
+                Update,
+                (
+                    crate::level_editor::handle_terrain_button_click,
+                    crate::level_editor::handle_grid_click,
+                    crate::level_editor::handle_editor_input,
+                )
+                    .run_if(in_state(GameState::LevelEditor)),
+            );
+    }
 }
 
 // 导入模块以便使用其函数
@@ -675,9 +679,12 @@ pub fn configure_game_resources(app: &mut App) {
         .init_resource::<crate::levels::LevelAssets>()
         .init_resource::<weather::CurrentWeather>()
         .insert_resource(crate::resources::TreeColor::Green)
-        .insert_resource(crate::level_editor::InputFilename {
-            name: "1".to_string(),
-        });
+        .init_resource::<GlobalRng>();
+
+    #[cfg(not(target_arch = "wasm32"))]
+    app.insert_resource(crate::level_editor::InputFilename {
+        name: "1".to_string(),
+    });
 }
 
 /// 注册所有游戏系统

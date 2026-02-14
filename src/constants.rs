@@ -218,6 +218,7 @@ pub enum GameState {
     GameOver,
     About,
     Credits,
+    #[cfg(not(target_arch = "wasm32"))]
     LevelEditor,
 }
 

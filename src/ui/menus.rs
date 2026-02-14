@@ -51,8 +51,12 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>, lan
         Z_UI_TEXT,
     );
 
-    // 菜单选项，从上到下 0-6
-    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, 7);
+    // 菜单选项，从上到下
+    #[cfg(not(target_arch = "wasm32"))]
+    let menu_count = 7;
+    #[cfg(target_arch = "wasm32")]
+    let menu_count = 6;
+    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, menu_count);
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         commands.spawn((
             StartScreenUI,
@@ -348,16 +352,23 @@ pub fn handle_start_screen_input(
         let _ = app_exit.write(AppExit::Success);
     }
 
+    // 菜单选项数量因平台而异
+    #[cfg(not(target_arch = "wasm32"))]
+    let menu_count = 7;
+    #[cfg(target_arch = "wasm32")]
+    let menu_count = 6;
+
     // 使用通用菜单导航函数
     common::handle_menu_navigation(
         &keyboard_input,
         &mut menu_selection.selected_index,
-        6, // 最大索引（7个选项：0-6）
+        menu_count - 1, // 最大索引
         common::NavigationWrap::WrapAround,
     );
 
     // Space 键确认选择
     if keyboard_input.just_pressed(KeyCode::Space) {
+        #[cfg(not(target_arch = "wasm32"))]
         match menu_selection.selected_index {
             0 => {
                 *game_mode = GameMode::OnePlayer;
@@ -385,11 +396,39 @@ pub fn handle_start_screen_input(
                 next_state.set(GameState::Credits); // Credits / 制作人员
             }
             6 => {
-                // EXIT / 退出（Web 端返回菜单，桌面端退出）
-                #[cfg(target_arch = "wasm32")]
-                next_state.set(GameState::StartScreen);
-                #[cfg(not(target_arch = "wasm32"))]
+                // EXIT / 退出（桌面端退出）
                 let _ = app_exit.write(AppExit::Success);
+            }
+            _ => {}
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        match menu_selection.selected_index {
+            0 => {
+                *game_mode = GameMode::OnePlayer;
+                next_state.set(GameState::FadingOut); // 1 Player / 单人游戏
+            }
+            1 => {
+                *game_mode = GameMode::TwoPlayers;
+                next_state.set(GameState::FadingOut); // 2 Player / 双人对战
+            }
+            2 => {
+                // 切换语言
+                *language = match *language {
+                    Language::Chinese => Language::English,
+                    Language::English => Language::Chinese,
+                };
+                // 语言切换后重新生成菜单以更新文本
+            }
+            3 => {
+                next_state.set(GameState::About); // About / 关于
+            }
+            4 => {
+                next_state.set(GameState::Credits); // Credits / 制作人员
+            }
+            5 => {
+                // EXIT / 退出（Web 端返回菜单）
+                next_state.set(GameState::StartScreen);
             }
             _ => {}
         }
