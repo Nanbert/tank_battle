@@ -13,6 +13,42 @@ use crate::resources::*;
 use crate::ui::constants::*;
 
 // ============================================================================
+// 常量配置
+// ============================================================================
+
+/// 地形按钮尺寸
+const TERRAIN_BUTTON_SIZE: f32 = 90.0;
+
+/// 地形按钮间距
+const TERRAIN_BUTTON_SPACING: f32 = 130.0;
+
+/// 地形按钮起始 Y 坐标
+const TERRAIN_BUTTON_START_Y: f32 = 500.0;
+
+/// 左侧面板 X 坐标
+const LEFT_PANEL_X: f32 = -930.0;
+
+/// 右侧面板 X 坐标
+const RIGHT_PANEL_X: f32 = 930.0;
+
+/// 地形按钮内边距（用于缩小预览显示）
+const TERRAIN_BUTTON_PADDING: f32 = 10.0;
+
+/// 文本垂直偏移（地形名称）
+const TEXT_Y_OFFSET: f32 = TERRAIN_BUTTON_SIZE / 2.0 + 15.0;
+
+/// Z轴层级
+const Z_UI_BASE: f32 = 10.0;
+const Z_UI_PREVIEW: f32 = Z_UI_BASE + 0.1;
+const Z_UI_TEXT: f32 = 20.0;
+
+/// 地形按钮点击检测半径（像素）
+const TERRAIN_BUTTON_CLICK_RADIUS: f32 = 45.0;
+
+/// 最大文件名长度
+const MAX_FILENAME_LENGTH: usize = 3;
+
+// ============================================================================
 // 编辑器标记组件
 // ============================================================================
 
@@ -119,29 +155,7 @@ impl EditorMapData {
 // 编辑器布局常量
 // ============================================================================
 
-/// 编辑器面板宽度
-const EDITOR_PANEL_WIDTH: f32 = 200.0;
-
-/// 左侧面板起始 X 坐标
-const LEFT_PANEL_X: f32 = -((WINDOW_WIDTH as f32) / 2.0) + EDITOR_PANEL_WIDTH / 2.0;
-
-/// 右侧面板起始 X 坐标
-const RIGHT_PANEL_X: f32 = (WINDOW_WIDTH as f32) / 2.0 - EDITOR_PANEL_WIDTH / 2.0;
-
-/// 地形按钮尺寸
-const TERRAIN_BUTTON_SIZE: f32 = 90.0; // 原来是 60.0，放大1.5倍
-
-/// 地形按钮间距
-const TERRAIN_BUTTON_SPACING: f32 = 130.0; // 原来是 75.0，增加55像素（35+20）
-
-/// 地形按钮起始 Y 坐标
-const TERRAIN_BUTTON_START_Y: f32 = 500.0;
-
-/// 网格线颜色
-const GRID_LINE_COLOR: Color = Color::srgba(1.0, 1.0, 1.0, 0.2);
-
-// ============================================================================
-// 地形元素定义（14种）
+/// 地形元素定义（14种）
 // ============================================================================
 
 /// 左侧面板地形元素（7种）
@@ -165,6 +179,109 @@ const RIGHT_PANEL_TERRAINS: [TerrainType; 7] = [
     TerrainType::BrickLeft,
     TerrainType::BrickRight,
 ];
+
+// ============================================================================
+// 地形名称映射
+// ============================================================================
+
+/// 获取地形的显示名称
+fn get_terrain_name(terrain: TerrainType) -> &'static str {
+    match terrain {
+        TerrainType::Empty => "空地",
+        TerrainType::Sea => "海洋",
+        TerrainType::Forest => "树林",
+        TerrainType::Barrier => "屏障",
+        TerrainType::Steel => "钢铁",
+        TerrainType::SteelTop => "钢铁-上",
+        TerrainType::SteelBottom => "钢铁-下",
+        TerrainType::SteelLeft => "钢铁-左",
+        TerrainType::SteelRight => "钢铁-右",
+        TerrainType::Brick => "砖块",
+        TerrainType::BrickTop => "砖块-上",
+        TerrainType::BrickBottom => "砖块-下",
+        TerrainType::BrickLeft => "砖块-左",
+        TerrainType::BrickRight => "砖块-右",
+    }
+}
+
+/// 地形显示尺寸类型
+enum TerrainDisplaySize {
+    Full,
+    HalfTop,
+    HalfBottom,
+    HalfLeft,
+    HalfRight,
+}
+
+/// 根据地形类型获取显示尺寸
+fn get_terrain_display_size(terrain: TerrainType) -> TerrainDisplaySize {
+    match terrain {
+        TerrainType::Empty | TerrainType::Sea | TerrainType::Forest |
+        TerrainType::Barrier | TerrainType::Brick | TerrainType::Steel => {
+            TerrainDisplaySize::Full
+        }
+        TerrainType::SteelTop | TerrainType::BrickTop => TerrainDisplaySize::HalfTop,
+        TerrainType::SteelBottom | TerrainType::BrickBottom => TerrainDisplaySize::HalfBottom,
+        TerrainType::SteelLeft | TerrainType::BrickLeft => TerrainDisplaySize::HalfLeft,
+        TerrainType::SteelRight | TerrainType::BrickRight => TerrainDisplaySize::HalfRight,
+    }
+}
+
+/// 根据尺寸类型和基准尺寸计算实际尺寸和位置偏移
+fn calculate_size_and_offset(
+    size_type: TerrainDisplaySize,
+    base_size: Vec2,
+) -> (Vec2, Vec2) {
+    match size_type {
+        TerrainDisplaySize::Full => (base_size, Vec2::ZERO),
+        TerrainDisplaySize::HalfTop => {
+            let half_size = Vec2::new(base_size.x, base_size.y / 2.0);
+            let offset = Vec2::new(0.0, half_size.y / 2.0);
+            (half_size, offset)
+        }
+        TerrainDisplaySize::HalfBottom => {
+            let half_size = Vec2::new(base_size.x, base_size.y / 2.0);
+            let offset = Vec2::new(0.0, -half_size.y / 2.0);
+            (half_size, offset)
+        }
+        TerrainDisplaySize::HalfLeft => {
+            let half_size = Vec2::new(base_size.x / 2.0, base_size.y);
+            let offset = Vec2::new(-half_size.x / 2.0, 0.0);
+            (half_size, offset)
+        }
+        TerrainDisplaySize::HalfRight => {
+            let half_size = Vec2::new(base_size.x / 2.0, base_size.y);
+            let offset = Vec2::new(half_size.x / 2.0, 0.0);
+            (half_size, offset)
+        }
+    }
+}
+
+/// 获取纹理句柄
+fn get_texture_handle(
+    terrain: TerrainType,
+    texture_resources: &GameTextureResources,
+) -> Handle<Image> {
+    match terrain {
+        TerrainType::Sea => texture_resources.sea.clone(),
+        TerrainType::Forest => texture_resources.tree.clone(),
+        TerrainType::Barrier => texture_resources.barrier.clone(),
+        TerrainType::Steel | TerrainType::SteelTop | TerrainType::SteelBottom |
+        TerrainType::SteelLeft | TerrainType::SteelRight => texture_resources.steel.clone(),
+        TerrainType::Brick | TerrainType::BrickTop | TerrainType::BrickBottom |
+        TerrainType::BrickLeft | TerrainType::BrickRight => texture_resources.brick.clone(),
+        TerrainType::Empty => Handle::default(),
+    }
+}
+
+/// 获取精灵图布局和索引
+fn get_atlas_info(terrain: TerrainType, atlas_layouts: &GameAtlasLayoutResources) -> Option<(Handle<TextureAtlasLayout>, usize)> {
+    match terrain {
+        TerrainType::Sea => Some((atlas_layouts.sea.clone(), 0)),
+        TerrainType::Forest => Some((atlas_layouts.forest.clone(), 0)),
+        _ => None,
+    }
+}
 
 // ============================================================================
 // 编辑器系统函数
@@ -297,7 +414,7 @@ fn spawn_terrain_panel(
                 ..default()
             },
             TextColor(COLOR_WHITE),
-            Transform::from_xyz(panel_x, y - TERRAIN_BUTTON_SIZE / 2.0 - 15.0, Z_UI_TEXT),
+            Transform::from_xyz(panel_x, y - TEXT_Y_OFFSET, Z_UI_TEXT),
         ));
 
         // 生成地形按钮（点击选择）
@@ -312,7 +429,7 @@ fn spawn_terrain_panel(
                 custom_size: Some(Vec2::new(TERRAIN_BUTTON_SIZE, TERRAIN_BUTTON_SIZE)),
                 ..default()
             },
-            Transform::from_xyz(panel_x, y, Z_UI),
+            Transform::from_xyz(panel_x, y, Z_UI_BASE),
         ));
     }
 }
@@ -326,218 +443,34 @@ fn spawn_terrain_preview(
     y: f32,
     terrain_type: TerrainType,
 ) {
-    let full_size = Vec2::new(TERRAIN_BUTTON_SIZE - 10.0, TERRAIN_BUTTON_SIZE - 10.0);
-
-    match terrain_type {
-        TerrainType::Empty => {
-            // 空地形不显示任何内容
-        }
-        TerrainType::Sea => {
-            // 海：使用精灵图第一帧
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.sea.clone(),
-                    custom_size: Some(full_size),
-                    texture_atlas: Some(TextureAtlas {
-                        layout: atlas_layouts.sea.clone(),
-                        index: 0, // 第一帧
-                    }),
-                    ..default()
-                },
-                Transform::from_xyz(x, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::Forest => {
-            // 树林：使用精灵图第一帧
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.tree.clone(),
-                    custom_size: Some(full_size),
-                    texture_atlas: Some(TextureAtlas {
-                        layout: atlas_layouts.forest.clone(),
-                        index: 0, // 第一帧
-                    }),
-                    ..default()
-                },
-                Transform::from_xyz(x, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::Barrier => {
-            // 屏障
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.barrier.clone(),
-                    custom_size: Some(full_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y, Z_UI + 0.1),
-            ));
-        }
-        // 钢块变体：调整显示区域和大小
-        TerrainType::Steel => {
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.steel.clone(),
-                    custom_size: Some(full_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::SteelTop => {
-            // 上半：显示上半部分，高度减半，对齐到上边
-            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.steel.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y + half_size.y / 2.0, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::SteelBottom => {
-            // 下半：显示下半部分，高度减半，对齐到下边
-            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.steel.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y - half_size.y / 2.0, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::SteelLeft => {
-            // 左半：显示左半部分，宽度减半，对齐到左边
-            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.steel.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x - half_size.x / 2.0, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::SteelRight => {
-            // 右半：显示右半部分，宽度减半，对齐到右边
-            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.steel.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x + half_size.x / 2.0, y, Z_UI + 0.1),
-            ));
-        }
-        // 砖块变体：调整显示区域和大小
-        TerrainType::Brick => {
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.brick.clone(),
-                    custom_size: Some(full_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::BrickTop => {
-            // 上半：显示上半部分，高度减半，对齐到上边
-            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.brick.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y + half_size.y / 2.0, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::BrickBottom => {
-            // 下半：显示下半部分，高度减半，对齐到下边
-            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.brick.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x, y - half_size.y / 2.0, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::BrickLeft => {
-            // 左半：显示左半部分，宽度减半，对齐到左边
-            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.brick.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x - half_size.x / 2.0, y, Z_UI + 0.1),
-            ));
-        }
-        TerrainType::BrickRight => {
-            // 右半：显示右半部分，宽度减半，对齐到右边
-            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-            commands.spawn((
-                LevelEditorUI,
-                TerrainPreview,
-                Sprite {
-                    image: texture_resources.brick.clone(),
-                    custom_size: Some(half_size),
-                    ..default()
-                },
-                Transform::from_xyz(x + half_size.x / 2.0, y, Z_UI + 0.1),
-            ));
-        }
+    // 空地形不显示
+    if terrain_type == TerrainType::Empty {
+        return;
     }
-}
 
-/// 获取地形名称
-fn get_terrain_name(terrain: TerrainType) -> &'static str {
-    match terrain {
-        TerrainType::Empty => "空地",
-        TerrainType::Sea => "海洋",
-        TerrainType::Forest => "树林",
-        TerrainType::Barrier => "屏障",
-        TerrainType::Steel => "钢块",
-        TerrainType::SteelTop => "钢块-上",
-        TerrainType::SteelBottom => "钢块-下",
-        TerrainType::SteelLeft => "钢块-左",
-        TerrainType::SteelRight => "钢块-右",
-        TerrainType::Brick => "砖块",
-        TerrainType::BrickTop => "砖块-上",
-        TerrainType::BrickBottom => "砖块-下",
-        TerrainType::BrickLeft => "砖块-左",
-        TerrainType::BrickRight => "砖块-右",
+    let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
+    let size_type = get_terrain_display_size(terrain_type);
+    let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
+
+    let texture = get_texture_handle(terrain_type, texture_resources);
+    let atlas_info = get_atlas_info(terrain_type, atlas_layouts);
+
+    let mut sprite = Sprite {
+        image: texture,
+        custom_size: Some(display_size),
+        ..default()
+    };
+
+    if let Some((layout, index)) = atlas_info {
+        sprite.texture_atlas = Some(TextureAtlas { layout, index });
     }
+
+    commands.spawn((
+        LevelEditorUI,
+        TerrainPreview,
+        sprite,
+        Transform::from_xyz(x + offset.x, y + offset.y, Z_UI_PREVIEW),
+    ));
 }
 
 /// 生成网格
@@ -748,10 +681,7 @@ pub fn handle_terrain_button_click(
         let button_pos = transform.translation.truncate();
         let distance = button_pos.distance(world_position);
 
-        info!("地形按钮检查: 类型={:?}, 位置=({:.1},{:.1}), 鼠标位置=({:.1},{:.1}), 距离={:.1}, 阈值={:.1}", 
-              button.terrain_type, button_pos.x, button_pos.y, world_position.x, world_position.y, distance, TERRAIN_BUTTON_SIZE / 2.0);
-
-        if distance < TERRAIN_BUTTON_SIZE / 2.0 {
+        if distance < TERRAIN_BUTTON_CLICK_RADIUS {
             selected_terrain.terrain_type = Some(button.terrain_type);
             info!("✓ 成功选中地形: {:?}", button.terrain_type);
             
@@ -767,187 +697,34 @@ pub fn handle_terrain_button_click(
                     commands.entity(child).despawn();
                 }
                 
-                let full_size = Vec2::new(TERRAIN_BUTTON_SIZE - 10.0, TERRAIN_BUTTON_SIZE - 10.0);
-                
-                commands.entity(current_terrain_entity).with_children(|parent| {
-                    match button.terrain_type {
-                        TerrainType::Empty => {
-                            // 空地形不显示任何内容
-                        }
-                        TerrainType::Sea => {
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.sea.clone(),
-                                    custom_size: Some(full_size),
-                                    texture_atlas: Some(TextureAtlas {
-                                        layout: atlas_layouts.sea.clone(),
-                                        index: 0,
-                                    }),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::Forest => {
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.tree.clone(),
-                                    custom_size: Some(Vec2::new(131.0, 131.0)),
-                                    texture_atlas: Some(TextureAtlas {
-                                        layout: atlas_layouts.forest.clone(),
-                                        index: 0,
-                                    }),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::Barrier => {
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.barrier.clone(),
-                                    custom_size: Some(full_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::Steel => {
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.steel.clone(),
-                                    custom_size: Some(full_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::SteelTop => {
-                            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.steel.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, half_size.y / 2.0, 0.1),
-                            ));
-                        }
-                        TerrainType::SteelBottom => {
-                            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.steel.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, -half_size.y / 2.0, 0.1),
-                            ));
-                        }
-                        TerrainType::SteelLeft => {
-                            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.steel.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(-half_size.x / 2.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::SteelRight => {
-                            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.steel.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(half_size.x / 2.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::Brick => {
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.brick.clone(),
-                                    custom_size: Some(full_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::BrickTop => {
-                            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.brick.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, half_size.y / 2.0, 0.1),
-                            ));
-                        }
-                        TerrainType::BrickBottom => {
-                            let half_size = Vec2::new(full_size.x, full_size.y / 2.0);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.brick.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(0.0, -half_size.y / 2.0, 0.1),
-                            ));
-                        }
-                        TerrainType::BrickLeft => {
-                            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.brick.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(-half_size.x / 2.0, 0.0, 0.1),
-                            ));
-                        }
-                        TerrainType::BrickRight => {
-                            let half_size = Vec2::new(full_size.x / 2.0, full_size.y);
-                            parent.spawn((
-                                LevelEditorUI,
-                                TerrainDisplay,
-                                Sprite {
-                                    image: texture_resources.brick.clone(),
-                                    custom_size: Some(half_size),
-                                    ..default()
-                                },
-                                Transform::from_xyz(half_size.x / 2.0, 0.0, 0.1),
-                            ));
-                        }
+                // 直接生成地形显示
+                if button.terrain_type != TerrainType::Empty {
+                    let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
+                    let size_type = get_terrain_display_size(button.terrain_type);
+                    let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
+                    
+                    let texture = get_texture_handle(button.terrain_type, &texture_resources);
+                    let atlas_info = get_atlas_info(button.terrain_type, &atlas_layouts);
+                    
+                    let mut sprite = Sprite {
+                        image: texture,
+                        custom_size: Some(display_size),
+                        color: Color::WHITE,
+                        ..default()
+                    };
+                    
+                    if let Some((layout, index)) = atlas_info {
+                        sprite.texture_atlas = Some(TextureAtlas { layout, index });
                     }
-                });
+                    
+                    commands.spawn((
+                        LevelEditorUI,
+                        TerrainDisplay,
+                        ChildOf(current_terrain_entity),
+                        sprite,
+                        Transform::from_xyz(offset.x, offset.y, 0.1),
+                    ));
+                }
             }
             
             break;
@@ -1036,14 +813,10 @@ fn update_grid_cell(
     terrain_display_entities: &Query<(Entity, &ChildOf), With<TerrainDisplay>>,
 ) {
     // 找到对应的网格单元格实体
-    if let Some((cell_entity, _, cell_transform)) = grid_entities
+    if let Some((cell_entity, _, _)) = grid_entities
         .iter()
         .find(|(_, cell, _)| cell.row == row && cell.col == col)
     {
-        // 获取网格单元格的世界位置
-        let world_pos = cell_transform.translation.truncate();
-        let z_pos = cell_transform.translation.z;
-
         // 查找并移除旧的地形显示子实体
         for (display_entity, parent) in terrain_display_entities.iter() {
             if parent.0 == cell_entity {
@@ -1052,208 +825,42 @@ fn update_grid_cell(
         }
 
         // 创建新的地形显示子实体
-        commands.entity(cell_entity).with_children(|parent| {
-            match terrain_type {
-                TerrainType::Empty => {
-                    // 空地不创建子实体
-                }
-                TerrainType::Sea => {
-                    // 海：使用精灵图第一帧
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.sea.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
-                            color: Color::WHITE,
-                            texture_atlas: Some(TextureAtlas {
-                                layout: atlas_layouts.sea.clone(),
-                                index: 0, // 第一帧
-                            }),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::Forest => {
-                    // 树林：使用精灵图第一帧
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.tree.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
-                            color: Color::WHITE,
-                            texture_atlas: Some(TextureAtlas {
-                                layout: atlas_layouts.forest.clone(),
-                                index: 0, // 第一帧
-                            }),
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::Barrier => {
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.barrier.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::Steel => {
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.steel.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::SteelTop => {
-                    // 上半：对齐到网格上半部分
-                    let half_size = Vec2::new(GRID_SIZE, GRID_SIZE / 2.0);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.steel.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, half_size.y / 2.0, 0.1),
-                    ));
-                }
-                TerrainType::SteelBottom => {
-                    // 下半：对齐到网格下半部分
-                    let half_size = Vec2::new(GRID_SIZE, GRID_SIZE / 2.0);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.steel.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, -half_size.y / 2.0, 0.1),
-                    ));
-                }
-                TerrainType::SteelLeft => {
-                    // 左半：对齐到网格左半部分
-                    let half_size = Vec2::new(GRID_SIZE / 2.0, GRID_SIZE);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.steel.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(-half_size.x / 2.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::SteelRight => {
-                    // 右半：对齐到网格右半部分
-                    let half_size = Vec2::new(GRID_SIZE / 2.0, GRID_SIZE);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.steel.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(half_size.x / 2.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::Brick => {
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.brick.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::BrickTop => {
-                    // 上半：对齐到网格上半部分
-                    let half_size = Vec2::new(GRID_SIZE, GRID_SIZE / 2.0);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.brick.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, half_size.y / 2.0, 0.1),
-                    ));
-                }
-                TerrainType::BrickBottom => {
-                    // 下半：对齐到网格下半部分
-                    let half_size = Vec2::new(GRID_SIZE, GRID_SIZE / 2.0);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.brick.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(0.0, -half_size.y / 2.0, 0.1),
-                    ));
-                }
-                TerrainType::BrickLeft => {
-                    // 左半：对齐到网格左半部分
-                    let half_size = Vec2::new(GRID_SIZE / 2.0, GRID_SIZE);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.brick.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(-half_size.x / 2.0, 0.0, 0.1),
-                    ));
-                }
-                TerrainType::BrickRight => {
-                    // 右半：对齐到网格右半部分
-                    let half_size = Vec2::new(GRID_SIZE / 2.0, GRID_SIZE);
-                    parent.spawn((
-                        LevelEditorUI,
-                        TerrainDisplay,
-                        Sprite {
-                            image: texture_resources.brick.clone(),
-                            custom_size: Some(half_size),
-                            color: Color::WHITE,
-                            ..default()
-                        },
-                        Transform::from_xyz(half_size.x / 2.0, 0.0, 0.1),
-                    ));
-                }
+        let base_size = Vec2::new(GRID_SIZE, GRID_SIZE);
+        // 树林使用游戏中的实际尺寸
+        let custom_base_size = if terrain_type == TerrainType::Forest {
+            Vec2::new(131.0, 131.0)
+        } else {
+            base_size
+        };
+        
+        // 直接生成地形显示，避免可变借用冲突
+        if terrain_type != TerrainType::Empty {
+            let actual_base_size = custom_base_size;
+            let size_type = get_terrain_display_size(terrain_type);
+            let (display_size, offset) = calculate_size_and_offset(size_type, actual_base_size);
+            
+            let texture = get_texture_handle(terrain_type, texture_resources);
+            let atlas_info = get_atlas_info(terrain_type, atlas_layouts);
+            
+            let mut sprite = Sprite {
+                image: texture,
+                custom_size: Some(display_size),
+                color: Color::WHITE,
+                ..default()
+            };
+            
+            if let Some((layout, index)) = atlas_info {
+                sprite.texture_atlas = Some(TextureAtlas { layout, index });
             }
-        });
+            
+            commands.spawn((
+                LevelEditorUI,
+                TerrainDisplay,
+                ChildOf(cell_entity),
+                sprite,
+                Transform::from_xyz(offset.x, offset.y, 0.1),
+            ));
+        }
     }
 }
 
@@ -1282,16 +889,26 @@ pub fn handle_editor_input(
             KeyCode::Backspace => {
                 input_filename.name.pop();
             }
-            KeyCode::Digit0 if input_filename.name.len() < 3 => input_filename.name.push('0'),
-            KeyCode::Digit1 if input_filename.name.len() < 3 => input_filename.name.push('1'),
-            KeyCode::Digit2 if input_filename.name.len() < 3 => input_filename.name.push('2'),
-            KeyCode::Digit3 if input_filename.name.len() < 3 => input_filename.name.push('3'),
-            KeyCode::Digit4 if input_filename.name.len() < 3 => input_filename.name.push('4'),
-            KeyCode::Digit5 if input_filename.name.len() < 3 => input_filename.name.push('5'),
-            KeyCode::Digit6 if input_filename.name.len() < 3 => input_filename.name.push('6'),
-            KeyCode::Digit7 if input_filename.name.len() < 3 => input_filename.name.push('7'),
-            KeyCode::Digit8 if input_filename.name.len() < 3 => input_filename.name.push('8'),
-            KeyCode::Digit9 if input_filename.name.len() < 3 => input_filename.name.push('9'),
+            key_char @ (KeyCode::Digit0 | KeyCode::Digit1 | KeyCode::Digit2 | 
+                       KeyCode::Digit3 | KeyCode::Digit4 | KeyCode::Digit5 | 
+                       KeyCode::Digit6 | KeyCode::Digit7 | KeyCode::Digit8 | KeyCode::Digit9) => {
+                if input_filename.name.len() < MAX_FILENAME_LENGTH {
+                    let digit_char = match key_char {
+                        KeyCode::Digit0 => '0',
+                        KeyCode::Digit1 => '1',
+                        KeyCode::Digit2 => '2',
+                        KeyCode::Digit3 => '3',
+                        KeyCode::Digit4 => '4',
+                        KeyCode::Digit5 => '5',
+                        KeyCode::Digit6 => '6',
+                        KeyCode::Digit7 => '7',
+                        KeyCode::Digit8 => '8',
+                        KeyCode::Digit9 => '9',
+                        _ => unreachable!(),
+                    };
+                    input_filename.name.push(digit_char);
+                }
+            }
             _ => {}
         }
     }
