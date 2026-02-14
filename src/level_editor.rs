@@ -21,9 +21,13 @@ use crate::ui::constants::*;
 const EDITOR_TITLE_CN: &str = "关卡编辑器";
 const EDITOR_TITLE_EN: &str = "Level Editor";
 
-/// 操作说明
-const INSTRUCTIONS_CN: &str = "WASD/方向键: 移动网格  |  ESC: 退出  |  S: 导出";
-const INSTRUCTIONS_EN: &str = "WASD/Arrows: Move grid  |  ESC: Exit  |  S: Export";
+/// 当前选择文本
+const CURRENT_SELECTION_CN: &str = "当前选择:";
+const CURRENT_SELECTION_EN: &str = "Current:";
+
+/// 输出提示文本
+const OUTPUT_PROMPT_CN: &str = "输出到关卡:";
+const OUTPUT_PROMPT_EN: &str = "Export to:";
 
 // ============================================================================
 // 常量配置
@@ -436,6 +440,9 @@ fn spawn_editor_ui(
 
     // 底部操作说明
     spawn_instructions(commands, language);
+    
+    // 生成当前选择和文件名输入UI
+    spawn_current_selection_and_filename(commands, language);
 }
 
 /// 生成地形面板
@@ -613,6 +620,91 @@ fn spawn_instructions(commands: &mut Commands, language: Language) {
             Transform::from_xyz(x, y, Z_UI_TEXT),
         ));
     }
+}
+
+/// 生成当前选择和文件名输入UI
+fn spawn_current_selection_and_filename(commands: &mut Commands, language: Language) {
+    // 右侧面板下方位置
+    let right_x = RIGHT_PANEL_X;
+    let selected_y = TERRAIN_BUTTON_START_Y - (7.0 * TERRAIN_BUTTON_SPACING) - 100.0;
+    
+    // 当前选择文本
+    let current_text = match language {
+        Language::Chinese => CURRENT_SELECTION_CN,
+        Language::English => CURRENT_SELECTION_EN,
+    };
+    commands.spawn((
+        LevelEditorUI,
+        Text2d(current_text.to_string()),
+        TextFont {
+            font_size: FONT_SIZE_SMALL,
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(right_x, selected_y + TERRAIN_BUTTON_SIZE / 2.0 + 20.0, Z_UI_TEXT),
+    ));
+    
+    // 创建当前选择地形图标容器
+    commands.spawn((
+        LevelEditorUI,
+        CurrentTerrainText,
+        Sprite {
+            color: Color::srgba(1.0, 1.0, 1.0, 0.3), // 半透明白色背景
+            custom_size: Some(Vec2::new(TERRAIN_BUTTON_SIZE, TERRAIN_BUTTON_SIZE)),
+            ..default()
+        },
+        Transform::from_xyz(right_x + TERRAIN_BUTTON_SIZE / 2.0 + 20.0 - 6.0, selected_y, Z_UI_BASE),
+    ));
+    
+    // 添加文件名输入提示
+    let prompt_text = match language {
+        Language::Chinese => OUTPUT_PROMPT_CN,
+        Language::English => OUTPUT_PROMPT_EN,
+    };
+    let prompt_x = right_x + TERRAIN_BUTTON_SIZE + 100.0;
+    let prompt_y = selected_y;
+    
+    // 提示文字
+    commands.spawn((
+        LevelEditorUI,
+        Text2d(prompt_text.to_string()),
+        TextFont {
+            font_size: FONT_SIZE_SMALL,
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(prompt_x, prompt_y, Z_UI_TEXT),
+    ));
+    
+    // 文件名输入框
+    let input_box_x = prompt_x + 160.0;
+    let input_box_y = prompt_y;
+    let input_box_width = 80.0;
+    let input_box_height = 30.0;
+    
+    commands.spawn((
+        LevelEditorUI,
+        FilenameInput,
+        Sprite {
+            color: Color::srgba(0.2, 0.2, 0.2, 0.8),
+            custom_size: Some(Vec2::new(input_box_width, input_box_height)),
+            ..default()
+        },
+        Transform::from_xyz(input_box_x, input_box_y, Z_UI_BASE),
+    ));
+    
+    // 文件名输入文本
+    commands.spawn((
+        LevelEditorUI,
+        FilenameDisplay,
+        Text2d("1".to_string()),
+        TextFont {
+            font_size: FONT_SIZE_SMALL,
+            ..default()
+        },
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(input_box_x, input_box_y, Z_UI_TEXT + 0.1),
+    ));
 }
 
 /// 处理地形按钮点击（使用鼠标位置检测）
