@@ -167,8 +167,9 @@ pub fn spawn_current_selection_and_filename(
     const INSTRUCTIONS_OFFSET_X: f32 = 200.0;  // 与操作提示相同的偏移量
     const INSTRUCTIONS_OFFSET_Y: f32 = 69.0;   // 与操作提示相同的偏移量
     const HORIZONTAL_SPACING: f32 = 150.0;     // 水平间距
+    const RIGHT_PANEL_OFFSET_X: f32 = -300.0;  // 右上角元素集体向左移动300像素
 
-    let right_x = MAP_RIGHT_X - INSTRUCTIONS_OFFSET_X;
+    let right_x = MAP_RIGHT_X - INSTRUCTIONS_OFFSET_X + RIGHT_PANEL_OFFSET_X;
     let top_y = MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y;
 
     // 当前选择文本和地形图标（第一行，水平排列）
