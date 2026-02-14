@@ -904,7 +904,7 @@ pub const ENEMIES_PER_LEVEL: usize = 10; // 每关敌方坦克总数
 /// 最小关卡数（代码设置，实际关卡数取此值和实际文件数的较大者）
 pub const MIN_LEVELS: usize = 10; // 最小关卡数
 pub const ENEMY_SHOOT_PROBABILITY: f32 = 0.03; // 敌方坦克射击概率（3%）
-pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.1; // 随机转向概率（10%）
+pub const ENEMY_RANDOM_TURN_PROBABILITY: f32 = 0.01; // 随机转向概率（1%）
 pub const INITIAL_ATTRIBUTE_VALUE: usize = 40; // 初始属性值
 pub const MAX_ATTRIBUTE_VALUE: usize = 100; // 最大属性值
 

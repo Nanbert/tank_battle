@@ -5,6 +5,7 @@
 use bevy::prelude::*;
 use avian2d::prelude::*;
 use rand::Rng;
+use std::time::Duration;
 
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
@@ -406,15 +407,16 @@ pub fn move_enemy_tanks(
             if let Some(collision_normal) = collision_cache.take(entity)
                 && collision_normal.length() > 0.0
             {
-                // 检查坦克是否朝着碰撞方向移动
-                // 计算移动方向与碰撞法线的点积
-                // 点积 > 0 表示朝着碰撞方向移动，需要转向
-                // 点积 <= 0 表示远离碰撞方向或垂直方向移动，不需要转向
+                // 碰撞法线方向：从碰撞对象指向坦克（推开方向）
+                // 点积 < 0：坦克朝着碰撞源移动（撞墙）→ 需要转向
+                // 点积 >= 0：坦克被推或垂直移动 → 不需要转向
                 let current_dir = enemy_tank.direction;
-                let moving_towards_collision = current_dir.dot(collision_normal) > 0.0;
+                let hitting_obstacle = current_dir.dot(collision_normal) < 0.0;
 
-                if moving_towards_collision {
+                if hitting_obstacle {
                     enemy_tank.direction = get_new_direction(collision_normal);
+                    // 设置3秒冷却时间，避免频繁转向
+                    collision_cooldown.set_duration(Duration::from_secs(3));
                     collision_cooldown.reset();
                 }
             }
