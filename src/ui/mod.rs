@@ -9,5 +9,8 @@ pub mod localization;
 pub mod menus;
 pub mod overlay;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod editor;
+
 // 重新导出 UI 常量，方便外部模块使用
 pub use constants::*;

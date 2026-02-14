@@ -354,3 +354,44 @@ pub const COMBO_FLOATING_HIGH: LocalizedTextFormat = LocalizedTextFormat {
     cn: "连击 x{var}",
     en: "Combo x{var}!",
 };
+
+// ==================== 关卡编辑器文本 ====================
+
+/// 关卡编辑器标题
+pub const EDITOR_TITLE: LocalizedText = LocalizedText {
+    cn: "关卡编辑器",
+    en: "Level Editor",
+};
+
+/// 当前选择文本
+pub const EDITOR_CURRENT_SELECTION: LocalizedText = LocalizedText {
+    cn: "当前选择:",
+    en: "Current:",
+};
+
+/// 输出提示文本
+pub const EDITOR_OUTPUT_PROMPT: LocalizedText = LocalizedText {
+    cn: "输出到关卡:",
+    en: "Export to:",
+};
+
+/// 操作说明文本
+pub const EDITOR_INSTRUCTION_CLICK_SELECT: LocalizedText = LocalizedText {
+    cn: "点击地形元素选择",
+    en: "Click terrain to select",
+};
+
+pub const EDITOR_INSTRUCTION_CLICK_PLACE: LocalizedText = LocalizedText {
+    cn: "点击网格放置地形",
+    en: "Click grid to place terrain",
+};
+
+pub const EDITOR_INSTRUCTION_EXIT: LocalizedText = LocalizedText {
+    cn: "ESC 退出编辑器",
+    en: "ESC to exit editor",
+};
+
+pub const EDITOR_INSTRUCTION_EXPORT: LocalizedText = LocalizedText {
+    cn: "S 导出关卡文件",
+    en: "S to export level",
+};
