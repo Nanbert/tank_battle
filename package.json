@@ -1,0 +1,1 @@
+{"name": "tank-battle", "version": "0.5.0", "description": "Steel Command - 钢铁指令", "scripts": {"build": "bash build_web.sh", "vercel-build": "bash build_web.sh"}}
