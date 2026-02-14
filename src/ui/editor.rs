@@ -191,7 +191,7 @@ pub fn spawn_current_selection_and_filename(
         Text2d(label_text),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(start_x + label_width / 2.0 - 46.0, top_y - 10.0, Z_UI_TEXT),
+        Transform::from_xyz(start_x + label_width / 2.0 - 96.0, top_y - 10.0, Z_UI_TEXT),
     ));
     
     // 地形图标（右）
