@@ -87,23 +87,65 @@ impl TerrainType {
         }
     }
 
-    /// 获取地形的中文名称
-    pub fn to_name(self) -> &'static str {
+    /// 获取地形的中英文名称（用于UI显示）
+    pub fn to_display_name(&self, language: crate::resources::Language) -> &'static str {
         match self {
-            Self::Empty => "空地",
-            Self::Sea => "海洋",
-            Self::Forest => "树林",
-            Self::Barrier => "屏障",
-            Self::Steel => "钢铁",
-            Self::SteelTop => "钢铁-上",
-            Self::SteelBottom => "钢铁-下",
-            Self::SteelLeft => "钢铁-左",
-            Self::SteelRight => "钢铁-右",
-            Self::Brick => "砖块",
-            Self::BrickTop => "砖块-上",
-            Self::BrickBottom => "砖块-下",
-            Self::BrickLeft => "砖块-左",
-            Self::BrickRight => "砖块-右",
+            Self::Empty => match language {
+                crate::resources::Language::Chinese => "空地",
+                crate::resources::Language::English => "Empty",
+            },
+            Self::Forest => match language {
+                crate::resources::Language::Chinese => "树林",
+                crate::resources::Language::English => "Forest",
+            },
+            Self::Sea => match language {
+                crate::resources::Language::Chinese => "海洋",
+                crate::resources::Language::English => "Sea",
+            },
+            Self::Brick => match language {
+                crate::resources::Language::Chinese => "砖块",
+                crate::resources::Language::English => "Brick",
+            },
+            Self::BrickLeft => match language {
+                crate::resources::Language::Chinese => "砖块-左",
+                crate::resources::Language::English => "Brick-Left",
+            },
+            Self::BrickRight => match language {
+                crate::resources::Language::Chinese => "砖块-右",
+                crate::resources::Language::English => "Brick-Right",
+            },
+            Self::BrickTop => match language {
+                crate::resources::Language::Chinese => "砖块-上",
+                crate::resources::Language::English => "Brick-Top",
+            },
+            Self::BrickBottom => match language {
+                crate::resources::Language::Chinese => "砖块-下",
+                crate::resources::Language::English => "Brick-Bottom",
+            },
+            Self::Steel => match language {
+                crate::resources::Language::Chinese => "钢铁",
+                crate::resources::Language::English => "Steel",
+            },
+            Self::SteelLeft => match language {
+                crate::resources::Language::Chinese => "钢铁-左",
+                crate::resources::Language::English => "Steel-Left",
+            },
+            Self::SteelRight => match language {
+                crate::resources::Language::Chinese => "钢铁-右",
+                crate::resources::Language::English => "Steel-Right",
+            },
+            Self::SteelTop => match language {
+                crate::resources::Language::Chinese => "钢铁-上",
+                crate::resources::Language::English => "Steel-Top",
+            },
+            Self::SteelBottom => match language {
+                crate::resources::Language::Chinese => "钢铁-下",
+                crate::resources::Language::English => "Steel-Bottom",
+            },
+            Self::Barrier => match language {
+                crate::resources::Language::Chinese => "屏障",
+                crate::resources::Language::English => "Barrier",
+            },
         }
     }
 }

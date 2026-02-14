@@ -8,9 +8,22 @@ use bevy::prelude::*;
 
 use crate::constants::*;
 use crate::map::{TerrainType, MAP_COLS, MAP_ROWS, GRID_SIZE, grid_to_world};
+use crate::resources::Language;
 use crate::resources::*;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
+
+// ============================================================================
+// 本地化文本常量
+// ============================================================================
+
+/// 编辑器标题
+const EDITOR_TITLE_CN: &str = "关卡编辑器";
+const EDITOR_TITLE_EN: &str = "Level Editor";
+
+/// 操作说明
+const INSTRUCTIONS_CN: &str = "WASD/方向键: 移动网格  |  ESC: 退出  |  S: 导出";
+const INSTRUCTIONS_EN: &str = "WASD/Arrows: Move grid  |  ESC: Exit  |  S: Export";
 
 // ============================================================================
 // 常量配置
@@ -324,6 +337,7 @@ pub fn on_enter_level_editor(
     mut editor_map: ResMut<EditorMapData>,
     mut input_filename: ResMut<InputFilename>,
     stage_level: Res<StageLevel>,
+    language: Res<Language>,
     start_screen_entities: Query<Entity, With<crate::ui::StartScreenUI>>,
     playing_entities: Query<Entity, With<crate::ui::PlayingEntity>>,
 ) {
@@ -349,7 +363,7 @@ pub fn on_enter_level_editor(
     editor_map.clear();
 
     // 生成编辑器 UI
-    spawn_editor_ui(&mut commands, &texture_resources, &atlas_layouts);
+    spawn_editor_ui(&mut commands, &texture_resources, &atlas_layouts, *language);
 
     // 生成网格
     spawn_editor_grid(&mut commands);
@@ -377,14 +391,19 @@ fn spawn_editor_ui(
     commands: &mut Commands, 
     texture_resources: &GameTextureResources, 
     atlas_layouts: &GameAtlasLayoutResources,
+    language: Language,
 ) {
     // 设置背景色为游戏背景色（蓝绿色）
     commands.insert_resource(ClearColor(crate::ui::COLOR_BACKGROUND));
 
     // 顶部标题
+    let title = match language {
+        Language::Chinese => EDITOR_TITLE_CN,
+        Language::English => EDITOR_TITLE_EN,
+    };
     commands.spawn((
         LevelEditorUI,
-        Text2d("关卡编辑器".to_string()),
+        Text2d(title.to_string()),
         TextFont {
             font_size: FONT_SIZE_TITLE,
             ..default()
@@ -401,6 +420,7 @@ fn spawn_editor_ui(
         LEFT_PANEL_X,
         TERRAIN_BUTTON_START_Y,
         &LEFT_PANEL_TERRAINS,
+        language,
     );
 
     // 右侧面板地形元素
@@ -411,10 +431,11 @@ fn spawn_editor_ui(
         RIGHT_PANEL_X,
         TERRAIN_BUTTON_START_Y,
         &RIGHT_PANEL_TERRAINS,
+        language,
     );
 
     // 底部操作说明
-    spawn_instructions(commands);
+    spawn_instructions(commands, language);
 }
 
 /// 生成地形面板
@@ -425,6 +446,7 @@ fn spawn_terrain_panel(
     panel_x: f32,
     start_y: f32,
     terrains: &[TerrainType],
+    language: Language,
 ) {
     for (i, terrain_type) in terrains.iter().enumerate() {
         let y = start_y - (i as f32) * TERRAIN_BUTTON_SPACING;
@@ -433,7 +455,7 @@ fn spawn_terrain_panel(
         spawn_terrain_preview(commands, texture_resources, atlas_layouts, panel_x, y, *terrain_type);
 
         // 生成地形名称文本
-        let name = terrain_type.to_name();
+        let name = terrain_type.to_display_name(language);
         commands.spawn((
             LevelEditorUI,
             Text2d(name.to_string()),
@@ -552,13 +574,21 @@ fn spawn_editor_grid(commands: &mut Commands) {
 }
 
 /// 生成操作说明
-fn spawn_instructions(commands: &mut Commands) {
-    let instructions = vec![
-        "点击地形元素选择",
-        "点击网格放置地形",
-        "ESC 退出编辑器",
-        "S 导出关卡文件",
-    ];
+fn spawn_instructions(commands: &mut Commands, language: Language) {
+    let instructions = match language {
+        Language::Chinese => vec![
+            "点击地形元素选择",
+            "点击网格放置地形",
+            "ESC 退出编辑器",
+            "S 导出关卡文件",
+        ],
+        Language::English => vec![
+            "Click terrain to select",
+            "Click grid to place terrain",
+            "ESC to exit editor",
+            "S to export level",
+        ],
+    };
 
     // 左上角位置：MAP_LEFT_X 左侧 + 400像素，MAP_TOP_Y 上方 + 40像素
     let left_x = MAP_LEFT_X - 200.0 + 400.0;
@@ -583,81 +613,6 @@ fn spawn_instructions(commands: &mut Commands) {
             Transform::from_xyz(x, y, Z_UI_TEXT),
         ));
     }
-
-    // 在右边对称区域添加当前选择地形图标
-    let right_x = -left_x - 200.0; // 向左移动400像素，再向右移动200像素，净移动-200像素
-    let selected_y = top_y;
-    
-    // 添加"当前选择:"文字（在图标左边）
-    commands.spawn((
-        LevelEditorUI,
-        Text2d("当前选择:".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(right_x - TERRAIN_BUTTON_SIZE / 2.0 - 20.0, selected_y, Z_UI_TEXT),
-    ));
-    
-    // 创建当前选择地形图标容器
-    commands.spawn((
-        LevelEditorUI,
-        CurrentTerrainText,
-        Sprite {
-            color: Color::srgba(1.0, 1.0, 1.0, 0.3), // 半透明白色背景
-            custom_size: Some(Vec2::new(TERRAIN_BUTTON_SIZE, TERRAIN_BUTTON_SIZE)),
-            ..default()
-        },
-        Transform::from_xyz(right_x + TERRAIN_BUTTON_SIZE / 2.0 + 20.0 - 6.0, selected_y, Z_UI),
-    ));
-    
-    // 添加文件名输入提示（在最右侧）
-    let prompt_text = "输出到关卡:";
-    let prompt_x = right_x + TERRAIN_BUTTON_SIZE + 100.0; // 在图标右侧
-    let prompt_y = selected_y;
-    
-    // 提示文字
-    commands.spawn((
-        LevelEditorUI,
-        Text2d(prompt_text.to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(prompt_x, prompt_y, Z_UI_TEXT),
-    ));
-    
-    // 文件名输入框背景
-    let input_box_width = 80.0; // 缩短为80像素，约3个数字宽度
-    let input_box_height = 30.0;
-    let input_box_x = prompt_x + 80.0 + 45.0 - 6.0; // 向右移动60像素，再向左移动15像素，再向左移动6像素，净移动+39像素
-    let input_box_y = prompt_y; // 向上移动5像素
-    
-    commands.spawn((
-        LevelEditorUI,
-        FilenameInput,
-        Sprite {
-            color: Color::srgba(0.0, 0.0, 0.0, 0.5), // 半透明黑色背景
-            custom_size: Some(Vec2::new(input_box_width, input_box_height)),
-            ..default()
-        },
-        Transform::from_xyz(input_box_x, input_box_y, Z_UI - 0.05),
-    ));
-    
-    // 文件名输入文本
-    commands.spawn((
-        LevelEditorUI,
-        FilenameDisplay,
-        Text2d("1".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(input_box_x, input_box_y, Z_UI_TEXT + 0.1),
-    ));
 }
 
 /// 处理地形按钮点击（使用鼠标位置检测）
