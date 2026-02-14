@@ -382,11 +382,6 @@ pub const EDITOR_INSTRUCTION_CLICK_SELECT: LocalizedText = LocalizedText {
 };
 
 pub const EDITOR_INSTRUCTION_EXIT: LocalizedText = LocalizedText {
-    cn: "ESC 退出编辑器",
-    en: "ESC to exit",
-};
-
-pub const EDITOR_INSTRUCTION_EXPORT: LocalizedText = LocalizedText {
-    cn: "S 导出关卡文件",
-    en: "S to export",
+    cn: "ESC 退出编辑器，S 导出关卡文件",
+    en: "ESC to exit, S to export",
 };

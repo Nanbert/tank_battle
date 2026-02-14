@@ -132,7 +132,6 @@ pub fn spawn_instructions(
     let instructions = vec![
         EDITOR_INSTRUCTION_CLICK_SELECT,
         EDITOR_INSTRUCTION_EXIT,
-        EDITOR_INSTRUCTION_EXPORT,
     ];
 
     // 左上角位置计算
