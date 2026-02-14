@@ -231,6 +231,6 @@ pub fn spawn_current_selection_and_filename(
         Text2d("1".to_string()),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(right_x, input_box_y, Z_UI_TEXT + 0.1),
+        Transform::from_xyz(prompt_x, input_box_y, Z_UI_TEXT + 0.1),
     ));
 }
