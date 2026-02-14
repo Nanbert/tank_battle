@@ -15,6 +15,7 @@ pub mod enemy;
 pub mod game_state;
 pub mod global_rng;
 pub mod laser;
+pub mod level_editor;
 pub mod levels;
 pub mod map;
 pub mod physics_config;

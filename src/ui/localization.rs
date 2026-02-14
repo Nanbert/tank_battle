@@ -23,6 +23,11 @@ pub const MENU_OPTION_2P: LocalizedText = LocalizedText {
     en: "2 Player",
 };
 
+pub const MENU_OPTION_EDITOR: LocalizedText = LocalizedText {
+    cn: "关卡编辑器",
+    en: "Level Editor",
+};
+
 pub const MENU_OPTION_LANGUAGE: LocalizedText = LocalizedText {
     cn: "语言 / Language",
     en: "语言 / Language",
@@ -60,9 +65,10 @@ pub const CONTROLS_GENERAL: LocalizedText = LocalizedText {
 };
 
 /// 菜单选项文本数组
-pub const MENU_OPTIONS: &[LocalizedText; 6] = &[
+pub const MENU_OPTIONS: &[LocalizedText; 7] = &[
     MENU_OPTION_1P,
     MENU_OPTION_2P,
+    MENU_OPTION_EDITOR,
     MENU_OPTION_LANGUAGE,
     MENU_OPTION_ABOUT,
     MENU_OPTION_CREDITS,

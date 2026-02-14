@@ -51,8 +51,8 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>, lan
         Z_UI_TEXT,
     );
 
-    // 菜单选项，从上到下 0-5
-    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, 6);
+    // 菜单选项，从上到下 0-6
+    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, 7);
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         commands.spawn((
             StartScreenUI,
@@ -352,7 +352,7 @@ pub fn handle_start_screen_input(
     common::handle_menu_navigation(
         &keyboard_input,
         &mut menu_selection.selected_index,
-        5, // 最大索引（6个选项：0-5）
+        6, // 最大索引（7个选项：0-6）
         common::NavigationWrap::WrapAround,
     );
 
@@ -368,6 +368,9 @@ pub fn handle_start_screen_input(
                 next_state.set(GameState::FadingOut); // 2 Player / 双人对战
             }
             2 => {
+                next_state.set(GameState::LevelEditor); // Level Editor / 关卡编辑器
+            }
+            3 => {
                 // 切换语言
                 *language = match *language {
                     Language::Chinese => Language::English,
@@ -375,13 +378,13 @@ pub fn handle_start_screen_input(
                 };
                 // 语言切换后重新生成菜单以更新文本
             }
-            3 => {
+            4 => {
                 next_state.set(GameState::About); // About / 关于
             }
-            4 => {
+            5 => {
                 next_state.set(GameState::Credits); // Credits / 制作人员
             }
-            5 => {
+            6 => {
                 // EXIT / 退出（Web 端返回菜单，桌面端退出）
                 #[cfg(target_arch = "wasm32")]
                 next_state.set(GameState::StartScreen);

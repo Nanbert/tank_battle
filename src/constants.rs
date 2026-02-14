@@ -218,6 +218,7 @@ pub enum GameState {
     GameOver,
     About,
     Credits,
+    LevelEditor,
 }
 
 /// 玩家按键绑定配置

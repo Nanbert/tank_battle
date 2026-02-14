@@ -14,6 +14,7 @@ mod enemy;
 mod game_state;
 mod global_rng;
 mod laser;
+mod level_editor;
 mod levels;
 mod map;
 mod physics_config;
