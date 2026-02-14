@@ -352,7 +352,13 @@ pub fn on_enter_level_editor(
 
     // 生成编辑器 UI（使用 ui::editor 模块）
     #[cfg(not(target_arch = "wasm32"))]
-    crate::ui::editor::spawn_editor_ui(&mut commands, &texture_resources, &atlas_layouts, *language);
+    crate::ui::editor::spawn_editor_ui(
+        &mut commands,
+        &texture_resources,
+        &atlas_layouts,
+        &texture_resources,
+        *language,
+    );
 
     // 生成网格
     spawn_editor_grid(&mut commands);

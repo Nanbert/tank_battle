@@ -11,35 +11,35 @@ use crate::map::TerrainType;
 use crate::resources::{GameTextureResources, GameAtlasLayoutResources, Language};
 use crate::ui::constants::*;
 use crate::ui::localization::*;
-use crate::level_editor::{LevelEditorUI, LevelEditorUI as EditorUI};
+use crate::ui::common;
+use crate::level_editor::LevelEditorUI;
 
 // ============================================================================
 // UI 生成函数
 // ============================================================================
 
-/// 生成关卡编辑器UI
+/// 生成关卡编辑器完整UI
 pub fn spawn_editor_ui(
     commands: &mut Commands,
     texture_resources: &GameTextureResources,
     atlas_layouts: &GameAtlasLayoutResources,
+    font_resources: &GameTextureResources,
     language: Language,
 ) {
-    // 设置背景色为游戏背景色（蓝绿色）
     commands.insert_resource(ClearColor(crate::ui::COLOR_BACKGROUND));
 
-    // 顶部标题
+    let font = common::get_font(font_resources, language);
+
+    // 标题
     commands.spawn((
         LevelEditorUI,
         Text2d(EDITOR_TITLE.get(language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_TITLE,
-            ..default()
-        },
+        common::create_text_font(&font, FONT_SIZE_TITLE),
         TextColor(COLOR_YELLOW),
         Transform::from_xyz(0.0, WINDOW_TOP_Y - 50.0, Z_UI_TEXT),
     ));
 
-    // 左侧面板地形元素
+    // 生成左右两侧的地形选择面板
     spawn_terrain_panel(
         commands,
         texture_resources,
@@ -48,9 +48,9 @@ pub fn spawn_editor_ui(
         crate::level_editor::TERRAIN_BUTTON_START_Y,
         &crate::level_editor::LEFT_PANEL_TERRAINS,
         language,
+        &font,
     );
 
-    // 右侧面板地形元素
     spawn_terrain_panel(
         commands,
         texture_resources,
@@ -59,13 +59,14 @@ pub fn spawn_editor_ui(
         crate::level_editor::TERRAIN_BUTTON_START_Y,
         &crate::level_editor::RIGHT_PANEL_TERRAINS,
         language,
+        &font,
     );
 
-    // 底部操作说明
-    spawn_instructions(commands, language);
-    
-    // 生成当前选择和文件名输入UI
-    spawn_current_selection_and_filename(commands, language);
+    // 生成操作说明
+    spawn_instructions(commands, language, &font);
+
+    // 生成当前选择和文件名输入
+    spawn_current_selection_and_filename(commands, language, &font);
 }
 
 /// 生成地形面板
@@ -77,6 +78,7 @@ pub fn spawn_terrain_panel(
     start_y: f32,
     terrains: &[TerrainType],
     language: Language,
+    font: &Handle<Font>,
 ) {
     for (i, terrain_type) in terrains.iter().enumerate() {
         let y = start_y - (i as f32) * crate::level_editor::TERRAIN_BUTTON_SPACING;
@@ -96,10 +98,7 @@ pub fn spawn_terrain_panel(
         commands.spawn((
             LevelEditorUI,
             Text2d(name.to_string()),
-            TextFont {
-                font_size: FONT_SIZE_SMALL,
-                ..default()
-            },
+            common::create_text_font(font, FONT_SIZE_SMALL),
             TextColor(COLOR_WHITE),
             Transform::from_xyz(panel_x, y - crate::level_editor::TEXT_Y_OFFSET, Z_UI_TEXT),
         ));
@@ -125,7 +124,11 @@ pub fn spawn_terrain_panel(
 }
 
 /// 生成操作说明
-pub fn spawn_instructions(commands: &mut Commands, language: Language) {
+pub fn spawn_instructions(
+    commands: &mut Commands,
+    language: Language,
+    font: &Handle<Font>,
+) {
     let instructions = vec![
         EDITOR_INSTRUCTION_CLICK_SELECT,
         EDITOR_INSTRUCTION_EXIT,
@@ -139,14 +142,11 @@ pub fn spawn_instructions(commands: &mut Commands, language: Language) {
     for (i, text) in instructions.iter().enumerate() {
         let x = left_x;
         let y = top_y - (i as f32) * 30.0;
-        
+
         commands.spawn((
             LevelEditorUI,
             Text2d(text.get(language).to_string()),
-            TextFont {
-                font_size: FONT_SIZE_SMALL,
-                ..default()
-            },
+            common::create_text_font(font, FONT_SIZE_SMALL),
             TextColor(COLOR_WHITE),
             Transform::from_xyz(x, y, Z_UI_TEXT),
         ));
@@ -154,7 +154,11 @@ pub fn spawn_instructions(commands: &mut Commands, language: Language) {
 }
 
 /// 生成当前选择和文件名输入UI
-pub fn spawn_current_selection_and_filename(commands: &mut Commands, language: Language) {
+pub fn spawn_current_selection_and_filename(
+    commands: &mut Commands,
+    language: Language,
+    font: &Handle<Font>,
+) {
     // 右侧面板下方位置
     let right_x = crate::level_editor::RIGHT_PANEL_X;
     let selected_y = crate::level_editor::TERRAIN_BUTTON_START_Y - 
@@ -164,10 +168,7 @@ pub fn spawn_current_selection_and_filename(commands: &mut Commands, language: L
     commands.spawn((
         LevelEditorUI,
         Text2d(EDITOR_CURRENT_SELECTION.get(language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
+        common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(
             right_x, 
@@ -203,10 +204,7 @@ pub fn spawn_current_selection_and_filename(commands: &mut Commands, language: L
     commands.spawn((
         LevelEditorUI,
         Text2d(EDITOR_OUTPUT_PROMPT.get(language).to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
+        common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(prompt_x, prompt_y, Z_UI_TEXT),
     ));
@@ -233,10 +231,7 @@ pub fn spawn_current_selection_and_filename(commands: &mut Commands, language: L
         LevelEditorUI,
         crate::level_editor::FilenameDisplay,
         Text2d("1".to_string()),
-        TextFont {
-            font_size: FONT_SIZE_SMALL,
-            ..default()
-        },
+        common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
         Transform::from_xyz(input_box_x, input_box_y, Z_UI_TEXT + 0.1),
     ));
