@@ -204,7 +204,7 @@ pub fn spawn_current_selection_and_filename(
             custom_size: Some(Vec2::new(icon_size, icon_size)),
             ..default()
         },
-        Transform::from_xyz(icon_x, top_y - icon_size / 2.0 - 5.0 + 35.0, crate::level_editor::Z_UI_BASE),
+        Transform::from_xyz(icon_x, top_y - icon_size / 2.0 - 5.0 + 25.0, crate::level_editor::Z_UI_BASE),
     ));
 
     // 添加文件名输入提示（第二列）
