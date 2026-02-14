@@ -350,13 +350,13 @@ fn spawn_terrain_preview(
             ));
         }
         TerrainType::Forest => {
-            // 树林：使用精灵图第一帧
+            // 树林：使用精灵图第一帧，显示尺寸与游戏中一致（131x131）
             commands.spawn((
                 LevelEditorUI,
                 TerrainPreview,
                 Sprite {
                     image: texture_resources.tree.clone(),
-                    custom_size: Some(full_size),
+                    custom_size: Some(Vec2::new(131.0, 131.0)),
                     texture_atlas: Some(TextureAtlas {
                         layout: atlas_layouts.forest.clone(),
                         index: 0, // 第一帧
@@ -796,7 +796,7 @@ pub fn handle_terrain_button_click(
                                 TerrainDisplay,
                                 Sprite {
                                     image: texture_resources.tree.clone(),
-                                    custom_size: Some(full_size),
+                                    custom_size: Some(Vec2::new(131.0, 131.0)),
                                     texture_atlas: Some(TextureAtlas {
                                         layout: atlas_layouts.forest.clone(),
                                         index: 0,
@@ -1076,13 +1076,13 @@ fn update_grid_cell(
                     ));
                 }
                 TerrainType::Forest => {
-                    // 树林：使用精灵图第一帧
+                    // 树林：使用精灵图第一帧，显示尺寸与游戏中一致（131x131）
                     parent.spawn((
                         LevelEditorUI,
                         TerrainDisplay,
                         Sprite {
                             image: texture_resources.tree.clone(),
-                            custom_size: Some(Vec2::new(GRID_SIZE, GRID_SIZE)),
+                            custom_size: Some(Vec2::new(131.0, 131.0)),
                             color: Color::WHITE,
                             texture_atlas: Some(TextureAtlas {
                                 layout: atlas_layouts.forest.clone(),
