@@ -176,7 +176,7 @@ pub fn spawn_current_selection_and_filename(
     const LABEL_ICON_SPACING: f32 = 20.0;  // 标签和图标之间的间距
     const LABEL_OFFSET_X: f32 = -30.0;      // 标签向左移动30像素
     const LABEL_OFFSET_Y: f32 = -10.0;      // 标签向下移动10像素
-    const ICON_OFFSET_X: f32 = -30.0;       // 图标向左移动30像素
+    const ICON_OFFSET_X: f32 = -60.0;       // 图标向左移动60像素
     const ICON_OFFSET_Y: f32 = 40.0;        // 图标向上移动40像素
     
     // 计算标签和图标的总宽度，使它们居中显示
