@@ -208,7 +208,7 @@ pub fn spawn_current_selection_and_filename(
     ));
 
     // 添加文件名输入提示（第二列）
-    let prompt_x = right_x + HORIZONTAL_SPACING;
+    let prompt_x = right_x + HORIZONTAL_SPACING + 15.0;
 
     // 提示文字
     commands.spawn((
