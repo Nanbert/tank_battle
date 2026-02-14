@@ -173,6 +173,10 @@ pub fn spawn_current_selection_and_filename(
 
     // 当前选择文本和地形图标（第一行，水平排列）
     const LABEL_ICON_SPACING: f32 = 20.0;  // 标签和图标之间的间距
+    const LABEL_OFFSET_X: f32 = -30.0;      // 标签向左移动30像素
+    const LABEL_OFFSET_Y: f32 = -10.0;      // 标签向下移动10像素
+    const ICON_OFFSET_X: f32 = -30.0;       // 图标向左移动30像素
+    const ICON_OFFSET_Y: f32 = 40.0;        // 图标向上移动40像素
     
     // 计算标签和图标的总宽度，使它们居中显示
     let label_text = EDITOR_CURRENT_SELECTION.get(language).to_string();
@@ -187,11 +191,11 @@ pub fn spawn_current_selection_and_filename(
         Text2d(label_text),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(start_x + label_width / 2.0, top_y, Z_UI_TEXT),
+        Transform::from_xyz(start_x + label_width / 2.0 + LABEL_OFFSET_X, top_y + LABEL_OFFSET_Y, Z_UI_TEXT),
     ));
     
     // 地形图标（右）
-    let icon_x = start_x + label_width + LABEL_ICON_SPACING + icon_size / 2.0;
+    let icon_x = start_x + label_width + LABEL_ICON_SPACING + icon_size / 2.0 + ICON_OFFSET_X;
     commands.spawn((
         LevelEditorUI,
         crate::level_editor::CurrentTerrainText,
@@ -200,7 +204,7 @@ pub fn spawn_current_selection_and_filename(
             custom_size: Some(Vec2::new(icon_size, icon_size)),
             ..default()
         },
-        Transform::from_xyz(icon_x, top_y - icon_size / 2.0 - 5.0, crate::level_editor::Z_UI_BASE),
+        Transform::from_xyz(icon_x, top_y - icon_size / 2.0 - 5.0 + ICON_OFFSET_Y, crate::level_editor::Z_UI_BASE),
     ));
 
     // 添加文件名输入提示（第二列）
