@@ -9,7 +9,6 @@ Cargo.lock
 assets
 levels
 docs
-build_web.sh
 PKGBUILD
 rust-toolchain.toml
 .cargo
