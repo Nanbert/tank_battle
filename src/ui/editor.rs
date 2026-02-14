@@ -171,29 +171,35 @@ pub fn spawn_current_selection_and_filename(
     let right_x = MAP_RIGHT_X - INSTRUCTIONS_OFFSET_X;
     let top_y = MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y;
 
-    // 当前选择文本（第一列）
-    commands.spawn((
-        LevelEditorUI,
-        Text2d(EDITOR_CURRENT_SELECTION.get(language).to_string()),
-        common::create_text_font(font, FONT_SIZE_SMALL),
-        TextColor(COLOR_WHITE),
-        Transform::from_xyz(right_x, top_y, Z_UI_TEXT),
-    ));
-
-    // 创建当前选择地形图标容器（在文本下方）
-    let icon_y = top_y - 30.0;
+    // 当前选择文本和地形图标（第一行，水平排列）
+    const LABEL_ICON_SPACING: f32 = 20.0;  // 标签和图标之间的间距
+    
+    // 计算标签和图标的总宽度，使它们居中显示
+    let label_text = EDITOR_CURRENT_SELECTION.get(language).to_string();
+    let label_width = label_text.len() as f32 * FONT_SIZE_SMALL * 0.6; // 估算标签宽度
+    let icon_size = crate::level_editor::TERRAIN_BUTTON_SIZE;
+    let total_width = label_width + LABEL_ICON_SPACING + icon_size;
+    let start_x = right_x - total_width / 2.0 + icon_size / 2.0; // 调整起始位置
+    
+    // 地形图标（左）
     commands.spawn((
         LevelEditorUI,
         crate::level_editor::CurrentTerrainText,
         Sprite {
             color: Color::srgba(1.0, 1.0, 1.0, 0.3), // 半透明白色背景
-            custom_size: Some(Vec2::new(
-                crate::level_editor::TERRAIN_BUTTON_SIZE,
-                crate::level_editor::TERRAIN_BUTTON_SIZE,
-            )),
+            custom_size: Some(Vec2::new(icon_size, icon_size)),
             ..default()
         },
-        Transform::from_xyz(right_x, icon_y, crate::level_editor::Z_UI_BASE),
+        Transform::from_xyz(start_x, top_y - icon_size / 2.0 - 5.0, crate::level_editor::Z_UI_BASE),
+    ));
+    
+    // 当前选择文本（右）
+    commands.spawn((
+        LevelEditorUI,
+        Text2d(label_text),
+        common::create_text_font(font, FONT_SIZE_SMALL),
+        TextColor(COLOR_WHITE),
+        Transform::from_xyz(start_x + icon_size / 2.0 + LABEL_ICON_SPACING + label_width / 2.0, top_y, Z_UI_TEXT),
     ));
 
     // 添加文件名输入提示（第二列）
