@@ -135,9 +135,9 @@ pub fn spawn_instructions(
         EDITOR_INSTRUCTION_EXPORT,
     ];
 
-    // 左上角位置：MAP_LEFT_X 左侧 + 400像素，MAP_TOP_Y 上方 + 40像素
+    // 左上角位置：MAP_LEFT_X 左侧 + 400像素，MAP_TOP_Y 上方 + 40像素，整体向上平移6像素
     let left_x = MAP_LEFT_X - 200.0 + 400.0;
-    let top_y = MAP_TOP_Y + 20.0 + 40.0;
+    let top_y = MAP_TOP_Y + 20.0 + 40.0 + 6.0;
 
     for (i, text) in instructions.iter().enumerate() {
         let x = left_x;
