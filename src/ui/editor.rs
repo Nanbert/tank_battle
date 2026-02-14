@@ -195,7 +195,7 @@ pub fn spawn_current_selection_and_filename(
     ));
     
     // 地形图标（右）
-    let icon_x = start_x + label_width + LABEL_ICON_SPACING + icon_size / 2.0 + ICON_OFFSET_X;
+    let icon_x = start_x + label_width + LABEL_ICON_SPACING + icon_size / 2.0 - 90.0;
     commands.spawn((
         LevelEditorUI,
         crate::level_editor::CurrentTerrainText,
