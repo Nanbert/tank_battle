@@ -128,7 +128,6 @@ pub fn spawn_terrain_panel(
 pub fn spawn_instructions(commands: &mut Commands, language: Language) {
     let instructions = vec![
         EDITOR_INSTRUCTION_CLICK_SELECT,
-        EDITOR_INSTRUCTION_CLICK_PLACE,
         EDITOR_INSTRUCTION_EXIT,
         EDITOR_INSTRUCTION_EXPORT,
     ];
@@ -138,12 +137,8 @@ pub fn spawn_instructions(commands: &mut Commands, language: Language) {
     let top_y = MAP_TOP_Y + 20.0 + 40.0;
 
     for (i, text) in instructions.iter().enumerate() {
-        // 分两列显示
-        let col = i % 2;
-        let row = i / 2;
-        
-        let x = left_x + (col as f32) * 200.0;
-        let y = top_y - (row as f32) * 30.0;
+        let x = left_x;
+        let y = top_y - (i as f32) * 30.0;
         
         commands.spawn((
             LevelEditorUI,

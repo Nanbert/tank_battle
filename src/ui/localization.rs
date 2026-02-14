@@ -377,21 +377,16 @@ pub const EDITOR_OUTPUT_PROMPT: LocalizedText = LocalizedText {
 
 /// 操作说明文本
 pub const EDITOR_INSTRUCTION_CLICK_SELECT: LocalizedText = LocalizedText {
-    cn: "点击地形元素选择",
-    en: "Click terrain to select",
-};
-
-pub const EDITOR_INSTRUCTION_CLICK_PLACE: LocalizedText = LocalizedText {
-    cn: "点击网格放置地形",
-    en: "Click grid to place terrain",
+    cn: "点击选择地形，点击网格放置",
+    en: "Click to select & place",
 };
 
 pub const EDITOR_INSTRUCTION_EXIT: LocalizedText = LocalizedText {
     cn: "ESC 退出编辑器",
-    en: "ESC to exit editor",
+    en: "ESC to exit",
 };
 
 pub const EDITOR_INSTRUCTION_EXPORT: LocalizedText = LocalizedText {
     cn: "S 导出关卡文件",
-    en: "S to export level",
+    en: "S to export",
 };
