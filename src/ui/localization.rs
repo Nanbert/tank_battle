@@ -377,11 +377,11 @@ pub const EDITOR_OUTPUT_PROMPT: LocalizedText = LocalizedText {
 
 /// 操作说明文本
 pub const EDITOR_INSTRUCTION_CLICK_SELECT: LocalizedText = LocalizedText {
-    cn: "点击选择地形，点击网格放置",
+    cn: "点击选择地形, 点击网格放置",
     en: "Click to select & place",
 };
 
 pub const EDITOR_INSTRUCTION_EXIT: LocalizedText = LocalizedText {
-    cn: "ESC 退出编辑器，S 导出关卡文件",
+    cn: "ESC 退出编辑器, S 导出关卡文件",
     en: "ESC to exit, S to export",
 };
