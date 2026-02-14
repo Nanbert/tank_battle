@@ -162,62 +162,58 @@ pub fn spawn_current_selection_and_filename(
     language: Language,
     font: &Handle<Font>,
 ) {
-    // 右侧面板下方位置
-    let right_x = crate::level_editor::RIGHT_PANEL_X;
-    let selected_y = crate::level_editor::TERRAIN_BUTTON_START_Y - 
-                    (7.0 * crate::level_editor::TERRAIN_BUTTON_SPACING) - 100.0;
-    
-    // 当前选择文本
+    // 顶部右边位置，与操作提示对称
+    // 操作提示在左侧：MAP_LEFT_X + INSTRUCTIONS_OFFSET_X, MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y
+    // 当前选择在右侧：MAP_RIGHT_X - INSTRUCTIONS_OFFSET_X, MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y
+    const MAP_RIGHT_X: f32 = -crate::constants::MAP_LEFT_X; // 地图右边界
+    const INSTRUCTIONS_OFFSET_X: f32 = 200.0;  // 与操作提示相同的偏移量
+    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0;   // 与操作提示相同的偏移量
+
+    let right_x = MAP_RIGHT_X - INSTRUCTIONS_OFFSET_X;
+    let top_y = MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y;
+
+    // 当前选择文本（第一行）
     commands.spawn((
         LevelEditorUI,
         Text2d(EDITOR_CURRENT_SELECTION.get(language).to_string()),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(
-            right_x, 
-            selected_y + crate::level_editor::TERRAIN_BUTTON_SIZE / 2.0 + 20.0, 
-            Z_UI_TEXT
-        ),
+        Transform::from_xyz(right_x, top_y, Z_UI_TEXT),
     ));
-    
-    // 创建当前选择地形图标容器
+
+    // 创建当前选择地形图标容器（在文本下方）
+    let icon_y = top_y - 30.0;
     commands.spawn((
         LevelEditorUI,
         crate::level_editor::CurrentTerrainText,
         Sprite {
             color: Color::srgba(1.0, 1.0, 1.0, 0.3), // 半透明白色背景
             custom_size: Some(Vec2::new(
-                crate::level_editor::TERRAIN_BUTTON_SIZE, 
-                crate::level_editor::TERRAIN_BUTTON_SIZE
+                crate::level_editor::TERRAIN_BUTTON_SIZE,
+                crate::level_editor::TERRAIN_BUTTON_SIZE,
             )),
             ..default()
         },
-        Transform::from_xyz(
-            right_x + crate::level_editor::TERRAIN_BUTTON_SIZE / 2.0 + 20.0 - 6.0, 
-            selected_y, 
-            crate::level_editor::Z_UI_BASE
-        ),
+        Transform::from_xyz(right_x, icon_y, crate::level_editor::Z_UI_BASE),
     ));
-    
-    // 添加文件名输入提示
-    let prompt_x = right_x + crate::level_editor::TERRAIN_BUTTON_SIZE + 100.0;
-    let prompt_y = selected_y;
-    
+
+    // 添加文件名输入提示（第二行）
+    let prompt_y = icon_y - 60.0;
+
     // 提示文字
     commands.spawn((
         LevelEditorUI,
         Text2d(EDITOR_OUTPUT_PROMPT.get(language).to_string()),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(prompt_x, prompt_y, Z_UI_TEXT),
+        Transform::from_xyz(right_x, prompt_y, Z_UI_TEXT),
     ));
-    
+
     // 文件名输入框
-    let input_box_x = prompt_x + 160.0;
-    let input_box_y = prompt_y;
+    let input_box_y = prompt_y - 30.0;
     let input_box_width = 80.0;
     let input_box_height = 30.0;
-    
+
     commands.spawn((
         LevelEditorUI,
         crate::level_editor::FilenameInput,
@@ -226,7 +222,7 @@ pub fn spawn_current_selection_and_filename(
             custom_size: Some(Vec2::new(input_box_width, input_box_height)),
             ..default()
         },
-        Transform::from_xyz(input_box_x, input_box_y, crate::level_editor::Z_UI_BASE),
+        Transform::from_xyz(right_x, input_box_y, crate::level_editor::Z_UI_BASE),
     ));
     
     // 文件名输入文本
@@ -236,6 +232,6 @@ pub fn spawn_current_selection_and_filename(
         Text2d("1".to_string()),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(input_box_x, input_box_y, Z_UI_TEXT + 0.1),
+        Transform::from_xyz(right_x, input_box_y, Z_UI_TEXT + 0.1),
     ));
 }
