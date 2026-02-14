@@ -217,33 +217,32 @@ fn spawn_wall_line(commands: &mut Commands, position: Vec3, scale: Vec3) {
 
 /// 生成边界线（3条白线：顶部、左侧、右侧）
 pub fn spawn_walls(commands: &mut Commands) {
-    // 左边界线 - 高度 MAP_HEIGHT + 10.0（加长5像素）
+    // 左边界线 - 放在地图边界外侧 1.0 像素（碰撞体厚度 2.0）
     spawn_wall_line(
         commands,
-        Vec3::new(MAP_LEFT_X - 5.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-        Vec3::new(5.0, MAP_HEIGHT + 10.0, 1.0),
+        Vec3::new(MAP_LEFT_X - 1.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(2.0, MAP_HEIGHT + 4.0, 1.0),
     );
 
-    // 右边界线 - 高度 MAP_HEIGHT + 10.0（加长5像素）
+    // 右边界线 - 放在地图边界外侧 1.0 像素（碰撞体厚度 2.0）
     spawn_wall_line(
         commands,
-        Vec3::new(MAP_RIGHT_X + 5.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
-        Vec3::new(5.0, MAP_HEIGHT + 10.0, 1.0),
+        Vec3::new(MAP_RIGHT_X + 1.0, (MAP_TOP_Y + MAP_BOTTOM_Y) / 2.0, 0.0),
+        Vec3::new(2.0, MAP_HEIGHT + 4.0, 1.0),
     );
 
-    // 上边界线 - 宽度为 MAP_WIDTH + 2*左墙位置(800) + 左墙宽(5) + 2*线宽(10) = 1615
-    // 从左墙左边缘(-807.5)到右墙右边缘(807.5)，完全闭合
+    // 上边界线 - 放在地图边界外侧 1.0 像素（碰撞体厚度 2.0）
     spawn_wall_line(
         commands,
-        Vec3::new(0.0, MAP_TOP_Y + 5.0, 0.0),
-        Vec3::new(1615.0, 5.0, 1.0),
+        Vec3::new(0.0, MAP_TOP_Y + 1.0, 0.0),
+        Vec3::new(MAP_WIDTH + 4.0, 2.0, 1.0),
     );
 
-    // 下边界线（补充缺失的下边界）
+    // 下边界线 - 放在地图边界外侧 1.0 像素（碰撞体厚度 2.0）
     spawn_wall_line(
         commands,
-        Vec3::new(0.0, MAP_BOTTOM_Y - 5.0, 0.0),
-        Vec3::new(1605.0, 5.0, 1.0),
+        Vec3::new(0.0, MAP_BOTTOM_Y - 1.0, 0.0),
+        Vec3::new(MAP_WIDTH + 4.0, 2.0, 1.0),
     );
 }
 

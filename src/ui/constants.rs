@@ -325,13 +325,13 @@ pub const MENU_START_Y: f32 = 250.0;
 pub const MENU_OPTION_SPACING: f32 = 100.0;
 
 /// 玩家1操作说明 Y 坐标
-pub const CONTROLS_P1_Y: f32 = -350.0;
+pub const CONTROLS_P1_Y: f32 = -450.0;
 
 /// 玩家2操作说明 Y 坐标
-pub const CONTROLS_P2_Y: f32 = -380.0;
+pub const CONTROLS_P2_Y: f32 = -480.0;
 
 /// 通用操作说明 Y 坐标
-pub const CONTROLS_GENERAL_Y: f32 = -410.0;
+pub const CONTROLS_GENERAL_Y: f32 = -510.0;
 
 // ============================================================================
 // 关于界面布局常量

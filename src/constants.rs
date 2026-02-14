@@ -882,7 +882,7 @@ pub const CAMERA_SHAKE_DURATION: f32 = 0.6; // 相机震动持续时间（秒）
 pub const CAMERA_SHAKE_INTENSITY: f32 = 15.0; // 相机震动强度（像素）
 
 // 玩家坦克
-pub const PLAYER_SPAWN_OFFSET: f32 = 50.0; // 玩家出生位置偏移
+pub const PLAYER_SPAWN_OFFSET: f32 = 60.0; // 玩家出生位置偏移
 
 // ==================== 速度和角度常量 ====================
 pub const ANGLE_DIFF_THRESHOLD: f32 = 0.01; // 角度差阈值

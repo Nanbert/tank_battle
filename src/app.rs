@@ -417,10 +417,10 @@ app.add_systems(
 }
 
 /// 注册 LevelEditor 状态的系统
-fn register_level_editor_systems(app: &mut App) {
+fn register_level_editor_systems(_app: &mut App) {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        app.init_resource::<crate::level_editor::SelectedTerrain>()
+        _app.init_resource::<crate::level_editor::SelectedTerrain>()
             .init_resource::<crate::level_editor::EditorMapData>()
             .add_systems(
                 OnEnter(GameState::LevelEditor),

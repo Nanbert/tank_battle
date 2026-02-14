@@ -100,7 +100,7 @@ pub fn load_level_file(level: usize) -> Option<LevelMap> {
 
 /// Web 端：初始化关卡资源到 LevelAssets（异步）
 #[cfg(target_arch = "wasm32")]
-pub fn init_level_assets(_world: &mut World) {
+pub fn init_level_assets() {
     info!("初始化 Web 端关卡数据（异步加载）");
     // 注意：实际加载将在 wasm 启动时完成，这里只设置状态
     // 关卡数据会在 load_levels_async 中异步加载并注入到 World 中

@@ -41,7 +41,6 @@ pub const TEXT_Y_OFFSET: f32 = TERRAIN_BUTTON_SIZE / 2.0 + 15.0;
 /// Z轴层级
 pub const Z_UI_BASE: f32 = 10.0;
 pub const Z_UI_PREVIEW: f32 = Z_UI_BASE + 0.1;
-pub const Z_UI_TEXT: f32 = 20.0;
 
 /// 地形按钮点击检测半径（像素）
 pub const TERRAIN_BUTTON_CLICK_RADIUS: f32 = 45.0;
@@ -102,14 +101,6 @@ pub struct InputFilename {
     pub name: String,
 }
 
-impl InputFilename {
-    pub fn new() -> Self {
-        Self {
-            name: String::from("1"), // 默认关卡号
-        }
-    }
-}
-
 /// 当前编辑的地图数据
 #[derive(Resource, Clone)]
 pub struct EditorMapData {
@@ -144,11 +135,6 @@ impl EditorMapData {
     /// 清空地图
     pub fn clear(&mut self) {
         self.data = [[TerrainType::Empty; MAP_COLS]; MAP_ROWS];
-    }
-
-    /// 从现有关卡数据加载
-    pub fn load_from_level(&mut self, level_data: &[[TerrainType; MAP_COLS]; MAP_ROWS]) {
-        self.data = *level_data;
     }
 }
 
@@ -321,10 +307,8 @@ pub fn on_enter_level_editor(
     mut commands: Commands,
     texture_resources: Res<GameTextureResources>,
     atlas_layouts: Res<GameAtlasLayoutResources>,
-    level_assets: Res<crate::levels::LevelAssets>,
     mut editor_map: ResMut<EditorMapData>,
     mut input_filename: ResMut<InputFilename>,
-    stage_level: Res<StageLevel>,
     language: Res<Language>,
     start_screen_entities: Query<Entity, With<crate::ui::StartScreenUI>>,
     playing_entities: Query<Entity, With<crate::ui::PlayingEntity>>,
@@ -578,7 +562,6 @@ pub fn handle_grid_click(
     grid_query: Query<(&Transform, &GridCell)>,
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
-    camera_q: Query<(&Camera, &GlobalTransform)>,
     selected_terrain: Res<SelectedTerrain>,
     mut editor_map: ResMut<EditorMapData>,
     texture_resources: Res<GameTextureResources>,
@@ -596,10 +579,6 @@ pub fn handle_grid_click(
 
     let cursor_position = window.cursor_position();
     let Some(cursor_position) = cursor_position else {
-        return;
-    };
-
-    let Ok((camera, camera_transform)) = camera_q.single() else {
         return;
     };
 

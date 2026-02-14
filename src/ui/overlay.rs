@@ -514,7 +514,7 @@ pub fn spawn_insufficient_energy_warning(
     let font = common::get_font(&font_resources, language);
 
     // 生成文本实体
-    let _entity = commands
+    commands
         .spawn((
             InsufficientEnergyText,
             Text2d(text.to_string()),
@@ -524,8 +524,7 @@ pub fn spawn_insufficient_energy_warning(
             // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
             // 动画完成后会自动销毁整个实体
             common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
-        ))
-        .id();
+        ));
 }
 
 /// 销毁所有能量不足提示
