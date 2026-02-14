@@ -135,13 +135,17 @@ pub fn spawn_instructions(
         EDITOR_INSTRUCTION_EXPORT,
     ];
 
-    // 左上角位置：MAP_LEFT_X 左侧 + 400像素，MAP_TOP_Y 上方 + 40像素，整体向上平移9像素
-    let left_x = MAP_LEFT_X - 200.0 + 400.0;
-    let top_y = MAP_TOP_Y + 20.0 + 40.0 + 9.0;
+    // 左上角位置计算
+    const INSTRUCTIONS_OFFSET_X: f32 = 200.0;  // 相对于 MAP_LEFT_X 的偏移
+    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0;   // 相对于 MAP_TOP_Y 的偏移（20+40+9）
+    const INSTRUCTIONS_LINE_SPACING: f32 = 30.0;  // 行间距
+
+    let left_x = MAP_LEFT_X + INSTRUCTIONS_OFFSET_X;
+    let top_y = MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y;
 
     for (i, text) in instructions.iter().enumerate() {
         let x = left_x;
-        let y = top_y - (i as f32) * 30.0;
+        let y = top_y - (i as f32) * INSTRUCTIONS_LINE_SPACING;
 
         commands.spawn((
             LevelEditorUI,
