@@ -1,0 +1,12 @@
+. . . b . . . . . . . . ib . . .
+b b . t ib t . . . . . ir i il b b
+t s . ir i il . t ib t . . it . s b
+b s . t it t . ir i il . . . . s t
+b s il t ib t . t it t ib t . . s b
+b s . ir i il . . . ir i il . . s b
+i b it t it t . . . t it t . . b b
+b s . . t ib t . t ib t t ib t s t
+b s . . ir i il . ir i il ir i il s b
+b s . . t it t . t it t t it t s b
+t s . . . . . . . . . . b b b b
+b b . . . . . . . . . b b b b b

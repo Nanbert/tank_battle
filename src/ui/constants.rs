@@ -146,6 +146,10 @@ pub struct PauseUI;
 #[derive(Component)]
 pub struct GameOverUI;
 
+/// 通关界面 UI 标记
+#[derive(Component)]
+pub struct CongratulationsUI;
+
 /// 关卡介绍界面 UI 标记
 #[derive(Component)]
 pub struct StageIntroUI;

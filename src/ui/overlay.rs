@@ -168,9 +168,21 @@ pub fn fade_out_screen(
         }
     }
 
-    // 淡出完成，切换到 StageIntro 状态并清理所有 StartScreenUI 元素
+    // 淡出完成，根据来源状态跳转
     if fading_out.alpha <= 0.0 {
-        next_state.set(GameState::StageIntro);
+        // 检查是否从菜单界面淡出（有MenuOption组件）
+        let from_menu = ui_query
+            .iter()
+            .any(|(_, _, _, menu_opt)| menu_opt.is_some());
+
+        if from_menu {
+            // 从菜单界面淡出，进入关卡介绍
+            next_state.set(GameState::StageIntro);
+        } else {
+            // 从其他界面（如Congratulations）淡出，返回菜单
+            next_state.set(GameState::StartScreen);
+        }
+
         for (entity, _, _, _) in &mut ui_query {
             commands.entity(entity).despawn();
         }
@@ -489,6 +501,90 @@ pub fn handle_game_over_input(
 
 /// 销毁游戏结束界面
 pub fn despawn_game_over_ui(mut commands: Commands, query: Query<Entity, With<GameOverUI>>) {
+    crate::utils::cleanup_entities(&mut commands, query.iter());
+}
+
+/// 生成恭喜通关界面
+pub fn spawn_congratulations_ui(
+    mut commands: Commands,
+    font_resources: Res<GameTextureResources>,
+    language: Res<Language>,
+    game_mode: Res<GameMode>,
+    player_info: Res<PlayerInfo>,
+) {
+    use crate::ui::localization::HUD_PLAYER1_NAME;
+    use crate::ui::localization::HUD_PLAYER2_NAME;
+    use crate::ui::localization::CONGRATULATIONS_TITLE;
+    use crate::ui::localization::CONGRATULATIONS_RETURN;
+    
+    let title_text = CONGRATULATIONS_TITLE.get(*language).to_string();
+    
+    // 创建标题
+    let font = common::get_font(&font_resources, *language);
+    commands
+        .spawn((
+            CongratulationsUI,
+            Text2d(title_text),
+            common::create_text_font(&font, 80.0),
+            TextColor(COLOR_GOLD),
+            Transform::from_xyz(0.0, 150.0, Z_UI),
+        ));
+
+    // 显示玩家分数
+    let y_offset = 50.0;
+    
+    // 玩家1分数
+    if let Some(stats) = player_info.get_stats(TankType::Player1) {
+        let p1_text = format!("{}: {}", HUD_PLAYER1_NAME.get(*language), stats.score);
+        commands
+            .spawn((
+                CongratulationsUI,
+                Text2d(p1_text),
+                common::create_text_font(&font, 50.0),
+                TextColor(COLOR_WHITE),
+                Transform::from_xyz(0.0, y_offset, Z_UI),
+            ));
+    }
+
+    // 玩家2分数（如果是双人模式）
+    if *game_mode == GameMode::TwoPlayers {
+        if let Some(stats) = player_info.get_stats(TankType::Player2) {
+            let p2_text = format!("{}: {}", HUD_PLAYER2_NAME.get(*language), stats.score);
+            commands
+                .spawn((
+                    CongratulationsUI,
+                    Text2d(p2_text),
+                    common::create_text_font(&font, 50.0),
+                    TextColor(COLOR_WHITE),
+                    Transform::from_xyz(0.0, y_offset - 70.0, Z_UI),
+                ));
+        }
+    }
+
+    // 提示信息
+    let hint_text = CONGRATULATIONS_RETURN.get(*language).to_string();
+    commands
+        .spawn((
+            CongratulationsUI,
+            Text2d(hint_text),
+            common::create_text_font(&font, 30.0),
+            TextColor(COLOR_YELLOW),
+            Transform::from_xyz(0.0, -150.0, Z_UI),
+        ));
+}
+
+/// 处理恭喜界面输入
+pub fn handle_congratulations_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Space) || keyboard.just_pressed(KeyCode::Escape) {
+        next_state.set(GameState::FadingOut);
+    }
+}
+
+/// 销毁恭喜界面
+pub fn despawn_congratulations_ui(mut commands: Commands, query: Query<Entity, With<CongratulationsUI>>) {
     crate::utils::cleanup_entities(&mut commands, query.iter());
 }
 

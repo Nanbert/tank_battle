@@ -217,6 +217,31 @@ fn register_game_over_systems(app: &mut App) {
     );
 }
 
+/// 注册 Congratulations 状态的系统
+fn register_congratulations_systems(app: &mut App) {
+    app.add_systems(
+        OnEnter(GameState::Congratulations),
+        ui::overlay::spawn_congratulations_ui,
+    )
+    .add_systems(
+        OnExit(GameState::Congratulations),
+        (
+            ui::overlay::despawn_congratulations_ui,
+            |mut stage_level: ResMut<crate::resources::StageLevel>| {
+                stage_level.0 = 1;
+            },
+            ui::hud::despawn_hud,
+        ),
+    )
+    .add_systems(
+        Update,
+        (
+            ui::overlay::handle_congratulations_input,
+        )
+            .run_if(in_state(GameState::Congratulations)),
+    );
+}
+
 /// 注册 FadingOut 状态的系统
 fn register_fading_out_systems(app: &mut App) {
     app.add_systems(
@@ -716,6 +741,7 @@ pub fn register_game_systems(app: &mut App) {
     register_stage_intro_systems(app);
     register_paused_systems(app);
     register_game_over_systems(app);
+    register_congratulations_systems(app);
     register_fading_out_systems(app);
     register_playing_systems(app);
     register_level_editor_systems(app);

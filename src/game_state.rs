@@ -193,9 +193,16 @@ pub fn check_stage_complete(
 
     // 检查延迟是否完成
     if enemy_spawn_state.stage_complete_delay.just_finished() {
-        // 进入下一关
-        stage_level.0 += 1;
-        next_state.set(GameState::StageIntro);
+        let max_level = crate::levels::get_available_level_count();
+        // 检查是否通关所有关卡
+        if stage_level.0 >= max_level {
+            // 通关所有关卡，进入恭喜界面
+            next_state.set(GameState::Congratulations);
+        } else {
+            // 进入下一关
+            stage_level.0 += 1;
+            next_state.set(GameState::StageIntro);
+        }
     }
 }
 

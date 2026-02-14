@@ -1,12 +1,12 @@
-. . . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . . .
-bl br . . bl br . . bl br . . .
-bt bb . . bt bb . . bt bb . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-il ir . . il ir . . il ir . . .
-it ib . . it ib . . it ib . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
-. . . . . . . . . . . . . . .
+. a t . . . . . . . . . . . t .
+t a . . b b bt bt bt t t t t t . t
+t a . bt b b b b b t b b b b . it
+it . a b b . . . . t b b b t . br
+. . br bt . il . . . ir . b b b . br
+s . b . . t . . . . . b b . s s
+. . b b . t b b b b . b b . t b
+i . b b bl t b br br . b b b . t b
+i br b b bt b b b b b b b . . t b
+a b b b . b b b b b . . . . a t
+t bt bt b b . . . . . . . . . t t
+. t . . . . . . . . . . . t t .

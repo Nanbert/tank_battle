@@ -95,7 +95,7 @@ pub const ABOUT_TITLE: LocalizedText = LocalizedText {
 };
 
 pub const ABOUT_TEXT: LocalizedText = LocalizedText {
-    cn: "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受《坦克大战 1990》启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证",
+    cn: "开发者: 南敬文\n\n        邮箱: 2726905171@qq.com\n\n        版权所有 (c) 2026 南敬文\n        保留所有权利\n\n        本游戏是受\"坦克大战 1990\"启发的坦克对战游戏.\n        使用 Rust 和 Bevy 游戏引擎开发.\n\n        特别感谢 iFlow 提供的宝贵帮助.\n\n        许可证: MIT 许可证",
     en: "Developer: Nanbert\n\n        Email: 2726905171@qq.com\n\n        Copyright © 2026 Nanbert\n        All rights reserved.\n\n        This is a tank battle game inspired by Battle City 1990.\n        Built with Rust and Bevy game engine.\n\n        Special thanks to iFlow for invaluable assistance.\n\n        License: MIT License",
 };
 
@@ -384,4 +384,15 @@ pub const EDITOR_INSTRUCTION_CLICK_SELECT: LocalizedText = LocalizedText {
 pub const EDITOR_INSTRUCTION_EXIT: LocalizedText = LocalizedText {
     cn: "ESC 退出编辑器, S 导出关卡文件",
     en: "ESC to exit, S to export",
+};
+
+/// 恭喜界面文本
+pub const CONGRATULATIONS_TITLE: LocalizedText = LocalizedText {
+    cn: "恭喜通关！",
+    en: "Congratulations!",
+};
+
+pub const CONGRATULATIONS_RETURN: LocalizedText = LocalizedText {
+    cn: "按 SPACE 返回菜单",
+    en: "Press SPACE to return to menu",
 };

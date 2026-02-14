@@ -106,14 +106,48 @@ pub fn init_level_assets() {
     // 关卡数据会在 load_levels_async 中异步加载并注入到 World 中
 }
 
+/// 桌面端：获取实际存在的关卡文件数量
+#[cfg(not(target_arch = "wasm32"))]
+pub fn get_available_level_count() -> usize {
+    let levels_dir = get_levels_dir();
+    let mut max_level = 0;
+    
+    // 遍历关卡目录，找出最大的关卡编号
+    if let Ok(entries) = std::fs::read_dir(levels_dir) {
+        for entry in entries.flatten() {
+            if let Some(file_name) = entry.file_name().to_str() {
+                // 匹配 "数字.txt" 格式的文件
+                if let Some(level_str) = file_name.strip_suffix(".txt") {
+                    if let Ok(level_num) = level_str.parse::<usize>() {
+                        max_level = max_level.max(level_num);
+                    }
+                }
+            }
+        }
+    }
+    
+    // 返回实际关卡数和代码设置的最小值之间的较大者
+    max_level.max(crate::constants::MIN_LEVELS)
+}
+
+/// Web 端：返回预定义的关卡数（Web 端需要预加载）
+#[cfg(target_arch = "wasm32")]
+pub fn get_available_level_count() -> usize {
+    crate::constants::MIN_LEVELS
+}
+
 /// 桌面端：初始化关卡资源到 LevelAssets
 #[cfg(not(target_arch = "wasm32"))]
 pub fn init_level_assets(mut level_assets: ResMut<LevelAssets>) {
     info!("初始化桌面端关卡数据");
-    for level in 1..=4 {
+    let max_level = get_available_level_count();
+    for level in 1..=max_level {
         if let Some(map_data) = load_level_file(level) {
             level_assets.set(level, map_data);
             info!("关卡 {} 已加载", level);
+        } else {
+            warn!("关卡 {} 加载失败，将使用空地图", level);
+            level_assets.set(level, [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]);
         }
     }
 }
@@ -164,7 +198,7 @@ pub async fn load_level_file(level: usize) -> Option<LevelMap> {
 pub async fn load_all_levels_async() -> LevelAssets {
     let mut level_assets = LevelAssets::default();
 
-    for level in 1..=4 {
+    for level in 1..=crate::constants::MIN_LEVELS {
         if let Some(map_data) = load_level_file(level).await {
             level_assets.set(level, map_data);
             info!("Web 端关卡 {} 加载完成", level);

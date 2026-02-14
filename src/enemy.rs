@@ -406,9 +406,17 @@ pub fn move_enemy_tanks(
             if let Some(collision_normal) = collision_cache.take(entity)
                 && collision_normal.length() > 0.0
             {
-                enemy_tank.direction = get_new_direction(collision_normal);
-                // 不重置 direction_timer，允许快速响应连续碰撞
-                collision_cooldown.reset();
+                // 检查坦克是否朝着碰撞方向移动
+                // 计算移动方向与碰撞法线的点积
+                // 点积 > 0 表示朝着碰撞方向移动，需要转向
+                // 点积 <= 0 表示远离碰撞方向或垂直方向移动，不需要转向
+                let current_dir = enemy_tank.direction;
+                let moving_towards_collision = current_dir.dot(collision_normal) > 0.0;
+
+                if moving_towards_collision {
+                    enemy_tank.direction = get_new_direction(collision_normal);
+                    collision_cooldown.reset();
+                }
             }
         }
 
