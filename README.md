@@ -30,6 +30,14 @@
 
 📖 **详细操作说明**: [查看完整游戏指南](docs/controls.md)
 
+### 🎮 在线试玩
+
+无需下载，直接在浏览器中体验游戏！
+
+[![Play in Browser](https://img.shields.io/badge/Play-Online-brightgreen?style=for-the-badge&logo=web)](https://nanbert.github.io/tank_battle/)
+
+> 💡 **提示**: Web 版本使用 WASM 编译，首次加载可能需要几秒钟。建议使用现代浏览器（Chrome、Firefox、Edge 等）获得最佳体验。
+
 ## 下载安装
 
 ![Latest Release](https://img.shields.io/github/v/release/Nanbert/tank_battle?style=flat-square)
