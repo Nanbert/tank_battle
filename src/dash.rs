@@ -254,7 +254,8 @@ pub fn handle_dash_collision(
                     effect_events.write(crate::bullet::EffectEvent::Spark {
                         position,
                         audio_handle: audio_resources.metal_crash.clone(),
-                                    volume: crate::constants::VOLUME_QUARTER,                    });
+                        volume: crate::constants::VOLUME_QUARTER,
+                    });
                     let () = commands.entity(entity).try_despawn();
                 } else {
                     // protection < 100%，玩家死亡

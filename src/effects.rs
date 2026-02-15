@@ -49,14 +49,8 @@ pub fn spawn_forest_fire(
     tree_color: crate::resources::TreeColor,
 ) {
     // 根据当前树木颜色选择燃烧纹理
-    let (fire_texture, fire_layout) = match tree_color {
-        crate::resources::TreeColor::Green => {
-            (effect_resources.forest_fire.clone(), atlas_layouts.forest_fire.clone())
-        }
-        crate::resources::TreeColor::Yellow => {
-            (effect_resources.forest_fire_yellow.clone(), atlas_layouts.forest_fire_yellow.clone())
-        }
-    };
+    let (fire_texture, fire_layout) =
+        utils::get_tree_resources(tree_color, effect_resources, atlas_layouts);
 
     let _ = utils::spawn_animated_sprite(
         commands,

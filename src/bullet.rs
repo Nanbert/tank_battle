@@ -15,7 +15,6 @@ use crate::resources::{
 };
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
-use crate::ui::localization::*;
 use crate::utils;
 
 /// 特效事件枚举
@@ -612,18 +611,12 @@ pub fn handle_combo_events(
             // 连击数 >= 2 时显示连击弹出文字
             if combo_count >= 2 {
                 let font = font_resources.get_font(*language);
-                let text = match combo_count {
-                    2 => COMBO_FLOATING_2.get(*language).to_string(),
-                    3 => COMBO_FLOATING_3.get(*language).to_string(),
-                    4 => COMBO_FLOATING_4.get(*language).to_string(),
-                    5 => COMBO_FLOATING_5.get(*language).to_string(),
-                    _ => COMBO_FLOATING_HIGH.format(*language, combo_count),
-                };
+                let text = crate::utils::get_combo_text(combo_count, *language);
                 // 在连击文本后面加上分数
                 let text_with_score = format!("{} +{}", text, combo_score);
                 let color = ComboTracker::get_combo_color(combo_count);
                 let font_size = ComboTracker::get_combo_font_size(combo_count);
-                
+
                 // 在敌方坦克位置上方生成连击弹出文字
                 let floating_position = Vec3::new(
                     event.position.x,

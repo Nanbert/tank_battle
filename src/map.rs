@@ -316,14 +316,8 @@ pub fn spawn_terrain_tile(
             entity
         }
         TerrainTileType::Forest => {
-            let (tree_texture, forest_layout) = match tree_color {
-                crate::resources::TreeColor::Green => {
-                    (texture_resources.tree.clone(), atlas_layouts.forest.clone())
-                }
-                crate::resources::TreeColor::Yellow => {
-                    (texture_resources.tree_yellow.clone(), atlas_layouts.forest_yellow.clone())
-                }
-            };
+            let (tree_texture, forest_layout) =
+                crate::utils::get_forest_resources(tree_color, texture_resources, atlas_layouts);
 
             let entity = crate::utils::spawn_animated_sprite(
                 commands,

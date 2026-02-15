@@ -194,10 +194,11 @@ pub fn leaves_spawn_system(
     // 根据当前树木颜色选择落叶纹理
     let leaves_texture = {
         let leaves_index = rng.gen_range(0..5);
-        match *tree_color {
-            crate::resources::TreeColor::Green => texture_resources.leaves[leaves_index].clone(),
-            crate::resources::TreeColor::Yellow => texture_resources.leaves_yellow[leaves_index].clone(),
-        }
+        let leaves_array = match *tree_color {
+            crate::resources::TreeColor::Green => &texture_resources.leaves,
+            crate::resources::TreeColor::Yellow => &texture_resources.leaves_yellow,
+        };
+        leaves_array[leaves_index].clone()
     };
 
     commands.spawn((

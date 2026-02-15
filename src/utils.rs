@@ -290,3 +290,83 @@ where
         None
     }
 }
+
+/// 根据树木颜色获取对应的纹理和图集资源
+///
+/// # 参数
+/// - `tree_color`: 树木颜色（绿色或黄色）
+/// - `texture_resources`: 游戏纹理资源
+/// - `atlas_layouts`: 纹理图集布局资源
+///
+/// # 返回值
+/// 返回 (纹理句柄, 图集布局句柄) 元组
+pub fn get_tree_resources(
+    tree_color: crate::resources::TreeColor,
+    texture_resources: &crate::resources::GameTextureResources,
+    atlas_layouts: &crate::resources::GameAtlasLayoutResources,
+) -> (Handle<Image>, Handle<TextureAtlasLayout>) {
+    match tree_color {
+        crate::resources::TreeColor::Green => {
+            (
+                texture_resources.forest_fire.clone(),
+                atlas_layouts.forest_fire.clone(),
+            )
+        }
+        crate::resources::TreeColor::Yellow => {
+            (
+                texture_resources.forest_fire_yellow.clone(),
+                atlas_layouts.forest_fire_yellow.clone(),
+            )
+        }
+    }
+}
+
+/// 根据树木颜色获取树木纹理和图集资源
+///
+/// # 参数
+/// - `tree_color`: 树木颜色（绿色或黄色）
+/// - `texture_resources`: 游戏纹理资源
+/// - `atlas_layouts`: 纹理图集布局资源
+///
+/// # 返回值
+/// 返回 (树木纹理句柄, 森林图集布局句柄) 元组
+pub fn get_forest_resources(
+    tree_color: crate::resources::TreeColor,
+    texture_resources: &crate::resources::GameTextureResources,
+    atlas_layouts: &crate::resources::GameAtlasLayoutResources,
+) -> (Handle<Image>, Handle<TextureAtlasLayout>) {
+    match tree_color {
+        crate::resources::TreeColor::Green => {
+            (texture_resources.tree.clone(), atlas_layouts.forest.clone())
+        }
+        crate::resources::TreeColor::Yellow => (
+            texture_resources.tree_yellow.clone(),
+            atlas_layouts.forest_yellow.clone(),
+        ),
+    }
+}
+
+/// 根据连击数获取对应的本地化文本
+///
+/// # 参数
+/// - `combo_count`: 连击数（>= 2）
+/// - `language`: 语言设置
+///
+/// # 返回值
+/// 返回连击文本字符串
+pub fn get_combo_text(combo_count: usize, language: crate::resources::Language) -> String {
+    use crate::constants::LocalizedText;
+
+    const COMBO_TEXTS: [&LocalizedText; 4] = [
+        &crate::ui::localization::COMBO_FLOATING_2,
+        &crate::ui::localization::COMBO_FLOATING_3,
+        &crate::ui::localization::COMBO_FLOATING_4,
+        &crate::ui::localization::COMBO_FLOATING_5,
+    ];
+
+    if combo_count >= 2 && combo_count <= 5 {
+        COMBO_TEXTS[combo_count - 2].get(language).to_string()
+    } else {
+        crate::ui::localization::COMBO_FLOATING_HIGH.format(language, combo_count as u32)
+    }
+}
