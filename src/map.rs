@@ -5,8 +5,8 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{GameAtlasLayoutResources, GameTextureResources, StageLevel};
@@ -47,8 +47,12 @@ pub enum TerrainType {
 }
 
 impl TerrainType {
-    /// 从字符串转换为地形类型
+    /// 从字符串转换为地形类型（保持向后兼容）
     pub fn from_str(s: &str) -> Self {
+        Self::from_str_helper(s)
+    }
+
+    fn from_str_helper(s: &str) -> Self {
         match s {
             "t" => Self::Forest,
             "s" => Self::Sea,
@@ -88,7 +92,7 @@ impl TerrainType {
     }
 
     /// 获取地形的中英文名称（用于UI显示）
-    pub fn to_display_name(&self, language: crate::resources::Language) -> &'static str {
+    pub fn to_display_name(self, language: crate::resources::Language) -> &'static str {
         match self {
             Self::Empty => match language {
                 crate::resources::Language::Chinese => "空地",
@@ -147,6 +151,14 @@ impl TerrainType {
                 crate::resources::Language::English => "Barrier",
             },
         }
+    }
+}
+
+impl std::str::FromStr for TerrainType {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_str_helper(s))
     }
 }
 
@@ -275,7 +287,7 @@ pub fn spawn_terrain_tile(
     match tile_type {
         TerrainTileType::Brick => {
             let brick_texture = texture_resources.brick.clone();
-            
+
             let entity = commands
                 .spawn((
                     Brick,
@@ -296,7 +308,7 @@ pub fn spawn_terrain_tile(
         }
         TerrainTileType::Steel => {
             let steel_texture = texture_resources.steel.clone();
-            
+
             let entity = commands
                 .spawn((
                     Steel,
@@ -348,7 +360,7 @@ pub fn spawn_terrain_tile(
         }
         TerrainTileType::Barrier => {
             let barrier_texture = texture_resources.barrier.clone();
-            
+
             let entity = commands
                 .spawn((
                     Barrier,
@@ -461,9 +473,9 @@ fn spawn_map_terrain(
     stage_level: usize,
     tree_color: crate::resources::TreeColor,
 ) {
-    let level_map = level_assets.get(stage_level).unwrap_or_else(|| {
-        [[TerrainType::Empty; MAP_COLS]; MAP_ROWS]
-    });
+    let level_map = level_assets
+        .get(stage_level)
+        .unwrap_or([[TerrainType::Empty; MAP_COLS]; MAP_ROWS]);
 
     for (row, row_data) in level_map.iter().enumerate().take(MAP_ROWS) {
         for (col, terrain) in row_data.iter().enumerate().take(MAP_COLS) {
@@ -553,7 +565,12 @@ pub fn spawn_map(
     );
 
     // 生成司令官堡垒墙
-    spawn_commander_fortress(&mut commands, &texture_resources, &atlas_layouts, *tree_color);
+    spawn_commander_fortress(
+        &mut commands,
+        &texture_resources,
+        &atlas_layouts,
+        *tree_color,
+    );
 }
 
 /// 生成一列砖块墙

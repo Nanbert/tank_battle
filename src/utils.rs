@@ -2,9 +2,9 @@
 //!
 //! 提供游戏中各模块共用的工具函数
 
+use avian2d::prelude::*;
 use bevy::input::ButtonInput;
 use bevy::prelude::*;
-use avian2d::prelude::*;
 use std::time::Duration;
 
 use crate::constants::*;
@@ -306,18 +306,14 @@ pub fn get_tree_resources(
     atlas_layouts: &crate::resources::GameAtlasLayoutResources,
 ) -> (Handle<Image>, Handle<TextureAtlasLayout>) {
     match tree_color {
-        crate::resources::TreeColor::Green => {
-            (
-                texture_resources.forest_fire.clone(),
-                atlas_layouts.forest_fire.clone(),
-            )
-        }
-        crate::resources::TreeColor::Yellow => {
-            (
-                texture_resources.forest_fire_yellow.clone(),
-                atlas_layouts.forest_fire_yellow.clone(),
-            )
-        }
+        crate::resources::TreeColor::Green => (
+            texture_resources.forest_fire.clone(),
+            atlas_layouts.forest_fire.clone(),
+        ),
+        crate::resources::TreeColor::Yellow => (
+            texture_resources.forest_fire_yellow.clone(),
+            atlas_layouts.forest_fire_yellow.clone(),
+        ),
     }
 }
 
@@ -364,7 +360,7 @@ pub fn get_combo_text(combo_count: usize, language: crate::resources::Language) 
         &crate::ui::localization::COMBO_FLOATING_5,
     ];
 
-    if combo_count >= 2 && combo_count <= 5 {
+    if (2..=5).contains(&combo_count) {
         COMBO_TEXTS[combo_count - 2].get(language).to_string()
     } else {
         crate::ui::localization::COMBO_FLOATING_HIGH.format(language, combo_count as u32)

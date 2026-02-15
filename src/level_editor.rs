@@ -7,7 +7,7 @@
 use bevy::prelude::*;
 
 use crate::constants::*;
-use crate::map::{TerrainType, MAP_COLS, MAP_ROWS, GRID_SIZE, grid_to_world};
+use crate::map::{GRID_SIZE, MAP_COLS, MAP_ROWS, TerrainType, grid_to_world};
 use crate::resources::Language;
 use crate::resources::*;
 #[allow(clippy::wildcard_imports)]
@@ -144,7 +144,6 @@ impl EditorMapData {
 
 /// 地形元素定义（14种）
 // ============================================================================
-
 /// 左侧面板地形元素（7种）
 pub const LEFT_PANEL_TERRAINS: [TerrainType; 7] = [
     TerrainType::Empty,
@@ -222,10 +221,12 @@ fn get_terrain_category(terrain: TerrainType) -> TerrainCategory {
 /// 根据地形分类获取显示尺寸
 fn get_terrain_display_size(category: TerrainCategory) -> TerrainDisplaySize {
     match category {
-        TerrainCategory::Empty | TerrainCategory::Forest | TerrainCategory::Sea |
-        TerrainCategory::Barrier | TerrainCategory::BrickFull | TerrainCategory::SteelFull => {
-            TerrainDisplaySize::Full
-        }
+        TerrainCategory::Empty
+        | TerrainCategory::Forest
+        | TerrainCategory::Sea
+        | TerrainCategory::Barrier
+        | TerrainCategory::BrickFull
+        | TerrainCategory::SteelFull => TerrainDisplaySize::Full,
         TerrainCategory::BrickHalf(pos) | TerrainCategory::SteelHalf(pos) => {
             TerrainDisplaySize::Half(pos)
         }
@@ -233,10 +234,7 @@ fn get_terrain_display_size(category: TerrainCategory) -> TerrainDisplaySize {
 }
 
 /// 根据尺寸类型和基准尺寸计算实际尺寸和位置偏移
-fn calculate_size_and_offset(
-    size_type: TerrainDisplaySize,
-    base_size: Vec2,
-) -> (Vec2, Vec2) {
+fn calculate_size_and_offset(size_type: TerrainDisplaySize, base_size: Vec2) -> (Vec2, Vec2) {
     match size_type {
         TerrainDisplaySize::Full => (base_size, Vec2::ZERO),
         TerrainDisplaySize::Half(pos) => {
@@ -327,7 +325,7 @@ pub fn on_enter_level_editor(
 
     // 设置背景色为黑色
     commands.insert_resource(ClearColor(crate::ui::COLOR_BLACK));
-    
+
     // 初始化文件名输入
     input_filename.name = "1".to_string();
 
@@ -379,7 +377,10 @@ pub fn spawn_terrain_preview(
         return;
     }
 
-    let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
+    let base_size = Vec2::new(
+        TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING,
+        TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING,
+    );
     let category = get_terrain_category(terrain_type);
     let size_type = get_terrain_display_size(category);
     let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
@@ -492,7 +493,7 @@ pub fn handle_terrain_button_click(
         let height = window.height();
         let x = cursor_position.x - width / 2.0;
         let y = -(cursor_position.y - height / 2.0); // Y轴翻转
-        
+
         Vec2::new(x, y)
     };
 
@@ -507,7 +508,7 @@ pub fn handle_terrain_button_click(
         if distance < TERRAIN_BUTTON_CLICK_RADIUS {
             selected_terrain.terrain_type = Some(button.terrain_type);
             info!("✓ 成功选中地形: {:?}", button.terrain_type);
-            
+
             // 更新当前选择地形图标
             if let Ok(current_terrain_entity) = current_terrain_query.single() {
                 // 先移除所有的子实体（旧的图标）
@@ -519,28 +520,31 @@ pub fn handle_terrain_button_click(
                 for child in child_entities {
                     commands.entity(child).despawn();
                 }
-                
+
                 // 直接生成地形显示
                 if button.terrain_type != TerrainType::Empty {
                     let category = get_terrain_category(button.terrain_type);
-                    let base_size = Vec2::new(TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING, TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING);
+                    let base_size = Vec2::new(
+                        TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING,
+                        TERRAIN_BUTTON_SIZE - TERRAIN_BUTTON_PADDING,
+                    );
                     let size_type = get_terrain_display_size(category);
                     let (display_size, offset) = calculate_size_and_offset(size_type, base_size);
-                    
+
                     let texture = get_texture_handle(category, &texture_resources);
                     let atlas_info = get_atlas_info(category, &atlas_layouts);
-                    
+
                     let mut sprite = Sprite {
                         image: texture,
                         custom_size: Some(display_size),
                         color: Color::WHITE,
                         ..default()
                     };
-                    
+
                     if let Some((layout, index)) = atlas_info {
                         sprite.texture_atlas = Some(TextureAtlas { layout, index });
                     }
-                    
+
                     commands.spawn((
                         LevelEditorUI,
                         TerrainDisplay,
@@ -550,7 +554,7 @@ pub fn handle_terrain_button_click(
                     ));
                 }
             }
-            
+
             break;
         }
     }
@@ -588,7 +592,7 @@ pub fn handle_grid_click(
         let height = window.height();
         let x = cursor_position.x - width / 2.0;
         let y = -(cursor_position.y - height / 2.0); // Y轴翻转
-        
+
         Vec2::new(x, y)
     };
 
@@ -597,25 +601,28 @@ pub fn handle_grid_click(
         let cell_pos = transform.translation.truncate();
         let distance = cell_pos.distance(world_position);
 
-        if distance < GRID_SIZE / 2.0 {
-            if let Some(terrain_type) = selected_terrain.terrain_type {
-                // 更新地图数据
-                editor_map.set(cell.row, cell.col, terrain_type);
+        if distance < GRID_SIZE / 2.0
+            && let Some(terrain_type) = selected_terrain.terrain_type
+        {
+            // 更新地图数据
+            editor_map.set(cell.row, cell.col, terrain_type);
 
-                // 更新网格单元格显示
-                update_grid_cell(
-                    &mut commands,
-                    &texture_resources,
-                    &atlas_layouts,
-                    cell.row,
-                    cell.col,
-                    terrain_type,
-                    &grid_entities,
-                    &terrain_display_entities,
-                );
+            // 更新网格单元格显示
+            update_grid_cell(
+                &mut commands,
+                &texture_resources,
+                &atlas_layouts,
+                cell.row,
+                cell.col,
+                terrain_type,
+                &grid_entities,
+                &terrain_display_entities,
+            );
 
-                info!("放置地形: {:?} at ({}, {})", terrain_type, cell.row, cell.col);
-            }
+            info!(
+                "放置地形: {:?} at ({}, {})",
+                terrain_type, cell.row, cell.col
+            );
         }
     }
 }
@@ -651,28 +658,28 @@ fn update_grid_cell(
         } else {
             base_size
         };
-        
+
         // 直接生成地形显示，避免可变借用冲突
         if terrain_type != TerrainType::Empty {
             let actual_base_size = custom_base_size;
             let category = get_terrain_category(terrain_type);
             let size_type = get_terrain_display_size(category);
             let (display_size, offset) = calculate_size_and_offset(size_type, actual_base_size);
-            
+
             let texture = get_texture_handle(category, texture_resources);
             let atlas_info = get_atlas_info(category, atlas_layouts);
-            
+
             let mut sprite = Sprite {
                 image: texture,
                 custom_size: Some(display_size),
                 color: Color::WHITE,
                 ..default()
             };
-            
+
             if let Some((layout, index)) = atlas_info {
                 sprite.texture_atlas = Some(TextureAtlas { layout, index });
             }
-            
+
             commands.spawn((
                 LevelEditorUI,
                 TerrainDisplay,
@@ -702,16 +709,23 @@ pub fn handle_editor_input(
     if keyboard.just_pressed(KeyCode::KeyS) {
         export_level(&editor_map, &input_filename.name);
     }
-    
+
     // 处理文件名输入
     for key in keyboard.get_just_pressed() {
         match key {
             KeyCode::Backspace => {
                 input_filename.name.pop();
             }
-            key_char @ (KeyCode::Digit0 | KeyCode::Digit1 | KeyCode::Digit2 | 
-                       KeyCode::Digit3 | KeyCode::Digit4 | KeyCode::Digit5 | 
-                       KeyCode::Digit6 | KeyCode::Digit7 | KeyCode::Digit8 | KeyCode::Digit9) => {
+            key_char @ (KeyCode::Digit0
+            | KeyCode::Digit1
+            | KeyCode::Digit2
+            | KeyCode::Digit3
+            | KeyCode::Digit4
+            | KeyCode::Digit5
+            | KeyCode::Digit6
+            | KeyCode::Digit7
+            | KeyCode::Digit8
+            | KeyCode::Digit9) => {
                 if input_filename.name.len() < MAX_FILENAME_LENGTH {
                     let digit_char = match key_char {
                         KeyCode::Digit0 => '0',
@@ -732,7 +746,7 @@ pub fn handle_editor_input(
             _ => {}
         }
     }
-    
+
     // 更新文件名显示
     if let Ok(mut text) = filename_query.single_mut() {
         text.0 = input_filename.name.clone();

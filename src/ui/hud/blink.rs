@@ -21,9 +21,9 @@ use crate::ui::constants::*;
 /// 根据是否达到最大值决定最终颜色
 fn trigger_blink_timer(commands: &mut Commands, entity: Entity, is_max: bool) {
     let final_color = if is_max {
-        COLOR_RED  // 达到最大值时最终颜色为红色
+        COLOR_RED // 达到最大值时最终颜色为红色
     } else {
-        COLOR_WHITE  // 否则为白色
+        COLOR_WHITE // 否则为白色
     };
 
     commands

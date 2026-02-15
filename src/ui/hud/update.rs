@@ -20,7 +20,10 @@ use crate::ui::constants::*;
 ///
 /// 此系统每帧运行，平滑过渡血条和蓝条的宽度变化
 pub fn update_bar_animations(
-    mut bars: Query<(&mut BarAnimation, &mut Sprite, &mut Transform), Or<(With<HealthBarForeground>, With<BlueBarForeground>)>>,
+    mut bars: Query<
+        (&mut BarAnimation, &mut Sprite, &mut Transform),
+        Or<(With<HealthBarForeground>, With<BlueBarForeground>)>,
+    >,
 ) {
     for (mut animation, mut sprite, mut transform) in bars.iter_mut() {
         // 更新动画
@@ -97,10 +100,12 @@ fn update_single_player_hud_bars(
     {
         if (is_player1 && is_p1.is_some()) || (!is_player1 && is_p2.is_some()) {
             if is_health_foreground.is_some() {
-                let target_width = HUD_BAR_SIZE.x * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
+                let target_width =
+                    HUD_BAR_SIZE.x * (stats.life_points as f32 / HUD_MAX_LIFE_POINTS);
                 animation.set_target(target_width);
             } else if is_blue_foreground.is_some() {
-                let target_width = HUD_BAR_SIZE.x * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
+                let target_width =
+                    HUD_BAR_SIZE.x * (stats.energy_points as f32 / HUD_MAX_LIFE_POINTS);
                 animation.set_target(target_width);
             }
         }

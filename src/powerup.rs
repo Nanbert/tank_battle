@@ -4,13 +4,13 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{
-    CommanderLife, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
-    PlayerStatChanged, Language,
+    CommanderLife, GameAtlasLayoutResources, GameAudioResources, GameTextureResources, Language,
+    PlayerInfo, PlayerStatChanged,
 };
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
@@ -174,7 +174,8 @@ pub fn spawn_powerup(
     powerup_type: PowerUp,
     position: Vec3,
 ) {
-    let (texture, atlas_info, atlas_layout) = powerup_type.get_texture_resources(texture_resources, atlas_layouts);
+    let (texture, atlas_info, atlas_layout) =
+        powerup_type.get_texture_resources(texture_resources, atlas_layouts);
 
     crate::utils::spawn_animated_sprite(
         commands,
@@ -281,7 +282,7 @@ pub fn update_low_health_smoke_effects(
         // 检查玩家是否处于低血量状态（生命值 ≤ 1 且 > 0）
         let is_low_health = player_info
             .get_stats(player_tank.tank_type)
-            .map_or(false, |stats| stats.life_points <= 1 && stats.life_points > 0);
+            .is_some_and(|stats| stats.life_points <= 1 && stats.life_points > 0);
 
         // 检查是否已经有烟雾特效子实体
         let has_smoke_sprite =

@@ -4,25 +4,29 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 use crate::constants::*;
 use crate::resources::{
     GameMode, GameTextureResources, GameTimers, GameTrackers, PlayerInfo, PlayerStatChanged,
     PlayerStats, RecallTimer, StatType,
 };
-use crate::weather::CurrentWeather;
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
+use crate::weather::CurrentWeather;
 
 /// 玩家1初始X坐标（左侧，向左偏移5像素防止卡墙）
-const PLAYER1_START_X: f32 =
-    -crate::physics_config::collider_sizes::PLAYER.x - COMMANDER_SIZE.x / 2.0 - PLAYER_SPAWN_OFFSET - 5.0;
+const PLAYER1_START_X: f32 = -crate::physics_config::collider_sizes::PLAYER.x
+    - COMMANDER_SIZE.x / 2.0
+    - PLAYER_SPAWN_OFFSET
+    - 5.0;
 /// 玩家2初始X坐标（右侧，向右偏移5像素防止卡墙）
-const PLAYER2_START_X: f32 =
-    crate::physics_config::collider_sizes::PLAYER.x + COMMANDER_SIZE.x / 2.0 + PLAYER_SPAWN_OFFSET + 5.0;
+const PLAYER2_START_X: f32 = crate::physics_config::collider_sizes::PLAYER.x
+    + COMMANDER_SIZE.x / 2.0
+    + PLAYER_SPAWN_OFFSET
+    + 5.0;
 
 /// 玩家初始Y坐标（底部）
 const PLAYER_START_Y: f32 = MAP_BOTTOM_Y + crate::physics_config::collider_sizes::PLAYER.x;
@@ -36,8 +40,14 @@ pub fn spawn_player_tank(
     tank_type: TankType,
 ) -> Entity {
     let (x_pos, _collider_half) = match tank_type {
-        TankType::Player1 => (PLAYER1_START_X, crate::physics_config::collider_sizes::PLAYER.x),
-        TankType::Player2 => (PLAYER2_START_X, crate::physics_config::collider_sizes::PLAYER.x),
+        TankType::Player1 => (
+            PLAYER1_START_X,
+            crate::physics_config::collider_sizes::PLAYER.x,
+        ),
+        TankType::Player2 => (
+            PLAYER2_START_X,
+            crate::physics_config::collider_sizes::PLAYER.x,
+        ),
         TankType::Enemy => unreachable!("敌方坦克不应该使用此函数"),
     };
 
@@ -66,8 +76,9 @@ pub fn spawn_player_tank(
         ),
     );
 
-// 应用物理属性组件（使用统一配置）
-    crate::physics_config::player_tank_physics().apply_to_entity(&mut commands.entity(player_entity));
+    // 应用物理属性组件（使用统一配置）
+    crate::physics_config::player_tank_physics()
+        .apply_to_entity(&mut commands.entity(player_entity));
 
     // 为玩家坦克添加子实体（炮塔）
     commands.entity(player_entity).with_children(|parent| {
@@ -148,8 +159,9 @@ pub fn move_player_tank(
         };
 
         // 检查玩家是否有 track_chain 特效
-        let has_track_chain = player_info.get_stats(player_tank.tank_type)
-            .map_or(false, |stats| stats.track_chain);
+        let has_track_chain = player_info
+            .get_stats(player_tank.tank_type)
+            .is_some_and(|stats| stats.track_chain);
 
         // 雪天且没有 track_chain 特效时，使用地滑效果
         let use_sliding = is_snowy && !has_track_chain;
@@ -165,7 +177,10 @@ pub fn move_player_tank(
                 let acceleration = PLAYER_ACCELERATION * time.delta_secs();
 
                 // 简单的插值加速
-                player_velocity.velocity = player_velocity.velocity.lerp(target_velocity, acceleration * time.delta_secs() / base_speed);
+                player_velocity.velocity = player_velocity.velocity.lerp(
+                    target_velocity,
+                    acceleration * time.delta_secs() / base_speed,
+                );
             } else {
                 // 释放按键时应用摩擦力
                 player_velocity.apply_friction(SNOW_FRICTION, time.delta_secs());
@@ -189,7 +204,8 @@ pub fn move_player_tank(
                 };
 
                 linear_velocity.0 = move_direction * actual_speed;
-                movement_controller.translation = Some(move_direction * actual_speed * time.delta_secs());
+                movement_controller.translation =
+                    Some(move_direction * actual_speed * time.delta_secs());
             } else {
                 linear_velocity.0 = Vec2::ZERO;
                 movement_controller.translation = None;
@@ -449,7 +465,15 @@ pub fn reset_player_positions(
         With<PlayerTank>,
     >,
 ) {
-    for (mut transform, mut linear_velocity, mut angular_velocity, mut movement_controller, player_velocity, player_tank) in &mut player_tanks {
+    for (
+        mut transform,
+        mut linear_velocity,
+        mut angular_velocity,
+        mut movement_controller,
+        player_velocity,
+        player_tank,
+    ) in &mut player_tanks
+    {
         // 重置物理引擎速度和位移累积
         linear_velocity.0 = Vec2::ZERO;
         angular_velocity.0 = 0.0;
@@ -734,5 +758,3 @@ pub fn handle_barrel_recoil_force(
         }
     }
 }
-
-

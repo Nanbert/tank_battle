@@ -160,13 +160,14 @@ fn register_stage_intro_systems(app: &mut App) {
             .chain(),
     )
     .add_systems(
-                Update,
-                (
-                    game_state::cleanup_all_game_state,
-                    ui::overlay::handle_stage_intro_timer,
-                )
-                    .run_if(in_state(GameState::StageIntro)),
-            )    .add_systems(
+        Update,
+        (
+            game_state::cleanup_all_game_state,
+            ui::overlay::handle_stage_intro_timer,
+        )
+            .run_if(in_state(GameState::StageIntro)),
+    )
+    .add_systems(
         OnExit(GameState::StageIntro),
         ui::overlay::despawn_stage_intro,
     );
@@ -235,10 +236,7 @@ fn register_congratulations_systems(app: &mut App) {
     )
     .add_systems(
         Update,
-        (
-            ui::overlay::handle_congratulations_input,
-        )
-            .run_if(in_state(GameState::Congratulations)),
+        (ui::overlay::handle_congratulations_input,).run_if(in_state(GameState::Congratulations)),
     );
 }
 
@@ -291,7 +289,7 @@ fn register_playing_systems(app: &mut App) {
     );
 
     // 玩家坦克系统集
-app.add_systems(
+    app.add_systems(
         Update,
         (
             player::move_player_tank.in_set(GameSystemSet::PlayerSystems),
@@ -326,10 +324,7 @@ app.add_systems(
     // 连击系统
     app.add_systems(
         Update,
-        (
-            bullet::handle_combo_events,
-            bullet::update_combo_system,
-        ),
+        (bullet::handle_combo_events, bullet::update_combo_system),
     );
 
     // 激光系统集
@@ -365,10 +360,10 @@ app.add_systems(
     );
 
     // 天气系统：离开 Playing 状态时清理
-    app.add_systems(OnExit(GameState::Playing), (
-            weather::on_playing_exit,
-            crate::ambience::cleanup_leaves,
-        ).chain());
+    app.add_systems(
+        OnExit(GameState::Playing),
+        (weather::on_playing_exit, crate::ambience::cleanup_leaves).chain(),
+    );
 
     // 司令官系统集
     app.add_systems(
@@ -754,9 +749,7 @@ pub fn setup(mut commands: Commands) {
 
 /// Web 端：从预加载的关卡资源中恢复关卡数据
 #[cfg(target_arch = "wasm32")]
-fn setup_web_level_assets(
-    mut level_assets: ResMut<crate::levels::LevelAssets>,
-) {
+fn setup_web_level_assets(mut level_assets: ResMut<crate::levels::LevelAssets>) {
     // 从 lib.rs 中预加载的关卡资源中获取数据
     if let Some(preloaded) = crate::get_preloaded_level_assets() {
         *level_assets = preloaded;
@@ -889,7 +882,8 @@ fn init_atlas_layouts(
         forest: crate::atlas::FOREST_ATLAS.add_to_assets(texture_atlas_layouts),
         forest_fire: crate::atlas::FOREST_FIRE_ATLAS.add_to_assets(texture_atlas_layouts),
         forest_yellow: crate::atlas::FOREST_YELLOW_ATLAS.add_to_assets(texture_atlas_layouts),
-        forest_fire_yellow: crate::atlas::FOREST_FIRE_YELLOW_ATLAS.add_to_assets(texture_atlas_layouts),
+        forest_fire_yellow: crate::atlas::FOREST_FIRE_YELLOW_ATLAS
+            .add_to_assets(texture_atlas_layouts),
         // 背景
         background: background_atlas,
         // 子弹特效
@@ -907,11 +901,13 @@ fn init_atlas_layouts(
         player_avatar: crate::atlas::PLAYER_AVATAR_ATLAS.add_to_assets(texture_atlas_layouts),
         // 敌方出生
         enemy_born: crate::atlas::ENEMY_BORN_ATLAS.add_to_assets(texture_atlas_layouts),
-        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_normal: crate::atlas::ENEMY_TANK_NORMAL_ATLAS
+            .add_to_assets(texture_atlas_layouts),
         enemy_tank_fire: crate::atlas::ENEMY_TANK_FIRE_ATLAS.add_to_assets(texture_atlas_layouts),
         enemy_tank_heavy: crate::atlas::ENEMY_TANK_HEAVY_ATLAS.add_to_assets(texture_atlas_layouts),
         enemy_tank_light: crate::atlas::ENEMY_TANK_LIGHT_ATLAS.add_to_assets(texture_atlas_layouts),
-        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS.add_to_assets(texture_atlas_layouts),
+        enemy_tank_burning: crate::atlas::ENEMY_TANK_BURNING_ATLAS
+            .add_to_assets(texture_atlas_layouts),
         laser_blue: crate::atlas::LASER_BLUE_ATLAS.add_to_assets(texture_atlas_layouts),
         laser_red: crate::atlas::LASER_RED_ATLAS.add_to_assets(texture_atlas_layouts),
         // 能量球
@@ -919,17 +915,22 @@ fn init_atlas_layouts(
         energy_red_ball: crate::atlas::ENERGY_BALL_RED_ATLAS.add_to_assets(texture_atlas_layouts),
         // 道具
         speed_up_icon: crate::atlas::POWER_UP_SPEED_UP_ATLAS.add_to_assets(texture_atlas_layouts),
-        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS.add_to_assets(texture_atlas_layouts),
-        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS.add_to_assets(texture_atlas_layouts),
-        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS.add_to_assets(texture_atlas_layouts),
-        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS.add_to_assets(texture_atlas_layouts),
+        protection_icon: crate::atlas::POWER_UP_PROTECTION_ATLAS
+            .add_to_assets(texture_atlas_layouts),
+        fire_speed_icon: crate::atlas::POWER_UP_FIRE_SPEED_ATLAS
+            .add_to_assets(texture_atlas_layouts),
+        fire_shell_icon: crate::atlas::POWER_UP_FIRE_SHELL_ATLAS
+            .add_to_assets(texture_atlas_layouts),
+        track_chain_icon: crate::atlas::POWER_UP_TRACK_CHAIN_ATLAS
+            .add_to_assets(texture_atlas_layouts),
         track_chain_effect: crate::atlas::TRACK_CHAIN_ATLAS.add_to_assets(texture_atlas_layouts),
         tank_smoke_effect: crate::atlas::TANK_SMOKE_ATLAS.add_to_assets(texture_atlas_layouts),
         dash_dust_effect: crate::atlas::DASH_DUST_ATLAS.add_to_assets(texture_atlas_layouts),
         penetrate_icon: crate::atlas::POWER_UP_PENETRATE_ATLAS.add_to_assets(texture_atlas_layouts),
         repair_icon: crate::atlas::POWER_UP_REPAIR_ATLAS.add_to_assets(texture_atlas_layouts),
         hamburger_icon: crate::atlas::POWER_UP_HAMBURGER_ATLAS.add_to_assets(texture_atlas_layouts),
-        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS.add_to_assets(texture_atlas_layouts),
+        air_cushion_icon: crate::atlas::POWER_UP_AIR_CUSHION_ATLAS
+            .add_to_assets(texture_atlas_layouts),
         shell_icon: crate::atlas::POWER_UP_SHELL_ATLAS.add_to_assets(texture_atlas_layouts),
     }
 }

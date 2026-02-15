@@ -111,21 +111,19 @@ pub fn init_level_assets() {
 pub fn get_available_level_count() -> usize {
     let levels_dir = get_levels_dir();
     let mut max_level = 0;
-    
+
     // 遍历关卡目录，找出最大的关卡编号
     if let Ok(entries) = std::fs::read_dir(levels_dir) {
         for entry in entries.flatten() {
-            if let Some(file_name) = entry.file_name().to_str() {
-                // 匹配 "数字.txt" 格式的文件
-                if let Some(level_str) = file_name.strip_suffix(".txt") {
-                    if let Ok(level_num) = level_str.parse::<usize>() {
-                        max_level = max_level.max(level_num);
-                    }
-                }
+            if let Some(file_name) = entry.file_name().to_str()
+                && let Some(level_str) = file_name.strip_suffix(".txt")
+                && let Ok(level_num) = level_str.parse::<usize>()
+            {
+                max_level = max_level.max(level_num);
             }
         }
     }
-    
+
     // 返回实际关卡数和代码设置的最小值之间的较大者
     max_level.max(crate::constants::MIN_LEVELS)
 }
@@ -147,7 +145,10 @@ pub fn init_level_assets(mut level_assets: ResMut<LevelAssets>) {
             info!("关卡 {} 已加载", level);
         } else {
             warn!("关卡 {} 加载失败，将使用空地图", level);
-            level_assets.set(level, [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS]);
+            level_assets.set(
+                level,
+                [[TerrainType::Empty; crate::map::MAP_COLS]; crate::map::MAP_ROWS],
+            );
         }
     }
 }

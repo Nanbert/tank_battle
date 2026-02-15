@@ -4,8 +4,8 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 use crate::constants::*;
 use crate::effects;
@@ -49,7 +49,7 @@ pub struct ComboEvent {
 pub enum Bullet {
     Player {
         tank_type: TankType,
-        penetrate: bool,  // 是否有穿透效果
+        penetrate: bool, // 是否有穿透效果
     },
     Enemy,
 }
@@ -88,7 +88,7 @@ pub struct BulletSpawnParams {
     pub direction: Vec2,
     pub speed: f32,
     pub owner_type: TankType,
-    pub penetrate: bool,  // 是否有穿透效果
+    pub penetrate: bool, // 是否有穿透效果
 }
 
 /// 生成子弹实体
@@ -108,7 +108,9 @@ pub fn spawn_bullet(
 
     // 雨天时，有50%概率无法发射带有火焰的子弹
     let can_attach_fire = if has_fire_shell {
-        !weather.is_some_and(|w| w.weather_type == crate::weather::WeatherType::Rain && rand::random::<f32>() < 0.5)
+        !weather.is_some_and(|w| {
+            w.weather_type == crate::weather::WeatherType::Rain && rand::random::<f32>() < 0.5
+        })
     } else {
         false
     };
@@ -276,11 +278,11 @@ pub fn enemy_shoot_system(
                     direction,
                     speed: bullet_speed,
                     owner_type: TankType::Enemy,
-                    penetrate: false,  // 敌方坦克没有穿透效果
+                    penetrate: false, // 敌方坦克没有穿透效果
                 },
                 &player_info,
                 &atlas_layouts,
-                None,  // 敌方坦克不受雨天火焰弹影响
+                None, // 敌方坦克不受雨天火焰弹影响
             );
 
             // 记录子弹的所有者
@@ -319,7 +321,7 @@ pub fn player_shoot_system(
 
         // 检查是否可以射击
         let can_shoot = can_player_shoot(
-            &rotation_timer,
+            rotation_timer,
             &fire_config,
             player_tank.tank_type,
             &keyboard,
@@ -333,11 +335,7 @@ pub fn player_shoot_system(
         }
 
         // 计算子弹生成参数
-        let spawn_params = get_bullet_spawn_params(
-            &transform,
-            player_tank.tank_type,
-            &player_info,
-        );
+        let spawn_params = get_bullet_spawn_params(transform, player_tank.tank_type, &player_info);
 
         // 生成子弹
         let bullet_entity = spawn_bullet(
@@ -413,7 +411,7 @@ fn get_bullet_spawn_params(
     let player_stats = player_info.get_stats(tank_type);
     let fire_speed_bonus = player_stats.map_or(0, |stats| stats.fire_speed) as f32 / 100.0;
     let bullet_speed = PLAYER_BULLET_SPEED * (1.0 + fire_speed_bonus);
-    let penetrate = player_stats.map_or(false, |stats| stats.penetrate);
+    let penetrate = player_stats.is_some_and(|stats| stats.penetrate);
 
     BulletSpawnParams {
         position: bullet_pos,
@@ -574,7 +572,11 @@ pub fn bullet_terrain_collision_system(
                         audio_handle: audio_resources.hit.clone(),
                         volume: crate::constants::VOLUME_QUARTER,
                     });
-                    utils::play_one_shot_sound(&mut commands, audio_resources.hit.clone(), crate::constants::VOLUME_QUARTER);
+                    utils::play_one_shot_sound(
+                        &mut commands,
+                        audio_resources.hit.clone(),
+                        crate::constants::VOLUME_QUARTER,
+                    );
                 }
             }
 
@@ -599,7 +601,7 @@ pub fn handle_combo_events(
         let current_time = time.elapsed_secs();
         let combo_count = combo_tracker.add_combo(event.player_type, current_time);
         let combo_score = ComboTracker::get_combo_score(combo_count);
-        
+
         // 增加分数（考虑连击加成）
         player_info.with_stats_mut(event.player_type, |player_stats| {
             player_stats.score += combo_score;
@@ -607,7 +609,7 @@ pub fn handle_combo_events(
                 player_type: event.player_type,
                 stat_type: StatType::Score,
             });
-            
+
             // 连击数 >= 2 时显示连击弹出文字
             if combo_count >= 2 {
                 let font = font_resources.get_font(*language);
@@ -618,11 +620,8 @@ pub fn handle_combo_events(
                 let font_size = ComboTracker::get_combo_font_size(combo_count);
 
                 // 在敌方坦克位置上方生成连击弹出文字
-                let floating_position = Vec3::new(
-                    event.position.x,
-                    event.position.y + 50.0,
-                    Z_UI_TEXT + 3.0,
-                );
+                let floating_position =
+                    Vec3::new(event.position.x, event.position.y + 50.0, Z_UI_TEXT + 3.0);
                 crate::ui::overlay::spawn_floating_text_with_font_size(
                     &mut commands,
                     &text_with_score,
@@ -637,10 +636,7 @@ pub fn handle_combo_events(
 }
 
 /// 连击更新系统
-pub fn update_combo_system(
-    mut combo_tracker: ResMut<ComboTracker>,
-    time: Res<Time>,
-) {
+pub fn update_combo_system(mut combo_tracker: ResMut<ComboTracker>, time: Res<Time>) {
     let current_time = time.elapsed_secs();
     combo_tracker.update(current_time);
 }
@@ -815,10 +811,12 @@ fn handle_enemy_bullet_player_collision(
     // 更新 filter_groups
     if need_update_filter_groups {
         // 恢复默认的 CollisionLayers（memberships=0b01, filters=0b11）
-        commands.entity(player_tank_entity).insert(CollisionLayers::new(
-            LayerMask::from(0b01u32), // 属于 layer0
-            LayerMask::from(0b11u32), // 与 layer0 和 layer1 都碰撞
-        ));
+        commands
+            .entity(player_tank_entity)
+            .insert(CollisionLayers::new(
+                LayerMask::from(0b01u32), // 属于 layer0
+                LayerMask::from(0b11u32), // 与 layer0 和 layer1 都碰撞
+            ));
     }
 
     // 销毁坦克

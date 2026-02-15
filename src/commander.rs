@@ -44,8 +44,9 @@ pub fn spawn_commander(
         (Commander, PlayingEntity, AnimationMode::Looping),
     );
 
-// 应用物理配置（使用统一配置）
-    crate::physics_config::COMMANDER_PHYSICS.apply_to_entity(&mut commands.entity(commander_entity));
+    // 应用物理配置（使用统一配置）
+    crate::physics_config::COMMANDER_PHYSICS
+        .apply_to_entity(&mut commands.entity(commander_entity));
 
     // 创建音乐动画精灵（独立实体，与 Commander 位置相同）
     let music_texture = texture_resources.music_note.clone();

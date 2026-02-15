@@ -4,8 +4,8 @@
 
 #![allow(clippy::wildcard_imports)]
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 use crate::effects;
 use crate::utils;
@@ -87,7 +87,7 @@ pub fn handle_dash_input(
                         Transform {
                             translation: Vec3::new(0.0, -50.0, -0.1), // 位于坦克后面50像素
                             rotation: Quat::from_rotation_z(std::f32::consts::FRAC_PI_2), // 旋转90度
-                            scale: Vec3::splat(2.0), // 放大2倍
+                            scale: Vec3::splat(2.0),                                      // 放大2倍
                         },
                         animation_indices,
                         AnimationTimer(Timer::from_seconds(

@@ -134,7 +134,10 @@ pub fn set_test_weather(
     // 只在指定关卡设置测试天气
     if stage_level.0 == TEST_STAGE {
         weather.weather_type = TEST_WEATHER;
-        info!("测试模式：关卡 {} 强制天气 {:?}", stage_level.0, TEST_WEATHER);
+        info!(
+            "测试模式：关卡 {} 强制天气 {:?}",
+            stage_level.0, TEST_WEATHER
+        );
     }
 }
 
@@ -154,10 +157,7 @@ pub fn on_playing_exit(
 }
 
 /// 降水生成系统
-pub fn precipitation_spawn_system(
-    mut commands: Commands,
-    weather: Res<CurrentWeather>,
-) {
+pub fn precipitation_spawn_system(mut commands: Commands, weather: Res<CurrentWeather>) {
     spawn_precipitation(&mut commands, weather.weather_type);
 }
 
@@ -174,7 +174,9 @@ pub fn precipitation_update_system(
         transform.translation.y += particle.velocity.y * time.delta_secs();
 
         // 雪花有飘动效果
-        let sway = weather.weather_type.sway_speed() * particle.sway_offset.sin() * weather.weather_type.sway_amplitude();
+        let sway = weather.weather_type.sway_speed()
+            * particle.sway_offset.sin()
+            * weather.weather_type.sway_amplitude();
         if sway != 0.0 {
             particle.sway_offset += time.delta_secs() * weather.weather_type.sway_speed();
             transform.translation.x += sway;

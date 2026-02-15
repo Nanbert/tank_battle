@@ -56,22 +56,22 @@ impl PowerUpStrategy {
         match self {
             PowerUpStrategy::SpeedUp => {
                 if stats.speed < MAX_ATTRIBUTE_VALUE {
-                    stats.speed = (stats.speed + POWERUP_ATTRIBUTE_INCREASE)
-                        .min(MAX_ATTRIBUTE_VALUE);
+                    stats.speed =
+                        (stats.speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                 }
                 PowerUpResult::StatChanged(StatType::Speed)
             }
             PowerUpStrategy::Protection => {
                 if stats.protection < MAX_ATTRIBUTE_VALUE {
-                    stats.protection = (stats.protection + POWERUP_ATTRIBUTE_INCREASE)
-                        .min(MAX_ATTRIBUTE_VALUE);
+                    stats.protection =
+                        (stats.protection + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                 }
                 PowerUpResult::StatChanged(StatType::Protection)
             }
             PowerUpStrategy::FireSpeed => {
                 if stats.fire_speed < MAX_ATTRIBUTE_VALUE {
-                    stats.fire_speed = (stats.fire_speed + POWERUP_ATTRIBUTE_INCREASE)
-                        .min(MAX_ATTRIBUTE_VALUE);
+                    stats.fire_speed =
+                        (stats.fire_speed + POWERUP_ATTRIBUTE_INCREASE).min(MAX_ATTRIBUTE_VALUE);
                 }
                 PowerUpResult::StatChanged(StatType::FireSpeed)
             }
@@ -140,7 +140,7 @@ pub enum PowerUp {
 
 impl PowerUp {
     /// 将道具类型转换为策略枚举（零成本）
-    pub const fn into_strategy(&self) -> PowerUpStrategy {
+    pub const fn into_strategy(self) -> PowerUpStrategy {
         match self {
             PowerUp::SpeedUp => PowerUpStrategy::SpeedUp,
             PowerUp::Protection => PowerUpStrategy::Protection,
@@ -159,9 +159,15 @@ impl PowerUp {
     pub fn get_floating_text(&self, language: crate::resources::Language) -> String {
         use crate::ui::localization::*;
         match self {
-            PowerUp::SpeedUp => POWERUP_FLOATING_SPEED_UP.format(language, POWERUP_ATTRIBUTE_INCREASE),
-            PowerUp::Protection => POWERUP_FLOATING_PROTECTION.format(language, POWERUP_ATTRIBUTE_INCREASE),
-            PowerUp::FireSpeed => POWERUP_FLOATING_FIRE_SPEED.format(language, POWERUP_ATTRIBUTE_INCREASE),
+            PowerUp::SpeedUp => {
+                POWERUP_FLOATING_SPEED_UP.format(language, POWERUP_ATTRIBUTE_INCREASE)
+            }
+            PowerUp::Protection => {
+                POWERUP_FLOATING_PROTECTION.format(language, POWERUP_ATTRIBUTE_INCREASE)
+            }
+            PowerUp::FireSpeed => {
+                POWERUP_FLOATING_FIRE_SPEED.format(language, POWERUP_ATTRIBUTE_INCREASE)
+            }
             PowerUp::Repair => POWERUP_FLOATING_REPAIR.get(language).to_string(),
             PowerUp::Hamburger => POWERUP_FLOATING_HAMBURGER.get(language).to_string(),
             PowerUp::Shell => POWERUP_FLOATING_SHELL.get(language).to_string(),
@@ -177,7 +183,11 @@ impl PowerUp {
         &self,
         texture_resources: &'a crate::resources::GameTextureResources,
         atlas_layouts: &'a crate::resources::GameAtlasLayoutResources,
-    ) -> (bevy::prelude::Handle<bevy::prelude::Image>, &'static crate::atlas::TextureAtlasInfo, bevy::prelude::Handle<bevy::prelude::TextureAtlasLayout>) {
+    ) -> (
+        bevy::prelude::Handle<bevy::prelude::Image>,
+        &'static crate::atlas::TextureAtlasInfo,
+        bevy::prelude::Handle<bevy::prelude::TextureAtlasLayout>,
+    ) {
         match self {
             PowerUp::SpeedUp => (
                 texture_resources.speed_up_icon.clone(),

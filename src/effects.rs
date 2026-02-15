@@ -8,7 +8,9 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::constants::*;
-use crate::resources::{GameAudioResources, GameTextureResources, GameAtlasLayoutResources, PlayerInfo};
+use crate::resources::{
+    GameAtlasLayoutResources, GameAudioResources, GameTextureResources, PlayerInfo,
+};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -37,7 +39,11 @@ pub fn spawn_explosion(
     );
 
     // 使用预加载的爆炸音效
-    utils::play_one_shot_sound(commands, sound_resources.explosion.clone(), crate::constants::VOLUME_HALF);
+    utils::play_one_shot_sound(
+        commands,
+        sound_resources.explosion.clone(),
+        crate::constants::VOLUME_HALF,
+    );
 }
 
 pub fn spawn_forest_fire(
@@ -64,7 +70,11 @@ pub fn spawn_forest_fire(
     );
 
     // 播放树林燃烧音效
-    utils::play_one_shot_sound(commands, sound_resources.burn_tree.clone(), crate::constants::VOLUME_HALF);
+    utils::play_one_shot_sound(
+        commands,
+        sound_resources.burn_tree.clone(),
+        crate::constants::VOLUME_HALF,
+    );
 }
 
 pub fn spawn_spark(
@@ -394,8 +404,12 @@ pub fn play_bubble_ambience(
     }
 
     if player_in_sea && ambience_players.is_empty() {
-        let entity = utils::play_looping_sound(&mut commands, audio_resources.bubble_ambience.clone(), crate::constants::VOLUME_FULL);
-        commands.entity(entity).insert(BubbleAmbiencePlayer::default());
+        let entity = utils::play_looping_sound(
+            &mut commands,
+            audio_resources.bubble_ambience.clone(),
+            crate::constants::VOLUME_FULL,
+        );
+        commands.entity(entity).insert(BubbleAmbiencePlayer);
     } else if !player_in_sea {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
     }
@@ -433,7 +447,8 @@ pub fn play_commander_ambience(
 
     if is_near_commander && ambience_players.is_empty() {
         let random_music = select_random_music_note(&audio_resources);
-        let entity = utils::play_looping_sound(&mut commands, random_music, crate::constants::VOLUME_HALF);
+        let entity =
+            utils::play_looping_sound(&mut commands, random_music, crate::constants::VOLUME_HALF);
         commands.entity(entity).insert(CommanderAmbiencePlayer);
     } else if !is_near_commander {
         utils::cleanup_entities(&mut commands, ambience_players.iter().map(|(e, _)| e));
@@ -472,7 +487,7 @@ pub fn spawn_sea_bubbles(
         // 在整个地图范围内随机位置生成泡泡，从底部开始
         let bubble_pos = Vec3::new(
             rng.gen_range(MAP_LEFT_X..MAP_RIGHT_X),
-            MAP_BOTTOM_Y,  // 从地图底部开始
+            MAP_BOTTOM_Y, // 从地图底部开始
             Z_FOREST,
         );
 
@@ -488,11 +503,11 @@ pub fn spawn_sea_bubbles(
             bubble_animation_indices,
             ANIMATION_FRAME_BUBBLE,
             Transform::from_translation(bubble_pos),
-            Vec2::new(bubble_size, bubble_size),  // 随机大小
+            Vec2::new(bubble_size, bubble_size), // 随机大小
             (
                 crate::constants::SeaBubbleAnimation,
                 crate::ui::PlayingEntity,
-                crate::constants::AnimationMode::Looping,  // 循环播放
+                crate::constants::AnimationMode::Looping, // 循环播放
             ),
         );
     }
@@ -516,10 +531,19 @@ pub fn animate_sea_bubbles(
         With<crate::constants::SeaBubbleAnimation>,
     >,
 ) {
-    for (entity, mut timer, mut sprite, indices, mut current_frame, animation_mode, mut transform) in &mut query {
+    for (
+        entity,
+        mut timer,
+        mut sprite,
+        indices,
+        mut current_frame,
+        animation_mode,
+        mut transform,
+    ) in &mut query
+    {
         // 向上运动
         transform.translation.y += BUBBLE_SPEED * time.delta_secs();
-        
+
         // 循环播放动画
         if *animation_mode == crate::constants::AnimationMode::Looping {
             crate::utils::advance_next_frame(

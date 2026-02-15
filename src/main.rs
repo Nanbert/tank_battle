@@ -2,8 +2,8 @@
 //!
 //!
 
-mod app;
 mod ambience;
+mod app;
 mod atlas;
 mod bullet;
 mod commander;
@@ -27,8 +27,8 @@ mod ui;
 mod utils;
 mod weather;
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 pub fn init_game() {
     #[cfg(target_arch = "wasm32")]

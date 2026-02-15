@@ -2,16 +2,18 @@
 //!
 //! 处理敌方坦克的生成、移动、碰撞检测和动画
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 use rand::Rng;
 use std::time::Duration;
 
+use crate::bullet::ComboEvent;
+use crate::bullet::EffectEvent;
 #[allow(clippy::wildcard_imports)]
 use crate::constants::*;
-use crate::resources::{EnemySpawnState, GameAtlasLayoutResources, GameTextureResources, GameAudioResources};
-use crate::bullet::EffectEvent;
-use crate::bullet::ComboEvent;
+use crate::resources::{
+    EnemySpawnState, GameAtlasLayoutResources, GameAudioResources, GameTextureResources,
+};
 #[allow(clippy::wildcard_imports)]
 use crate::ui::constants::*;
 use crate::utils;
@@ -133,9 +135,7 @@ pub fn handle_spawn_enemy_event(
         );
 
         // 添加生命值组件
-        commands
-            .entity(enemy_entity)
-            .insert(EnemyLife::new(life));
+        commands.entity(enemy_entity).insert(EnemyLife::new(life));
 
         // 添加生命值点（红色圆点）
         spawn_enemy_life_dots(&mut commands, enemy_entity, life);
@@ -163,7 +163,8 @@ pub fn handle_spawn_enemy_event(
             .insert(AngularVelocity::default());
 
         // 应用物理配置
-        crate::physics_config::enemy_tank_physics().apply_to_entity(&mut commands.entity(enemy_entity));
+        crate::physics_config::enemy_tank_physics()
+            .apply_to_entity(&mut commands.entity(enemy_entity));
     }
 }
 
@@ -239,11 +240,12 @@ pub fn collect_enemy_collisions(
         }
 
         // 从位置差计算碰撞法线
-        if let (Ok(enemy_transform), Ok(other_transform)) =
-            (enemy_tanks.get(enemy_entity), all_entities.get(other_entity))
-        {
-            let direction = enemy_transform.translation.truncate()
-                - other_transform.translation.truncate();
+        if let (Ok(enemy_transform), Ok(other_transform)) = (
+            enemy_tanks.get(enemy_entity),
+            all_entities.get(other_entity),
+        ) {
+            let direction =
+                enemy_transform.translation.truncate() - other_transform.translation.truncate();
             if direction.length() > 0.0 {
                 let normal = direction.normalize();
                 collision_cache.insert(enemy_entity, normal);
@@ -280,10 +282,22 @@ pub fn enemy_fire_spread_system(
         // 如果只有一方有火焰，传染给另一方
         if e1_has_fire && !e2_has_fire {
             let player_type = get_burning_player_type(e1, &enemy_tanks, &burning_effects);
-            spawn_enemy_burning_effect(&mut commands, e2, &texture_resources, &atlas_layouts, player_type);
+            spawn_enemy_burning_effect(
+                &mut commands,
+                e2,
+                &texture_resources,
+                &atlas_layouts,
+                player_type,
+            );
         } else if !e1_has_fire && e2_has_fire {
             let player_type = get_burning_player_type(e2, &enemy_tanks, &burning_effects);
-            spawn_enemy_burning_effect(&mut commands, e1, &texture_resources, &atlas_layouts, player_type);
+            spawn_enemy_burning_effect(
+                &mut commands,
+                e1,
+                &texture_resources,
+                &atlas_layouts,
+                player_type,
+            );
         }
     }
 }
@@ -363,10 +377,7 @@ pub fn spawn_enemy_burning_effect(
                 TimerMode::Repeating,
             )),
             CurrentAnimationFrame(0),
-            EnemyTankBurningTimer(Timer::from_seconds(
-                burning_duration,
-                TimerMode::Once,
-            )),
+            EnemyTankBurningTimer(Timer::from_seconds(burning_duration, TimerMode::Once)),
         ));
     });
 }
@@ -403,22 +414,21 @@ pub fn move_enemy_tanks(
 
         // 优先使用事件缓存（事件驱动模式）
         // 只在冷却时间结束后才响应碰撞
-        if collision_cooldown.is_finished() {
-            if let Some(collision_normal) = collision_cache.take(entity)
-                && collision_normal.length() > 0.0
-            {
-                // 碰撞法线方向：从碰撞对象指向坦克（推开方向）
-                // 点积 < 0：坦克朝着碰撞源移动（撞墙）→ 需要转向
-                // 点积 >= 0：坦克被推或垂直移动 → 不需要转向
-                let current_dir = enemy_tank.direction;
-                let hitting_obstacle = current_dir.dot(collision_normal) < 0.0;
+        if collision_cooldown.is_finished()
+            && let Some(collision_normal) = collision_cache.take(entity)
+            && collision_normal.length() > 0.0
+        {
+            // 碰撞法线方向：从碰撞对象指向坦克（推开方向）
+            // 点积 < 0：坦克朝着碰撞源移动（撞墙）→ 需要转向
+            // 点积 >= 0：坦克被推或垂直移动 → 不需要转向
+            let current_dir = enemy_tank.direction;
+            let hitting_obstacle = current_dir.dot(collision_normal) < 0.0;
 
-                if hitting_obstacle {
-                    enemy_tank.direction = get_new_direction(collision_normal);
-                    // 设置3秒冷却时间，避免频繁转向
-                    collision_cooldown.set_duration(Duration::from_secs(3));
-                    collision_cooldown.reset();
-                }
+            if hitting_obstacle {
+                enemy_tank.direction = get_new_direction(collision_normal);
+                // 设置3秒冷却时间，避免频繁转向
+                collision_cooldown.set_duration(Duration::from_secs(3));
+                collision_cooldown.reset();
             }
         }
 
@@ -509,11 +519,11 @@ fn handle_random_direction_change(
         // 向下概率是向上的2倍：上:20%, 下:40%, 左:20%, 右:20%
         let rand_val = rand::random::<f32>() * 10.0;
         enemy_tank.direction = if rand_val < 2.0 {
-            crate::constants::DIRECTION_UP   // 20%
+            crate::constants::DIRECTION_UP // 20%
         } else if rand_val < 6.0 {
             crate::constants::DIRECTION_DOWN // 40%
         } else if rand_val < 8.0 {
-            crate::constants::DIRECTION_LEFT  // 20%
+            crate::constants::DIRECTION_LEFT // 20%
         } else {
             crate::constants::DIRECTION_RIGHT // 20%
         };
@@ -572,7 +582,12 @@ pub fn enemy_burning_effect_system(
     mut commands: Commands,
     time: Res<Time>,
     mut burning_query: Query<
-        (Entity, &EnemyTankBurning, &mut EnemyTankBurningTimer, &ChildOf),
+        (
+            Entity,
+            &EnemyTankBurning,
+            &mut EnemyTankBurningTimer,
+            &ChildOf,
+        ),
         With<EnemyTankBurning>,
     >,
     mut enemy_lives: Query<&mut EnemyLife, With<EnemyTank>>,
@@ -586,42 +601,42 @@ pub fn enemy_burning_effect_system(
 ) {
     for (burning_entity, burning, mut timer, parent) in burning_query.iter_mut() {
         timer.tick(time.delta());
-        
+
         if timer.just_finished() {
             // 获取父级敌方坦克实体
             let enemy_entity = parent.0;
-            
+
             // 移除火焰特效
             let () = commands.entity(burning_entity).try_despawn();
-            
+
             // 对敌方坦克造成1点伤害
             if let Ok(mut enemy_life) = enemy_lives.get_mut(enemy_entity) {
                 let is_dead = enemy_life.take_damage();
-                
+
                 if is_dead {
                     // 播放爆炸特效
                     if let Ok(enemy_transform) = enemy_transforms.get(enemy_entity) {
                         effect_events.write(EffectEvent::Explosion {
                             position: enemy_transform.translation,
                         });
-                        
+
                         // 发送连击事件（触发得分）
                         combo_events.write(ComboEvent {
                             player_type: burning.player_type,
                             position: enemy_transform.translation,
                         });
                     }
-                    
+
                     // 播放爆炸音效
                     utils::play_one_shot_sound(
                         &mut commands,
                         audio_resources.explosion.clone(),
                         VOLUME_HALF,
                     );
-                    
+
                     // 销毁敌方坦克
                     let () = commands.entity(enemy_entity).try_despawn();
-                    
+
                     // 33%概率在地图随机位置生成道具
                     if global_rng.gen_bool() && global_rng.gen_bool() {
                         crate::powerup::spawn_powerup_random_position(

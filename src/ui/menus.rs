@@ -56,7 +56,8 @@ pub fn spawn_start_screen_title(commands: &mut Commands, font: Handle<Font>, lan
     let menu_count = 7;
     #[cfg(target_arch = "wasm32")]
     let menu_count = 6;
-    let y_positions = common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, menu_count);
+    let y_positions =
+        common::generate_menu_y_positions(MENU_START_Y, MENU_OPTION_SPACING, menu_count);
     for (i, option_text) in MENU_OPTIONS.iter().enumerate() {
         commands.spawn((
             StartScreenUI,

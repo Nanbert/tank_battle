@@ -16,9 +16,9 @@ pub enum TreeColor {
 }
 
 use crate::constants::{
-    BLUE_BAR_REGEN_INTERVAL, ENEMIES_PER_LEVEL, ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
+    BLUE_BAR_REGEN_INTERVAL, BULLET_SPEED, ENEMIES_PER_LEVEL, ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
     ENEMY_HEAVY_LIFE, ENEMY_LIGHT_LIFE, ENEMY_LIGHT_SPEED_MULTIPLIER, ENEMY_NORMAL_LIFE,
-    ENEMY_SPAWN_COOLDOWN, ENEMY_TANK_SPEED, EnemyTankType, TankType, BULLET_SPEED,
+    ENEMY_SPAWN_COOLDOWN, ENEMY_TANK_SPEED, EnemyTankType, TankType,
 };
 
 #[derive(Resource, Default)]
@@ -133,14 +133,8 @@ impl Default for StageLevel {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct MenuBlinkTimer(pub Timer);
-
-impl Default for MenuBlinkTimer {
-    fn default() -> Self {
-        Self(Timer::default())
-    }
-}
 
 #[derive(Resource)]
 pub struct StageIntroTimer {
@@ -550,7 +544,7 @@ pub struct GameTextureResources {
     // 菜单
     pub background: Handle<Image>,
     pub music_note: Handle<Image>,
-    pub sea_bubble_texture: Handle<Image>,  // 海面环境泡泡
+    pub sea_bubble_texture: Handle<Image>, // 海面环境泡泡
 }
 
 impl GameTextureResources {
@@ -580,63 +574,65 @@ impl GameTextureResources {
     }
 
     /// 根据敌方坦克类型获取纹理
-pub fn get_enemy_tank_texture(&self, tank_type: EnemyTankType) -> Handle<Image> {
-    match tank_type {
-        EnemyTankType::Normal => self.enemy_tank_normal.clone(),
-        EnemyTankType::Fire => self.enemy_tank_fire.clone(),
-        EnemyTankType::Heavy => self.enemy_tank_heavy.clone(),
-        EnemyTankType::Light => self.enemy_tank_light.clone(),
+    pub fn get_enemy_tank_texture(&self, tank_type: EnemyTankType) -> Handle<Image> {
+        match tank_type {
+            EnemyTankType::Normal => self.enemy_tank_normal.clone(),
+            EnemyTankType::Fire => self.enemy_tank_fire.clone(),
+            EnemyTankType::Heavy => self.enemy_tank_heavy.clone(),
+            EnemyTankType::Light => self.enemy_tank_light.clone(),
+        }
     }
-}
 
-/// 根据敌方坦克类型获取纹理图集常量
-pub fn get_enemy_tank_atlas_info(tank_type: EnemyTankType) -> &'static crate::atlas::TextureAtlasInfo {
-    match tank_type {
-        EnemyTankType::Normal => &crate::atlas::ENEMY_TANK_NORMAL_ATLAS,
-        EnemyTankType::Fire => &crate::atlas::ENEMY_TANK_FIRE_ATLAS,
-        EnemyTankType::Heavy => &crate::atlas::ENEMY_TANK_HEAVY_ATLAS,
-        EnemyTankType::Light => &crate::atlas::ENEMY_TANK_LIGHT_ATLAS,
+    /// 根据敌方坦克类型获取纹理图集常量
+    pub fn get_enemy_tank_atlas_info(
+        tank_type: EnemyTankType,
+    ) -> &'static crate::atlas::TextureAtlasInfo {
+        match tank_type {
+            EnemyTankType::Normal => &crate::atlas::ENEMY_TANK_NORMAL_ATLAS,
+            EnemyTankType::Fire => &crate::atlas::ENEMY_TANK_FIRE_ATLAS,
+            EnemyTankType::Heavy => &crate::atlas::ENEMY_TANK_HEAVY_ATLAS,
+            EnemyTankType::Light => &crate::atlas::ENEMY_TANK_LIGHT_ATLAS,
+        }
     }
-}
 
-/// 根据敌方坦克类型获取生命值
-pub fn get_enemy_tank_life(tank_type: EnemyTankType) -> usize {
-    match tank_type {
-        EnemyTankType::Normal => ENEMY_NORMAL_LIFE,
-        EnemyTankType::Fire => ENEMY_NORMAL_LIFE,
-        EnemyTankType::Heavy => ENEMY_HEAVY_LIFE,
-        EnemyTankType::Light => ENEMY_LIGHT_LIFE,
+    /// 根据敌方坦克类型获取生命值
+    pub fn get_enemy_tank_life(tank_type: EnemyTankType) -> usize {
+        match tank_type {
+            EnemyTankType::Normal => ENEMY_NORMAL_LIFE,
+            EnemyTankType::Fire => ENEMY_NORMAL_LIFE,
+            EnemyTankType::Heavy => ENEMY_HEAVY_LIFE,
+            EnemyTankType::Light => ENEMY_LIGHT_LIFE,
+        }
     }
-}
 
-/// 根据敌方坦克类型获取移动速度
-pub fn get_enemy_tank_speed(tank_type: EnemyTankType) -> f32 {
-    match tank_type {
-        EnemyTankType::Normal => ENEMY_TANK_SPEED,
-        EnemyTankType::Fire => ENEMY_TANK_SPEED,
-        EnemyTankType::Heavy => ENEMY_TANK_SPEED,
-        EnemyTankType::Light => ENEMY_TANK_SPEED * ENEMY_LIGHT_SPEED_MULTIPLIER,
+    /// 根据敌方坦克类型获取移动速度
+    pub fn get_enemy_tank_speed(tank_type: EnemyTankType) -> f32 {
+        match tank_type {
+            EnemyTankType::Normal => ENEMY_TANK_SPEED,
+            EnemyTankType::Fire => ENEMY_TANK_SPEED,
+            EnemyTankType::Heavy => ENEMY_TANK_SPEED,
+            EnemyTankType::Light => ENEMY_TANK_SPEED * ENEMY_LIGHT_SPEED_MULTIPLIER,
+        }
     }
-}
 
-/// 根据敌方坦克类型获取子弹速度
-pub fn get_enemy_bullet_speed(tank_type: EnemyTankType) -> f32 {
-    match tank_type {
-        EnemyTankType::Normal => BULLET_SPEED,
-        EnemyTankType::Fire => BULLET_SPEED * ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
-        EnemyTankType::Heavy => BULLET_SPEED,
-        EnemyTankType::Light => BULLET_SPEED,
+    /// 根据敌方坦克类型获取子弹速度
+    pub fn get_enemy_bullet_speed(tank_type: EnemyTankType) -> f32 {
+        match tank_type {
+            EnemyTankType::Normal => BULLET_SPEED,
+            EnemyTankType::Fire => BULLET_SPEED * ENEMY_FIRE_BULLET_SPEED_MULTIPLIER,
+            EnemyTankType::Heavy => BULLET_SPEED,
+            EnemyTankType::Light => BULLET_SPEED,
+        }
     }
-}
 
-/// 根据坦克类型获取玩家坦克纹理
-pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
-    match tank_type {
-        TankType::Player1 => self.player1.clone(),
-        TankType::Player2 => self.player2.clone(),
-        TankType::Enemy => panic!("Enemy tanks should use get_enemy_tank_texture()"),
+    /// 根据坦克类型获取玩家坦克纹理
+    pub fn get_player_texture(&self, tank_type: TankType) -> Handle<Image> {
+        match tank_type {
+            TankType::Player1 => self.player1.clone(),
+            TankType::Player2 => self.player2.clone(),
+            TankType::Enemy => panic!("Enemy tanks should use get_enemy_tank_texture()"),
+        }
     }
-}
     /// 根据坦克类型获取子弹纹理
     pub fn get_bullet_texture(&self, tank_type: TankType) -> Handle<Image> {
         self.get_texture_by_tank_type(
@@ -744,8 +740,8 @@ pub const COMBO_TIMEOUT: f32 = 4.0;
 /// 连击状态
 #[derive(Clone, Default)]
 pub struct ComboState {
-    pub count: usize,           // 连击数
-    pub last_kill_time: f32,    // 上次击杀时间
+    pub count: usize,        // 连击数
+    pub last_kill_time: f32, // 上次击杀时间
 }
 
 /// 连击追踪器资源
@@ -783,21 +779,21 @@ impl ComboTracker {
         }
 
         // 更新玩家2连击：4秒无击杀则清零
-        if let Some(ref mut state) = self.player2 {
-            if current_time - state.last_kill_time > COMBO_TIMEOUT {
-                state.count = 0;
-            }
+        if let Some(ref mut state) = self.player2
+            && current_time - state.last_kill_time > COMBO_TIMEOUT
+        {
+            state.count = 0;
         }
     }
 
     /// 获取连击分数
     pub fn get_combo_score(count: usize) -> usize {
         match count {
-            0..=1 => 100,      // 0-1连击：100分
-            2 => 150,          // 2连击：150分
-            3 => 200,          // 3连击：200分
-            4 => 250,          // 4连击：250分
-            5 => 300,          // 5连击：300分
+            0..=1 => 100,                // 0-1连击：100分
+            2 => 150,                    // 2连击：150分
+            3 => 200,                    // 3连击：200分
+            4 => 250,                    // 4连击：250分
+            5 => 300,                    // 5连击：300分
             _ => 300 + (count - 5) * 50, // 6+连击：每增加1连击+50分
         }
     }
@@ -805,22 +801,22 @@ impl ComboTracker {
     /// 获取连击颜色
     pub fn get_combo_color(count: usize) -> Color {
         match count {
-            2 => Color::srgb(1.0, 0.8, 0.0),    // 2连击：黄色
-            3 => Color::srgb(1.0, 0.5, 0.0),    // 3连击：橙色
-            4 => Color::srgb(1.0, 0.0, 0.0),    // 4连击：红色
-            5 => Color::srgb(1.0, 0.0, 0.5),    // 5连击：洋红
-            _ => Color::srgb(0.8, 0.0, 1.0),    // 6+连击：紫色
+            2 => Color::srgb(1.0, 0.8, 0.0), // 2连击：黄色
+            3 => Color::srgb(1.0, 0.5, 0.0), // 3连击：橙色
+            4 => Color::srgb(1.0, 0.0, 0.0), // 4连击：红色
+            5 => Color::srgb(1.0, 0.0, 0.5), // 5连击：洋红
+            _ => Color::srgb(0.8, 0.0, 1.0), // 6+连击：紫色
         }
     }
 
     /// 获取连击字体大小
     pub fn get_combo_font_size(count: usize) -> f32 {
         match count {
-            2 => 32.0,   // 2连击：32
-            3 => 36.0,   // 3连击：36
-            4 => 40.0,   // 4连击：40
-            5 => 44.0,   // 5连击：44
-            _ => 48.0,   // 6+连击：48
+            2 => 32.0, // 2连击：32
+            3 => 36.0, // 3连击：36
+            4 => 40.0, // 4连击：40
+            5 => 44.0, // 5连击：44
+            _ => 48.0, // 6+连击：48
         }
     }
 }

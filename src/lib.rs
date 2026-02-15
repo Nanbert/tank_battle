@@ -3,8 +3,8 @@
 //! This library provides the game logic for both desktop and web platforms.
 
 // Include all the game modules
-pub mod app;
 pub mod ambience;
+pub mod app;
 pub mod atlas;
 pub mod bullet;
 pub mod commander;
@@ -29,10 +29,10 @@ pub mod utils;
 pub mod weather;
 
 // Re-export necessary items
-pub use levels::LevelAssets;
 pub use app::configure_game_resources;
 pub use app::register_game_systems;
 pub use global_rng::GlobalRngPlugin;
+pub use levels::LevelAssets;
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use app::configure_plugins_desktop;
@@ -74,12 +74,12 @@ pub fn init_game() {
 // WebAssembly exports for browser
 #[cfg(target_arch = "wasm32")]
 mod wasm {
-    use wasm_bindgen::prelude::*;
     use crate::{init_game, levels::load_all_levels_async};
+    use wasm_bindgen::prelude::*;
 
     // 全局关卡资源存储
-    use bevy::prelude::*;
     use crate::levels::LevelAssets;
+    use bevy::prelude::*;
     use std::sync::OnceLock;
 
     pub(crate) static LEVEL_ASSETS: OnceLock<LevelAssets> = OnceLock::new();
@@ -88,7 +88,10 @@ mod wasm {
     /// 获取预加载的关卡数据
     #[wasm_bindgen]
     pub fn get_loaded_level_assets() -> *const LevelAssets {
-        LEVEL_ASSETS.get().map(|la| la as *const LevelAssets).unwrap_or(std::ptr::null())
+        LEVEL_ASSETS
+            .get()
+            .map(|la| la as *const LevelAssets)
+            .unwrap_or(std::ptr::null())
     }
 
     /// 检查关卡是否已加载

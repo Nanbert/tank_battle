@@ -3,8 +3,8 @@
 //! 提供统一的随机数生成器资源，支持固定种子
 
 use bevy::prelude::*;
-use rand::rngs::StdRng;
 use rand::SeedableRng;
+use rand::rngs::StdRng;
 
 /// 全局随机数生成器资源
 #[derive(Resource)]

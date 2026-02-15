@@ -2,8 +2,8 @@
 //!
 //! 统一管理 Avian2D 物理引擎的所有配置参数
 
-use bevy::prelude::*;
 use avian2d::prelude::*;
+use bevy::prelude::*;
 
 // ============================================================================
 // 刚体配置常量
@@ -18,7 +18,8 @@ pub mod rigid_body_types {
 
 /// 锁定轴配置常量
 pub mod locked_axes {
-    pub const ROTATION_LOCKED: avian2d::prelude::LockedAxes = avian2d::prelude::LockedAxes::ROTATION_LOCKED;
+    pub const ROTATION_LOCKED: avian2d::prelude::LockedAxes =
+        avian2d::prelude::LockedAxes::ROTATION_LOCKED;
 }
 
 // ============================================================================
@@ -148,7 +149,8 @@ pub struct PlayerTankPhysics {
 impl PlayerTankPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
@@ -175,7 +177,8 @@ pub struct EnemyTankPhysics {
 impl EnemyTankPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
@@ -200,14 +203,15 @@ pub struct BulletPhysics {
 impl BulletPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
             ))
             .insert(self.locked_axes)
             .insert(CollisionEventsEnabled);
-        
+
         if self.is_sensor {
             entity.insert(Sensor);
         }
@@ -224,7 +228,8 @@ pub struct WallPhysics {
 impl WallPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
@@ -244,12 +249,11 @@ pub struct ForestPhysics {
 impl ForestPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
-            .insert(Collider::rectangle(
-                self.collider_half_size.x * 2.0,
-                self.collider_half_size.y * 2.0,
-            ));
-        
+        entity.insert(self.rigid_body).insert(Collider::rectangle(
+            self.collider_half_size.x * 2.0,
+            self.collider_half_size.y * 2.0,
+        ));
+
         if self.is_sensor {
             entity.insert(Sensor);
         }
@@ -267,7 +271,8 @@ pub struct SeaPhysics {
 impl SeaPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
@@ -286,7 +291,8 @@ pub struct BarrierPhysics {
 impl BarrierPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,
@@ -306,7 +312,8 @@ pub struct CommanderPhysics {
 impl CommanderPhysics {
     /// 应用到实体
     pub fn apply_to_entity(&self, entity: &mut EntityCommands) {
-        entity.insert(self.rigid_body)
+        entity
+            .insert(self.rigid_body)
             .insert(Collider::rectangle(
                 self.collider_half_size.x * 2.0,
                 self.collider_half_size.y * 2.0,

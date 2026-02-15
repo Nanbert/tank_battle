@@ -34,8 +34,8 @@ const LEAVES_ROTATION_SPEED_MIN: f32 = 1.0;
 const LEAVES_ROTATION_SPEED_MAX: f32 = 3.0;
 
 /// 落叶尺寸范围（放大5倍）
-const LEAVES_SIZE_MIN: f32 = 40.0;   // 8 * 5
-const LEAVES_SIZE_MAX: f32 = 60.0;   // 12 * 5
+const LEAVES_SIZE_MIN: f32 = 40.0; // 8 * 5
+const LEAVES_SIZE_MAX: f32 = 60.0; // 12 * 5
 
 /// 每帧生成落叶概率
 const LEAVES_SPAWN_CHANCE: f32 = 0.045; // 约4.5%的概率（放大3倍）
@@ -135,10 +135,7 @@ pub fn rain_splash_update_system(
         let scale = 1.0 - life_fraction; // 从1缩小到0
 
         if let Some(size) = sprite.custom_size.as_mut() {
-            *size = Vec2::new(
-                SPLASH_SIZE_INITIAL * scale,
-                SPLASH_SIZE_INITIAL * scale,
-            );
+            *size = Vec2::new(SPLASH_SIZE_INITIAL * scale, SPLASH_SIZE_INITIAL * scale);
         }
 
         // 透明度逐渐降低
@@ -202,12 +199,13 @@ pub fn leaves_spawn_system(
     };
 
     commands.spawn((
-                LeafParticle {
-                    drift_angle,
-                    drift_speed,
-                    rotation_speed,
-                    lifetime: Timer::from_seconds(8.0, TimerMode::Once),
-                },        Sprite {
+        LeafParticle {
+            drift_angle,
+            drift_speed,
+            rotation_speed,
+            lifetime: Timer::from_seconds(8.0, TimerMode::Once),
+        },
+        Sprite {
             image: leaves_texture,
             custom_size: Some(Vec2::new(size, size)),
             ..default()
@@ -267,10 +265,7 @@ pub fn leaves_update_system(
 }
 
 /// 清理所有落叶粒子
-pub fn cleanup_leaves(
-    mut commands: Commands,
-    leaves: Query<Entity, With<LeafParticle>>,
-) {
+pub fn cleanup_leaves(mut commands: Commands, leaves: Query<Entity, With<LeafParticle>>) {
     for entity in leaves.iter() {
         commands.entity(entity).despawn();
     }

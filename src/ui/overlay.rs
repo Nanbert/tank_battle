@@ -2,10 +2,10 @@
 //!
 //! 处理暂停界面、游戏结束界面、关卡介绍界面等覆盖在游戏上的界面
 
+use avian2d::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use bevy::app::AppExit;
 use bevy::prelude::*;
-use avian2d::prelude::*;
 use rand::Rng;
 
 use super::common;
@@ -32,13 +32,19 @@ pub struct FloatingText {
     pub lifetime: f32,
 }
 
+impl Default for FloatingText {
+    fn default() -> Self {
+        Self {
+            velocity: Vec2::new(0.0, 80.0),
+            lifetime: 1.0,
+        }
+    }
+}
+
 impl FloatingText {
     /// 创建新的弹出文字
     pub fn new() -> Self {
-        Self {
-            velocity: Vec2::new(0.0, 80.0), // 向上飘动速度
-            lifetime: 1.0, // 持续 1 秒
-        }
+        Self::default()
     }
 }
 
@@ -512,65 +518,61 @@ pub fn spawn_congratulations_ui(
     game_mode: Res<GameMode>,
     player_info: Res<PlayerInfo>,
 ) {
+    use crate::ui::localization::CONGRATULATIONS_RETURN;
+    use crate::ui::localization::CONGRATULATIONS_TITLE;
     use crate::ui::localization::HUD_PLAYER1_NAME;
     use crate::ui::localization::HUD_PLAYER2_NAME;
-    use crate::ui::localization::CONGRATULATIONS_TITLE;
-    use crate::ui::localization::CONGRATULATIONS_RETURN;
-    
+
     let title_text = CONGRATULATIONS_TITLE.get(*language).to_string();
-    
+
     // 创建标题
     let font = common::get_font(&font_resources, *language);
-    commands
-        .spawn((
-            CongratulationsUI,
-            Text2d(title_text),
-            common::create_text_font(&font, 80.0),
-            TextColor(COLOR_GOLD),
-            Transform::from_xyz(0.0, 150.0, Z_UI),
-        ));
+    commands.spawn((
+        CongratulationsUI,
+        Text2d(title_text),
+        common::create_text_font(&font, 80.0),
+        TextColor(COLOR_GOLD),
+        Transform::from_xyz(0.0, 150.0, Z_UI),
+    ));
 
     // 显示玩家分数
     let y_offset = 50.0;
-    
+
     // 玩家1分数
     if let Some(stats) = player_info.get_stats(TankType::Player1) {
         let p1_text = format!("{}: {}", HUD_PLAYER1_NAME.get(*language), stats.score);
-        commands
-            .spawn((
-                CongratulationsUI,
-                Text2d(p1_text),
-                common::create_text_font(&font, 50.0),
-                TextColor(COLOR_WHITE),
-                Transform::from_xyz(0.0, y_offset, Z_UI),
-            ));
+        commands.spawn((
+            CongratulationsUI,
+            Text2d(p1_text),
+            common::create_text_font(&font, 50.0),
+            TextColor(COLOR_WHITE),
+            Transform::from_xyz(0.0, y_offset, Z_UI),
+        ));
     }
 
     // 玩家2分数（如果是双人模式）
-    if *game_mode == GameMode::TwoPlayers {
-        if let Some(stats) = player_info.get_stats(TankType::Player2) {
-            let p2_text = format!("{}: {}", HUD_PLAYER2_NAME.get(*language), stats.score);
-            commands
-                .spawn((
-                    CongratulationsUI,
-                    Text2d(p2_text),
-                    common::create_text_font(&font, 50.0),
-                    TextColor(COLOR_WHITE),
-                    Transform::from_xyz(0.0, y_offset - 70.0, Z_UI),
-                ));
-        }
+    if *game_mode == GameMode::TwoPlayers
+        && let Some(stats) = player_info.get_stats(TankType::Player2)
+    {
+        let p2_text = format!("{}: {}", HUD_PLAYER2_NAME.get(*language), stats.score);
+        commands.spawn((
+            CongratulationsUI,
+            Text2d(p2_text),
+            common::create_text_font(&font, 50.0),
+            TextColor(COLOR_WHITE),
+            Transform::from_xyz(0.0, y_offset - 70.0, Z_UI),
+        ));
     }
 
     // 提示信息
     let hint_text = CONGRATULATIONS_RETURN.get(*language).to_string();
-    commands
-        .spawn((
-            CongratulationsUI,
-            Text2d(hint_text),
-            common::create_text_font(&font, 30.0),
-            TextColor(COLOR_YELLOW),
-            Transform::from_xyz(0.0, -150.0, Z_UI),
-        ));
+    commands.spawn((
+        CongratulationsUI,
+        Text2d(hint_text),
+        common::create_text_font(&font, 30.0),
+        TextColor(COLOR_YELLOW),
+        Transform::from_xyz(0.0, -150.0, Z_UI),
+    ));
 }
 
 /// 处理恭喜界面输入
@@ -584,7 +586,10 @@ pub fn handle_congratulations_input(
 }
 
 /// 销毁恭喜界面
-pub fn despawn_congratulations_ui(mut commands: Commands, query: Query<Entity, With<CongratulationsUI>>) {
+pub fn despawn_congratulations_ui(
+    mut commands: Commands,
+    query: Query<Entity, With<CongratulationsUI>>,
+) {
     crate::utils::cleanup_entities(&mut commands, query.iter());
 }
 
@@ -607,20 +612,19 @@ pub fn spawn_insufficient_energy_warning(
     // Y 位置在效果和名称中间
     let y_pos = common::hud_y_position(HudYPosition::InsufficientEnergy);
 
-    let font = common::get_font(&font_resources, language);
+    let font = common::get_font(font_resources, language);
 
     // 生成文本实体
-    commands
-        .spawn((
-            InsufficientEnergyText,
-            Text2d(text.to_string()),
-            common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
-            TextColor(COLOR_GOLD),
-            Transform::from_xyz(x_pos, y_pos, Z_UI),
-            // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
-            // 动画完成后会自动销毁整个实体
-            common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
-        ));
+    commands.spawn((
+        InsufficientEnergyText,
+        Text2d(text.to_string()),
+        common::create_text_font(&font, FONT_SIZE_INSUFFICIENT_ENERGY),
+        TextColor(COLOR_GOLD),
+        Transform::from_xyz(x_pos, y_pos, Z_UI),
+        // 使用新的通用闪烁动画系统，设置 despawn_on_complete 为 true
+        // 动画完成后会自动销毁整个实体
+        common::BlinkAnimation::gold_blink_despawn(INSUFFICIENT_ENERGY_DISPLAY_DURATION),
+    ));
 }
 
 /// 销毁所有能量不足提示

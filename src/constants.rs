@@ -53,8 +53,8 @@ pub const IMAGE_ALIPAY: &str = "alipay.png";
 pub const IMAGE_WECHAT: &str = "wechat.png";
 
 // 特效纹理路径常量（静态）
-pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png";  // 气垫船泡泡
-pub const TEXTURE_SEA_BUBBLE: &str = "ambience/bubble_sheet.png";  // 海面环境泡泡（动画）
+pub const TEXTURE_BUBBLE: &str = "effect/BubbleBlue.png"; // 气垫船泡泡
+pub const TEXTURE_SEA_BUBBLE: &str = "ambience/bubble_sheet.png"; // 海面环境泡泡（动画）
 pub const TEXTURE_LEAVES_1: &str = "ambience/leaves1.png";
 pub const TEXTURE_LEAVES_2: &str = "ambience/leaves2.png";
 pub const TEXTURE_LEAVES_3: &str = "ambience/leaves3.png";
@@ -179,7 +179,8 @@ pub const STAGE_QUOTES_CN: [&str; 18] = [
     "冲刺时, 你必须从正面或侧面攻击. 从后面攻击时,\n你朝同一方向移动, 所以冲击力可能不够.",
     "冲刺时, 如果有障碍物或敌人, 请确保保持一定距离,\n以更成功地触发冲刺破坏效果.",
     "被激光摧毁的敌人不计入你的分数.\n司令官的理由是激光会损坏花草树木. 这真荒谬.",
-    "该死的雨天有时会影响我们的火焰弹效果,\n让敌人更难被消灭. 雨, 真是个麻烦.",];
+    "该死的雨天有时会影响我们的火焰弹效果,\n让敌人更难被消灭. 雨, 真是个麻烦.",
+];
 
 pub const STAGE_QUOTES_EN: [&str; 18] = [
     "The brave commander will not retreat even when hit.\nHe will hold his ground and wait for soldiers to rescue him.",
@@ -379,9 +380,7 @@ pub struct DespawnMarker;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum AnimationEventType {
     /// 生成敌方坦克
-    SpawnEnemy {
-        tank_type: EnemyTankType,
-    },
+    SpawnEnemy { tank_type: EnemyTankType },
     /// 激光动画结束事件
     LaserAnimationEnd {
         direction: Vec2,
@@ -492,10 +491,10 @@ pub struct Barrel;
 /// 敌方坦克类型枚举
 #[derive(Component, Copy, Clone, PartialEq, Eq, Debug)]
 pub enum EnemyTankType {
-    Normal,  // 普通型：速度200，生命2，子弹速度900
-    Fire,    // 火力型：速度200，生命2，子弹速度1800（2倍）
-    Heavy,   // 重型：速度200，生命4，子弹速度900
-    Light,   // 轻型：速度400（2倍），生命1，子弹速度900
+    Normal, // 普通型：速度200，生命2，子弹速度900
+    Fire,   // 火力型：速度200，生命2，子弹速度1800（2倍）
+    Heavy,  // 重型：速度200，生命4，子弹速度900
+    Light,  // 轻型：速度400（2倍），生命1，子弹速度900
 }
 
 #[derive(Component, Copy, Clone)]
@@ -868,8 +867,6 @@ pub const BRICK_GROUP_TOP_LEFT: Vec2 = Vec2::new(-BRICK_GROUP_OFFSET, BRICK_GROU
 pub const BRICK_GROUP_TOP_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, BRICK_GROUP_OFFSET);
 pub const BRICK_GROUP_BOTTOM_LEFT: Vec2 = Vec2::new(-BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
 pub const BRICK_GROUP_BOTTOM_RIGHT: Vec2 = Vec2::new(BRICK_GROUP_OFFSET, -BRICK_GROUP_OFFSET);
-
-
 
 // 激光
 pub const LASER_COLLISION_WIDTH: f32 = 70.0; // 激光碰撞宽度（略窄于坦克车身）

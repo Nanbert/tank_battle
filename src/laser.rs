@@ -311,9 +311,9 @@ fn start_charge(
     // 能量球将作为坦克的子实体，会自动跟随坦克移动
     // 在局部坐标系中，炮塔在 (0, 10) 的位置，能量球应该在炮塔前方
     let energy_ball_offset = Vec3::new(
-        7.0,  // 侧向偏移（炮塔右侧）
-        TANK_DISPLAY_SIZE.y / 2.0 + crate::physics_config::collider_sizes::BULLET.y + 5.0,  // 前方偏移
-        crate::constants::Z_LASER + 0.1,  // Z轴偏移
+        7.0, // 侧向偏移（炮塔右侧）
+        TANK_DISPLAY_SIZE.y / 2.0 + crate::physics_config::collider_sizes::BULLET.y + 5.0, // 前方偏移
+        crate::constants::Z_LASER + 0.1, // Z轴偏移
     );
 
     // 将能量球作为坦克的子实体生成，使用局部坐标
@@ -342,7 +342,7 @@ fn start_charge(
             },
             Transform {
                 translation: energy_ball_offset,
-                rotation: Quat::IDENTITY,  // 子实体不额外旋转，继承父实体的旋转
+                rotation: Quat::IDENTITY, // 子实体不额外旋转，继承父实体的旋转
                 scale: Vec3::ONE,
             },
             energy_ball_animation_indices,

@@ -19,7 +19,7 @@ pub struct TextureAtlasInfo {
 
 impl TextureAtlasInfo {
     /// 将 tile_size 转换为 UVec2
-    pub fn to_uvec2(&self) -> UVec2 {
+    pub fn to_uvec2(self) -> UVec2 {
         UVec2::new(self.tile_size.x as u32, self.tile_size.y as u32)
     }
 
@@ -311,12 +311,8 @@ pub const MUSIC_NOTE_ATLAS: TextureAtlasInfo = {
 
 // ==================== 海面泡泡精灵图常量 ====================
 pub const SEA_BUBBLE_ATLAS: TextureAtlasInfo = {
-    let mut atlas = TextureAtlasInfo::new(
-        "ambience/bubble_sheet.png",
-        Vec2::new(24.0, 28.0),
-        20,
-        1,
-    );
+    let mut atlas =
+        TextureAtlasInfo::new("ambience/bubble_sheet.png", Vec2::new(24.0, 28.0), 20, 1);
     atlas.display_size = Vec2::new(30.0, 30.0);
     atlas
 };
@@ -355,9 +351,6 @@ pub const POWER_UP_SHELL_ATLAS: TextureAtlasInfo =
 
 // 敌方坦克着火精灵图常量
 // 实际尺寸: 270 x 90, 1行6列, 每帧 45 x 90
-pub const ENEMY_TANK_BURNING_ATLAS: TextureAtlasInfo = TextureAtlasInfo::new(
-    "enemy_tank/fire.png",
-    Vec2::new(45.0, 90.0),
-    6,
-    1,
-).with_display_size(TANK_DISPLAY_SIZE);
+pub const ENEMY_TANK_BURNING_ATLAS: TextureAtlasInfo =
+    TextureAtlasInfo::new("enemy_tank/fire.png", Vec2::new(45.0, 90.0), 6, 1)
+        .with_display_size(TANK_DISPLAY_SIZE);

@@ -7,12 +7,12 @@
 use bevy::prelude::*;
 
 use crate::constants::*;
+use crate::level_editor::LevelEditorUI;
 use crate::map::TerrainType;
-use crate::resources::{GameTextureResources, GameAtlasLayoutResources, Language};
+use crate::resources::{GameAtlasLayoutResources, GameTextureResources, Language};
+use crate::ui::common;
 use crate::ui::constants::*;
 use crate::ui::localization::*;
-use crate::ui::common;
-use crate::level_editor::LevelEditorUI;
 
 // ============================================================================
 // UI 生成函数
@@ -90,7 +90,7 @@ pub fn spawn_terrain_panel(
             atlas_layouts,
             panel_x,
             y,
-            *terrain_type
+            *terrain_type,
         );
 
         // 生成地形名称文本
@@ -113,8 +113,8 @@ pub fn spawn_terrain_panel(
             Sprite {
                 color: Color::srgba(1.0, 1.0, 1.0, 0.3),
                 custom_size: Some(Vec2::new(
-                    crate::level_editor::TERRAIN_BUTTON_SIZE, 
-                    crate::level_editor::TERRAIN_BUTTON_SIZE
+                    crate::level_editor::TERRAIN_BUTTON_SIZE,
+                    crate::level_editor::TERRAIN_BUTTON_SIZE,
                 )),
                 ..default()
             },
@@ -124,20 +124,13 @@ pub fn spawn_terrain_panel(
 }
 
 /// 生成操作说明
-pub fn spawn_instructions(
-    commands: &mut Commands,
-    language: Language,
-    font: &Handle<Font>,
-) {
-    let instructions = vec![
-        EDITOR_INSTRUCTION_CLICK_SELECT,
-        EDITOR_INSTRUCTION_EXIT,
-    ];
+pub fn spawn_instructions(commands: &mut Commands, language: Language, font: &Handle<Font>) {
+    let instructions = [EDITOR_INSTRUCTION_CLICK_SELECT, EDITOR_INSTRUCTION_EXIT];
 
     // 左上角位置计算
-    const INSTRUCTIONS_OFFSET_X: f32 = 200.0;  // 相对于 MAP_LEFT_X 的偏移
-    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0;   // 相对于 MAP_TOP_Y 的偏移（20+40+9）
-    const INSTRUCTIONS_LINE_SPACING: f32 = 30.0;  // 行间距
+    const INSTRUCTIONS_OFFSET_X: f32 = 200.0; // 相对于 MAP_LEFT_X 的偏移
+    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0; // 相对于 MAP_TOP_Y 的偏移（20+40+9）
+    const INSTRUCTIONS_LINE_SPACING: f32 = 30.0; // 行间距
 
     let left_x = MAP_LEFT_X + INSTRUCTIONS_OFFSET_X;
     let top_y = MAP_TOP_Y + INSTRUCTIONS_OFFSET_Y;
@@ -164,27 +157,27 @@ pub fn spawn_current_selection_and_filename(
 ) {
     // 顶部右边位置，与操作提示对称
     const MAP_RIGHT_X: f32 = -crate::constants::MAP_LEFT_X; // 地图右边界
-    const INSTRUCTIONS_OFFSET_X: f32 = 200.0;  // 与操作提示相同的偏移量
-    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0;   // 与操作提示相同的偏移量
-    const HORIZONTAL_SPACING: f32 = 150.0;     // 水平间距
-    const RIGHT_PANEL_OFFSET_X: f32 = -200.0;  // 右上角面板向左移动200像素
-    const RIGHT_PANEL_OFFSET_Y: f32 = 10.0;    // 右上角面板向下移动10像素
-    
+    const INSTRUCTIONS_OFFSET_X: f32 = 200.0; // 与操作提示相同的偏移量
+    const INSTRUCTIONS_OFFSET_Y: f32 = 69.0; // 与操作提示相同的偏移量
+    const HORIZONTAL_SPACING: f32 = 150.0; // 水平间距
+    const RIGHT_PANEL_OFFSET_X: f32 = -200.0; // 右上角面板向左移动200像素
+    const RIGHT_PANEL_OFFSET_Y: f32 = 10.0; // 右上角面板向下移动10像素
+
     // 元素位置偏移
-    const LABEL_OFFSET_X: f32 = -96.0;         // 标签向左移动96像素
-    const LABEL_OFFSET_Y: f32 = -10.0;         // 标签向下移动10像素
-    const ICON_OFFSET_X: f32 = -90.0;          // 图标向左移动90像素
-    const ICON_OFFSET_Y: f32 = 20.0;           // 图标向上移动20像素 (25 - 5)
-    const PROMPT_OFFSET_X: f32 = 15.0;         // 提示文本向右移动15像素
-    const INPUT_BOX_OFFSET_Y: f32 = -30.0;     // 输入框向下移动30像素
-    
+    const LABEL_OFFSET_X: f32 = -96.0; // 标签向左移动96像素
+    const LABEL_OFFSET_Y: f32 = -10.0; // 标签向下移动10像素
+    const ICON_OFFSET_X: f32 = -90.0; // 图标向左移动90像素
+    const ICON_OFFSET_Y: f32 = 20.0; // 图标向上移动20像素 (25 - 5)
+    const PROMPT_OFFSET_X: f32 = 15.0; // 提示文本向右移动15像素
+    const INPUT_BOX_OFFSET_Y: f32 = -30.0; // 输入框向下移动30像素
+
     // 输入框尺寸
     const INPUT_BOX_WIDTH: f32 = 80.0;
     const INPUT_BOX_HEIGHT: f32 = 30.0;
-    
+
     // 标签和图标之间的间距
-    const LABEL_ICON_SPACING: f32 = 20.0;      
-    
+    const LABEL_ICON_SPACING: f32 = 20.0;
+
     // 标签宽度估算系数
     const LABEL_WIDTH_COEFFICIENT: f32 = 0.6;
 
@@ -197,16 +190,20 @@ pub fn spawn_current_selection_and_filename(
     let icon_size = crate::level_editor::TERRAIN_BUTTON_SIZE;
     let total_width = label_width + LABEL_ICON_SPACING + icon_size;
     let start_x = right_x - total_width / 2.0; // 调整起始位置
-    
+
     // 当前选择文本（左）
     commands.spawn((
         LevelEditorUI,
         Text2d(label_text),
         common::create_text_font(font, FONT_SIZE_SMALL),
         TextColor(COLOR_WHITE),
-        Transform::from_xyz(start_x + label_width / 2.0 + LABEL_OFFSET_X, top_y + LABEL_OFFSET_Y, Z_UI_TEXT),
+        Transform::from_xyz(
+            start_x + label_width / 2.0 + LABEL_OFFSET_X,
+            top_y + LABEL_OFFSET_Y,
+            Z_UI_TEXT,
+        ),
     ));
-    
+
     // 地形图标（右）
     let icon_x = start_x + label_width + LABEL_ICON_SPACING + icon_size / 2.0 + ICON_OFFSET_X;
     commands.spawn((
@@ -217,7 +214,11 @@ pub fn spawn_current_selection_and_filename(
             custom_size: Some(Vec2::new(icon_size, icon_size)),
             ..default()
         },
-        Transform::from_xyz(icon_x, top_y - icon_size / 2.0 + ICON_OFFSET_Y, crate::level_editor::Z_UI_BASE),
+        Transform::from_xyz(
+            icon_x,
+            top_y - icon_size / 2.0 + ICON_OFFSET_Y,
+            crate::level_editor::Z_UI_BASE,
+        ),
     ));
 
     // 添加文件名输入提示（第二列）
@@ -245,7 +246,7 @@ pub fn spawn_current_selection_and_filename(
         },
         Transform::from_xyz(prompt_x, input_box_y, crate::level_editor::Z_UI_BASE),
     ));
-    
+
     // 文件名输入文本
     commands.spawn((
         LevelEditorUI,

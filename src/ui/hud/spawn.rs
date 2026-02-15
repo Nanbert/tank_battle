@@ -478,7 +478,7 @@ pub fn spawn_top_hud(
     stage_level: &Res<StageLevel>,
     language: Language,
 ) {
-    let font = common::get_font(&font_resources, language);
+    let font = common::get_font(font_resources, language);
     let commander_text_x = WINDOW_LEFT_X + HUD_COMMANDER_TEXT_X;
 
     // 关卡信息显示在顶部中心（使用格式化本地化文本）
